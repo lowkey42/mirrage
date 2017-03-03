@@ -1,0 +1,16 @@
+{
+    "menu": {
+        "game": "Game",
+        "editor": "Editor",
+        "options": "Options",
+        "quit": "Quit",
+
+        "rank": "Rank",
+        "player": "Player",
+        "time": "Time",
+        "enter player name": "Enter your name:",
+        "retry": "Retry",
+        "continue": "Continue",
+        "next level": "Next level"
+    }
+}

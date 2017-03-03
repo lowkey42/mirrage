@@ -1,0 +1,4 @@
+blueprint: = blueprints/
+
+blueprint:example = blueprints/example.json
+
