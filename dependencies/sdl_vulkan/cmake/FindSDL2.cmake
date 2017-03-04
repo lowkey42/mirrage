@@ -1,0 +1,7 @@
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SDL2 sdl2)
+
+find_package(PackageHandleStandardArgs)
+FIND_PACKAGE_HANDLE_STANDARD_ARGS(SDL2 REQUIRED_VARS SDL2_LIBRARIES SDL2_INCLUDE_DIRS)
+
+mark_as_advanced(SDL2_INCLUDE_DIRS SDL2_LIBRARIES)

@@ -86,5 +86,5 @@ file(GLOB_RECURSE PROJECT_SRCS
 
 add_executable(BachelorProject main.cpp ${PROJECT_SRCS} "${CMAKE_CURRENT_BINARY_DIR}/info.cpp")
 
-target_link_libraries(BachelorProject ${SDL2_LIBRARY} core)
+target_link_libraries(BachelorProject core)
 
