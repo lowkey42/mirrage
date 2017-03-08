@@ -6,3 +6,4 @@ cfg:languages_info = settings/languages.json
 cfg:gui = settings/gui.json
 
 loc: = loc/
+pl_cache: = pipeline_caches
