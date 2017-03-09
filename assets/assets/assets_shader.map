@@ -6,3 +6,5 @@ frag_shader:simple = shader/simple.frag
 vert_shader:ui = shader/ui.vert
 frag_shader:ui = shader/ui.frag
 
+vert_shader:test = shader/bin/test.vert.spv
+frag_shader:test = shader/bin/test.frag.spv
