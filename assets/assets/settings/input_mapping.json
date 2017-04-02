@@ -1,70 +1,20 @@
 {
-	"initial": "editor",
+	"initial": "main",
 	"contexts": {
-		"menu": {
-			"keys": {
-				"Escape": {"type":"once", "action":"quit"},
 
-				"A": {"type":"continuous", "action":"left"},
-				"Left": {"type":"continuous", "action":"left"},
-				"D": {"type":"continuous", "action":"right"},
-				"Right": {"type":"continuous", "action":"right"},
-				"Up": {"type":"continuous", "action":"up"},
-				"W": {"type":"continuous", "action":"up"},
-				"Down": {"type":"continuous", "action":"down"},
-				"S": {"type":"continuous", "action":"down"},
-
-				"Space": {"type":"once", "action":"select"},
-				"Return": {"type":"once", "action":"continue"},
-
-				"Backspace": {"type":"once", "action": "backspace"},
-
-				"T_1": {"type":"once", "action":"select_a"},
-				"T_2": {"type":"once", "action":"select_b"},
-				"T_3": {"type":"once", "action":"select_c"},
-				"T_4": {"type":"once", "action":"select_d"},
-				"T_5": {"type":"once", "action":"select_e"},
-				"T_6": {"type":"once", "action":"select_f"},
-				"T_7": {"type":"once", "action":"select_g"},
-				"T_8": {"type":"once", "action":"select_h"},
-				"T_9": {"type":"once", "action":"select_i"}
-			},
-
-			"pad_sticks": {
-				"left": {"type": "range", "action": "move"},
-				"right": {"type": "range", "action": "move"}
-			},
-			"pad_buttons": {
-				"x":  {"type":"once", "action":"select"},
-				"a":  {"type":"once", "action":"select"},
-				"left_shoulder":  {"type":"once", "action":"select"},
-				"left_trigger":  {"type":"once", "action":"select"},
-				"right_shoulder":  {"type":"once", "action":"select"},
-				"right_trigger":  {"type":"once", "action":"select"},
-				"start":  {"type":"once", "action":"quit"}
-			},
-
-			"mouse_buttons": {
-				{"button":1, "clicks":0}: {"type":"once", "action":"select"}
-			},
-			"mouse_movement": {"type": "range", "action": "move_abs"}
-		},
-
-        "game": {
+        "main": {
             "keys": {
-                "Escape": {"type":"once", "action":"pause"},
+                "Escape": {"type":"once", "action":"quit"},
 
-                "Q": {"type":"once", "action":"prev_player"},
-                "E": {"type":"once", "action":"next_player"},
+                "W": {"type":"continuous", "action":"move_up"},
+                "Up": {"type":"continuous", "action":"move_up"},
+                "S": {"type":"continuous", "action":"move_down"},
+                "Down": {"type":"continuous", "action":"move_down"},
 
                 "A": {"type":"continuous", "action":"move_left"},
                 "Left": {"type":"continuous", "action":"move_left"},
                 "D": {"type":"continuous", "action":"move_right"},
-                "Right": {"type":"continuous", "action":"move_right"},
-
-                "Space": {"type":"continuous", "action":"transform"},
-				"Up": {"type":"continuous", "action":"jump"},
-                "W": {"type":"continuous", "action":"jump"}
+                "Right": {"type":"continuous", "action":"move_right"}
             },
 
             "pad_sticks": {
@@ -72,66 +22,14 @@
                 "right": {"type": "range", "action": "move"}
             },
             "pad_buttons": {
-                "x":  {"type":"continuous", "action":"jump"},
-                "a":  {"type":"continuous", "action":"transform"},
-                "left_trigger":  {"type":"continuous", "action":"transform"},
-                "right_trigger":  {"type":"continuous", "action":"transform"},
-                "start":  {"type":"once", "action":"pause"},
-
-                "left_shoulder": {"type":"once", "action":"prev_player"},
-                "right_shoulder": {"type":"once", "action":"next_player"}
+                "x":  {"type":"continuous", "action":"jump"}
             },
 
             "mouse_buttons": {
                 {"button":1, "clicks":0}: {"type":"continuous", "action":"transform"}
             },
             "mouse_movement": {"type": "range", "action": "mouse_look"}
-        },
+        }
 
-		"editor": {
-			"keys": {
-                "Escape": {"type":"once", "action":"back"},
-
-                "Z": {"type":"once", "action":"undo"},
-                "Y": {"type":"once", "action":"redo"},
-                "G": {"type":"once", "action":"toggle_grid"},
-				"C": {"type":"once", "action":"copy"},
-				"X": {"type":"once", "action":"cut"},
-				"V": {"type":"once", "action":"paste"},
-				"L": {"type":"once", "action":"light"},
-				"LControl": {"type":"continuous", "action":"copy_drag"},
-                "Delete": {"type":"once", "action":"delete"},
-                "Left": {"type":"continuous", "action":"scroll_l"},
-                "Right": {"type":"continuous", "action":"scroll_r"},
-                "Down": {"type":"continuous", "action":"scroll_d"},
-                "Up": {"type":"continuous", "action":"scroll_u"},
-                "F5": {"type":"once", "action":"save"},
-                "F9": {"type":"once", "action":"load"},
-                "F6": {"type":"once", "action":"start"},
-
-				"H": {"type":"once", "action":"flip_h"},
-				"J": {"type":"once", "action":"flip_v"},
-
-                "T_1": {"type":"once", "action":"new_a"},
-				"T_2": {"type":"once", "action":"new_b"},
-				"T_3": {"type":"once", "action":"new_c"},
-				"T_4": {"type":"once", "action":"new_d"},
-				"T_5": {"type":"once", "action":"new_e"},
-				"T_6": {"type":"once", "action":"new_f"},
-				"T_7": {"type":"once", "action":"new_g"},
-				"T_8": {"type":"once", "action":"new_h"},
-				"T_9": {"type":"once", "action":"new_i"},
-				
-				"PageUp": {"type":"once", "action":"next"},
-				"PageDown": {"type":"once", "action":"prev"}
-            },
-            "mouse_wheel_up": {"type":"once", "action": "zoom_in"},
-            "mouse_wheel_down": {"type":"once", "action": "zoom_out"},
-
-            "mouse_buttons": {
-                {"button":1, "clicks":0}: {"type":"continuous", "action":"mouse_down"},
-                {"button":1, "clicks":-1}: {"type":"once", "action":"mouse_click"}
-            }
-		}
 	}
 }
