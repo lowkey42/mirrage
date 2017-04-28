@@ -26,7 +26,8 @@
             },
 
             "mouse_buttons": {
-                {"button":1, "clicks":0}: {"type":"continuous", "action":"transform"}
+                {"button":1, "clicks":0}: {"type":"continuous", "action":"capture_mouse"},
+                {"button":3, "clicks":0}: {"type":"continuous", "action":"capture_mouse"}
             },
             "mouse_movement": {"type": "range", "action": "mouse_look"}
         }
