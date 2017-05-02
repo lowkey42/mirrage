@@ -1,4 +1,6 @@
 blueprint: = blueprints/
 
-blueprint:example = blueprints/example.json
+blueprint:camera = blueprints/camera.json
+blueprint:sponza = blueprints/sponza.json
+blueprint:sun = blueprints/sun.json
 
