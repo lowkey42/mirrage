@@ -22,7 +22,14 @@ layout(set=1, binding = 3) uniform sampler2D roughness_sampler;
 layout(binding = 0) uniform Global_uniforms {
 	mat4 view_proj;
 	vec4 eye_pos;
+	float disect;
 } global_uniforms;
+
+layout(push_constant) uniform Per_model_uniforms {
+	mat4 model;
+	vec4 light_color;
+	vec4 options;
+} model_uniforms;
 
 const float PI = 3.14159265359;
 
@@ -41,6 +48,10 @@ void main() {
 
 	albedo_mat_id = vec4(albedo.rgb, 0.0);
 	mat_data      = vec4(encode_normal(normal), roughness, metallic);
+
+	float disect = model_uniforms.options.x;
+	if(disect>0 && vertex_out.world_pos.z>=disect)
+		discard;
 }
 
 vec3 tangent_space_to_world(vec3 N) {

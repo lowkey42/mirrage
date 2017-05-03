@@ -72,9 +72,8 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 float linearize_depth(float depth) {
 	float near_plane = global_uniforms.proj_planes.x;
 	float far_plane = global_uniforms.proj_planes.y;
-	float z = depth * 2.0 - 1.0; // to NDC // TODO: still required? / test
-	return (2.0 * near_plane * far_plane)
-	     / (far_plane + near_plane - z * (far_plane - near_plane));
+	return (2.0 * near_plane)
+	     / (far_plane + near_plane - depth * (far_plane - near_plane));
 }
 
 vec3 restore_position(vec2 uv, float depth) {
@@ -89,26 +88,29 @@ void main() {
 	vec4  mat_data      = subpassLoad(mat_data_sampler);
 
 	float linear_depth = linearize_depth(depth);
-	vec3 position = restore_position(vertex_out.tex_coords, linear_depth);
+	vec3 position = restore_position(vertex_out.tex_coords, depth);
 	vec3 V = normalize(global_uniforms.eye_pos.xyz - position);
 	vec3 albedo = albedo_mat_id.rgb;
 	int  material = int(albedo_mat_id.a*255);
+
+	// material 255 (unlit)
+	if(material==255) {
+		out_color = vec4(albedo, 1.0);
+		return;
+	}
 
 	// material 0 (default)
 	vec3 N = decode_normal(mat_data.rg);
 	float roughness = mat_data.b;
 	float metallic = mat_data.a;
-
-	out_color.rgb = vec3(linear_depth, linear_depth, linear_depth);
-	return;
 	
 	// TODO: calc light
 
 	vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 	albedo.rgb *= 1.0 - metallic;
 
-	vec3 radiance = vec3(8.0, 8.0, 7.0); // TODO: read from uniform
-	vec3 L = normalize(vec3(0.4,1,0.1)); // TODO: read from uniform
+	vec3 radiance = model_uniforms.light_color.rgb * model_uniforms.light_color.a;
+	vec3 L = model_uniforms.light_data.gba;
 
 	vec3 H = normalize(V+L);
 
@@ -126,4 +128,7 @@ void main() {
 	// add to outgoing radiance Lo
 	float NdotL = max(dot(N, L), 0.0);
 	out_color = vec4((kD * albedo / PI + brdf) * radiance * NdotL, 1.0);
+
+	// TODO: remove ambient
+	out_color.rgb += albedo * radiance * 0.004;
 }

@@ -4,6 +4,6 @@
 	"Directional_light": {
 		"source_radius": 5.0,
 		"intensity": 10.0,
-		"temperature": 6000
+		"temperature": 4000
 	}
 }
