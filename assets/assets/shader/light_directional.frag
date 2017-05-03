@@ -78,7 +78,7 @@ float linearize_depth(float depth) {
 }
 
 vec3 restore_position(vec2 uv, float depth) {
-	vec4 pos_world = global_uniforms.inv_view_proj * vec4(uv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+	vec4 pos_world = global_uniforms.inv_view_proj * vec4(uv * 2.0 - 1.0, depth, 1.0);
 	return pos_world.xyz / pos_world.w;
 }
 
@@ -99,13 +99,16 @@ void main() {
 	float roughness = mat_data.b;
 	float metallic = mat_data.a;
 
+	out_color.rgb = vec3(linear_depth, linear_depth, linear_depth);
+	return;
+	
 	// TODO: calc light
 
 	vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 	albedo.rgb *= 1.0 - metallic;
 
-	vec3 radiance = vec3(8.0, 8.0, 7.0);
-	vec3 L = normalize(vec3(0.4,1,0.1));
+	vec3 radiance = vec3(8.0, 8.0, 7.0); // TODO: read from uniform
+	vec3 L = normalize(vec3(0.4,1,0.1)); // TODO: read from uniform
 
 	vec3 H = normalize(V+L);
 
