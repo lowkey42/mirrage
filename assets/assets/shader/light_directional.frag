@@ -5,7 +5,7 @@
 #include "normal_encoding.glsl"
 
 
-in Vertex_data {
+layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
 } vertex_out;
 

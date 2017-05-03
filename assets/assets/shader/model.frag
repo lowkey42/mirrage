@@ -4,7 +4,7 @@
 
 #include "normal_encoding.glsl"
 
-in Vertex_data {
+layout(location = 0) in Vertex_data {
 	vec3 world_pos;
 	vec3 normal;
 	vec3 tangent;
