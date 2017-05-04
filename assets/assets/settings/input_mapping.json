@@ -14,7 +14,9 @@
                 "A": {"type":"continuous", "action":"move_left"},
                 "Left": {"type":"continuous", "action":"move_left"},
                 "D": {"type":"continuous", "action":"move_right"},
-                "Right": {"type":"continuous", "action":"move_right"}
+                "Right": {"type":"continuous", "action":"move_right"},
+
+                "T_1": {"type":"once", "action":"d_disect"}
             },
 
             "pad_sticks": {
