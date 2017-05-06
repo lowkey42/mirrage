@@ -12,5 +12,6 @@ frag_shader:model = shader/bin/model.frag.spv
 vert_shader:ui = shader/bin/ui.vert.spv
 frag_shader:ui = shader/bin/ui.frag.spv
 
-vert_shader:test = shader/bin/test.vert.spv
-frag_shader:test = shader/bin/test.frag.spv
+vert_shader:taa = shader/bin/taa.vert.spv
+frag_shader:taa = shader/bin/taa.frag.spv
+
