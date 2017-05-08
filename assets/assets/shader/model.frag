@@ -11,8 +11,9 @@ layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
 } vertex_out;
 
-layout(location = 0) out vec4 albedo_mat_id;
-layout(location = 1) out vec4 mat_data;
+layout(location = 0) out vec4 depth_out;
+layout(location = 1) out vec4 albedo_mat_id;
+layout(location = 2) out vec4 mat_data;
 
 layout(set=1, binding = 0) uniform sampler2D albedo_sampler;
 layout(set=1, binding = 1) uniform sampler2D metallic_sampler;
@@ -46,6 +47,7 @@ void main() {
 	float roughness = texture(roughness_sampler, vertex_out.tex_coords).r;
 	vec3  normal    = tangent_space_to_world(texture(normal_sampler, vertex_out.tex_coords).xyz);
 
+	depth_out     = vec4(gl_FragCoord.z, 0,0,0);
 	albedo_mat_id = vec4(albedo.rgb, 0.0);
 	mat_data      = vec4(encode_normal(normal), roughness, metallic);
 

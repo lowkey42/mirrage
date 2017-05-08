@@ -130,7 +130,7 @@ void main() {
 	float t = mix(0.88, 0.97, weight*weight);
 
 	vec3 noise = PDsrand3(vertex_out.tex_coords + constants.time.y + 0.6959174) / 510.0;
-	out_color = vec4(max(vec3(0), mix(curr, prev_clamped, t) + noise), 1.0);
+	out_color = vec4(max(vec3(0), mix(curr, prev_clamped, t)/* + noise*/), 1.0);
 
 	//out_color.rgb = vec3(weight*weight);
 }

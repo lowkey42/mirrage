@@ -15,17 +15,21 @@ layout(input_attachment_index = 0, set=1, binding = 0) uniform subpassInput dept
 layout(input_attachment_index = 1, set=1, binding = 1) uniform subpassInput albedo_mat_id_sampler;
 layout(input_attachment_index = 2, set=1, binding = 2) uniform subpassInput mat_data_sampler;
 
+layout(set=2, binding = 0) uniform sampler2D shadowmap_sampler[1];
+
 layout(binding = 0) uniform Global_uniforms {
 	mat4 view_proj;
 	mat4 inv_view_proj;
 	vec4 eye_pos;
 	vec4 proj_planes;
+	vec4 time;
 } global_uniforms;
 
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
 	vec4 light_color;
-	vec4 light_data;
+	vec4 light_data;  // R=src_radius, GBA=direction
+	vec4 light_data2; // R=shadowmapID
 } model_uniforms;
 
 
@@ -68,6 +72,7 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 }
 // END TODO
 
+float sample_shadowmap(vec3 world_pos);
 
 float linearize_depth(float depth) {
 	float near_plane = global_uniforms.proj_planes.x;
@@ -127,8 +132,89 @@ void main() {
 
 	// add to outgoing radiance Lo
 	float NdotL = max(dot(N, L), 0.0);
-	out_color = vec4((kD * albedo / PI + brdf) * radiance * NdotL, 1.0);
+	float shadow = sample_shadowmap(position);
+	out_color = vec4((kD * albedo / PI + brdf) * radiance * NdotL * shadow, 1.0);
 
 	// TODO: remove ambient
-	out_color.rgb += albedo * radiance * 0.004;
+	out_color.rgb += albedo * radiance * 0.002;
+}
+
+float random(vec4 seed) {
+    float dot_product = dot(seed, vec4(12.9898,78.233,45.164,94.673));
+    return fract(sin(dot_product) * 43758.5453);
+}
+
+vec2 PDnrand2( vec4 n ) {
+	return fract( sin(dot(n, vec4(12.9898,78.233,45.164,94.673)))* vec2(43758.5453f, 28001.8384f) );
+}
+
+float sample_shadowmap(vec3 world_pos) {
+	int shadowmap = int(model_uniforms.light_data2.r);
+	if(shadowmap<0)
+		return 1.0;
+
+	vec4 lightspace_pos = model_uniforms.model * vec4(world_pos, 1.0);
+	lightspace_pos /= lightspace_pos.w;
+
+	vec2 poissonDisk[16] = vec2[](
+	        vec2( -0.94201624, -0.39906216 ),
+			vec2( 0.94558609, -0.76890725 ),
+			vec2( -0.094184101, -0.92938870 ),
+			vec2( 0.34495938, 0.29387760 ),
+			vec2( -0.91588581, 0.45771432 ),
+			vec2( -0.81544232, -0.87912464 ),
+			vec2( -0.38277543, 0.27676845 ),
+			vec2( 0.97484398, 0.75648379 ),
+			vec2( 0.44323325, -0.97511554 ),
+			vec2( 0.53742981, -0.47373420 ),
+			vec2( -0.26496911, -0.41893023 ),
+			vec2( 0.79197514, 0.19090188 ),
+			vec2( -0.24188840, 0.99706507 ),
+			vec2( -0.81409955, 0.91437590 ),
+			vec2( 0.19984126, 0.78641367 ),
+			vec2( 0.14383161, -0.14100790 )
+	);
+
+	float visiblity = 1.0;
+	for (int i=0;i<8;i++) {
+		int idx = int(random(vec4(world_pos, float(i))) * 16) % 16;
+		vec2 p = lightspace_pos.xy*0.5+0.5 + poissonDisk[idx]/700.0;
+		//vec2 p = lightspace_pos.xy*0.5+0.5 + PDnrand2(vec4(world_pos, float(i)))/600.0;
+
+		if(texture(shadowmap_sampler[shadowmap], p).r < lightspace_pos.z-0.005)
+			visiblity -= 1.0/8;
+	}
+
+	return clamp(visiblity, 0.0, 1.0);
+
+	vec2 moments = texture(shadowmap_sampler[shadowmap], lightspace_pos.xy*0.5+0.5).rg;
+
+	if(moments.x < lightspace_pos.z)
+		return 0.0;
+	else
+		return 1.0;
+
+/*
+	float depth_exp = exp(120.0 * lightspace_pos.z);
+	float x = moments.x / depth_exp;
+
+	return clamp(x, 0.0, 1.0);
+*/
+
+
+/*
+	float d = moments.x - lightspace_pos.z;
+
+	if(d>0)
+		return 1.0;
+
+	float variance = moments.y - (moments.x*moments.x);
+	variance = max(variance, 0.00002);
+
+	float p_max = variance / (variance + d*d);
+	p_max = (p_max-0.6) / (1.0-0.6);
+	//p_max = p_max*2.0-1.0;
+
+	return clamp(p_max, 0.0, 1.0);
+	*/
 }
