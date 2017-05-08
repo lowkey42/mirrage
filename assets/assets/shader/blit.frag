@@ -37,8 +37,8 @@ float luminance(vec3 c) {
 	return sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
 }
 vec3 resolve_fxaa() {
-	float FXAA_SPAN_MAX = 4.0;
-	float FXAA_REDUCE_MUL = 1.0/4.0;
+	float FXAA_SPAN_MAX = 8.0;
+	float FXAA_REDUCE_MUL = 1.0/8.0;
 	float FXAA_REDUCE_MIN = 1.0/128.0;
 
 	vec2 texture_size = textureSize(color_sampler, 0);
@@ -89,6 +89,6 @@ vec3 resolve_fxaa() {
 }
 
 void main() {
-	out_color = vec4(tone_mapping(texture(color_sampler, vertex_out.tex_coords).rgb), 1.0);
-	//out_color = vec4(tone_mapping(resolve_fxaa().rgb), 1.0);
+	//out_color = vec4(tone_mapping(texture(color_sampler, vertex_out.tex_coords).rgb), 1.0);
+	out_color = vec4(tone_mapping(resolve_fxaa().rgb), 1.0);
 }
