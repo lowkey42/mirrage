@@ -2,7 +2,7 @@
 	"Transform":{
 	},
 	"Directional_light": {
-		"source_radius": 5.0,
+		"source_radius": 1,
 		"intensity": 10.0,
 		"temperature": 4000,
 		"shadow_size": 200,

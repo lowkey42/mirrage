@@ -15,7 +15,9 @@ layout(input_attachment_index = 0, set=1, binding = 0) uniform subpassInput dept
 layout(input_attachment_index = 1, set=1, binding = 1) uniform subpassInput albedo_mat_id_sampler;
 layout(input_attachment_index = 2, set=1, binding = 2) uniform subpassInput mat_data_sampler;
 
-layout(set=2, binding = 0) uniform sampler2DShadow shadowmap_sampler[1];
+layout(set=2, binding = 0) uniform texture2D shadowmaps[1];
+layout(set=2, binding = 1) uniform samplerShadow shadowmap_shadow_sampler; // sampler2DShadow
+layout(set=2, binding = 2) uniform sampler shadowmap_depth_sampler; // sampler2D
 
 layout(binding = 0) uniform Global_uniforms {
 	mat4 view_proj;
@@ -108,7 +110,7 @@ void main() {
 	vec3 N = decode_normal(mat_data.rg);
 	float roughness = mat_data.b;
 	float metallic = mat_data.a;
-	
+
 	// TODO: calc light
 
 	vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
@@ -132,22 +134,74 @@ void main() {
 
 	// add to outgoing radiance Lo
 	float NdotL = max(dot(N, L), 0.0);
-	float shadow = sample_shadowmap(position);
+	float shadow = sample_shadowmap(position + N*0.4);
 	out_color = vec4((kD * albedo / PI + brdf) * radiance * NdotL * shadow, 1.0);
 
 	// TODO: remove ambient
 	out_color.rgb += albedo * radiance * 0.003;
 }
 
+// A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
+uint hash( uint x ) {
+    x += ( x << 10u );
+    x ^= ( x >>  6u );
+    x += ( x <<  3u );
+    x ^= ( x >> 11u );
+    x += ( x << 15u );
+    return x;
+}
+
+
+
+// Compound versions of the hashing algorithm I whipped together.
+uint hash( uvec2 v ) { return hash( v.x ^ hash(v.y)                         ); }
+uint hash( uvec3 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z)             ); }
+uint hash( uvec4 v ) { return hash( v.x ^ hash(v.y) ^ hash(v.z) ^ hash(v.w) ); }
+
+
+
+// Construct a float with half-open range [0:1] using low 23 bits.
+// All zeroes yields 0.0, all ones yields the next smallest representable value below 1.0.
+float floatConstruct( uint m ) {
+    const uint ieeeMantissa = 0x007FFFFFu; // binary32 mantissa bitmask
+    const uint ieeeOne      = 0x3F800000u; // 1.0 in IEEE binary32
+
+    m &= ieeeMantissa;                     // Keep only mantissa bits (fractional part)
+    m |= ieeeOne;                          // Add fractional part to 1.0
+
+    float  f = uintBitsToFloat( m );       // Range [1:2]
+    return f - 1.0;                        // Range [0:1]
+}
+
 float random(vec4 seed) {
-    float dot_product = dot(seed, vec4(12.9898,78.233,45.164,94.673));
-    return fract(sin(dot_product) * 43758.5453);
+	// TODO: test performance; distribution is better than old version
+	return floatConstruct(hash(floatBitsToUint(seed)));
+//	float dot_product = dot(seed, vec4(12.9898,78.233,45.164,94.673));
+//	return fract(sin(dot_product) * 43758.5453);
 }
 
 vec2 PDnrand2( vec4 n ) {
 	return fract( sin(dot(n, vec4(12.9898,78.233,45.164,94.673)))* vec2(43758.5453f, 28001.8384f) );
 }
 
+const vec2 Poisson16[16] = vec2[](
+	vec2( -0.94201624, -0.39906216 ),
+	vec2( 0.94558609, -0.76890725 ),
+	vec2( -0.094184101, -0.92938870 ),
+	vec2( 0.34495938, 0.29387760 ),
+	vec2( -0.91588581, 0.45771432 ),
+	vec2( -0.81544232, -0.87912464 ),
+	vec2( -0.38277543, 0.27676845 ),
+	vec2( 0.97484398, 0.75648379 ),
+	vec2( 0.44323325, -0.97511554 ),
+	vec2( 0.53742981, -0.47373420 ),
+	vec2( -0.26496911, -0.41893023 ),
+	vec2( 0.79197514, 0.19090188 ),
+	vec2( -0.24188840, 0.99706507 ),
+	vec2( -0.81409955, 0.91437590 ),
+	vec2( 0.19984126, 0.78641367 ),
+	vec2( 0.14383161, -0.14100790 )
+);
 const vec2 Poisson128[128] = vec2[](
     vec2(-0.9406119, 0.2160107),
     vec2(-0.920003, 0.03135762),
@@ -279,6 +333,10 @@ const vec2 Poisson128[128] = vec2[](
     vec2(0.972032, 0.2271516)
 );
 
+
+float calc_penumbra(vec3 surface_lightspace, float light_size,
+                    out int num_occluders);
+
 float sample_shadowmap(vec3 world_pos) {
 	int shadowmap = int(model_uniforms.light_data2.r);
 	if(shadowmap<0)
@@ -286,17 +344,73 @@ float sample_shadowmap(vec3 world_pos) {
 
 	vec4 lightspace_pos = model_uniforms.model * vec4(world_pos, 1.0);
 	lightspace_pos /= lightspace_pos.w;
+	lightspace_pos.xy = lightspace_pos.xy * 0.5 + 0.5;
 
-	// max penumbra: 600 in 16 steps
-	// min penumbra: 2000 in 4 steps
+	float shadowmap_size = textureSize(sampler2D(shadowmaps[shadowmap], shadowmap_depth_sampler), 0).x;
+	float light_size = model_uniforms.light_data.r / 800.0;
+
+	int num_occluders;
+	float penumbra_softness = calc_penumbra(lightspace_pos.xyz, light_size, num_occluders);
+
+	//return penumbra_softness>=0.5 ? 1.0 : 0.0;
+
+	if(num_occluders==0)
+		return 1.0;
+
+	float sample_size = mix(1.0/shadowmap_size, light_size, penumbra_softness);
+	int samples = int(mix(4, 16, penumbra_softness));
+
+	float z_bias = 0.002;
 
 	float visiblity = 1.0;
-	for (int i=0;i<16;i++) {
+	for (int i=0;i<samples;i++) {
 		int idx = int(random(vec4(world_pos, float(i))) * 128) % 128;
-		vec2 p = lightspace_pos.xy*0.5+0.5 + Poisson128[idx]/600.0;
+		vec2 p = lightspace_pos.xy + Poisson128[idx] * sample_size;
 
-		visiblity -= 1.0/16 * (1.0 - texture(shadowmap_sampler[shadowmap], vec3(p, lightspace_pos.z-0.003)));
+		visiblity -= 1.0/samples * (1.0 - texture(sampler2DShadow(shadowmaps[shadowmap], shadowmap_shadow_sampler),
+		                                     vec3(p, lightspace_pos.z-z_bias)));
 	}
 
 	return clamp(visiblity, 0.0, 1.0);
+}
+
+float calc_avg_occluder(vec3 surface_lightspace, float search_area,
+                        out int num_occluders) {
+	int shadowmap = int(model_uniforms.light_data2.r);
+
+	float depth_acc;
+	float depth_count;
+	num_occluders = 0;
+
+	vec2 poissonDisk[4] = vec2[](
+	  vec2( -0.94201624, -0.39906216 ),
+	  vec2( 0.94558609, -0.76890725 ),
+	  vec2( -0.094184101, -0.92938870 ),
+	  vec2( 0.34495938, 0.29387760 )
+	);
+
+	for (int i=0;i<4;i++) {
+		int idx = int(random(vec4(surface_lightspace, float(i))) * 128) % 128;
+		vec2 offset = Poisson16[idx] * search_area;
+		float depth = texture(sampler2D(shadowmaps[shadowmap], shadowmap_depth_sampler), surface_lightspace.xy + offset).r;
+		if(depth < surface_lightspace.z - 0.002) {
+			depth_acc += depth;
+			depth_count += 1.0;
+			num_occluders += 1;
+		}
+	}
+
+	if(num_occluders==0)
+		return 1.0;
+
+	return depth_acc / depth_count;
+}
+
+float calc_penumbra(vec3 surface_lightspace, float light_size, out int num_occluders) {
+	float avg_occluder = calc_avg_occluder(surface_lightspace, light_size, num_occluders);
+
+	const float scale = 8.0;
+	float softness = (surface_lightspace.z - avg_occluder) * scale;
+
+	return smoothstep(0.1, 1.0, softness);
 }
