@@ -15,7 +15,7 @@ layout(input_attachment_index = 0, set=1, binding = 0) uniform subpassInput dept
 layout(input_attachment_index = 1, set=1, binding = 1) uniform subpassInput albedo_mat_id_sampler;
 layout(input_attachment_index = 2, set=1, binding = 2) uniform subpassInput mat_data_sampler;
 
-layout(set=2, binding = 0) uniform sampler2D shadowmap_sampler[1];
+layout(set=2, binding = 0) uniform sampler2DShadow shadowmap_sampler[1];
 
 layout(binding = 0) uniform Global_uniforms {
 	mat4 view_proj;
@@ -136,7 +136,7 @@ void main() {
 	out_color = vec4((kD * albedo / PI + brdf) * radiance * NdotL * shadow, 1.0);
 
 	// TODO: remove ambient
-	out_color.rgb += albedo * radiance * 0.002;
+	out_color.rgb += albedo * radiance * 0.003;
 }
 
 float random(vec4 seed) {
@@ -181,19 +181,20 @@ float sample_shadowmap(vec3 world_pos) {
 		vec2 p = lightspace_pos.xy*0.5+0.5 + poissonDisk[idx]/700.0;
 		//vec2 p = lightspace_pos.xy*0.5+0.5 + PDnrand2(vec4(world_pos, float(i)))/600.0;
 
-		if(texture(shadowmap_sampler[shadowmap], p).r < lightspace_pos.z-0.005)
-			visiblity -= 1.0/8;
+		visiblity -= 1.0/8 * (1.0 - texture(shadowmap_sampler[shadowmap], vec3(p, lightspace_pos.z-0.005)));
+//		if(texture(shadowmap_sampler[shadowmap], p).r < lightspace_pos.z-0.005)
+//			visiblity -= 1.0/8;
 	}
 
 	return clamp(visiblity, 0.0, 1.0);
-
+/*
 	vec2 moments = texture(shadowmap_sampler[shadowmap], lightspace_pos.xy*0.5+0.5).rg;
 
 	if(moments.x < lightspace_pos.z)
 		return 0.0;
 	else
 		return 1.0;
-
+*/
 /*
 	float depth_exp = exp(120.0 * lightspace_pos.z);
 	float x = moments.x / depth_exp;
