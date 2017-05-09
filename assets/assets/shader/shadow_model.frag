@@ -27,16 +27,6 @@ void main() {
 	if(albedo.a < 0.1)
 		discard;
 
-	float z = gl_FragCoord.z;//length(vertex_out.world_pos - global_uniforms.eye_pos.xyz);
-	float m1 = z;
-	float m2 = m1*m1;
-
-	// bias y based on deriviative
-	float dx = dFdx(z);
-	float dy = dFdy(z);
-	m2 += 0.25*(dx*dx+dy*dy);
-
-	shadowmap_out = vec4(m1, m2, 0, 0);
-
-//	shadowmap_out = vec4(exp(120.0 * z), 0, 0, 1);
+	float z = gl_FragCoord.z;
+	shadowmap_out = vec4(z, 0, 0, 0);
 }
