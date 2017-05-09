@@ -390,7 +390,7 @@ float calc_avg_occluder(vec3 surface_lightspace, float search_area,
 	);
 
 	for (int i=0;i<4;i++) {
-		int idx = int(random(vec4(surface_lightspace, float(i))) * 128) % 128;
+		int idx = int(random(vec4(surface_lightspace, float(i))) * 16) % 16;
 		vec2 offset = Poisson16[idx] * search_area;
 		float depth = texture(sampler2D(shadowmaps[shadowmap], shadowmap_depth_sampler), surface_lightspace.xy + offset).r;
 		if(depth < surface_lightspace.z - 0.002) {
