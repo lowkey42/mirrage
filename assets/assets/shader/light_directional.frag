@@ -19,6 +19,8 @@ layout(set=2, binding = 0) uniform texture2D shadowmaps[1];
 layout(set=2, binding = 1) uniform samplerShadow shadowmap_shadow_sampler; // sampler2DShadow
 layout(set=2, binding = 2) uniform sampler shadowmap_depth_sampler; // sampler2D
 
+layout (constant_id = 0) const int SHADOW_QUALITY = 1;
+
 layout(binding = 0) uniform Global_uniforms {
 	mat4 view_proj;
 	mat4 inv_view_proj;
@@ -174,16 +176,19 @@ float floatConstruct( uint m ) {
 }
 
 float random(vec4 seed) {
-	// TODO: test performance; distribution is better than old version
 	return floatConstruct(hash(floatBitsToUint(seed)));
-//	float dot_product = dot(seed, vec4(12.9898,78.233,45.164,94.673));
-//	return fract(sin(dot_product) * 43758.5453);
 }
 
 vec2 PDnrand2( vec4 n ) {
 	return fract( sin(dot(n, vec4(12.9898,78.233,45.164,94.673)))* vec2(43758.5453f, 28001.8384f) );
 }
 
+const vec2 Poisson4[4] = vec2[](
+	vec2( -0.94201624, -0.39906216 ),
+	vec2( 0.94558609, -0.76890725 ),
+	vec2( -0.094184101, -0.92938870 ),
+	vec2( 0.34495938, 0.29387760 )
+);
 const vec2 Poisson16[16] = vec2[](
 	vec2( -0.94201624, -0.39906216 ),
 	vec2( 0.94558609, -0.76890725 ),
@@ -202,6 +207,7 @@ const vec2 Poisson16[16] = vec2[](
 	vec2( 0.19984126, 0.78641367 ),
 	vec2( 0.14383161, -0.14100790 )
 );
+
 const vec2 Poisson128[128] = vec2[](
     vec2(-0.9406119, 0.2160107),
     vec2(-0.920003, 0.03135762),
@@ -356,16 +362,22 @@ float sample_shadowmap(vec3 world_pos) {
 
 	if(num_occluders==0)
 		return 1.0;
-
+	else if(SHADOW_QUALITY<=0 && num_occluders>=4)
+		return 0.0;
+	
 	float sample_size = mix(1.0/shadowmap_size, light_size, penumbra_softness);
 	int samples = int(mix(4, 16, penumbra_softness));
+	if(SHADOW_QUALITY<=1)
+		samples = min(samples, 8);
 
 	float z_bias = 0.002;
 
 	float visiblity = 1.0;
 	for (int i=0;i<samples;i++) {
-		int idx = int(random(vec4(world_pos, float(i))) * 128) % 128;
-		vec2 p = lightspace_pos.xy + Poisson128[idx] * sample_size;
+		vec2 offset = (SHADOW_QUALITY<=1) ? Poisson16[int(random(vec4(world_pos, float(i))) * 16) % 16]
+		                                  : Poisson128[int(random(vec4(world_pos, float(i))) * 128) % 128];
+		
+		vec2 p = lightspace_pos.xy + offset * sample_size;
 
 		visiblity -= 1.0/samples * (1.0 - texture(sampler2DShadow(shadowmaps[shadowmap], shadowmap_shadow_sampler),
 		                                     vec3(p, lightspace_pos.z-z_bias)));
@@ -382,17 +394,11 @@ float calc_avg_occluder(vec3 surface_lightspace, float search_area,
 	float depth_count;
 	num_occluders = 0;
 
-	vec2 poissonDisk[4] = vec2[](
-	  vec2( -0.94201624, -0.39906216 ),
-	  vec2( 0.94558609, -0.76890725 ),
-	  vec2( -0.094184101, -0.92938870 ),
-	  vec2( 0.34495938, 0.29387760 )
-	);
-
 	for (int i=0;i<4;i++) {
-		int idx = int(random(vec4(surface_lightspace, float(i))) * 16) % 16;
-		vec2 offset = Poisson16[idx] * search_area;
-		float depth = texture(sampler2D(shadowmaps[shadowmap], shadowmap_depth_sampler), surface_lightspace.xy + offset).r;
+		vec2 offset = Poisson16[int(random(vec4(surface_lightspace, float(i))) * 16) % 16];
+		
+		float depth = texture(sampler2D(shadowmaps[shadowmap], shadowmap_depth_sampler),
+		                      surface_lightspace.xy + offset * search_area).r;
 		if(depth < surface_lightspace.z - 0.002) {
 			depth_acc += depth;
 			depth_count += 1.0;

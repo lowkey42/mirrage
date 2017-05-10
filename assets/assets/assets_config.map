@@ -1,5 +1,6 @@
 cfg:input_mapping = settings/input_mapping.json
 cfg:graphics = graphics-cfg.json
+cfg:renderer = renderer-cfg.json
 cfg:sounds = sounds-cfg.json
 cfg:language = language-cfg.json
 cfg:languages_info = settings/languages.json
