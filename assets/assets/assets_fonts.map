@@ -1,6 +1,2 @@
 font: = fonts/
-font:test = fonts/x.template_regular_48.sfl
-font:score_font = fonts/satisfy_regular_20.sfl
-font:menu_font = fonts/x.template_regular_48.sfl
-
 font:test_font = fonts/droid_sans.ttf

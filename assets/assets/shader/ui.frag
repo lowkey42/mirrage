@@ -13,7 +13,7 @@ void main() {
 	vec4 c = texture(tex, uv_frag) * color_frag;
 
 	if(c.a>0.01)
-		out_color = c;
+		out_color = vec4(c.rgb*c.a, c.a);
 	else
 		discard;
 }
