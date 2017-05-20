@@ -21,3 +21,15 @@ frag_shader:taa = shader/bin/taa.frag.spv
 vert_shader:blur = shader/bin/blur.vert.spv
 frag_shader:blur = shader/bin/blur.frag.spv
 
+vert_shader:gi_blend = shader/bin/gi_blend.vert.spv
+frag_shader:gi_blend = shader/bin/gi_blend.frag.spv
+
+vert_shader:gi_mipgen = shader/bin/gi_mipgen.vert.spv
+frag_shader:gi_mipgen = shader/bin/gi_mipgen.frag.spv
+
+vert_shader:gi_sample = shader/bin/gi_sample.vert.spv
+frag_shader:gi_sample = shader/bin/gi_sample.frag.spv
+
+vert_shader:gi_sample_last = shader/bin/gi_sample_last.vert.spv
+frag_shader:gi_sample_last = shader/bin/gi_sample_last.frag.spv
+
