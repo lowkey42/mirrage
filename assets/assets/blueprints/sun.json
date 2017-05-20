@@ -4,9 +4,9 @@
 	"Directional_light": {
 		"source_radius": 1,
 		"intensity": 10.0,
-		"temperature": 4000,
+		"temperature": 5600,
 		"shadow_size": 200,
-		"near_plane": 1.0,
+		"near_plane": 0.0,
 		"far_plane": 300
 	}
 }
