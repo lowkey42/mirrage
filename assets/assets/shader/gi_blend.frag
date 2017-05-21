@@ -13,7 +13,12 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 out_color;
 
+layout(set=1, binding = 0) uniform sampler2D color_sampler;
+layout(set=1, binding = 1) uniform sampler2D depth_sampler;
+layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
+layout(set=1, binding = 6) uniform sampler2D color_direct_sampler;
+
 
 void main() {
-	out_color = vec4(1,0,0,1); // TODO
+	out_color = /*vec4(0,0,0,0);//*/ vec4(textureLod(color_direct_sampler, vertex_out.tex_coords, 0.0).rgb, 0.0);
 }

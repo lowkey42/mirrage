@@ -11,6 +11,7 @@ frag_shader:shadow_model = shader/bin/shadow_model.frag.spv
 
 vert_shader:model = shader/bin/model.vert.spv
 frag_shader:model = shader/bin/model.frag.spv
+frag_shader:model_emissive = shader/bin/model_emissive.frag.spv
 
 vert_shader:ui = shader/bin/ui.vert.spv
 frag_shader:ui = shader/bin/ui.frag.spv
@@ -30,6 +31,6 @@ frag_shader:gi_mipgen = shader/bin/gi_mipgen.frag.spv
 vert_shader:gi_sample = shader/bin/gi_sample.vert.spv
 frag_shader:gi_sample = shader/bin/gi_sample.frag.spv
 
-vert_shader:gi_sample_last = shader/bin/gi_sample_last.vert.spv
-frag_shader:gi_sample_last = shader/bin/gi_sample_last.frag.spv
+vert_shader:gi_reproject = shader/bin/gi_reproject.vert.spv
+frag_shader:gi_reproject = shader/bin/gi_reproject.frag.spv
 
