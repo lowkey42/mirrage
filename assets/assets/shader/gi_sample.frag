@@ -44,7 +44,7 @@ float linearize_depth(float depth) {
 	     / (far_plane + near_plane - depth * (far_plane - near_plane));
 }
 
-vec3 upsampled_prev_result() {
+vec3 upsampled_prev_result() { // TODO: still too noisy
 	float lod = pcs.arguments.x + 0.9999999;
 	if(lod>5.0)
 		return vec3(0,0,0);
@@ -124,7 +124,7 @@ vec3 gi_sample() {
 	vec3 c = vec3(0,0,0);
 
 	for(int i=0; i<SAMPLES; i++) {
-		float r = mix(R/2.0, R, random(vec4(vertex_out.tex_coords, float(i), 0.0)));
+		float r = mix(LAST_SAMPLE ? 1 : R/2.0, R, random(vec4(vertex_out.tex_coords, float(i), 0.0)));
 
 		float angle = float(i) / float(SAMPLES) * PI * 2.0;
 		float sin_angle = sin(angle);
@@ -156,7 +156,7 @@ vec3 calc_illumination_from(vec2 src_point, float r, vec3 shaded_point, vec3 sha
 	float dist = length(diff);
 	vec3 dir = diff / dist;
 
-	float r2 = r*r;
+	float r2 = max(1.0, dist*dist*0.001);//r*r;
 
 	vec3 radiance = textureLod(color_sampler, src_point, lod).rgb; // p_i * L_i
 
@@ -165,19 +165,15 @@ vec3 calc_illumination_from(vec2 src_point, float r, vec3 shaded_point, vec3 sha
 	float NdotL_src = clamp(dot(N, dir), 0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
 
-	float ds = 100.4; // TODO
+	float ds = 1.4; // TODO: use real ds forumlar and fix factors
 
 	float R2 = 1.0 / PI * NdotL_dst * ds;
 
 	float area = (R2 * NdotL_dst) / (r2 + R2); // point-to-differential area form-factor
 
 
-//	return radiance /** NdotL_dst * NdotL_src*/ / (r2) * 10.0;
-//	return brdf(shaded_albedo, shaded_F0, shaded_roughness, shaded_normal, V, -dir, radiance) / (r2) * 0.0002;
-
-	return brdf(shaded_albedo, shaded_F0, shaded_roughness, shaded_normal, V, -dir, radiance) * visibility * area;
-
-//	return textureLod(color_sampler, vertex_out.tex_coords + point, lod).rgb*0.1;
-	//return vec3(0,0,0); // TODO
+	// TODO: include specular indirect illumination
+	return radiance * NdotL_dst * visibility * area;
+	// return brdf(shaded_albedo, shaded_F0, shaded_roughness, shaded_normal, V, -dir, radiance) * visibility * area;
 }
 

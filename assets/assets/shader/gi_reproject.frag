@@ -14,7 +14,9 @@ layout(location = 0) in Vertex_data {
 layout(location = 0) out vec4 out_color;
 
 layout(set=1, binding = 1) uniform sampler2D depth_sampler;
-layout(set=1, binding = 5) uniform sampler2D history_sampler;
+layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
+layout(set=1, binding = 3) uniform sampler2D gi_sampler;
+layout(set=1, binding = 4) uniform sampler2D albedo_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
@@ -23,6 +25,8 @@ layout(push_constant) uniform Push_constants {
 
 
 void main() {
+	const float PI = 3.14159265359;
+
 	float depth = textureLod(depth_sampler, vertex_out.tex_coords, 0.0).r;
 
 	vec4 prev_uv = pcs.reprojection * vec4(vertex_out.tex_coords*2.0-1.0, depth, 1.0);
@@ -30,7 +34,19 @@ void main() {
 
 	if(prev_uv.x<0.0 || prev_uv.x>1.0 || prev_uv.y<0.0 || prev_uv.y>1.0) {
 		out_color = vec4(0, 0, 0, 0);
+
 	} else {
-		out_color = vec4(clamp(textureLod(history_sampler, prev_uv.xy, 0.0).rgb*0.99, vec3(0.0), vec3(10.0)), 0);
+		vec3 radiance = textureLod(gi_sampler, prev_uv.xy, pcs.arguments.r).rgb;
+		vec3 albedo = textureLod(albedo_sampler, vertex_out.tex_coords, 0.0).rgb;
+		vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0.0);
+		float roughness = mat_data.b;
+		float metallic = mat_data.a;
+
+		vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
+		albedo.rgb *= 1.0 - min(metallic, 0.9);
+
+		vec3 color = albedo / PI * radiance;
+
+		out_color = vec4(clamp(color*0.6, vec3(0.0), vec3(10.0)), 0);
 	}
 }
