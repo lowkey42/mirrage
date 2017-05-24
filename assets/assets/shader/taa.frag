@@ -2,11 +2,13 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
+	vec3 view_ray;
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
@@ -80,9 +82,11 @@ void main() {
 
 	vec2 uv = vertex_out.tex_coords;
 
-	float depth = texture(depth_sampler, vertex_out.tex_coords).r;
+	float depth = texture(depth_sampler, uv).r;
 
-	vec4 prev_uv = constants.reprojection * vec4(uv*2.0-1.0, depth, 1.0);
+	vec3 position = depth * vertex_out.view_ray;
+
+	vec4 prev_uv = constants.reprojection * vec4(position, 1.0);
 	prev_uv.xy = (prev_uv.xy/prev_uv.w)*0.5+0.5;
 
 	vec3 curr = texture(curr_color_sampler, uv - constants.offsets.zw).rgb;
@@ -93,6 +97,7 @@ void main() {
 	}
 
 	vec3 prev  = texture(prev_color_sampler, prev_uv.xy).rgb;
+
 
 	vec2 texel_size = 1.0 / textureSize(curr_color_sampler, 0);
 	vec2 du = vec2(texel_size.x, 0.0);
@@ -132,5 +137,5 @@ void main() {
 	vec3 noise = PDsrand3(vertex_out.tex_coords + constants.time.y + 0.6959174) / 510.0;
 	out_color = vec4(max(vec3(0), mix(curr, prev_clamped, t)/* + noise*/), 1.0);
 
-	//out_color.rgb = vec3(weight*weight);
+//	out_color.rgb = vec3(weight*weight);
 }

@@ -19,15 +19,7 @@ layout(push_constant) uniform Push_constants {
 	vec4 arguments;
 } pcs;
 
-layout(binding = 0) uniform Global_uniforms {
-	mat4 view_proj;
-	mat4 inv_view_proj;
-	vec4 eye_pos;
-	vec4 proj_planes;
-	vec4 time;
-} global_uniforms;
-
-
+#include "global_uniforms.glsl"
 #include "upsample.glsl"
 
 

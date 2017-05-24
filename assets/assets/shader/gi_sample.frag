@@ -5,6 +5,7 @@
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
+	vec3 view_ray;
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
@@ -19,20 +20,13 @@ layout (constant_id = 0) const bool LAST_SAMPLE = false;
 layout (constant_id = 1) const float R = 40;
 layout (constant_id = 2) const int SAMPLES = 128;
 
-layout(binding = 0) uniform Global_uniforms {
-	mat4 view_proj;
-	mat4 inv_view_proj;
-	vec4 eye_pos;
-	vec4 proj_planes;
-	vec4 time;
-} global_uniforms;
-
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
 	vec4 arguments;
 } pcs;
 
 
+#include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 #include "random.glsl"
 #include "brdf.glsl"
@@ -58,11 +52,6 @@ void main() {
 	}
 }
 
-vec3 restore_position(vec2 uv, float depth) {
-	vec4 pos_world = global_uniforms.inv_view_proj * vec4(uv * 2.0 - 1.0, depth, 1.0);
-	return pos_world.xyz / pos_world.w;
-}
-
 const float PI = 3.14159265359;
 
 vec3 gi_sample() {
@@ -78,8 +67,8 @@ vec3 gi_sample() {
 	vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 	albedo.rgb *= 1.0 - metallic;
 
-	vec3 P = restore_position(vertex_out.tex_coords, depth);
-	vec3 V = normalize(global_uniforms.eye_pos.xyz - P);
+	vec3 P = depth * vertex_out.view_ray;
+	vec3 V = normalize(P);
 
 	vec2 texture_size = textureSize(color_sampler, int(lod));
 
@@ -113,7 +102,10 @@ vec3 calc_illumination_from(vec2 src_point, vec3 shaded_point, vec3 shaded_norma
 	vec4 mat_data = textureLod(mat_data_sampler, src_point, lod);
 	vec3 N = decode_normal(mat_data.rg);
 
-	vec3 P = restore_position(src_point, depth);
+	// TODO: replace with better position reconstruction
+	vec4 vr = global_uniforms.inv_pure_proj_mat * vec4(src_point * 2.0 + -1.0 - global_uniforms.camera_offset.xy, 1.0, 1.0);
+
+	vec3 P = vr.xyz / vr.w * depth;//TODO: restore position from depth restore_position(src_point, depth);
 	vec3 diff = shaded_point - P;
 	float r = length(diff);
 	float r2 = r*r;

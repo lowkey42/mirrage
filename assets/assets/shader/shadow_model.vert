@@ -2,6 +2,9 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#include "global_uniforms.glsl"
+
+
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec3 tangent;
@@ -11,13 +14,6 @@ layout(location = 0) out Vertex_data {
 	vec3 world_pos;
 	vec2 tex_coords;
 } vertex_out;
-
-layout(binding = 0) uniform Global_uniforms {
-	mat4 view_proj;
-	mat4 inv_view_proj;
-	vec4 eye_pos;
-	vec4 proj_planes;
-} global_uniforms;
 
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;

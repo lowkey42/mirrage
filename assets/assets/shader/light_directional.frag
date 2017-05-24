@@ -2,6 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 #include "poisson.glsl"
 #include "random.glsl"
@@ -10,6 +11,7 @@
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
+	vec3 view_ray;
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
@@ -24,14 +26,6 @@ layout(set=2, binding = 2) uniform sampler shadowmap_depth_sampler; // sampler2D
 
 layout (constant_id = 0) const int SHADOW_QUALITY = 1;
 
-layout(binding = 0) uniform Global_uniforms {
-	mat4 view_proj;
-	mat4 inv_view_proj;
-	vec4 eye_pos;
-	vec4 proj_planes;
-	vec4 time;
-} global_uniforms;
-
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
 	vec4 light_color;
@@ -44,33 +38,20 @@ const float PI = 3.14159265359;
 
 float sample_shadowmap(vec3 world_pos);
 
-float linearize_depth(float depth) {
-	float near_plane = global_uniforms.proj_planes.x;
-	float far_plane = global_uniforms.proj_planes.y;
-	return (2.0 * near_plane)
-	     / (far_plane + near_plane - depth * (far_plane - near_plane));
-}
-
-vec3 restore_position(vec2 uv, float depth) {
-	vec4 pos_world = global_uniforms.inv_view_proj * vec4(uv * 2.0 - 1.0, depth, 1.0);
-	return pos_world.xyz / pos_world.w;
-}
-
 
 void main() {
 	float depth         = subpassLoad(depth_sampler).r;
 	vec4  albedo_mat_id = subpassLoad(albedo_mat_id_sampler);
 	vec4  mat_data      = subpassLoad(mat_data_sampler);
 
-	float linear_depth = linearize_depth(depth);
-	vec3 position = restore_position(vertex_out.tex_coords, depth);
-	vec3 V = normalize(global_uniforms.eye_pos.xyz - position);
+	vec3 position = depth * vertex_out.view_ray;
+	vec3 V = -normalize(position);
 	vec3 albedo = albedo_mat_id.rgb;
 	int  material = int(albedo_mat_id.a*255);
 
 	// material 255 (unlit)
 	if(material==255) {
-		out_color = vec4(albedo*10.0, 1.0);
+		out_color = vec4(albedo*5.0, 1.0);
 		return;
 	}
 
@@ -102,12 +83,12 @@ void main() {
 float calc_penumbra(vec3 surface_lightspace, float light_size,
                     out int num_occluders);
 
-float sample_shadowmap(vec3 world_pos) {
+float sample_shadowmap(vec3 view_pos) {
 	int shadowmap = int(model_uniforms.light_data2.r);
 	if(shadowmap<0)
 		return 1.0;
 
-	vec4 lightspace_pos = model_uniforms.model * vec4(world_pos, 1.0);
+	vec4 lightspace_pos = model_uniforms.model * vec4(view_pos, 1.0);
 	lightspace_pos /= lightspace_pos.w;
 	lightspace_pos.xy = lightspace_pos.xy * 0.5 + 0.5;
 
@@ -132,7 +113,7 @@ float sample_shadowmap(vec3 world_pos) {
 
 	float z_bias = 0.002;
 
-	float angle = random(vec4(world_pos, global_uniforms.time.y));
+	float angle = random(vec4(lightspace_pos.xyz, global_uniforms.time.y));
 	float sin_angle = sin(angle);
 	float cos_angle = cos(angle);
 

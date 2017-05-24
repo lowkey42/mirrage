@@ -13,13 +13,6 @@ layout(location = 0) out vec4 shadowmap_out;
 
 layout(set=1, binding = 0) uniform sampler2D albedo_sampler;
 
-layout(binding = 0) uniform Global_uniforms {
-	mat4 view_proj;
-	mat4 inv_view_proj;
-	vec4 eye_pos;
-	vec4 proj_planes;
-} global_uniforms;
-
 
 void main() {
 	vec4 albedo = texture(albedo_sampler, vertex_out.tex_coords);
