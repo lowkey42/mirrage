@@ -11,7 +11,7 @@ layout(location = 0) out vec4 out_color;
 
 layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
-layout(set=1, binding = 3) uniform sampler2D gi_sampler;
+layout(set=1, binding = 3) uniform sampler2D result_sampler;
 layout(set=1, binding = 4) uniform sampler2D albedo_sampler;
 
 layout(push_constant) uniform Push_constants {
@@ -19,11 +19,22 @@ layout(push_constant) uniform Push_constants {
 	vec4 arguments;
 } pcs;
 
+layout(binding = 0) uniform Global_uniforms {
+	mat4 view_proj;
+	mat4 inv_view_proj;
+	vec4 eye_pos;
+	vec4 proj_planes;
+	vec4 time;
+} global_uniforms;
+
+
+#include "upsample.glsl"
+
 
 void main() {
 	const float PI = 3.14159265359;
 
-	vec3 radiance = textureLod(gi_sampler, vertex_out.tex_coords, pcs.arguments.r).rgb;
+	vec3 radiance = upsampled_prev_result(pcs.arguments.r-1.0, vertex_out.tex_coords);
 	vec3 albedo = textureLod(albedo_sampler, vertex_out.tex_coords, 0.0).rgb;
 	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0.0);
 	float roughness = mat_data.b;
@@ -34,5 +45,5 @@ void main() {
 
 	vec3 color = albedo / PI * radiance;
 
-	out_color = vec4(color*0.2, 0.0);
+	out_color = vec4(color*0.5, 0.0);
 }
