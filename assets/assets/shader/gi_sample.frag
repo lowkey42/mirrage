@@ -37,7 +37,7 @@ vec3 gi_sample();
 vec3 importance_sample();
 vec3 calc_illumination_from(vec2 src_point, vec3 shaded_point, vec3 shaded_normal,
                             vec3 shaded_albedo, vec3 shaded_F0, float shaded_roughness,
-                            vec3 V);
+                            vec3 V, out float weight);
 
 void main() {
 	out_color = vec4(upsampled_prev_result(pcs.arguments.x, vertex_out.tex_coords), 1.0);
@@ -74,6 +74,8 @@ vec3 gi_sample() {
 
 	vec3 c = vec3(0,0,0);
 
+	float weight_sum;
+
 	for(int i=0; i<SAMPLES; i++) {
 		float r = mix(LAST_SAMPLE ? 0.0 : R/2.0, R, random(vec4(vertex_out.tex_coords, float(i), 0.0)));
 
@@ -82,11 +84,16 @@ vec3 gi_sample() {
 		float cos_angle = cos(angle);
 
 		vec2 p = vertex_out.tex_coords + vec2(sin(angle), cos(angle)) * r / texture_size;
-		if(p.x>=0.0 && p.x<=1.0 && p.y>=0.0 && p.y<=1.0)
-			c += max(vec3(0.0), calc_illumination_from(p, P, N, albedo, F0, roughness, V));
+		if(p.x>=0.0 && p.x<=1.0 && p.y>=0.0 && p.y<=1.0) {
+			float weight;
+			c += max(vec3(0.0), calc_illumination_from(p, P, N, albedo, F0, roughness, V, weight));
+			weight_sum += weight;
+		}
 	}
 
-	return c;
+	float visibility = 1.0 - (weight_sum / float(SAMPLES));
+
+	return c /* (3.0*PI*R*R/4.0) / float(weight_sum + 0.00001);//*/ * 2.0*PI / (weight_sum + 0.00001);
 }
 
 vec3 importance_sample() {
@@ -95,7 +102,7 @@ vec3 importance_sample() {
 
 vec3 calc_illumination_from(vec2 src_point, vec3 shaded_point, vec3 shaded_normal,
                             vec3 shaded_albedo, vec3 shaded_F0, float shaded_roughness,
-                            vec3 V) {
+                            vec3 V, out float weight) {
 	float lod = pcs.arguments.x;
 
 	float depth  = textureLod(depth_sampler, src_point, lod).r;
@@ -108,18 +115,23 @@ vec3 calc_illumination_from(vec2 src_point, vec3 shaded_point, vec3 shaded_norma
 	vec3 P = vr.xyz / vr.w * depth;//TODO: restore position from depth restore_position(src_point, depth);
 	vec3 diff = shaded_point - P;
 	float r = length(diff);
+	if(r<0.0001) { // ignore too close pixels
+		weight = 0.0;
+		return vec3(0,0,0);
+	}
+
 	float r2 = r*r;
 	vec3 dir = diff / r;
 
 //	float r2 = max(1.0, dist*dist*0.001);//r*r;
 
-	vec3 radiance = textureLod(color_sampler, src_point, lod).rgb; // p_i * L_i
+	vec3 radiance = min(vec3(4,4,4), textureLod(color_sampler, src_point, lod).rgb); // p_i * L_i
 
 	float visibility = 1.0; // v_i
 
 	float NdotL_src = clamp(dot(N, dir), 0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
-
+/*
 	vec3 x_i = P - global_uniforms.eye_pos.xyz;
 	float x_i_length = length(x_i);
 	float cos_alpha = 1.0 / x_i_length; // dot(x_i, {0,0,1})
@@ -132,20 +144,33 @@ vec3 calc_illumination_from(vec2 src_point, vec3 shaded_point, vec3 shaded_norma
 
 
 	float dp = 1.0;//pow(2, -2*lod); // TODO: screen differential area
+	dp = (3.0*PI*R*R/4.0) / float(SAMPLES) * 10000.0;
 	float ds = z*z*4.0 * tan(fov_h) * tan(fov_v) / (screen_size.x*screen_size.y)
 	           * (cos_alpha / cos_beta) * dp;
 
-	r2 = max(1.0, r2*0.001);
-	ds = 0.6; // TODO: ds is ~10^-5 and results in no light at all
+	//r2 = max(0.0, r2*0.0001);
+	//ds = 1.0;//0.6; // TODO: ds is ~10^-5 and results in no light at all
 	float R2 = 1.0 / PI * NdotL_src * ds;
 
 	float area = (R2 * NdotL_dst) / (r2 + R2); // point-to-differential area form-factor
+*/
+
+	// TODO: additional factor to reduce self-lighting artefacts clamp(1.0-dot(N,shaded_normal), 0.0, 1.0)
 
 	// eq. 3 (for testing)
-	area = NdotL_dst*NdotL_src/r2 * ds;
+	float area = NdotL_dst*NdotL_src / max(1.0, r2*0.001) * clamp(1.0-dot(N,shaded_normal), 0.0, 1.0);// * ds;
+
+//	float R2 = 1.0 / PI * NdotL_src * (3.0*PI*R*R/4.0) / float(SAMPLES);
+//	area = (R2 * NdotL_dst) / (r2 + R2);
+
+	weight = area > 0.0 ? 1.0 : 0.0;
+
+	float perspective_correction = 1.0 + clamp(1.0 - dot(-normalize(P), N), 0, 1)*0.5;
+
+	return radiance * area * perspective_correction;
 
 	// TODO: include specular indirect illumination
-	return radiance * NdotL_dst * visibility * area;
+	//return radiance * NdotL_dst * visibility * area;
 	// return brdf(shaded_albedo, shaded_F0, shaded_roughness, shaded_normal, V, -dir, radiance) * visibility * area;
 }
 

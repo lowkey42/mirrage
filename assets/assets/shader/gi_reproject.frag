@@ -50,6 +50,6 @@ void main() {
 
 		vec3 color = albedo / PI * radiance;
 
-		out_color = vec4(clamp(color*0.6, vec3(0.0), vec3(10.0)), 0); // TODO: framerate dependent (0.6 with ~110FPS vs. 0.2 with ~20FPS) ?!
+		out_color = vec4(clamp(color*0.9, vec3(0.0), vec3(10.0)), 0); // TODO: framerate dependent (0.6 with ~110FPS vs. 0.2 with ~20FPS) ?!
 	}
 }
