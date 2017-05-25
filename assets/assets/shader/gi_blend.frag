@@ -20,6 +20,7 @@ layout(push_constant) uniform Push_constants {
 	vec4 arguments;
 } pcs;
 
+#include "normal_encoding.glsl"
 #include "global_uniforms.glsl"
 #include "upsample.glsl"
 
@@ -27,7 +28,7 @@ layout(push_constant) uniform Push_constants {
 void main() {
 	const float PI = 3.14159265359;
 
-	vec3 radiance = upsampled_prev_result(pcs.arguments.r-1.0, vertex_out.tex_coords);
+	vec3 radiance = upsampled_result(pcs.arguments.r, vertex_out.tex_coords, max(1.0, pow(2.0, pcs.arguments.r-1.0)));
 	vec3 albedo = textureLod(albedo_sampler, vertex_out.tex_coords, 0.0).rgb;
 	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0.0);
 	float roughness = mat_data.b;
@@ -39,5 +40,10 @@ void main() {
 	vec3 color = albedo / PI * radiance;
 
 	out_color = vec4(color, 0.0);
-	//out_color = vec4(textureLod(color_sampler, vertex_out.tex_coords, 0.0).rgb, 1.0);
+
+//	out_color = vec4(radiance, 1.0);
+
+//	vec3 N = decode_normal(texelFetch(mat_data_sampler, ivec2(vertex_out.tex_coords*textureSize(depth_sampler, 4)), 4).rg);
+//	out_color = vec4(N, 1.0);
+//	out_color = vec4(texelFetch(depth_sampler, ivec2(vertex_out.tex_coords*textureSize(depth_sampler, 3)), 3).rrr, 1.0);
 }

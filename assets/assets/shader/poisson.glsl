@@ -1,3 +1,5 @@
+#ifndef POISSON_INCLUDED
+#define POISSON_INCLUDED
 
 const vec2 Poisson4[4] = vec2[](
 	vec2( -0.94201624, -0.39906216 ),
@@ -100,3 +102,5 @@ const vec2 Poisson64[64] = vec2[](
 	vec2(-0.545396, 0.538133),
 	vec2(-0.178564, -0.596057)
 );
+
+#endif
