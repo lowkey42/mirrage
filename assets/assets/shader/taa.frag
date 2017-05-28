@@ -9,6 +9,7 @@
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
 	vec3 view_ray;
+	flat vec3 corner_view_rays[4];
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;

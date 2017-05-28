@@ -43,6 +43,8 @@ void main() {
 	float roughness = texture(roughness_sampler, vertex_out.tex_coords).r;
 	vec3  normal    = tangent_space_to_world(texture(normal_sampler, vertex_out.tex_coords).xyz);
 
+	roughness = mix(0.1, 0.99, roughness*roughness);
+
 	depth_out     = vec4(-vertex_out.view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
 	albedo_mat_id = vec4(albedo.rgb, 0.0);
 	mat_data      = vec4(encode_normal(normal), roughness, metallic);

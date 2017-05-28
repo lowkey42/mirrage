@@ -5,6 +5,8 @@
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
+	vec3 view_ray;
+	flat vec3 corner_view_rays[4];
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
@@ -12,38 +14,20 @@ layout(location = 0) out vec4 out_color;
 layout(set=1, binding = 0) uniform sampler2D color_sampler;
 layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
-layout(set=1, binding = 3) uniform sampler2D result_sampler;
-layout(set=1, binding = 4) uniform sampler2D albedo_sampler;
+layout(set=1, binding = 3) uniform sampler2D result_diff_sampler;
+layout(set=1, binding = 4) uniform sampler2D result_spec_sampler;
+layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
 	vec4 arguments;
 } pcs;
 
-#include "normal_encoding.glsl"
-#include "global_uniforms.glsl"
-#include "upsample.glsl"
+#include "gi_blend_common.glsl"
 
 
 void main() {
-	const float PI = 3.14159265359;
-
-	vec3 radiance = upsampled_result(pcs.arguments.r, vertex_out.tex_coords, max(1.0, pow(2.0, pcs.arguments.r-1.0)));
-	vec3 albedo = textureLod(albedo_sampler, vertex_out.tex_coords, 0.0).rgb;
-	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0.0);
-	float roughness = mat_data.b;
-	float metallic = mat_data.a;
-
-	vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
-	albedo.rgb *= 1.0 - min(metallic, 0.9);
-
-	vec3 color = albedo / PI * radiance;
-
-	out_color = vec4(color, 0.0);
-
-//	out_color = vec4(radiance, 1.0);
-
-//	vec3 N = decode_normal(texelFetch(mat_data_sampler, ivec2(vertex_out.tex_coords*textureSize(depth_sampler, 4)), 4).rg);
-//	out_color = vec4(N, 1.0);
-//	out_color = vec4(texelFetch(depth_sampler, ivec2(vertex_out.tex_coords*textureSize(depth_sampler, 3)), 3).rrr, 1.0);
+	out_color = vec4(calculate_gi(vertex_out.tex_coords, vertex_out.tex_coords, int(pcs.arguments.r),
+	                              result_diff_sampler, result_spec_sampler,
+	                              albedo_sampler, mat_data_sampler), 0.0);
 }

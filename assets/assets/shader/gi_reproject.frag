@@ -10,19 +10,23 @@
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
 	vec3 view_ray;
+	flat vec3 corner_view_rays[4];
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
 
 layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
-layout(set=1, binding = 3) uniform sampler2D gi_sampler;
-layout(set=1, binding = 4) uniform sampler2D albedo_sampler;
+layout(set=1, binding = 3) uniform sampler2D result_diff_sampler;
+layout(set=1, binding = 4) uniform sampler2D result_spec_sampler;
+layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
 	vec4 arguments;
 } pcs;
+
+#include "gi_blend_common.glsl"
 
 
 void main() {
@@ -39,17 +43,10 @@ void main() {
 		out_color = vec4(0, 0, 0, 0);
 
 	} else {
-		vec3 radiance = textureLod(gi_sampler, prev_uv.xy, pcs.arguments.r).rgb;
-		vec3 albedo = textureLod(albedo_sampler, vertex_out.tex_coords, 0.0).rgb;
-		vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0.0);
-		float roughness = mat_data.b;
-		float metallic = mat_data.a;
+		vec3 gi = calculate_gi(vertex_out.tex_coords, prev_uv.xy, int(pcs.arguments.r),
+		                       result_diff_sampler, result_spec_sampler,
+		                       albedo_sampler, mat_data_sampler);
 
-		vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
-		albedo.rgb *= 1.0 - min(metallic, 0.9);
-
-		vec3 color = albedo / PI * radiance;
-
-		out_color = vec4(clamp(color*0.8, vec3(0.0), vec3(10.0)), 0);
+		out_color = vec4(clamp(gi*0.99, vec3(0.0), vec3(10.0)), 0.0);
 	}
 }

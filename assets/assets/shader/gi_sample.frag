@@ -6,7 +6,6 @@
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
 	vec3 view_ray;
-
 	flat vec3 corner_view_rays[4];
 } vertex_out;
 
@@ -16,14 +15,15 @@ layout(set=1, binding = 0) uniform sampler2D color_sampler;
 layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_sampler;
-layout(set=1, binding = 4) uniform sampler2D albedo_sampler;
+layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
 
 layout (constant_id = 0) const bool LAST_SAMPLE = false;
 layout (constant_id = 1) const float R = 40;
 layout (constant_id = 2) const int SAMPLES = 128;
+layout (constant_id = 3) const int MAX_RAYCAST_STEPS = 32;
 
 layout(push_constant) uniform Push_constants {
-	mat4 reprojection;
+	mat4 projection;
 	vec4 arguments;
 } pcs;
 
@@ -33,15 +33,39 @@ layout(push_constant) uniform Push_constants {
 #include "random.glsl"
 #include "brdf.glsl"
 #include "upsample.glsl"
-
+#include "raycast.glsl"
 
 vec3 gi_sample();
 vec3 calc_illumination_from(vec2 src_uv, vec2 shaded_uv, float shaded_depth, vec3 shaded_point, vec3 shaded_normal,
                             out float weight);
 
 void main() {
-	out_color = vec4(upsampled_prev_result(pcs.arguments.x, vertex_out.tex_coords), 1.0);
+	out_color = vec4(upsampled_prev_result(result_sampler, pcs.arguments.x, vertex_out.tex_coords).rgb, 1.0);
 	out_color.rgb += gi_sample();
+/*
+	if(LAST_SAMPLE) {
+
+		float depth  = textureLod(depth_sampler, vertex_out.tex_coords, 0.0).r;
+		vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0.0);
+		vec3 N = decode_normal(mat_data.rg);
+
+		vec3 P = depth * vertex_out.view_ray;
+
+		vec3 dir = -reflect(-normalize(P), N);
+
+		vec2 raycast_hit_uv;
+		vec3 raycast_hit_point;
+		if(traceScreenSpaceRay1(P+dir*0.5, dir, pcs.projection, depth_sampler,
+								textureSize(depth_sampler, 0), 1.0, global_uniforms.proj_planes.x,
+								max(1, 5), 0.01, 128, 40.0, 0,
+								raycast_hit_uv, raycast_hit_point)) {
+//out_color.rgb =vec3(1,0,0);
+			out_color.rgb = texelFetch(color_sampler, ivec2(raycast_hit_uv), 0).rgb;
+
+		} else {
+			out_color.rgb =vec3(0,0,0);
+		}
+	}*/
 }
 
 const float PI = 3.14159265359;
@@ -93,10 +117,37 @@ vec3 calc_illumination_from(vec2 src_uv, vec2 shaded_uv, float shaded_depth, vec
 	float lod = pcs.arguments.x;
 
 	float depth  = textureLod(depth_sampler, src_uv, lod).r;
+	vec3 P = to_view_space(src_uv, depth);
+
+
+	float visibility = 1.0; // TODO: raycast
+/*
+	vec3 raycast_dir = normalize(P - shaded_point);
+
+	vec2 raycast_hit_uv;
+	vec3 raycast_hit_point;
+	if(traceScreenSpaceRay1(shaded_point+raycast_dir, raycast_dir, pcs.projection, depth_sampler,
+	                        textureSize(depth_sampler, 0), 1.0, global_uniforms.proj_planes.x,
+	                        max(1, 1), 0.01, MAX_RAYCAST_STEPS, length(P - shaded_point), 0,
+	                        raycast_hit_uv, raycast_hit_point)) {
+
+		float uv_diff = distanceSquared(src_uv, raycast_hit_uv);
+//		if(uv_diff>0.0001) {
+			if(uv_diff< 0.01) {
+				src_uv = raycast_hit_uv;
+				depth  = textureLod(depth_sampler, src_uv, lod).r;
+				P = to_view_space(src_uv, depth);
+
+			} else {
+				weight = 0.0;
+				return vec3(0,0,0);
+			}
+//		}
+	}
+*/
 	vec4 mat_data = textureLod(mat_data_sampler, src_uv, lod);
 	vec3 N = decode_normal(mat_data.rg);
 
-	vec3 P = to_view_space(src_uv, depth);
 	vec3 diff = shaded_point - P;
 	float r = length(diff);
 	if(r<0.0001) { // ignore too close pixels
@@ -108,8 +159,6 @@ vec3 calc_illumination_from(vec2 src_uv, vec2 shaded_uv, float shaded_depth, vec
 	vec3 dir = diff / r;
 
 	vec3 radiance = min(vec3(4,4,4), textureLod(color_sampler, src_uv, lod).rgb);
-
-	float visibility = 1.0; // TODO: raycast
 
 	float NdotL_src = clamp(dot(N, dir), 0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
