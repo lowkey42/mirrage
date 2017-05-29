@@ -47,6 +47,6 @@ void main() {
 		                       result_diff_sampler, result_spec_sampler,
 		                       albedo_sampler, mat_data_sampler);
 
-		out_color = vec4(clamp(gi*0.99, vec3(0.0), vec3(10.0)), 0.0);
+		out_color = vec4(clamp(gi*1.0, vec3(0.0), vec3(10.0)), 0.0);
 	}
 }

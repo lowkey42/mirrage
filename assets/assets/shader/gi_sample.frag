@@ -42,30 +42,6 @@ vec3 calc_illumination_from(vec2 src_uv, vec2 shaded_uv, float shaded_depth, vec
 void main() {
 	out_color = vec4(upsampled_prev_result(result_sampler, pcs.arguments.x, vertex_out.tex_coords).rgb, 1.0);
 	out_color.rgb += gi_sample();
-/*
-	if(LAST_SAMPLE) {
-
-		float depth  = textureLod(depth_sampler, vertex_out.tex_coords, 0.0).r;
-		vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0.0);
-		vec3 N = decode_normal(mat_data.rg);
-
-		vec3 P = depth * vertex_out.view_ray;
-
-		vec3 dir = -reflect(-normalize(P), N);
-
-		vec2 raycast_hit_uv;
-		vec3 raycast_hit_point;
-		if(traceScreenSpaceRay1(P+dir*0.5, dir, pcs.projection, depth_sampler,
-								textureSize(depth_sampler, 0), 1.0, global_uniforms.proj_planes.x,
-								max(1, 5), 0.01, 128, 40.0, 0,
-								raycast_hit_uv, raycast_hit_point)) {
-//out_color.rgb =vec3(1,0,0);
-			out_color.rgb = texelFetch(color_sampler, ivec2(raycast_hit_uv), 0).rgb;
-
-		} else {
-			out_color.rgb =vec3(0,0,0);
-		}
-	}*/
 }
 
 const float PI = 3.14159265359;

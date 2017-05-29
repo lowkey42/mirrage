@@ -17,11 +17,6 @@ layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_sampler;
 layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
 
-layout (constant_id = 0) const bool LAST_SAMPLE = false;
-layout (constant_id = 1) const float R = 40;
-layout (constant_id = 2) const int SAMPLES = 128;
-layout (constant_id = 3) const int MAX_RAYCAST_STEPS = 32;
-
 layout(push_constant) uniform Push_constants {
 	mat4 projection;
 	vec4 arguments;
@@ -36,12 +31,15 @@ layout(push_constant) uniform Push_constants {
 #include "raycast.glsl"
 
 void main() {
-	out_color = vec4(0,0,0,1);
+	float startLod = pcs.arguments.x;
+	vec2 textureSize = textureSize(depth_sampler, int(startLod));
 
-	float depth  = textureLod(depth_sampler, vertex_out.tex_coords, 0.0).r;
+	out_color = vec4(0,0,0,0);
+
+	float depth  = textureLod(depth_sampler, vertex_out.tex_coords, startLod).r;
 	vec3 P = depth * vertex_out.view_ray;
 
-	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0.0);
+	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, startLod);
 	vec3 N = decode_normal(mat_data.rg);
 
 	vec3 V = -normalize(P);
@@ -51,31 +49,23 @@ void main() {
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
 	if(traceScreenSpaceRay1(P+dir, dir, pcs.projection, depth_sampler,
-							textureSize(depth_sampler, 0), 1.0, global_uniforms.proj_planes.x,
-							max(1, 1), 0.1, 128, 20.0, 0,
+							textureSize, 1.0, global_uniforms.proj_planes.x,
+							max(1, 1), 0.1, 128, 20.0, int(startLod),
 							raycast_hit_uv, raycast_hit_point)) {
-
-		vec3 radiance = texelFetch(color_sampler, ivec2(raycast_hit_uv), 0).rgb;
 
 		float roughness = mat_data.b;
 
 		vec3 L = raycast_hit_point - P;
 		float L_length = length(L);
-		float attenuation = 1.0 / max(1.0, L_length * L_length);
 		L /= L_length;
-
-		const float PI = 3.14159265359;
 
 		vec3 H = normalize(V+L);
 
-		float NDF = DistributionGGX(N, H, roughness);
-		float G   = GeometrySmith(N, V, L, roughness);
+		float lod = mix(0.0, pcs.arguments.y, clamp(roughness + mix(-0.2, 0.2, L_length*0.5), 0.0, 1.0));
+		vec3 radiance = textureLod(color_sampler, raycast_hit_uv/textureSize, lod).rgb;
 
-		float nominator   = NDF * G;
-		float denominator = 4 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001;
-
-		out_color.rgb = nominator / denominator * radiance * attenuation;
-		out_color.a = max(dot(H, L), 0.0);
+		out_color.rgb = radiance;
+		out_color.a = mix(1.0, 0.0, min(1.0, L_length*L_length / 400.0));
 	}
 }
 

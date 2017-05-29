@@ -25,6 +25,9 @@ frag_shader:blur = shader/bin/blur.frag.spv
 vert_shader:gi_blend = shader/bin/fullscreen.vert.spv
 frag_shader:gi_blend = shader/bin/gi_blend.frag.spv
 
+vert_shader:gi_integrate_brdf = shader/bin/gi_integrate_brdf.vert.spv
+frag_shader:gi_integrate_brdf = shader/bin/gi_integrate_brdf.frag.spv
+
 vert_shader:gi_mipgen = shader/bin/fullscreen.vert.spv
 frag_shader:gi_mipgen = shader/bin/gi_mipgen.frag.spv
 
