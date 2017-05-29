@@ -5,21 +5,38 @@
 #include "random.glsl"
 
 
-vec4 upsampled_result(sampler2D color_sampler, float lod, vec2 tex_coords, float scale) {
+vec4 upsampled_result(sampler2D color_sampler, int lod, vec2 tex_coords, float scale) {
 	if(lod > pcs.arguments.y)
 		return vec4(0,0,0,0);
 
-	vec2 texture_size = textureSize(color_sampler, int(lod));
+	vec2 texture_size = textureSize(color_sampler, lod);
 	ivec2 center = ivec2(texture_size*tex_coords);
 
-	float depth = texelFetch(depth_sampler, center*2, max(0, int(lod)-1)).r;
-/*
-	const ivec2 offsets[4] = ivec2[](
-		ivec2(-1, -1),
-		ivec2( 1, -1),
-		ivec2( 1,  1),
-		ivec2(-1,  1)
+	float depth = texelFetch(depth_sampler, center*2, max(0, lod-1)).r;
+
+
+	const vec2 offsets[4] = vec2[](
+		vec2(-0.5, -0.5),
+		vec2( 0.5, -0.5),
+		vec2( 0.5,  0.5),
+		vec2(-0.5,  0.5)
 	);
+/*
+	vec4 c = vec4(0,0,0,0);
+	float weight_sum = 0.0;
+	for(int i=0; i<4; i++) {
+		ivec2 uv = ivec2(texture_size*tex_coords + offsets[i]);
+		float d = texelFetch(depth_sampler, uv, lod).r;
+
+		// TODO: causes noise
+		float weight = 1.0 / (0.0001 + abs(depth-d));
+
+		c += weight * texelFetch(color_sampler, uv, lod);
+		weight_sum += weight;
+	}
+
+	return c / weight_sum;*/
+
 
 	float depths[4];
 
@@ -27,8 +44,8 @@ vec4 upsampled_result(sampler2D color_sampler, float lod, vec2 tex_coords, float
 	float top_depth = 999.0;
 
 	for(int i=0; i<4; i++) {
-		ivec2 uv = center + offsets[i];
-		depths[i] = texelFetch(depth_sampler, uv, int(lod)).r;
+		ivec2 uv = ivec2(center + offsets[i]);
+		depths[i] = texelFetch(depth_sampler, uv, lod).r;
 
 		float dd = abs(depth-depths[i]);
 		if(dd <= top_depth) {
@@ -37,19 +54,24 @@ vec4 upsampled_result(sampler2D color_sampler, float lod, vec2 tex_coords, float
 		}
 	}
 
-	if(abs(depths[0] - depth) > 0.1 ||
-	   abs(depths[1] - depth) > 0.1 ||
-	   abs(depths[2] - depth) > 0.1 ||
-	   abs(depths[3] - depth) > 0.1) {
-		// edge detected
-		return texelFetch(result_sampler, top_uv, int(lod)).rgb;
+	vec4 c = vec4(0,0,0,0);
+	float weight_sum = 0.0;
 
-	} else {*/
-		vec4 c = vec4(0,0,0,0);
-		float weight_sum = 0.0;
+	if(abs(depths[0] - depth) > 0.05 ||
+	   abs(depths[1] - depth) > 0.05 ||
+	   abs(depths[2] - depth) > 0.05 ||
+	   abs(depths[3] - depth) > 0.05) {
+		// edge detected
+		for(int i=0; i<8; i++) {
+			ivec2 uv = ivec2(center + offsets[i]);
+			float weight = 1.0 / (0.0001 + abs(depth-depths[i]));
+			c += weight * texelFetch(color_sampler, uv, lod);
+			weight_sum += weight;
+		}
+
+	} else {
 		for(int i=0; i<8; i++) {
 			vec2 uv = tex_coords + Poisson8[i]/texture_size * scale;
-			float d = textureLod(depth_sampler, uv, lod).r;
 
 			// TODO: causes noise
 			float weight = 1.0;// / (0.0001 + abs(depth-d));
@@ -58,12 +80,29 @@ vec4 upsampled_result(sampler2D color_sampler, float lod, vec2 tex_coords, float
 			weight_sum += weight;
 		}
 
-		return c / weight_sum;
-//	}
+	}
+
+	return c / weight_sum;
 }
 
-vec4 upsampled_prev_result(sampler2D color_sampler, float current_lod, vec2 tex_coords) {
-	return upsampled_result(color_sampler, current_lod + 0.9999999, tex_coords, 4.0);
+vec4 upsampled_prev_result(sampler2D color_sampler, int current_lod, vec2 tex_coords) {
+	return upsampled_result(color_sampler, current_lod + 1, tex_coords, 4.0);
+}
+
+vec4 upsampled_smooth(sampler2D color_sampler, float lod, vec2 tex_coords, float scale) {
+	if(lod > pcs.arguments.y)
+		return vec4(0,0,0,0);
+
+	vec2 texture_size = textureSize(color_sampler, int(lod+0.5));
+
+	vec4 c = vec4(0,0,0,0);
+	for(int i=0; i<8; i++) {
+		vec2 uv = tex_coords + Poisson8[i]/texture_size * scale;
+
+		c += textureLod(color_sampler, uv, lod);
+	}
+
+	return c / 8.0;
 }
 
 #endif

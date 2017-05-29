@@ -20,7 +20,7 @@ layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
 layout (constant_id = 0) const bool LAST_SAMPLE = false;
 layout (constant_id = 1) const float R = 40;
 layout (constant_id = 2) const int SAMPLES = 128;
-layout (constant_id = 3) const int MAX_RAYCAST_STEPS = 32;
+layout (constant_id = 3) const bool UPSAMPLE_ONLY = false;
 
 layout(push_constant) uniform Push_constants {
 	mat4 projection;
@@ -36,12 +36,14 @@ layout(push_constant) uniform Push_constants {
 #include "raycast.glsl"
 
 vec3 gi_sample();
-vec3 calc_illumination_from(vec2 src_uv, vec2 shaded_uv, float shaded_depth, vec3 shaded_point, vec3 shaded_normal,
-                            out float weight);
+vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
+                            vec3 shaded_point, vec3 shaded_normal, out float weight);
 
 void main() {
-	out_color = vec4(upsampled_prev_result(result_sampler, pcs.arguments.x, vertex_out.tex_coords).rgb, 1.0);
-	out_color.rgb += gi_sample();
+	out_color = vec4(upsampled_prev_result(result_sampler, int(pcs.arguments.x), vertex_out.tex_coords).rgb, 1.0);
+
+	if(!UPSAMPLE_ONLY)
+		out_color.rgb += gi_sample();
 }
 
 const float PI = 3.14159265359;
@@ -56,6 +58,7 @@ vec3 gi_sample() {
 	vec3 P = depth * vertex_out.view_ray;
 
 	vec2 texture_size = textureSize(color_sampler, int(lod));
+	vec2 uv = vertex_out.tex_coords * texture_size;
 
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
@@ -67,10 +70,10 @@ vec3 gi_sample() {
 		float sin_angle = sin(angle);
 		float cos_angle = cos(angle);
 
-		vec2 p = vertex_out.tex_coords + vec2(sin(angle), cos(angle)) * r / texture_size;
-		if(p.x>=0.0 && p.x<=1.0 && p.y>=0.0 && p.y<=1.0) {
+		ivec2 p = ivec2(uv + vec2(sin(angle), cos(angle)) * r);
+		if(p.x>=0.0 && p.x<=texture_size.x && p.y>=0.0 && p.y<=texture_size.y) {
 			float weight;
-			c += calc_illumination_from(p, vertex_out.tex_coords, depth, P, N, weight);
+			c += calc_illumination_from(texture_size, p, uv, depth, P, N, weight);
 			samples_used += weight;
 		}
 	}
@@ -88,12 +91,12 @@ vec3 to_view_space(vec2 uv, float depth) {
 	return mix(view_ray_x1, view_ray_x2, uv.y) * depth;
 }
 
-vec3 calc_illumination_from(vec2 src_uv, vec2 shaded_uv, float shaded_depth, vec3 shaded_point, vec3 shaded_normal,
-                            out float weight) {
-	float lod = pcs.arguments.x;
+vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
+                            vec3 shaded_point, vec3 shaded_normal, out float weight) {
+	int lod = int(pcs.arguments.x);
 
-	float depth  = textureLod(depth_sampler, src_uv, lod).r;
-	vec3 P = to_view_space(src_uv, depth);
+	float depth  = texelFetch(depth_sampler, src_uv, lod).r;
+	vec3 P = to_view_space(src_uv / tex_size, depth);
 
 
 	float visibility = 1.0; // TODO: raycast
@@ -121,7 +124,7 @@ vec3 calc_illumination_from(vec2 src_uv, vec2 shaded_uv, float shaded_depth, vec
 //		}
 	}
 */
-	vec4 mat_data = textureLod(mat_data_sampler, src_uv, lod);
+	vec4 mat_data = texelFetch(mat_data_sampler, src_uv, lod);
 	vec3 N = decode_normal(mat_data.rg);
 
 	vec3 diff = shaded_point - P;
@@ -134,7 +137,7 @@ vec3 calc_illumination_from(vec2 src_uv, vec2 shaded_uv, float shaded_depth, vec
 	float r2 = r*r * 0.001;
 	vec3 dir = diff / r;
 
-	vec3 radiance = min(vec3(4,4,4), textureLod(color_sampler, src_uv, lod).rgb);
+	vec3 radiance = min(vec3(4,4,4), texelFetch(color_sampler, src_uv, lod).rgb);
 
 	float NdotL_src = clamp(dot(N, dir), 0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)

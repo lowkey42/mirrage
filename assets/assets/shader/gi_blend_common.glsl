@@ -39,7 +39,7 @@ vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampl
 	vec3 radiance = upsampled_result(diff_sampler, gi_lod,
 	                                 gi_uv, max(1.0, pow(2.0, gi_lod-1.0))).rgb;
 
-	vec4 specular = upsampled_result(spec_sampler, 0.0,
+	vec4 specular = upsampled_smooth(spec_sampler, 0.0,
 	                                 gi_uv, max(1.0, pow(2.0, gi_lod-1.0)));
 
 	// no raycast hit => fallback
