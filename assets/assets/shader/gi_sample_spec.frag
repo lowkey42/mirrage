@@ -50,7 +50,7 @@ void main() {
 	vec3 raycast_hit_point;
 	if(traceScreenSpaceRay1(P+dir, dir, pcs.projection, depth_sampler,
 							textureSize, 1.0, global_uniforms.proj_planes.x,
-							max(1, 1), 0.1, 128, 20.0, int(startLod),
+							max(4, 4), 0.1, 16, 20.0, int(startLod),
 							raycast_hit_uv, raycast_hit_point)) {
 
 		float roughness = mat_data.b;
