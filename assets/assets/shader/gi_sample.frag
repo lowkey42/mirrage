@@ -134,7 +134,7 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 		return vec3(0,0,0);
 	}
 
-	float r2 = r*r * 0.001;
+	float r2 = r*r * 0.0005;
 	vec3 dir = diff / r;
 
 	vec3 radiance = min(vec3(4,4,4), texelFetch(color_sampler, src_uv, lod).rgb);
@@ -151,6 +151,6 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 	weight = visibility > 0.0 ? 1.0 : 0.0;
 
 
-	return max(vec3(0.0), radiance * visibility);// / max(1.0, r2));
+	return max(vec3(0.0), radiance * visibility / max(1.0, r2));
 }
 

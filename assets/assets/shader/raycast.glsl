@@ -16,7 +16,7 @@ bool traceScreenSpaceRay1(
  // normalized device coordinates)
  mat4 proj,
 
- // The camera-space Z buffer (all negative values)
+ // The camera-space Z buffer (all positive values)
  sampler2D csZBuffer,
 
  // Dimensions of csZBuffer
@@ -25,7 +25,7 @@ bool traceScreenSpaceRay1(
  // Camera space thickness to ascribe to each pixel in the depth buffer
  float zThickness,
 
- // (Negative number)
+ // (positive number)
  float nearPlaneZ,
 
  // Step in horizontal or vertical pixels between samples. This is a float

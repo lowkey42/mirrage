@@ -30,6 +30,22 @@ layout(push_constant) uniform Push_constants {
 #include "upsample.glsl"
 #include "raycast.glsl"
 
+// losely based on https://www.gamedev.net/topic/658702-help-with-gpu-pro-5-hi-z-screen-space-reflections/?view=findpost&p=5173175
+float roughness_to_spec_lobe_angle(float roughness) {
+	float power = mix(1024.0*8.0, 8.0, roughness);
+	return cos(pow(0.244, 1.0/(power + 1.0)));
+}
+
+float isosceles_triangle_opposite(float adjacentLength, float coneTheta) {
+	return 2.0f * tan(coneTheta) * adjacentLength;
+}
+
+float isosceles_triangle_inradius(float a, float h) {
+	float a2 = a * a;
+	float fh2 = 4.0f * h * h;
+	return (a * (sqrt(a2 + fh2) - a)) / (4.0f * max(h, 0.00001f));
+}
+
 void main() {
 	float startLod = pcs.arguments.x;
 	vec2 textureSize = textureSize(depth_sampler, int(startLod + 0.5));
@@ -48,9 +64,9 @@ void main() {
 
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
-	if(traceScreenSpaceRay1(P+dir, dir, pcs.projection, depth_sampler,
+	if(traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
 							textureSize, 1.0, global_uniforms.proj_planes.x,
-							max(4, 4), 0.1, 16, 20.0, int(startLod + 0.5),
+							max(4, 4), 0.1, 512, 128.0, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 
 		float roughness = mat_data.b;
@@ -61,11 +77,18 @@ void main() {
 
 		vec3 H = normalize(V+L);
 
-		float lod = mix(0.0, pcs.arguments.y, clamp(roughness + mix(-0.2, 0.2, L_length*0.5), 0.0, 1.0));
+		float lobe_angle = roughness_to_spec_lobe_angle(roughness);
+
+		float oppositeLength = isosceles_triangle_opposite(L_length, lobe_angle);
+
+		float hit_radius = isosceles_triangle_inradius(L_length, oppositeLength);
+
+		float lod = log2(hit_radius * max(textureSize.x,textureSize.y));
+		lod = clamp(lod, startLod, pcs.arguments.y);
 		vec3 radiance = textureLod(color_sampler, raycast_hit_uv/textureSize, lod).rgb;
 
 		out_color.rgb = radiance;
-		out_color.a = mix(1.0, 0.0, min(1.0, L_length*L_length / 400.0));
+		out_color.a = mix(1.0, 0.0, clamp((L_length-80) / 20.0, 0.0, 1.0));
 	}
 }
 

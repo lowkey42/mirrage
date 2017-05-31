@@ -41,7 +41,7 @@ void main() {
 
 	float metallic  = texture(metallic_sampler, vertex_out.tex_coords).r;
 	float roughness = texture(roughness_sampler, vertex_out.tex_coords).r;
-	vec3  normal    = tangent_space_to_world(texture(normal_sampler, vertex_out.tex_coords).xyz);
+	vec3  normal    = tangent_space_to_world(texture(normal_sampler, vertex_out.tex_coords, -0.5).xyz);
 
 	roughness = mix(0.1, 0.99, roughness*roughness);
 
