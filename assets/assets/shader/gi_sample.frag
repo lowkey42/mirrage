@@ -19,7 +19,7 @@ layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
 
 layout (constant_id = 0) const bool LAST_SAMPLE = false;
 layout (constant_id = 1) const float R = 40;
-layout (constant_id = 2) const int SAMPLES = 128;
+layout (constant_id = 2) const int SAMPLES = 64;
 layout (constant_id = 3) const bool UPSAMPLE_ONLY = false;
 
 layout(push_constant) uniform Push_constants {
@@ -57,7 +57,7 @@ vec3 gi_sample() {
 
 	vec3 P = depth * vertex_out.view_ray;
 
-	vec2 texture_size = textureSize(color_sampler, int(lod));
+	vec2 texture_size = textureSize(color_sampler, int(lod + 0.5));
 	vec2 uv = vertex_out.tex_coords * texture_size;
 
 	vec3 c = vec3(0,0,0);
@@ -93,7 +93,7 @@ vec3 to_view_space(vec2 uv, float depth) {
 
 vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight) {
-	int lod = int(pcs.arguments.x);
+	int lod = int(pcs.arguments.x + 0.5);
 
 	float depth  = texelFetch(depth_sampler, src_uv, lod).r;
 	vec3 P = to_view_space(src_uv / tex_size, depth);
@@ -151,6 +151,6 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 	weight = visibility > 0.0 ? 1.0 : 0.0;
 
 
-	return max(vec3(0.0), radiance * visibility / max(1.0, r2));
+	return max(vec3(0.0), radiance * visibility);// / max(1.0, r2));
 }
 

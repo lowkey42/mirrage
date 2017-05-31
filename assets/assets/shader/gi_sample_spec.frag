@@ -32,7 +32,7 @@ layout(push_constant) uniform Push_constants {
 
 void main() {
 	float startLod = pcs.arguments.x;
-	vec2 textureSize = textureSize(depth_sampler, int(startLod));
+	vec2 textureSize = textureSize(depth_sampler, int(startLod + 0.5));
 
 	out_color = vec4(0,0,0,0);
 
@@ -50,7 +50,7 @@ void main() {
 	vec3 raycast_hit_point;
 	if(traceScreenSpaceRay1(P+dir, dir, pcs.projection, depth_sampler,
 							textureSize, 1.0, global_uniforms.proj_planes.x,
-							max(4, 4), 0.1, 16, 20.0, int(startLod),
+							max(4, 4), 0.1, 16, 20.0, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 
 		float roughness = mat_data.b;
