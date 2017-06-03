@@ -1,3 +1,5 @@
+#ifndef NORMAL_ENCODING_INCLUDED
+#define NORMAL_ENCODING_INCLUDED
 
 vec2 oct_wrap(vec2 v) {
 	return fma(step(vec2(0.0), v), vec2(2.0), vec2(-1.0));
@@ -15,3 +17,5 @@ vec3 decode_normal(vec2 en) {
 
 	return normalize(n);
 }
+
+#endif

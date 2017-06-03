@@ -1,3 +1,5 @@
+#ifndef RANDOM_INCLUDED
+#define RANDOM_INCLUDED
 
 // A single iteration of Bob Jenkins' One-At-A-Time hashing algorithm.
 uint hash( uint x ) {
@@ -38,3 +40,5 @@ float random(vec4 seed) {
 vec2 PDnrand2( vec4 n ) {
 	return fract( sin(dot(n, vec4(12.9898,78.233,45.164,94.673)))* vec2(43758.5453f, 28001.8384f) );
 }
+
+#endif

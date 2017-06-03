@@ -2,7 +2,7 @@
 	"Transform":{
 	},
 	"Camera": {
-		"fov": 70.0,
+		"fov": 80.0,
 		"near": 1.0,
 		"far": 300.0
 	}

@@ -2,13 +2,17 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+#include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 #include "poisson.glsl"
 #include "random.glsl"
+#include "brdf.glsl"
 
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
+	vec3 view_ray;
+	flat vec3 corner_view_rays[4];
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
@@ -23,14 +27,6 @@ layout(set=2, binding = 2) uniform sampler shadowmap_depth_sampler; // sampler2D
 
 layout (constant_id = 0) const int SHADOW_QUALITY = 1;
 
-layout(binding = 0) uniform Global_uniforms {
-	mat4 view_proj;
-	mat4 inv_view_proj;
-	vec4 eye_pos;
-	vec4 proj_planes;
-	vec4 time;
-} global_uniforms;
-
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
 	vec4 light_color;
@@ -41,56 +37,7 @@ layout(push_constant) uniform Per_model_uniforms {
 
 const float PI = 3.14159265359;
 
-// TODO: refactor and rewrite as required
-float DistributionGGX(vec3 N, vec3 H, float roughness) {
-	float a      = roughness*roughness;
-	float a2     = a*a;
-	float NdotH  = max(dot(N, H), 0.0);
-	float NdotH2 = NdotH*NdotH;
-
-	float nom   = a2;
-	float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-	denom = PI * denom * denom;
-
-	return nom / denom;
-}
-
-float GeometrySchlickGGX(float NdotV, float roughness) {
-	float r = (roughness + 1.0);
-	float k = (r*r) / 8.0;
-
-	float nom   = NdotV;
-	float denom = NdotV * (1.0 - k) + k;
-
-	return nom / denom;
-}
-float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
-	float NdotV = max(dot(N, V), 0.0);
-	float NdotL = max(dot(N, L), 0.0);
-	float ggx2  = GeometrySchlickGGX(NdotV, roughness);
-	float ggx1  = GeometrySchlickGGX(NdotL, roughness);
-
-	return ggx1 * ggx2;
-}
-
-vec3 fresnelSchlick(float cosTheta, vec3 F0) {
-	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}
-// END TODO
-
 float sample_shadowmap(vec3 world_pos);
-
-float linearize_depth(float depth) {
-	float near_plane = global_uniforms.proj_planes.x;
-	float far_plane = global_uniforms.proj_planes.y;
-	return (2.0 * near_plane)
-	     / (far_plane + near_plane - depth * (far_plane - near_plane));
-}
-
-vec3 restore_position(vec2 uv, float depth) {
-	vec4 pos_world = global_uniforms.inv_view_proj * vec4(uv * 2.0 - 1.0, depth, 1.0);
-	return pos_world.xyz / pos_world.w;
-}
 
 
 void main() {
@@ -98,15 +45,14 @@ void main() {
 	vec4  albedo_mat_id = subpassLoad(albedo_mat_id_sampler);
 	vec4  mat_data      = subpassLoad(mat_data_sampler);
 
-	float linear_depth = linearize_depth(depth);
-	vec3 position = restore_position(vertex_out.tex_coords, depth);
-	vec3 V = normalize(global_uniforms.eye_pos.xyz - position);
+	vec3 position = depth * vertex_out.view_ray;
+	vec3 V = -normalize(position);
 	vec3 albedo = albedo_mat_id.rgb;
 	int  material = int(albedo_mat_id.a*255);
 
 	// material 255 (unlit)
 	if(material==255) {
-		out_color = vec4(albedo, 1.0);
+		out_color = vec4(albedo*5.0, 1.0);
 		return;
 	}
 
@@ -125,42 +71,25 @@ void main() {
 	out_color = vec4(0,0,0,0);
 
 	if(shadow>0.0) {
-		// TODO: calc light
-
 		vec3 L = model_uniforms.light_data.gba;
 
-		vec3 H = normalize(V+L);
-
-		float NDF = DistributionGGX(N, H, roughness);
-		float G   = GeometrySmith(N, V, L, roughness);
-		vec3 F    = fresnelSchlick(max(dot(H, L), 0.0), F0);
-
-		vec3 kS = F;
-		vec3 kD = vec3(1.0) - kS;
-
-		vec3 nominator    = NDF * G * F;
-		float denominator = 4 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001;
-		vec3 brdf = nominator / denominator;
-
-		// add to outgoing radiance Lo
-		float NdotL = max(dot(N, L), 0.0);
-		out_color = vec4((kD * albedo / PI + brdf) * radiance * NdotL * shadow, 1.0);
+		out_color = vec4(brdf(albedo, F0, roughness, N, V, L, radiance) * shadow, 1.0);
 	}
 
 	// TODO: remove ambient
-	out_color.rgb += albedo * radiance * 0.003 + F0*radiance*0.001;
+	out_color.rgb += albedo * radiance * 0.0005;
 }
 
 
 float calc_penumbra(vec3 surface_lightspace, float light_size,
                     out int num_occluders);
 
-float sample_shadowmap(vec3 world_pos) {
+float sample_shadowmap(vec3 view_pos) {
 	int shadowmap = int(model_uniforms.light_data2.r);
 	if(shadowmap<0)
 		return 1.0;
 
-	vec4 lightspace_pos = model_uniforms.model * vec4(world_pos, 1.0);
+	vec4 lightspace_pos = model_uniforms.model * vec4(view_pos, 1.0);
 	lightspace_pos /= lightspace_pos.w;
 	lightspace_pos.xy = lightspace_pos.xy * 0.5 + 0.5;
 
@@ -185,7 +114,7 @@ float sample_shadowmap(vec3 world_pos) {
 
 	float z_bias = 0.002;
 
-	float angle = random(vec4(world_pos, global_uniforms.time.y));
+	float angle = random(vec4(lightspace_pos.xyz, global_uniforms.time.y));
 	float sin_angle = sin(angle);
 	float cos_angle = cos(angle);
 

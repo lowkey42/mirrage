@@ -1,9 +1,9 @@
 shader: = shader/
 
-vert_shader:blit = shader/bin/blit.vert.spv
+vert_shader:blit = shader/bin/fullscreen.vert.spv
 frag_shader:blit = shader/bin/blit.frag.spv
 
-vert_shader:light_directional = shader/bin/light_directional.vert.spv
+vert_shader:light_directional = shader/bin/fullscreen.vert.spv
 frag_shader:light_directional = shader/bin/light_directional.frag.spv
 
 vert_shader:shadow_model = shader/bin/shadow_model.vert.spv
@@ -11,13 +11,32 @@ frag_shader:shadow_model = shader/bin/shadow_model.frag.spv
 
 vert_shader:model = shader/bin/model.vert.spv
 frag_shader:model = shader/bin/model.frag.spv
+frag_shader:model_emissive = shader/bin/model_emissive.frag.spv
 
 vert_shader:ui = shader/bin/ui.vert.spv
 frag_shader:ui = shader/bin/ui.frag.spv
 
-vert_shader:taa = shader/bin/taa.vert.spv
+vert_shader:taa = shader/bin/fullscreen.vert.spv
 frag_shader:taa = shader/bin/taa.frag.spv
 
 vert_shader:blur = shader/bin/blur.vert.spv
 frag_shader:blur = shader/bin/blur.frag.spv
+
+vert_shader:gi_blend = shader/bin/fullscreen.vert.spv
+frag_shader:gi_blend = shader/bin/gi_blend.frag.spv
+
+vert_shader:gi_integrate_brdf = shader/bin/gi_integrate_brdf.vert.spv
+frag_shader:gi_integrate_brdf = shader/bin/gi_integrate_brdf.frag.spv
+
+vert_shader:gi_mipgen = shader/bin/fullscreen.vert.spv
+frag_shader:gi_mipgen = shader/bin/gi_mipgen.frag.spv
+
+vert_shader:gi_sample = shader/bin/fullscreen.vert.spv
+frag_shader:gi_sample = shader/bin/gi_sample.frag.spv
+
+vert_shader:gi_sample_spec = shader/bin/fullscreen.vert.spv
+frag_shader:gi_sample_spec = shader/bin/gi_sample_spec.frag.spv
+
+vert_shader:gi_reproject = shader/bin/fullscreen.vert.spv
+frag_shader:gi_reproject = shader/bin/gi_reproject.frag.spv
 
