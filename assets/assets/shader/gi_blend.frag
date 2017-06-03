@@ -17,6 +17,7 @@ layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_diff_sampler;
 layout(set=1, binding = 4) uniform sampler2D result_spec_sampler;
 layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
+layout(set=1, binding = 7) uniform sampler2D ao_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
@@ -30,6 +31,11 @@ void main() {
 	out_color = vec4(calculate_gi(vertex_out.tex_coords, vertex_out.tex_coords, int(pcs.arguments.r),
 	                              result_diff_sampler, result_spec_sampler,
 	                              albedo_sampler, mat_data_sampler), 0.0);
+
+//	out_color = vec4(1,1,1,1);
+
+	if(pcs.arguments.a>0.0)
+		out_color.rgb *= mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, pcs.arguments.a);
 
 	if(pcs.arguments.b>=0)
 		out_color = textureLod(result_diff_sampler, vertex_out.tex_coords, pcs.arguments.b);

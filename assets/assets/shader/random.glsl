@@ -40,5 +40,8 @@ float random(vec4 seed) {
 vec2 PDnrand2( vec4 n ) {
 	return fract( sin(dot(n, vec4(12.9898,78.233,45.164,94.673)))* vec2(43758.5453f, 28001.8384f) );
 }
+vec3 PDnrand3( vec2 n ) {
+	return fract( sin(dot(n.xy, vec2(12.9898f, 78.233f)))* vec3(43758.5453f, 28001.8384f, 50849.4141f ) );
+}
 
 #endif
