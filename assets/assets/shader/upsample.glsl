@@ -5,7 +5,41 @@
 #include "random.glsl"
 
 
+vec4 upsampled_smooth(sampler2D color_sampler, float lod, vec2 tex_coords, float scale) {
+	if(lod > pcs.arguments.y)
+		return vec4(0,0,0,0);
+
+	vec2 texture_size = textureSize(color_sampler, int(lod+0.5));
+
+	vec4 c = vec4(0,0,0,0);
+	for(int i=0; i<8; i++) {
+		vec2 uv = tex_coords + Poisson8[i]/texture_size * scale;
+
+		c += textureLod(color_sampler, uv, lod);
+	}
+
+	return c / 8.0;
+}
+
+vec4 upsampled_max(sampler2D color_sampler, float lod, vec2 tex_coords, float scale) {
+	if(lod > pcs.arguments.y)
+		return vec4(0,0,0,0);
+
+	vec2 texture_size = textureSize(color_sampler, int(lod+0.5));
+
+	vec4 c = vec4(0,0,0,0);
+	for(int i=0; i<8; i++) {
+		vec2 uv = tex_coords + Poisson8[i]/texture_size * scale;
+
+		c = max(c, textureLod(color_sampler, uv, lod));
+	}
+
+	return c;
+}
+
 vec4 upsampled_result(sampler2D color_sampler, int lod, vec2 tex_coords, float scale) {
+	return upsampled_smooth(color_sampler, lod, tex_coords, scale);
+
 	if(lod > pcs.arguments.y)
 		return vec4(0,0,0,0);
 
@@ -87,22 +121,6 @@ vec4 upsampled_result(sampler2D color_sampler, int lod, vec2 tex_coords, float s
 
 vec4 upsampled_prev_result(sampler2D color_sampler, int current_lod, vec2 tex_coords) {
 	return upsampled_result(color_sampler, current_lod + 1, tex_coords, 4.0);
-}
-
-vec4 upsampled_smooth(sampler2D color_sampler, float lod, vec2 tex_coords, float scale) {
-	if(lod > pcs.arguments.y)
-		return vec4(0,0,0,0);
-
-	vec2 texture_size = textureSize(color_sampler, int(lod+0.5));
-
-	vec4 c = vec4(0,0,0,0);
-	for(int i=0; i<8; i++) {
-		vec2 uv = tex_coords + Poisson8[i]/texture_size * scale;
-
-		c += textureLod(color_sampler, uv, lod);
-	}
-
-	return c / 8.0;
 }
 
 #endif

@@ -30,4 +30,7 @@ void main() {
 	out_color = vec4(calculate_gi(vertex_out.tex_coords, vertex_out.tex_coords, int(pcs.arguments.r),
 	                              result_diff_sampler, result_spec_sampler,
 	                              albedo_sampler, mat_data_sampler), 0.0);
+
+	if(pcs.arguments.b>=0)
+		out_color = textureLod(result_diff_sampler, vertex_out.tex_coords, pcs.arguments.b);
 }

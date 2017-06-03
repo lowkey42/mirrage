@@ -19,7 +19,7 @@ layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
 
 layout (constant_id = 0) const bool LAST_SAMPLE = false;
 layout (constant_id = 1) const float R = 40;
-layout (constant_id = 2) const int SAMPLES = 64;
+layout (constant_id = 2) const int SAMPLES = 128;
 layout (constant_id = 3) const bool UPSAMPLE_ONLY = false;
 
 layout(push_constant) uniform Push_constants {
@@ -81,7 +81,7 @@ vec3 gi_sample() {
 	// could be used to blend between screen-space and static GI
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
-	return c * 2.0*PI / max(samples_used, SAMPLES*0.2);
+	return c/* * 2.0*PI / max(samples_used, SAMPLES*0.2)*/ * pow(2.0, lod*2);
 }
 
 vec3 to_view_space(vec2 uv, float depth) {
@@ -96,7 +96,8 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 	int lod = int(pcs.arguments.x + 0.5);
 
 	float depth  = texelFetch(depth_sampler, src_uv, lod).r;
-	vec3 P = to_view_space(src_uv / tex_size, depth);
+	vec3 P = to_view_space(src_uv / tex_size, depth);// x_i
+	vec3 Pn = normalize(P);
 
 
 	float visibility = 1.0; // TODO: raycast
@@ -134,10 +135,10 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 		return vec3(0,0,0);
 	}
 
-	float r2 = r*r * 0.0005;
+	float r2 = r*r;// * 0.0005;
 	vec3 dir = diff / r;
 
-	vec3 radiance = min(vec3(4,4,4), texelFetch(color_sampler, src_uv, lod).rgb);
+	vec3 radiance = texelFetch(color_sampler, src_uv, lod).rgb;
 
 	float NdotL_src = clamp(dot(N, dir), 0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
@@ -146,11 +147,31 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 	float normal_bias = clamp(1.0-dot(N,shaded_normal), 0.0, 1.0);
 	float perspective_bias = 1.0 + clamp(1.0 - dot(-normalize(P), N), 0, 1)*0.5;
 
-	visibility = visibility * NdotL_dst*NdotL_src * normal_bias * perspective_bias;
+	//visibility = visibility * NdotL_dst*NdotL_src * normal_bias * perspective_bias;
 
-	weight = visibility > 0.0 ? 1.0 : 0.0;
+	vec3 x_i = P;
+	float x_i_length = length(x_i);
+	float cos_alpha = max(Pn.z, 0.1);
+	float cos_beta  = max(dot(Pn, N), 0.1);
+	float z = depth * global_uniforms.proj_planes.y;
+	float fov_h = global_uniforms.proj_planes.z;
+	float fov_v = global_uniforms.proj_planes.w;
+	vec2 screen_size = textureSize(color_sampler, 0);
+	float dp = pow(2, lod)*pow(2, lod);
+	float ds = z*z* (4.0 * tan(fov_h/2) * tan(fov_v/2) * dp)
+	         / (screen_size.x*screen_size.y)
+	         * cos_alpha / cos_beta;
+
+//	ds = (dp*dp * depth*depth) / (near*near);
+	//r2 = max(0.0, r2*0.0001);
+	//ds = 1.0;//0.6; // TODO: ds is ~10^-5 and results in no light at all
+	float R2 = 1.0 / PI * NdotL_src * ds;
+	float area = R2 / (r2 + R2); // point-to-differential area form-factor
 
 
-	return max(vec3(0.0), radiance * visibility / max(1.0, r2));
+	weight = visibility * NdotL_dst*NdotL_src > 0.0 ? 1.0 : 0.0;
+
+	return max(vec3(0.0), radiance * NdotL_dst * area);
+	return max(vec3(0.0), radiance * visibility * NdotL_dst*NdotL_src / max(1.0, r2)) * ds;
 }
 

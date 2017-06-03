@@ -44,7 +44,7 @@ vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampl
 	                                 gi_uv, 2.0);
 
 	// no raycast hit => fallback
-	specular.rgb = mix(radiance * 0.03, specular.rgb, specular.a);
+	specular.rgb = max(radiance * 0.04, specular.rgb*specular.a);
 
 
 	vec2 brdf = texture(brdf_sampler, vec2(NdotV, roughness)).rg;
@@ -53,10 +53,10 @@ vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampl
 
 	F = mix(F, F0, roughness*0.9); // scale by roughness to reduce highlights on extremly rough surfaces like cloth
 
-	vec3 diff = albedo / PI * radiance*(1.0 - F);
+	vec3 diff = albedo * radiance*(1.0 - F);
 	vec3 spec = specular.rgb * (F*brdf.x + brdf.y);
 
-	return diff + spec;
+	return clamp(diff + spec, vec3(0,0,0), vec3(8,8,8));
 }
 
 #endif
