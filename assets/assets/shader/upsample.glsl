@@ -38,8 +38,6 @@ vec4 upsampled_max(sampler2D color_sampler, float lod, vec2 tex_coords, float sc
 }
 
 vec4 upsampled_result(sampler2D color_sampler, int lod, vec2 tex_coords, float scale) {
-	return upsampled_smooth(color_sampler, lod, tex_coords, scale);
-
 	if(lod > pcs.arguments.y)
 		return vec4(0,0,0,0);
 
@@ -55,21 +53,6 @@ vec4 upsampled_result(sampler2D color_sampler, int lod, vec2 tex_coords, float s
 		vec2( 0.5,  0.5),
 		vec2(-0.5,  0.5)
 	);
-/*
-	vec4 c = vec4(0,0,0,0);
-	float weight_sum = 0.0;
-	for(int i=0; i<4; i++) {
-		ivec2 uv = ivec2(texture_size*tex_coords + offsets[i]);
-		float d = texelFetch(depth_sampler, uv, lod).r;
-
-		// TODO: causes noise
-		float weight = 1.0 / (0.0001 + abs(depth-d));
-
-		c += weight * texelFetch(color_sampler, uv, lod);
-		weight_sum += weight;
-	}
-
-	return c / weight_sum;*/
 
 
 	float depths[4];
@@ -88,35 +71,26 @@ vec4 upsampled_result(sampler2D color_sampler, int lod, vec2 tex_coords, float s
 		}
 	}
 
-	vec4 c = vec4(0,0,0,0);
-	float weight_sum = 0.0;
 
 	if(abs(depths[0] - depth) > 0.05 ||
 	   abs(depths[1] - depth) > 0.05 ||
 	   abs(depths[2] - depth) > 0.05 ||
 	   abs(depths[3] - depth) > 0.05) {
 		// edge detected
-		for(int i=0; i<8; i++) {
+		vec4 c = vec4(0,0,0,0);
+		float weight_sum = 0.0;
+
+		for(int i=0; i<4; i++) {
 			ivec2 uv = ivec2(center + offsets[i]);
-			float weight = 1.0 / (0.0001 + abs(depth-depths[i]));
+			float weight = 1.0 / clamp(abs(depth-depths[i]), 0.1, 4.0);
 			c += weight * texelFetch(color_sampler, uv, lod);
 			weight_sum += weight;
 		}
+		return c / weight_sum;
 
 	} else {
-		for(int i=0; i<8; i++) {
-			vec2 uv = tex_coords + Poisson8[i]/texture_size * scale;
-
-			// TODO: causes noise
-			float weight = 1.0;// / (0.0001 + abs(depth-d));
-
-			c += weight * textureLod(color_sampler, uv, lod);
-			weight_sum += weight;
-		}
-
+		return upsampled_smooth(color_sampler, lod, tex_coords, scale);
 	}
-
-	return c / weight_sum;
 }
 
 vec4 upsampled_prev_result(sampler2D color_sampler, int current_lod, vec2 tex_coords) {

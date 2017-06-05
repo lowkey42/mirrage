@@ -14,12 +14,14 @@ layout(location = 0) in Vertex_data {
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
+layout(location = 1) out vec4 out_color_result;
 
 layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_diff_sampler;
 layout(set=1, binding = 4) uniform sampler2D result_spec_sampler;
 layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
+layout(set=1, binding = 7) uniform sampler2D ao_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
@@ -47,6 +49,11 @@ void main() {
 		                       result_diff_sampler, result_spec_sampler,
 		                       albedo_sampler, mat_data_sampler);
 
+		float ao = mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, pcs.arguments.a);
+
 		out_color = vec4(clamp(gi*1.0, vec3(0.0), vec3(10.0)), 0.0);
+
+		out_color_result = vec4(gi*0.5, 0.0);
+		out_color_result.rgb *= mix(1.0, ao, pcs.arguments.a);
 	}
 }

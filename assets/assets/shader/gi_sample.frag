@@ -49,22 +49,22 @@ void main() {
 const float PI = 3.14159265359;
 
 vec3 gi_sample() {
-	float lod = pcs.arguments.x;
+	int lod = int(pcs.arguments.x + 0.5);
 
-	float depth  = textureLod(depth_sampler, vertex_out.tex_coords, lod).r;
-	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, lod);
+	vec2 texture_size = textureSize(color_sampler, lod);
+	ivec2 uv = ivec2(vertex_out.tex_coords * texture_size);
+
+	float depth  = texelFetch(depth_sampler, uv, lod).r;
+	vec4 mat_data = texelFetch(mat_data_sampler, uv, lod);
 	vec3 N = decode_normal(mat_data.rg);
 
 	vec3 P = depth * vertex_out.view_ray;
-
-	vec2 texture_size = textureSize(color_sampler, int(lod + 0.5));
-	vec2 uv = vertex_out.tex_coords * texture_size;
 
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
 
 	for(int i=0; i<SAMPLES; i++) {
-		float r = mix(LAST_SAMPLE ? 0.0 : R/2.0, R, random(vec4(vertex_out.tex_coords, float(i), 0.0)));
+		float r = mix(LAST_SAMPLE ? 0.0 : R/2.0, R, random(vec4(vertex_out.tex_coords, float(i), pcs.arguments.x)));
 
 		float angle = float(i) / float(SAMPLES) * PI * 2.0;
 		float sin_angle = sin(angle);
