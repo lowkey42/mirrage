@@ -43,6 +43,7 @@ void main() {
 
 	if(prev_uv.x<0.0 || prev_uv.x>1.0 || prev_uv.y<0.0 || prev_uv.y>1.0) {
 		out_color = vec4(0, 0, 0, 0);
+		out_color_result = vec4(0, 0, 0, 0);
 
 	} else {
 		vec3 gi = calculate_gi(vertex_out.tex_coords, prev_uv.xy, int(pcs.arguments.r),
