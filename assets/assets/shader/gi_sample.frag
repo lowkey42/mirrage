@@ -62,15 +62,17 @@ vec3 gi_sample() {
 
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
+	float angle = random(vec4(vertex_out.tex_coords, 0.0, pcs.arguments.x));
+	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 8.0;
 
 	for(int i=0; i<SAMPLES; i++) {
-		float r = mix(LAST_SAMPLE ? 0.0 : R/2.0, R, random(vec4(vertex_out.tex_coords, float(i), pcs.arguments.x)));
+		float r = mix(LAST_SAMPLE ? 0.0 : R/2.0, R, float(i)/float(SAMPLES));
 
-		float angle = float(i) / float(SAMPLES) * PI * 2.0;
+		angle += angle_step;
 		float sin_angle = sin(angle);
 		float cos_angle = cos(angle);
 
-		ivec2 p = ivec2(uv + vec2(sin(angle), cos(angle)) * r);
+		ivec2 p = ivec2(uv + vec2(sin_angle, cos_angle) * r);
 		if(p.x>=0.0 && p.x<=texture_size.x && p.y>=0.0 && p.y<=texture_size.y) {
 			float weight;
 			c += calc_illumination_from(texture_size, p, uv, depth, P, N, weight);
@@ -81,7 +83,7 @@ vec3 gi_sample() {
 	// could be used to blend between screen-space and static GI
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
-	return c/* * 2.0*PI / max(samples_used, SAMPLES*0.2)*/ * pow(2.0, lod*2);
+	return c * pow(2.0, lod*2);
 }
 
 vec3 to_view_space(vec2 uv, float depth) {

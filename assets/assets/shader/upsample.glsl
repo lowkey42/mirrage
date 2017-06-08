@@ -10,15 +10,21 @@ vec4 upsampled_smooth(sampler2D color_sampler, float lod, vec2 tex_coords, float
 		return vec4(0,0,0,0);
 
 	vec2 texture_size = textureSize(color_sampler, int(lod+0.5));
+	vec2 rand = PDnrand2(vec4(tex_coords, lod, 0.0));
 
 	vec4 c = vec4(0,0,0,0);
+	float weight = 0.0;
 	for(int i=0; i<8; i++) {
-		vec2 uv = tex_coords + Poisson8[i]/texture_size * scale;
+		vec2 offset = vec2(Poisson8[i].x*rand.x - Poisson8[i].y*rand.y, Poisson8[i].x*rand.y + Poisson8[i].y*rand.x);
+		
+		vec2 uv = tex_coords + offset/texture_size * scale;
 
-		c += textureLod(color_sampler, uv, lod);
+		float w = dot(offset,offset);
+		c += textureLod(color_sampler, uv, lod) * w;
+		weight += w;
 	}
 
-	return c / 8.0;
+	return c / weight;
 }
 
 vec4 upsampled_max(sampler2D color_sampler, float lod, vec2 tex_coords, float scale) {

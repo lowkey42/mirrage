@@ -87,7 +87,7 @@ void main() {
 		lod = clamp(lod, startLod, pcs.arguments.y);
 		vec3 radiance = textureLod(color_sampler, raycast_hit_uv/textureSize, lod).rgb;
 
-		out_color.rgb = radiance;
+		out_color.rgb = radiance * clamp(length(raycast_hit_point), 1.0, 5.0);
 		out_color.a = mix(1.0, 0.0, clamp((L_length-80) / 20.0, 0.0, 1.0));
 	}
 }
