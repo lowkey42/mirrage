@@ -84,11 +84,11 @@ void main() {
 		float hit_radius = isosceles_triangle_inradius(L_length, oppositeLength);
 
 		float lod = log2(hit_radius * max(textureSize.x,textureSize.y));
-		lod = clamp(lod, startLod, pcs.arguments.y);
-		vec3 radiance = textureLod(color_sampler, raycast_hit_uv/textureSize, lod).rgb;
+		float lod_clamped = clamp(lod, startLod, pcs.arguments.y);
+		vec3 radiance = textureLod(color_sampler, raycast_hit_uv/textureSize, lod_clamped).rgb;
 
-		out_color.rgb = radiance * clamp(length(raycast_hit_point), 1.0, 5.0);
-		out_color.a = mix(1.0, 0.0, clamp((L_length-80) / 20.0, 0.0, 1.0));
+		out_color.rgb = radiance * clamp(length(raycast_hit_point) / length(P), 0.0, 1.0);
+		out_color.rgb *= mix(1.0, 0.0, clamp((L_length-80) / 20.0, 0.0, 1.0));
 	}
 }
 

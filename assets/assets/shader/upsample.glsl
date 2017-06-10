@@ -16,10 +16,10 @@ vec4 upsampled_smooth(sampler2D color_sampler, float lod, vec2 tex_coords, float
 	float weight = 0.0;
 	for(int i=0; i<8; i++) {
 		vec2 offset = vec2(Poisson8[i].x*rand.x - Poisson8[i].y*rand.y, Poisson8[i].x*rand.y + Poisson8[i].y*rand.x);
-		
+
 		vec2 uv = tex_coords + offset/texture_size * scale;
 
-		float w = dot(offset,offset);
+		float w = 1.0 - clamp(dot(offset,offset), 0.0, 0.9);
 		c += textureLod(color_sampler, uv, lod) * w;
 		weight += w;
 	}
@@ -63,18 +63,9 @@ vec4 upsampled_result(sampler2D color_sampler, int lod, vec2 tex_coords, float s
 
 	float depths[4];
 
-	ivec2 top_uv;
-	float top_depth = 999.0;
-
 	for(int i=0; i<4; i++) {
 		ivec2 uv = ivec2(center + offsets[i]);
 		depths[i] = texelFetch(depth_sampler, uv, lod).r;
-
-		float dd = abs(depth-depths[i]);
-		if(dd <= top_depth) {
-			top_depth = dd;
-			top_uv = uv;
-		}
 	}
 
 

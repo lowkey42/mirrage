@@ -32,19 +32,19 @@ vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampl
 	vec3 L =  -reflect(V, N);
 	vec3 H = normalize(V+L);
 
-	float NdotV = max(0.0, dot(N, V));
-	float HdotL = max(0.0, dot(H, L));
+	float NdotV = clamp(dot(N, V), 0.0, 1.0);
+	float HdotL = clamp(dot(H, L), 0.0, 1.0);
 
 
 	// load diff + spec GI
-	vec3 radiance = upsampled_result(diff_sampler, gi_lod,
+	vec3 radiance = upsampled_smooth(diff_sampler, gi_lod,
 	                                 gi_uv, max(1.0, pow(2.0, gi_lod-1.0))).rgb;
 
-	vec4 specular = upsampled_smooth(spec_sampler, 0.0,
-	                                 gi_uv, 2.0);
+	vec3 specular = upsampled_smooth(spec_sampler, 0.0,
+	                                 gi_uv, 2.0).rgb;
 
 	// no raycast hit => fallback
-	specular.rgb = max(radiance * 0.04, specular.rgb*specular.a);
+	specular.rgb = max(radiance * 0.04, specular.rgb);
 
 
 	vec2 brdf = texture(brdf_sampler, vec2(NdotV, roughness)).rg;

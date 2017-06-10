@@ -52,7 +52,7 @@ void main() {
 
 		float ao = mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, pcs.arguments.a);
 
-		out_color = vec4(clamp(gi*1.0, vec3(0.0), vec3(10.0)), 0.0);
+		out_color = vec4(clamp(gi*0.9, vec3(0.0), vec3(10.0)), 0.0);
 
 		out_color_result = vec4(gi*0.5, 0.0);
 		out_color_result.rgb *= mix(1.0, ao, pcs.arguments.a);

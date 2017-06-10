@@ -145,28 +145,12 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 	float NdotL_src = clamp(dot(N, dir), 0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
 
-
-	float normal_bias = clamp(1.0-dot(N,shaded_normal), 0.0, 1.0);
-	float perspective_bias = 1.0 + clamp(1.0 - dot(-normalize(P), N), 0, 1)*0.5;
-
-	//visibility = visibility * NdotL_dst*NdotL_src * normal_bias * perspective_bias;
-
-	vec3 x_i = P;
-	float x_i_length = length(x_i);
 	float cos_alpha = max(Pn.z, 0.1);
 	float cos_beta  = max(dot(Pn, N), 0.1);
 	float z = depth * global_uniforms.proj_planes.y;
-	float fov_h = global_uniforms.proj_planes.z;
-	float fov_v = global_uniforms.proj_planes.w;
-	vec2 screen_size = textureSize(color_sampler, 0);
-	float dp = pow(2, lod)*pow(2, lod);
-	float ds = z*z* (4.0 * tan(fov_h/2) * tan(fov_v/2) * dp)
-	         / (screen_size.x*screen_size.y)
-	         * cos_alpha / cos_beta;
 
-//	ds = (dp*dp * depth*depth) / (near*near);
-	//r2 = max(0.0, r2*0.0001);
-	//ds = 1.0;//0.6; // TODO: ds is ~10^-5 and results in no light at all
+	float ds = pcs.arguments.b * z*z * cos_alpha / cos_beta;
+
 	float R2 = 1.0 / PI * NdotL_src * ds;
 	float area = R2 / (r2 + R2); // point-to-differential area form-factor
 
