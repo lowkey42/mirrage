@@ -44,3 +44,6 @@ frag_shader:gi_sample_spec = shader/bin/gi_sample_spec.frag.spv
 vert_shader:gi_reproject = shader/bin/fullscreen.vert.spv
 frag_shader:gi_reproject = shader/bin/gi_reproject.frag.spv
 
+vert_shader:voxelization = shader/bin/voxelization.vert.spv
+frag_shader:voxelization = shader/bin/voxelization.frag.spv
+

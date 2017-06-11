@@ -32,7 +32,7 @@ layout(push_constant) uniform Push_constants {
 
 // losely based on https://www.gamedev.net/topic/658702-help-with-gpu-pro-5-hi-z-screen-space-reflections/?view=findpost&p=5173175
 float roughness_to_spec_lobe_angle(float roughness) {
-	float power = mix(1024.0*8.0, 8.0, roughness);
+	float power = mix(1024.0*8.0, 32.0, roughness);
 	return cos(pow(0.244, 1.0/(power + 1.0)));
 }
 
@@ -79,16 +79,25 @@ void main() {
 
 		float lobe_angle = roughness_to_spec_lobe_angle(roughness);
 
-		float oppositeLength = isosceles_triangle_opposite(L_length, lobe_angle);
+		float adjacentLength = 1.0;
+		float oppositeLength = isosceles_triangle_opposite(adjacentLength, lobe_angle);
 
-		float hit_radius = isosceles_triangle_inradius(L_length, oppositeLength);
+		float hit_radius = isosceles_triangle_inradius(adjacentLength, oppositeLength);
 
-		float lod = log2(hit_radius * max(textureSize.x,textureSize.y));
-		float lod_clamped = clamp(lod, startLod, pcs.arguments.y);
+		float lod = log2(hit_radius * min(textureSize.x,textureSize.y));
+		float lod_clamped = clamp(lod, 0.0, pcs.arguments.y);
 		vec3 radiance = textureLod(color_sampler, raycast_hit_uv/textureSize, lod_clamped).rgb;
+
+		radiance = min(radiance, vec3(2,2,2));
 
 		out_color.rgb = radiance * clamp(length(raycast_hit_point) / length(P), 0.0, 1.0);
 		out_color.rgb *= mix(1.0, 0.0, clamp((L_length-80) / 20.0, 0.0, 1.0));
+//		out_color.rgb *= 1.0 - smoothstep(5.0, 5.5, lod);
+
+		if(lod<5.0)
+			out_color.r = 999;
+
+		// TODO: lod is always MAX. Maybe just replace this placeholder with the real thing (cone tracing) and be done with it
 	}
 }
 

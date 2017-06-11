@@ -48,11 +48,11 @@ void main() {
 	} else {
 		vec3 gi = calculate_gi(vertex_out.tex_coords, prev_uv.xy, int(pcs.arguments.r),
 		                       result_diff_sampler, result_spec_sampler,
-		                       albedo_sampler, mat_data_sampler);
+		                       albedo_sampler, mat_data_sampler, 0.5);
 
 		float ao = mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, pcs.arguments.a);
 
-		out_color = vec4(clamp(gi*0.9, vec3(0.0), vec3(10.0)), 0.0);
+		out_color = vec4(clamp(gi*0.9, vec3(0.0), vec3(1000.0)), 0.0);
 
 		out_color_result = vec4(gi*0.5, 0.0);
 		out_color_result.rgb *= mix(1.0, ao, pcs.arguments.a);

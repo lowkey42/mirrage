@@ -20,6 +20,7 @@
                 "T_2": {"type":"once", "action":"preset_b"},
                 "T_3": {"type":"once", "action":"preset_c"},
                 "T_4": {"type":"once", "action":"preset_d"},
+                "T_5": {"type":"once", "action":"preset_e"},
 
                 "C": {"type":"once", "action":"d_disect"},
                 "P": {"type":"once", "action":"print"}

@@ -66,7 +66,7 @@ vec3 gi_sample() {
 	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 8.0;
 
 	for(int i=0; i<SAMPLES; i++) {
-		float r = mix(LAST_SAMPLE ? 0.0 : R/2.0, R, float(i)/float(SAMPLES));
+		float r = mix(LAST_SAMPLE ? 2.0 : R/2.0, R, float(i)/float(SAMPLES));
 
 		angle += angle_step;
 		float sin_angle = sin(angle);
@@ -137,7 +137,7 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 		return vec3(0,0,0);
 	}
 
-	float r2 = r*r;// * 0.0005;
+	float r2 = r*r;
 	vec3 dir = diff / r;
 
 	vec3 radiance = texelFetch(color_sampler, src_uv, lod).rgb;
@@ -145,19 +145,17 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 	float NdotL_src = clamp(dot(N, dir), 0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
 
-	float cos_alpha = max(Pn.z, 0.1);
-	float cos_beta  = max(dot(Pn, N), 0.1);
+	float cos_alpha = dot(Pn, vec3(0,0,1));
+	float cos_beta  = dot(Pn, N);
 	float z = depth * global_uniforms.proj_planes.y;
 
-	float ds = pcs.arguments.b * z*z * cos_alpha / cos_beta;
+	float ds = pcs.arguments.b * z*z * clamp(cos_alpha / cos_beta, 0.0, 10.0);
 
 	float R2 = 1.0 / PI * NdotL_src * ds;
 	float area = R2 / (r2 + R2); // point-to-differential area form-factor
 
+	weight = visibility * NdotL_dst * area > 0.0 ? 1.0 : 0.0;
 
-	weight = visibility * NdotL_dst*NdotL_src > 0.0 ? 1.0 : 0.0;
-
-	return max(vec3(0.0), radiance * NdotL_dst * area);
-	return max(vec3(0.0), radiance * visibility * NdotL_dst*NdotL_src / max(1.0, r2)) * ds;
+	return max(vec3(0.0), radiance * visibility * NdotL_dst * area);
 }
 

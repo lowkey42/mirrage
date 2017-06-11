@@ -52,7 +52,7 @@ void main() {
 
 	// material 255 (unlit)
 	if(material==255) {
-		out_color = vec4(albedo*5.0, 1.0);
+		out_color = vec4(albedo*10.0, 1.0);
 		return;
 	}
 
@@ -77,7 +77,7 @@ void main() {
 	}
 
 	// TODO: remove ambient
-	out_color.rgb += albedo * radiance * 0.0005;
+//	out_color.rgb += albedo * radiance * 0.0005;
 }
 
 

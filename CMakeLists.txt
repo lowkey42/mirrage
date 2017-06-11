@@ -18,6 +18,8 @@ set(ASSIMP_BUILD_TESTS OFF)
 set(ROOT_DIR ${CMAKE_SOURCE_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${ROOT_DIR}/modules")
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -ftemplate-depth=1024 -fno-strict-aliasing")
+
 include_directories(BEFORE "${ROOT_DIR}/dependencies")
 include_directories(BEFORE "${ROOT_DIR}/dependencies/gsl/include")
 include_directories(BEFORE "${ROOT_DIR}/dependencies/sf2/include")
@@ -42,7 +44,7 @@ add_subdirectory(dependencies/assimp)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024 -fno-strict-aliasing -Wextra -Wall -pedantic -Werror -Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wextra -Wall -pedantic -Werror -Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces")
 add_subdirectory(src)
 
 

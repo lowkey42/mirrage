@@ -20,6 +20,13 @@ layout(push_constant) uniform Settings {
 } settings;
 
 
+vec3 saturation(vec3 c, float change) {
+	vec3 f = vec3(0.299,0.587,0.114);
+	float p = sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
+
+	return vec3(p) + (c-vec3(p))*vec3(change);
+}
+
 vec3 heji_dawson(vec3 color) {
 	vec3 X = max(vec3(0.0), color-0.004);
 	vec3 mapped = (X*(6.2*X+.5))/(X*(6.2*X+1.7)+0.06);

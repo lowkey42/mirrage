@@ -30,7 +30,7 @@ layout(push_constant) uniform Push_constants {
 void main() {
 	out_color = vec4(calculate_gi(vertex_out.tex_coords, vertex_out.tex_coords, int(pcs.arguments.r),
 	                              result_diff_sampler, result_spec_sampler,
-	                              albedo_sampler, mat_data_sampler)*0.5, 0.0);
+	                              albedo_sampler, mat_data_sampler, 1.0)*0.5, 0.0);
 
 //	out_color = vec4(1,1,1,1);
 

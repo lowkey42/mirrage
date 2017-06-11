@@ -10,7 +10,7 @@ layout(set=1, binding = 6) uniform sampler2D brdf_sampler;
 
 
 vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampler2D spec_sampler,
-                  sampler2D albedo_sampler, sampler2D mat_sampler) {
+                  sampler2D albedo_sampler, sampler2D mat_sampler, float specular_factor) {
 	const float PI = 3.14159265359;
 
 	// load / calculate material properties and factors
@@ -21,7 +21,7 @@ vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampl
 	float metallic = mat_data.a;
 
 	// scale by roughness to reduce highlights on extremly rough surfaces like cloth
-	vec3 F0 = mix(vec3(0.04 * (1.0-roughness)), albedo.rgb, metallic);
+	vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 	albedo.rgb *= 1.0 - metallic;
 
 	vec3 N = decode_normal(mat_data.rg);
@@ -39,24 +39,25 @@ vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampl
 	// load diff + spec GI
 	vec3 radiance = upsampled_smooth(diff_sampler, gi_lod,
 	                                 gi_uv, max(1.0, pow(2.0, gi_lod-1.0))).rgb;
+	radiance = textureLod(diff_sampler, gi_uv, gi_lod).rgb;
 
 	vec3 specular = upsampled_smooth(spec_sampler, 0.0,
 	                                 gi_uv, 2.0).rgb;
 
 	// no raycast hit => fallback
-	specular.rgb = max(radiance * 0.04, specular.rgb);
+	specular.rgb = max(radiance * 0.05, specular.rgb);
 
 
 	vec2 brdf = texture(brdf_sampler, vec2(NdotV, roughness)).rg;
 
 	vec3 F = fresnelSchlick(HdotL, F0);
 
-	F = mix(F, F0, roughness*0.9); // scale by roughness to reduce highlights on extremly rough surfaces like cloth
+	//F = mix(F, F0, roughness*0.9); // scale by roughness to reduce highlights on extremly rough surfaces like cloth
 
-	vec3 diff = albedo * radiance*(1.0 - F);
+	vec3 diff = albedo * radiance*(1.0 - F) / PI;
 	vec3 spec = specular.rgb * (F*brdf.x + brdf.y);
 
-	return clamp(diff + spec, vec3(0,0,0), vec3(8,8,8));
+	return clamp(mix(albedo * radiance/PI, diff + spec, specular_factor), vec3(0,0,0), vec3(8,8,8));
 }
 
 #endif
