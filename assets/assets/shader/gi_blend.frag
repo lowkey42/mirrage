@@ -40,5 +40,5 @@ void main() {
 	if(pcs.arguments.b>=0)
 		out_color = vec4(textureLod(result_diff_sampler, vertex_out.tex_coords, pcs.arguments.b).rgb, 1.0);
 
-	//out_color = vec4(texture(ao_sampler, vertex_out.tex_coords).rrr, 1.0);
+//	out_color = vec4(texture(ao_sampler, vertex_out.tex_coords).rrr, 1.0);
 }

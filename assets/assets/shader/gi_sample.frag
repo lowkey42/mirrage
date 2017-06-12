@@ -7,6 +7,7 @@ layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
 	vec3 view_ray;
 	flat vec3 corner_view_rays[4];
+	vec3 world_pos;
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
@@ -21,6 +22,10 @@ layout (constant_id = 0) const bool LAST_SAMPLE = false;
 layout (constant_id = 1) const float R = 40;
 layout (constant_id = 2) const int SAMPLES = 128;
 layout (constant_id = 3) const bool UPSAMPLE_ONLY = false;
+
+// nearer samples have a higher weight. Less physically correct but results in more notacable color bleeding
+layout (constant_id = 4) const bool PRIORITISE_NEAR_SAMPLES = true;
+
 
 layout(push_constant) uniform Push_constants {
 	mat4 projection;
@@ -63,7 +68,7 @@ vec3 gi_sample() {
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
 	float angle = random(vec4(vertex_out.tex_coords, 0.0, pcs.arguments.x));
-	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 8.0;
+	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 20.0;
 
 	for(int i=0; i<SAMPLES; i++) {
 		float r = mix(LAST_SAMPLE ? 2.0 : R/2.0, R, float(i)/float(SAMPLES));
@@ -83,7 +88,10 @@ vec3 gi_sample() {
 	// could be used to blend between screen-space and static GI
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
-	return c * pow(2.0, lod*2);
+	if(PRIORITISE_NEAR_SAMPLES)
+		return c * pow(2.0, 3*2) * SAMPLES / max(samples_used, SAMPLES*0.3);
+	else
+		return c * pow(2.0, lod*2);
 }
 
 vec3 to_view_space(vec2 uv, float depth) {
@@ -137,7 +145,7 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 		return vec3(0,0,0);
 	}
 
-	float r2 = r*r;
+	float r2 = max(r*r, 0.1);
 	vec3 dir = diff / r;
 
 	vec3 radiance = texelFetch(color_sampler, src_uv, lod).rgb;
@@ -149,12 +157,15 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 	float cos_beta  = dot(Pn, N);
 	float z = depth * global_uniforms.proj_planes.y;
 
-	float ds = pcs.arguments.b * z*z * clamp(cos_alpha / cos_beta, 0.0, 10.0);
+	float ds = pcs.arguments.b * z*z * clamp(cos_alpha / cos_beta, 1.0, 20.0);
 
 	float R2 = 1.0 / PI * NdotL_src * ds;
 	float area = R2 / (r2 + R2); // point-to-differential area form-factor
 
-	weight = visibility * NdotL_dst * area > 0.0 ? 1.0 : 0.0;
+	weight = visibility * NdotL_dst * NdotL_src > 0.0 ? 1.0 : 0.0;
+
+//	weight = NdotL_dst * NdotL_src > 0.0 ? 1.0 : 0.0;
+//	return radiance * NdotL_dst * weight / r2;
 
 	return max(vec3(0.0), radiance * visibility * NdotL_dst * area);
 }

@@ -16,7 +16,7 @@ out gl_PerVertex {
 
 
 vec3 construct_view_ray(vec2 uv) {
-	vec4 vr = global_uniforms.inv_pure_proj_mat * vec4(uv * 2.0 + -1.0 - global_uniforms.camera_offset.xy, 1.0, 1.0);
+	vec4 vr = global_uniforms.inv_proj_mat * vec4(uv * 2.0 + -1.0, 1.0, 1.0);
 	return vr.xyz / vr.w;
 }
 

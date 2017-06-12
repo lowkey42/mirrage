@@ -66,7 +66,7 @@ void main() {
 	vec3 radiance = model_uniforms.light_color.rgb * model_uniforms.light_color.a;
 
 
-	float shadow = sample_shadowmap(position + N*0.4);
+	float shadow = sample_shadowmap(position + N*0.05);
 
 	out_color = vec4(0,0,0,0);
 
@@ -112,7 +112,7 @@ float sample_shadowmap(vec3 view_pos) {
 	if(SHADOW_QUALITY<=1)
 		samples = min(samples, 8);
 
-	float z_bias = 0.002;
+	float z_bias = 0.0001;
 
 	float angle = random(vec4(lightspace_pos.xyz, global_uniforms.time.y));
 	float sin_angle = sin(angle);
@@ -150,7 +150,7 @@ float calc_avg_occluder(vec3 surface_lightspace, float search_area,
 		
 		float depth = texture(sampler2D(shadowmaps[shadowmap], shadowmap_depth_sampler),
 		                      surface_lightspace.xy + offset * search_area).r;
-		if(depth < surface_lightspace.z - 0.002) {
+		if(depth < surface_lightspace.z - 0.0005) {
 			depth_acc += depth;
 			depth_count += 1.0;
 			num_occluders += 1;

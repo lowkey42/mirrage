@@ -35,7 +35,7 @@ frag_shader:gi_integrate_brdf = shader/bin/gi_integrate_brdf.frag.spv
 vert_shader:gi_mipgen = shader/bin/fullscreen.vert.spv
 frag_shader:gi_mipgen = shader/bin/gi_mipgen.frag.spv
 
-vert_shader:gi_sample = shader/bin/fullscreen.vert.spv
+vert_shader:gi_sample = shader/bin/gi_sample.vert.spv
 frag_shader:gi_sample = shader/bin/gi_sample.frag.spv
 
 vert_shader:gi_sample_spec = shader/bin/fullscreen.vert.spv

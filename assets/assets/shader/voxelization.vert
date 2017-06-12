@@ -12,9 +12,6 @@ layout(location = 3) in vec2 tex_coords;
 
 layout(location = 0) out Vertex_data {
 	vec3 world_pos;
-	vec3 view_pos;
-	vec3 normal;
-	vec3 tangent;
 	vec2 tex_coords;
 } vertex_out;
 
@@ -28,16 +25,10 @@ out gl_PerVertex {
 
 
 void main() {
-	mat4 model_to_view = global_uniforms.view_mat * model_uniforms.model;
-	vec4 world_pos = model_uniforms.model * vec4(position, 1.0);
-	vec4 view_pos  = model_to_view * vec4(position, 1.0);
+	vec4 world_pos = model_uniforms.model *  vec4(position, 1.0);
 
-	vertex_out.world_pos = world_pos.xyz / world_pos.w;
-	vertex_out.view_pos = view_pos.xyz / view_pos.w;
-	gl_Position = global_uniforms.proj_mat * view_pos;
-
-	vertex_out.normal  = (model_to_view *  vec4(normal, 0.0)).xyz;
-	vertex_out.tangent = (model_to_view *  vec4(tangent, 0.0)).xyz;
+	vertex_out.world_pos = world_pos.xyz;
+	gl_Position = global_uniforms.view_proj_mat * world_pos;
 
 	vertex_out.tex_coords = tex_coords;
 }

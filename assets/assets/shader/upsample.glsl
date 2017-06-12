@@ -50,7 +50,7 @@ vec4 upsampled_result(sampler2D color_sampler, int lod, vec2 tex_coords, float s
 	vec2 texture_size = textureSize(color_sampler, lod);
 	ivec2 center = ivec2(texture_size*tex_coords);
 
-	float depth = texelFetch(depth_sampler, center*2, max(0, lod-1)).r;
+	float depth = texelFetch(depth_sampler, lod>0 ? center*2 : center, max(0, lod-1)).r;
 
 
 	const vec2 offsets[4] = vec2[](
@@ -86,7 +86,16 @@ vec4 upsampled_result(sampler2D color_sampler, int lod, vec2 tex_coords, float s
 		return c / weight_sum;
 
 	} else {
-		return upsampled_smooth(color_sampler, lod, tex_coords, scale);
+		vec4 c = vec4(0,0,0,0);
+		float weight_sum = 0.0;
+
+		for(int i=0; i<4; i++) {
+			vec2 uv = clamp(offsets[i]/texture_size * 1.2 + tex_coords, vec2(0,0), vec2(1,1));
+			float weight = 1.0;
+			c += weight * textureLod(color_sampler, uv, lod);
+			weight_sum += weight;
+		}
+		return c / weight_sum;
 	}
 }
 

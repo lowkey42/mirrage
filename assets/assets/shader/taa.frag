@@ -90,7 +90,8 @@ void main() {
 	vec4 prev_uv = constants.reprojection * vec4(position, 1.0);
 	prev_uv.xy = (prev_uv.xy/prev_uv.w)*0.5+0.5;
 
-	vec3 curr = texture(curr_color_sampler, uv - constants.offsets.zw).rgb;
+	uv = uv - global_uniforms.camera_offset.xy/2;
+	vec3 curr = texture(curr_color_sampler, uv).rgb;
 
 	if(prev_uv.x<0.0 || prev_uv.x>1.0 || prev_uv.y<0.0 || prev_uv.y>1.0) {
 		out_color = vec4(curr, 1.0);
@@ -98,7 +99,6 @@ void main() {
 	}
 
 	vec3 prev  = texture(prev_color_sampler, prev_uv.xy).rgb;
-
 
 	vec2 texel_size = 1.0 / textureSize(curr_color_sampler, 0);
 	vec2 du = vec2(texel_size.x, 0.0);
