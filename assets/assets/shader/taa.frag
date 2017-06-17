@@ -93,7 +93,7 @@ void main() {
 	uv = uv - global_uniforms.camera_offset.xy/2;
 	vec3 curr = texture(curr_color_sampler, uv).rgb;
 
-	if(prev_uv.x<0.0 || prev_uv.x>1.0 || prev_uv.y<0.0 || prev_uv.y>1.0) {
+	if(prev_uv.x<0.0 || prev_uv.x>=1.0 || prev_uv.y<0.0 || prev_uv.y>=1.0) {
 		out_color = vec4(curr, 1.0);
 		return;
 	}

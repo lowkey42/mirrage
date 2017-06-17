@@ -13,9 +13,6 @@ vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
                   sampler2D albedo_sampler, sampler2D mat_sampler, out vec3 diffuse) {
 	const float PI = 3.14159265359;
 
-	// no raycast hit => fallback
-	specular.rgb = max(radiance * 0.05, specular.rgb);
-
 	// load / calculate material properties and factors
 	vec3 albedo = textureLod(albedo_sampler, uv, 0.0).rgb;
 
@@ -23,7 +20,6 @@ vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
 	float roughness = mat_data.b;
 	float metallic = mat_data.a;
 
-	// scale by roughness to reduce highlights on extremly rough surfaces like cloth
 	vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 	albedo.rgb *= 1.0 - metallic;
 
@@ -42,12 +38,10 @@ vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
 
 	vec3 F = fresnelSchlick(HdotL, F0);
 
-	//F = mix(F, F0, roughness*0.9); // scale by roughness to reduce highlights on extremly rough surfaces like cloth
-
 	vec3 diff = albedo * radiance*(1.0 - F) / PI;
 	vec3 spec = specular.rgb * (F*brdf.x + brdf.y);
 
-	diffuse = albedo * radiance/PI;
+	diffuse = albedo * radiance/PI + F0*radiance / (2*PI*PI);
 
 	return clamp(diff + spec, vec3(0,0,0), vec3(8,8,8));
 }

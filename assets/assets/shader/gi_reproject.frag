@@ -50,7 +50,7 @@ void main() {
 	out_specular = vec4(0, 0, 0, 1);
 	out_weight   = vec4(0, 0, 0, 1);
 
-	if(prev_uv.x>=0.0 && prev_uv.x<=1.0 && prev_uv.y>=0.0 && prev_uv.y<1.0) {
+	if(prev_uv.x>0.0 && prev_uv.x<1.0 && prev_uv.y>0.0 && prev_uv.y<1.0) {
 		// load diff + spec GI
 		vec3 radiance = upsampled_result(history_diff_sampler, 0, 0, prev_uv.xy).rgb;
 		vec3 specular = upsampled_result(history_spec_sampler, 0, 0, prev_uv.xy).rgb;
@@ -67,6 +67,6 @@ void main() {
 		float prev_depth = textureLod(prev_depth_sampler, prev_uv.xy, 0.0).r;
 		out_diffuse.rgb  = radiance;
 		out_specular.rgb = specular;
-		out_weight.r     = 1.0;// - smoothstep(0.01, 0.1, abs(prev_depth-depth)*global_uniforms.proj_planes.y);
+		out_weight.r     = 1.0 - smoothstep(0.01, 1.0, abs(prev_depth-depth)*global_uniforms.proj_planes.y);
 	}
 }

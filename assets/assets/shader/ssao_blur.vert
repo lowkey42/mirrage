@@ -30,7 +30,7 @@ void main() {
 	if(HORIZONTAL) {
 		size = textureSize(color_samplerA, 0);
 	} else {
-		size = textureSize(color_samplerA, 0);
+		size = textureSize(color_samplerB, 0);
 	}
 
 	vec2 tex_offset = (HORIZONTAL ? vec2(1,0) : vec2(0,1)) / size;

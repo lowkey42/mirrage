@@ -33,13 +33,15 @@ void main() {
 	                              result_diff_sampler, result_spec_sampler,
 	                              albedo_sampler, mat_data_sampler, diffuse), 0.0);
 
+	out_color *= 0.8;
+
 //	out_color = vec4(1,1,1,1);
 
 	if(pcs.arguments.a>0.0)
 		out_color.rgb *= mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, pcs.arguments.a);
 
 	if(pcs.arguments.b>=0)
-		out_color = vec4(textureLod(result_diff_sampler, vertex_out.tex_coords, pcs.arguments.b).rgb, 1.0);
+		out_color = vec4(textureLod(result_spec_sampler, vertex_out.tex_coords, pcs.arguments.b).rgb, 1.0);
 
 //	out_color = vec4(texture(ao_sampler, vertex_out.tex_coords).rrr, 1.0);
 }
