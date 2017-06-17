@@ -52,11 +52,11 @@ vec3 resolve_fxaa() {
 
 	vec2 texture_size = textureSize(color_sampler, 0);
 	
-	vec3 rgbNW=texture(color_sampler,vertex_out.tex_coords+(vec2(-1.0,-1.0)/texture_size)).xyz;
-	vec3 rgbNE=texture(color_sampler,vertex_out.tex_coords+(vec2(1.0,-1.0)/texture_size)).xyz;
-	vec3 rgbSW=texture(color_sampler,vertex_out.tex_coords+(vec2(-1.0,1.0)/texture_size)).xyz;
-	vec3 rgbSE=texture(color_sampler,vertex_out.tex_coords+(vec2(1.0,1.0)/texture_size)).xyz;
-	vec3 rgbM=texture(color_sampler, vertex_out.tex_coords).xyz;
+	vec3 rgbNW=textureLod(color_sampler,vertex_out.tex_coords+(vec2(-1.0,-1.0)/texture_size), 0.0).xyz;
+	vec3 rgbNE=textureLod(color_sampler,vertex_out.tex_coords+(vec2(1.0,-1.0)/texture_size), 0.0).xyz;
+	vec3 rgbSW=textureLod(color_sampler,vertex_out.tex_coords+(vec2(-1.0,1.0)/texture_size), 0.0).xyz;
+	vec3 rgbSE=textureLod(color_sampler,vertex_out.tex_coords+(vec2(1.0,1.0)/texture_size), 0.0).xyz;
+	vec3 rgbM=textureLod(color_sampler, vertex_out.tex_coords, 0.0).xyz;
 
 	vec3 luma=vec3(0.299, 0.587, 0.114);
 	float lumaNW = dot(rgbNW, luma);
@@ -83,11 +83,11 @@ vec3 resolve_fxaa() {
 	      dir * rcpDirMin)) / texture_size;
 
 	vec3 rgbA = (1.0/2.0) * (
-		texture(color_sampler, vertex_out.tex_coords.xy + dir * (1.0/3.0 - 0.5)).xyz +
-		texture(color_sampler, vertex_out.tex_coords.xy + dir * (2.0/3.0 - 0.5)).xyz);
+		textureLod(color_sampler, vertex_out.tex_coords.xy + dir * (1.0/3.0 - 0.5), 0.0).xyz +
+		textureLod(color_sampler, vertex_out.tex_coords.xy + dir * (2.0/3.0 - 0.5), 0.0).xyz);
 	vec3 rgbB = rgbA * (1.0/2.0) + (1.0/4.0) * (
-		texture(color_sampler, vertex_out.tex_coords.xy + dir * (0.0/3.0 - 0.5)).xyz +
-		texture(color_sampler, vertex_out.tex_coords.xy + dir * (3.0/3.0 - 0.5)).xyz);
+		textureLod(color_sampler, vertex_out.tex_coords.xy + dir * (0.0/3.0 - 0.5), 0.0).xyz +
+		textureLod(color_sampler, vertex_out.tex_coords.xy + dir * (3.0/3.0 - 0.5), 0.0).xyz);
 	float lumaB = dot(rgbB, luma);
 
 	if((lumaB < lumaMin) || (lumaB > lumaMax)){

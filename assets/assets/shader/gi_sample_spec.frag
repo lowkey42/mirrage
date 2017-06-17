@@ -16,6 +16,7 @@ layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_sampler;
 layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
+layout(set=1, binding = 11)uniform sampler2D history_weight_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 projection;
@@ -48,9 +49,9 @@ float isosceles_triangle_inradius(float a, float h) {
 
 void main() {
 	float startLod = pcs.arguments.x;
-	vec2 textureSize = textureSize(depth_sampler, int(startLod + 0.5));
+	vec2 depthSize = textureSize(depth_sampler, int(startLod + 0.5));
 
-	out_color = vec4(0,0,0,0);
+	out_color = vec4(0,0,0,1);
 
 	float depth  = textureLod(depth_sampler, vertex_out.tex_coords, startLod).r;
 	vec3 P = depth * vertex_out.view_ray;
@@ -65,7 +66,7 @@ void main() {
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
 	if(traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
-							textureSize, 1.0, global_uniforms.proj_planes.x,
+							depthSize, 1.0, global_uniforms.proj_planes.x,
 							max(4, 4), 0.1, 512, 128.0, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 
@@ -84,9 +85,9 @@ void main() {
 
 		float hit_radius = isosceles_triangle_inradius(adjacentLength, oppositeLength);
 
-		float lod = log2(hit_radius * min(textureSize.x,textureSize.y));
+		float lod = log2(hit_radius * min(depthSize.x,depthSize.y));
 		float lod_clamped = clamp(lod, 0.0, pcs.arguments.y);
-		vec3 radiance = textureLod(color_sampler, raycast_hit_uv/textureSize, lod_clamped).rgb;
+		vec3 radiance = textureLod(color_sampler, raycast_hit_uv/depthSize, lod_clamped).rgb;
 
 		radiance = min(radiance, vec3(2,2,2));
 
@@ -99,5 +100,11 @@ void main() {
 
 		// TODO: lod is always MAX. Maybe just replace this placeholder with the real thing (cone tracing) and be done with it
 	}
+
+	float history_weight = texelFetch(history_weight_sampler,
+	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
+	                                  0).r;
+
+	out_color *= 1.0 - (history_weight*0.8);
 }
 

@@ -17,6 +17,7 @@ layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_sampler;
 layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
+layout(set=1, binding = 11)uniform sampler2D history_weight_sampler;
 
 layout (constant_id = 0) const bool LAST_SAMPLE = false;
 layout (constant_id = 1) const float R = 40;
@@ -45,10 +46,19 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
                             vec3 shaded_point, vec3 shaded_normal, out float weight);
 
 void main() {
-	out_color = vec4(upsampled_prev_result(result_sampler, int(pcs.arguments.x), vertex_out.tex_coords).rgb, 1.0);
+	out_color = vec4(upsampled_result(result_sampler, int(pcs.arguments.x), int(pcs.arguments.x+1-pcs.arguments.a), vertex_out.tex_coords).rgb, 1.0);
 
 	if(!UPSAMPLE_ONLY)
 		out_color.rgb += gi_sample();
+
+	// last mip level => blend with history
+	if(abs(pcs.arguments.x - pcs.arguments.a) < 0.00001) {
+		float history_weight = texelFetch(history_weight_sampler,
+		                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
+		                                  0).r;
+
+		out_color *= 1.0 - (history_weight*0.85);
+	}
 }
 
 const float PI = 3.14159265359;

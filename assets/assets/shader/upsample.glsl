@@ -7,7 +7,7 @@
 
 float weight_offset(float x) {
 	float b = 0;
-	float c = 2.f;
+	float c = 2*2 + 2*2;
 	return 0.5 * exp(- (x-b)*(x-b) / (2*c*c));
 }
 float weight_depth(float x) {
@@ -40,10 +40,6 @@ vec4 upsampled_result(sampler2D color_sampler, int depth_lod, int color_lod, vec
 	}
 	
 	return color / weight_sum;
-}
-
-vec4 upsampled_prev_result(sampler2D color_sampler, int current_lod, vec2 tex_coords) {
-	return upsampled_result(color_sampler, current_lod, current_lod + 1, tex_coords);
 }
 
 #endif

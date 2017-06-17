@@ -37,7 +37,7 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0) {
 	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-vec3 brdf(vec3 albedo, vec3 F0, float roughness, vec3 N, vec3 V, vec3 L, vec3 radiance) {
+vec3 brdf(vec3 albedo, vec3 F0, float roughness, vec3 N, vec3 V, vec3 L, vec3 radiance, out vec3 diffuse) {
 	const float PI = 3.14159265359;
 
 	vec3 H = normalize(V+L);
@@ -55,5 +55,7 @@ vec3 brdf(vec3 albedo, vec3 F0, float roughness, vec3 N, vec3 V, vec3 L, vec3 ra
 
 	// add to outgoing radiance Lo
 	float NdotL = max(dot(N, L), 0.0);
+
+	diffuse = kD * albedo / PI * radiance * NdotL;
 	return (kD * albedo / PI + brdf) * radiance * NdotL;
 }

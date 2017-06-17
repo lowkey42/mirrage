@@ -16,6 +16,7 @@ layout(location = 0) in Vertex_data {
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
+layout(location = 1) out vec4 out_color_diff;
 
 layout(input_attachment_index = 0, set=1, binding = 0) uniform subpassInput depth_sampler;
 layout(input_attachment_index = 1, set=1, binding = 1) uniform subpassInput albedo_mat_id_sampler;
@@ -52,7 +53,7 @@ void main() {
 
 	// material 255 (unlit)
 	if(material==255) {
-		out_color = vec4(albedo*10.0, 1.0);
+		out_color = out_color_diff = vec4(albedo*10.0, 1.0);
 		return;
 	}
 
@@ -69,11 +70,14 @@ void main() {
 	float shadow = sample_shadowmap(position + N*0.05);
 
 	out_color = vec4(0,0,0,0);
+	out_color_diff = vec4(0,0,0,0);
 
 	if(shadow>0.0) {
 		vec3 L = model_uniforms.light_data.gba;
 
-		out_color = vec4(brdf(albedo, F0, roughness, N, V, L, radiance) * shadow, 1.0);
+		vec3 diffuse;
+		out_color = vec4(brdf(albedo, F0, roughness, N, V, L, radiance, diffuse) * shadow, 1.0);
+		out_color_diff = vec4(diffuse * shadow, 1.0);
 	}
 
 	// TODO: remove ambient

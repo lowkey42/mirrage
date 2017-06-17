@@ -19,11 +19,11 @@ frag_shader:ui = shader/bin/ui.frag.spv
 vert_shader:taa = shader/bin/fullscreen.vert.spv
 frag_shader:taa = shader/bin/taa.frag.spv
 
-vert_shader:hbao_blur = shader/bin/hbao_blur.vert.spv
-frag_shader:hbao_blur = shader/bin/hbao_blur.frag.spv
+vert_shader:ssao_blur = shader/bin/ssao_blur.vert.spv
+frag_shader:ssao_blur = shader/bin/ssao_blur.frag.spv
 
-vert_shader:hbao = shader/bin/fullscreen.vert.spv
-frag_shader:hbao = shader/bin/hbao.frag.spv
+vert_shader:ssao = shader/bin/fullscreen.vert.spv
+frag_shader:ssao = shader/bin/ssao.frag.spv
 
 
 vert_shader:gi_blend = shader/bin/fullscreen.vert.spv
