@@ -60,7 +60,7 @@ float isosceles_triangle_next_adjacent(float adjacentLength, float incircleRadiu
 	return adjacentLength - (incircleRadius * 2.0f);
 }
 
-vec3 cone_tracing(float roughness, vec2 hit_uv) {
+vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L) {
 	float min_lod = pcs.arguments.x;
 	float max_lod = pcs.arguments.y;
 	vec2  depth_size  = textureSize(depth_sampler, int(min_lod + 0.5));
@@ -92,6 +92,11 @@ vec3 cone_tracing(float roughness, vec2 hit_uv) {
 		vec4 s = vec4(textureLod(color_sampler, uv, lod).rgb, 1) * glossiness_mult;
 		if(lod > max_lod-0.5) {
 			s.rgb *= 1.0 - min(0.5, lod-(max_lod-0.5))*2;
+		} else {
+			int ilod = int(lod + 0.5);
+			vec3 N = decode_normal(texelFetch(mat_data_sampler, ivec2(uv*textureSize(mat_data_sampler, ilod)), ilod).rg);
+			s.rgb *= clamp(1.0 - dot(L, N), 0, 1);
+			
 		}
 
 		remaining_alpha -= s.a;
@@ -134,8 +139,8 @@ void main() {
 							depthSize, 1.0, global_uniforms.proj_planes.x,
 							max(4, 4), 0.1, 128, 32.0, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
-
-		vec3 color = cone_tracing(mat_data.b, raycast_hit_uv/depthSize);
+		
+		vec3 color = cone_tracing(mat_data.b, raycast_hit_uv/depthSize, dir);
 		float factor_distance = 1.0 - length(raycast_hit_point - P) / 16.0;
 
 		out_color.rgb = clamp(color * factor_distance, vec3(0), vec3(1));
