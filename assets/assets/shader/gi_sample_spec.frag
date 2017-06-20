@@ -140,13 +140,17 @@ void main() {
 							max(4, 4), 0.1, 128, 32.0, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 		
+		vec3 L = raycast_hit_point - P;
+		
 		vec3 color = cone_tracing(mat_data.b, raycast_hit_uv/depthSize, dir);
 		float factor_distance = 1.0 - length(raycast_hit_point - P) / 16.0;
 
-		out_color.rgb = clamp(color * factor_distance, vec3(0), vec3(1));
+		out_color.rgb = max(color * factor_distance, vec3(0));
 	} else {
 		out_color.rgb = textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI);
 	}
+	
+	out_color.rgb *= 0.4;
 
 
 	float history_weight = texelFetch(history_weight_sampler,
