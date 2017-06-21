@@ -5,7 +5,7 @@
 		"source_radius": 1,
 		"intensity": 100.0,
 		"temperature": 4500,
-		"shadow_size": 16,
+		"shadow_size": 18,
 		"near_plane": 1.0,
 		"far_plane": 80
 	}

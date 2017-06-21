@@ -20,8 +20,7 @@ layout(set=1, binding = 2) uniform sampler2D prev_color_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
-	vec4 offsets;
-	vec4 time;
+	mat4 reprojection_fov;
 } constants;
 
 
@@ -81,7 +80,14 @@ void main() {
 	//   http://twvideo01.ubm-us.net/o1/vault/gdc2016/Presentations/Pedersen_LasseJonFuglsang_TemporalReprojectionAntiAliasing.pdf
 	//   https://github.com/playdeadgames/temporal
 
+	mat4 reprojection_fov = constants.reprojection_fov;
+	vec2 offset = vec2(reprojection_fov[0][3], reprojection_fov[1][3]);
+	reprojection_fov[0][3] = 0;
+	reprojection_fov[1][3] = 0;
+
 	vec2 uv = vertex_out.tex_coords;
+	vec4 uv_tmp = reprojection_fov * vec4(uv*2-1, 0.5, 1);
+	uv = uv_tmp.xy/uv_tmp.w *0.5+0.5;
 
 	float depth = texture(depth_sampler, uv).r;
 
@@ -90,7 +96,7 @@ void main() {
 	vec4 prev_uv = constants.reprojection * vec4(position, 1.0);
 	prev_uv.xy = (prev_uv.xy/prev_uv.w)*0.5+0.5;
 
-	uv = uv - global_uniforms.camera_offset.xy/2;
+	uv = uv - offset/2;
 	vec3 curr = texture(curr_color_sampler, uv).rgb;
 
 	if(prev_uv.x<0.0 || prev_uv.x>=1.0 || prev_uv.y<0.0 || prev_uv.y>=1.0) {
@@ -135,7 +141,7 @@ void main() {
 	float weight = 1.0 - lum_diff;
 	float t = mix(0.88, 0.97, weight*weight);
 
-	vec3 noise = PDsrand3(vertex_out.tex_coords + constants.time.y + 0.6959174) / 510.0;
+	vec3 noise = PDsrand3(vertex_out.tex_coords + global_uniforms.time.y + 0.6959174) / 510.0;
 	out_color = vec4(max(vec3(0), mix(curr, prev_clamped, t)/* + noise*/), 1.0);
 
 //	out_color.rgb = vec3(weight*weight);

@@ -40,7 +40,7 @@ const float PI = 3.14159265359;
 
 float roughness_to_spec_lobe_angle(float roughness) {
 	// see: http://graphicrants.blogspot.de/2013/08/specular-brdf-reference.html
-	float power = clamp(2/max(0.0001, roughness*roughness) - 2, 32.0, 1024*4);
+	float power = clamp(2/max(0.0001, roughness*roughness) - 2, 16.0, 1024*8);
 
 	return acos(pow(0.244, 1.0/(power + 1.0)));
 }
@@ -96,7 +96,6 @@ vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L) {
 			int ilod = int(lod + 0.5);
 			vec3 N = decode_normal(texelFetch(mat_data_sampler, ivec2(uv*textureSize(mat_data_sampler, ilod)), ilod).rg);
 			s.rgb *= clamp(1.0 - dot(L, N), 0, 1);
-			
 		}
 
 		remaining_alpha -= s.a;
@@ -146,9 +145,8 @@ void main() {
 		float factor_distance = 1.0 - length(raycast_hit_point - P) / 16.0;
 
 		out_color.rgb = max(color * factor_distance, vec3(0));
-	} else {
-		out_color.rgb = textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI);
 	}
+	out_color.rgb = max(out_color.rgb, textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI));
 	
 	out_color.rgb *= 0.4;
 
