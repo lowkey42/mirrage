@@ -3,6 +3,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 #include "normal_encoding.glsl"
+#include "color_conversion.glsl"
 
 
 layout(location = 0) in Vertex_data {
@@ -14,10 +15,11 @@ layout(location = 0) in Vertex_data {
 layout(location = 0) out vec4 out_color;
 
 layout(set=1, binding = 0) uniform sampler2D color_sampler;
+layout(set=1, binding = 1) uniform sampler2D avg_log_luminance_sampler;
 
 layout(push_constant) uniform Settings {
 	vec4 options;
-} settings;
+} pcs;
 
 
 vec3 saturation(vec3 c, float change) {
@@ -33,18 +35,36 @@ vec3 heji_dawson(vec3 color) {
 	return mapped * mapped;
 }
 
+vec3 ToneMapFilmicALU(vec3 color) {
+    color = max(vec3(0), color - 0.004);
+    color = (color * (6.2 * color + 0.5)) / (color * (6.2 * color + 1.7)+ 0.06);
+
+    // result has 1/2.2 baked in
+    return pow(color, vec3(2.2));
+}
+
+vec3 expose(vec3 color, float threshold) {
+	float avg_luminance = max(exp(texture(avg_log_luminance_sampler, vec2(0.5, 0.5)).r), 0.001);
+
+	float key = 1.03f - (2.0f / (2 + log(avg_luminance + 1)/log(10)));
+	float exposure = log2(max(key/avg_luminance, 0.0001));
+	exposure -= threshold;
+
+	return color * clamp(exp2(exposure), 0.2, 5.0);
+}
+
 vec3 tone_mapping(vec3 color) {
-	float exposure = settings.options.r;
-	color *= exposure;
-	color = heji_dawson(color);
+	if(pcs.options.x<=0.1)
+		return color;
+
+	// float exposure = settings.options.r;
+	color = expose(color, 0);
+	//color = heji_dawson(color);
+	color = ToneMapFilmicALU(color);
 
 	return color;
 }
 
-float luminance(vec3 c) {
-	vec3 f = vec3(0.299,0.587,0.114);
-	return sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
-}
 vec3 resolve_fxaa() {
 	float FXAA_SPAN_MAX = 8.0;
 	float FXAA_REDUCE_MUL = 1.0/8.0;

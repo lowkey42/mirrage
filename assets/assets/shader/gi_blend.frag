@@ -33,8 +33,6 @@ void main() {
 	                              result_diff_sampler, result_spec_sampler,
 	                              albedo_sampler, mat_data_sampler, diffuse), 0.0);
 
-	out_color *= 0.8;
-
 //	out_color = vec4(1,1,1,1);
 
 	if(pcs.arguments.a>0.0)

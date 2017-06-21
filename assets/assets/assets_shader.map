@@ -47,3 +47,9 @@ frag_shader:gi_reproject = shader/bin/gi_reproject.frag.spv
 vert_shader:voxelization = shader/bin/voxelization.vert.spv
 frag_shader:voxelization = shader/bin/voxelization.frag.spv
 
+vert_shader:luminance = shader/bin/fullscreen.vert.spv
+frag_shader:luminance = shader/bin/luminance.frag.spv
+
+vert_shader:luminance_adapt = shader/bin/fullscreen.vert.spv
+frag_shader:luminance_adapt = shader/bin/luminance_adapt.frag.spv
+

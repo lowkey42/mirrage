@@ -43,7 +43,7 @@ vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
 
 	diffuse = albedo * radiance/PI + F0*radiance / (2*PI*PI);
 
-	return clamp(diff + spec, vec3(0,0,0), vec3(8,8,8));
+	return clamp(diff + spec, vec3(0,0,0), vec3(10,10,10));
 }
 
 vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampler2D spec_sampler,

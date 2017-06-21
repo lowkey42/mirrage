@@ -40,7 +40,7 @@ const float PI = 3.14159265359;
 
 float roughness_to_spec_lobe_angle(float roughness) {
 	// see: http://graphicrants.blogspot.de/2013/08/specular-brdf-reference.html
-	float power = clamp(2/max(0.0001, roughness*roughness) - 2, 16.0, 1024*8);
+	float power = clamp(2/max(0.00001, roughness*roughness) - 2, 32.0, 1024*20);
 
 	return acos(pow(0.244, 1.0/(power + 1.0)));
 }
@@ -62,7 +62,7 @@ float isosceles_triangle_next_adjacent(float adjacentLength, float incircleRadiu
 
 vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L) {
 	float min_lod = pcs.arguments.x;
-	float max_lod = pcs.arguments.y;
+	float max_lod = pcs.arguments.y-1;
 	vec2  depth_size  = textureSize(depth_sampler, int(min_lod + 0.5));
 	float screen_size = max(depth_size.x, depth_size.y);
 	float glossiness = 1.0 - roughness;

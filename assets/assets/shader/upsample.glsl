@@ -13,7 +13,7 @@ float weight_offset(float x) {
 float weight_depth(float x) {
 	float b = 0;
 	float c = 0.01f;
-	return 0.1 * exp(- (x-b)*(x-b) / (2*c*c));
+	return 0.05 * exp(- (x-b)*(x-b) / (2*c*c));
 }
 
 vec4 upsampled_result(sampler2D color_sampler, int depth_lod, int color_lod, vec2 tex_coords) {

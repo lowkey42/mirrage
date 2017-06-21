@@ -81,7 +81,7 @@ void main() {
 	}
 
 	// TODO: remove ambient
-//	out_color.rgb += albedo * radiance * 0.0005;
+	out_color.rgb += albedo * radiance * 0.00001;
 }
 
 
