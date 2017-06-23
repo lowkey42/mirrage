@@ -93,7 +93,7 @@ vec3 gi_sample() {
 
 			// fade out around the screen border
 			vec2 p_ndc = vec2(p) / texture_size * 2 - 1;
-			sc *= 1.0 - smoothstep(0.95, 1.0, dot(p_ndc,p_ndc));
+			sc *= 1.0 - smoothstep(0.98, 1.0, dot(p_ndc,p_ndc));
 
 			c += sc;
 			samples_used += weight;
@@ -109,7 +109,7 @@ vec3 gi_sample() {
 		c = c * pow(2.0, lod*2);
 
 	// fade out if too few samples hit anything on screen
-	c *= smoothstep(0.1, 0.3, samples_used/SAMPLES);
+	c *= smoothstep(0.1, 0.2, samples_used/SAMPLES);
 
 	return c;
 }
