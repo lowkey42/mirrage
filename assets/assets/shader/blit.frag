@@ -16,6 +16,7 @@ layout(location = 0) out vec4 out_color;
 
 layout(set=1, binding = 0) uniform sampler2D color_sampler;
 layout(set=1, binding = 1) uniform sampler2D avg_log_luminance_sampler;
+layout(set=1, binding = 2) uniform sampler2D bloom_sampler;
 
 layout(push_constant) uniform Settings {
 	vec4 options;
@@ -47,10 +48,10 @@ vec3 expose(vec3 color, float threshold) {
 	float avg_luminance = max(exp(texture(avg_log_luminance_sampler, vec2(0.5, 0.5)).r), 0.001);
 
 	float key = 1.03f - (2.0f / (2 + log(avg_luminance + 1)/log(10)));
-	float exposure = log2(max(key/avg_luminance, 0.0001));
+	float exposure = log2(clamp(key/avg_luminance, 0.4, 5.0));
 	exposure -= threshold;
 
-	return color * clamp(exp2(exposure), 0.2, 5.0);
+	return color * exp2(exposure);
 }
 
 vec3 tone_mapping(vec3 color) {
@@ -61,6 +62,10 @@ vec3 tone_mapping(vec3 color) {
 	color = expose(color, 0);
 	//color = heji_dawson(color);
 	color = ToneMapFilmicALU(color);
+
+	if(pcs.options.y >= 0.01) {
+		color += textureLod(bloom_sampler, vertex_out.tex_coords, 0).rgb * pcs.options.y;
+	}
 
 	return color;
 }

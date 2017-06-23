@@ -67,7 +67,7 @@ void main() {
 	vec3 radiance = model_uniforms.light_color.rgb * model_uniforms.light_color.a;
 
 
-	float shadow = sample_shadowmap(position + N*0.05);
+	float shadow = sample_shadowmap(position + N*0.04);
 
 	out_color = vec4(0,0,0,0);
 	out_color_diff = vec4(0,0,0,0);
@@ -108,7 +108,7 @@ float sample_shadowmap(vec3 view_pos) {
 	if(num_occluders==0)
 		return 1.0;
 
-	float sample_size = mix(1.0/shadowmap_size, light_size, penumbra_softness);
+	float sample_size = mix(2.0/shadowmap_size, light_size, penumbra_softness);
 	int samples = int(mix(4, SHADOW_QUALITY<=1 ? 8 : 16, penumbra_softness));
 	if(num_occluders>=4)
 		samples = min(samples, 8);
@@ -116,7 +116,7 @@ float sample_shadowmap(vec3 view_pos) {
 	if(SHADOW_QUALITY<=1)
 		samples = min(samples, 8);
 
-	float z_bias = 0.0001;
+	float z_bias = 0.00025;
 
 	float angle = random(vec4(lightspace_pos.xyz, global_uniforms.time.y));
 	float sin_angle = sin(angle);
@@ -170,7 +170,7 @@ float calc_avg_occluder(vec3 surface_lightspace, float search_area,
 float calc_penumbra(vec3 surface_lightspace, float light_size, out int num_occluders) {
 	float avg_occluder = calc_avg_occluder(surface_lightspace, light_size, num_occluders);
 
-	const float scale = 8.0;
+	const float scale = 10.0;
 	float softness = (surface_lightspace.z - avg_occluder) * scale;
 
 	return smoothstep(0.2, 1.0, softness);

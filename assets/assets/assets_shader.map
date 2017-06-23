@@ -53,3 +53,9 @@ frag_shader:luminance = shader/bin/luminance.frag.spv
 vert_shader:luminance_adapt = shader/bin/fullscreen.vert.spv
 frag_shader:luminance_adapt = shader/bin/luminance_adapt.frag.spv
 
+vert_shader:bloom_filter = shader/bin/fullscreen.vert.spv
+frag_shader:bloom_filter = shader/bin/bloom_filter.frag.spv
+
+vert_shader:bloom_blur = shader/bin/bloom_blur.vert.spv
+frag_shader:bloom_blur = shader/bin/bloom_blur.frag.spv
+

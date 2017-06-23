@@ -75,6 +75,15 @@ vec4 PDsrand4( vec2 n ) {
 	return PDnrand4( n ) * 2 - 1;
 }
 
+vec3 curr_color_normalized(vec2 uv) {
+	vec3 c = texture(curr_color_sampler, uv).rgb;
+	return c / (1 + luminance(c));
+}
+vec3 prev_color_normalized(vec2 uv) {
+	vec3 c = texture(prev_color_sampler, uv).rgb;
+	return c / (1 + luminance(c));
+}
+
 void main() {
 	// based on:
 	//   http://twvideo01.ubm-us.net/o1/vault/gdc2016/Presentations/Pedersen_LasseJonFuglsang_TemporalReprojectionAntiAliasing.pdf
@@ -97,28 +106,28 @@ void main() {
 	prev_uv.xy = (prev_uv.xy/prev_uv.w)*0.5+0.5;
 
 	uv = uv - offset/2;
-	vec3 curr = texture(curr_color_sampler, uv).rgb;
+	vec3 curr = curr_color_normalized(uv).rgb;
 
 	if(prev_uv.x<0.0 || prev_uv.x>=1.0 || prev_uv.y<0.0 || prev_uv.y>=1.0) {
 		out_color = vec4(curr, 1.0);
 		return;
 	}
 
-	vec3 prev  = texture(prev_color_sampler, prev_uv.xy).rgb;
+	vec3 prev  = prev_color_normalized(prev_uv.xy).rgb;
 
 	vec2 texel_size = 1.0 / textureSize(curr_color_sampler, 0);
 	vec2 du = vec2(texel_size.x, 0.0);
 	vec2 dv = vec2(0.0, texel_size.y);
 
-	vec3 ctl = texture(curr_color_sampler, uv - dv - du).rgb;
-	vec3 ctc = texture(curr_color_sampler, uv - dv).rgb;
-	vec3 ctr = texture(curr_color_sampler, uv - dv + du).rgb;
-	vec3 cml = texture(curr_color_sampler, uv - du).rgb;
-	vec3 cmc = texture(curr_color_sampler, uv).rgb;
-	vec3 cmr = texture(curr_color_sampler, uv + du).rgb;
-	vec3 cbl = texture(curr_color_sampler, uv + dv - du).rgb;
-	vec3 cbc = texture(curr_color_sampler, uv + dv).rgb;
-	vec3 cbr = texture(curr_color_sampler, uv + dv + du).rgb;
+	vec3 ctl = curr_color_normalized(uv - dv - du).rgb;
+	vec3 ctc = curr_color_normalized(uv - dv).rgb;
+	vec3 ctr = curr_color_normalized(uv - dv + du).rgb;
+	vec3 cml = curr_color_normalized(uv - du).rgb;
+	vec3 cmc = curr_color_normalized(uv).rgb;
+	vec3 cmr = curr_color_normalized(uv + du).rgb;
+	vec3 cbl = curr_color_normalized(uv + dv - du).rgb;
+	vec3 cbc = curr_color_normalized(uv + dv).rgb;
+	vec3 cbr = curr_color_normalized(uv + dv + du).rgb;
 
 	vec3 cmin = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
 	vec3 cmax = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
@@ -143,6 +152,8 @@ void main() {
 
 	vec3 noise = PDsrand3(vertex_out.tex_coords + global_uniforms.time.y + 0.6959174) / 510.0;
 	out_color = vec4(max(vec3(0), mix(curr, prev_clamped, t)/* + noise*/), 1.0);
+
+	out_color.rgb = out_color.rgb / (1 - luminance(out_color.rgb));
 
 //	out_color.rgb = vec3(weight*weight);
 }

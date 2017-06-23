@@ -89,7 +89,13 @@ vec3 gi_sample() {
 		ivec2 p = ivec2(uv + vec2(sin_angle, cos_angle) * r);
 		if(p.x>=0.0 && p.x<=texture_size.x && p.y>=0.0 && p.y<=texture_size.y) {
 			float weight;
-			c += calc_illumination_from(texture_size, p, uv, depth, P, N, weight);
+			vec3 sc = calc_illumination_from(texture_size, p, uv, depth, P, N, weight);
+
+			// fade out around the screen border
+			vec2 p_ndc = vec2(p) / texture_size * 2 - 1;
+			sc *= 1.0 - smoothstep(0.95, 1.0, dot(p_ndc,p_ndc));
+
+			c += sc;
 			samples_used += weight;
 		}
 	}
@@ -98,9 +104,14 @@ vec3 gi_sample() {
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
 	if(PRIORITISE_NEAR_SAMPLES)
-		return c * pow(2.0, 6) * SAMPLES / max(samples_used, SAMPLES*0.3);
+		c = c * pow(2.0, 6) * SAMPLES / max(samples_used, SAMPLES*0.3);
 	else
-		return c * pow(2.0, lod*2);
+		c = c * pow(2.0, lod*2);
+
+	// fade out if too few samples hit anything on screen
+	c *= smoothstep(0.1, 0.3, samples_used/SAMPLES);
+
+	return c;
 }
 
 vec3 to_view_space(vec2 uv, float depth) {
