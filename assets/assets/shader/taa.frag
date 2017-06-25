@@ -109,7 +109,7 @@ void main() {
 	vec3 curr = curr_color_normalized(uv).rgb;
 
 	if(prev_uv.x<0.0 || prev_uv.x>=1.0 || prev_uv.y<0.0 || prev_uv.y>=1.0) {
-		out_color = vec4(curr, 1.0);
+		out_color = vec4(curr / (1 - luminance(curr)), 1.0);
 		return;
 	}
 

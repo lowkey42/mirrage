@@ -29,7 +29,7 @@ layout (constant_id = 4) const bool PRIORITISE_NEAR_SAMPLES = true;
 
 layout(push_constant) uniform Push_constants {
 	mat4 projection;
-	vec4 arguments;
+	mat4 prev_projection;
 } pcs;
 
 
@@ -40,31 +40,38 @@ layout(push_constant) uniform Push_constants {
 #include "upsample.glsl"
 #include "raycast.glsl"
 
-vec3 gi_sample();
-vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
+vec3 gi_sample(int lod);
+vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight);
 
 void main() {
-	out_color = vec4(upsampled_result(result_sampler, int(pcs.arguments.x), int(pcs.arguments.x+1-pcs.arguments.a), vertex_out.tex_coords).rgb, 1.0);
+	float current_mip = pcs.prev_projection[0][3];
+	float max_mip     = pcs.prev_projection[1][3];
+	float base_mip    = pcs.prev_projection[3][3];
+
+	if(current_mip < max_mip)
+		out_color = vec4(upsampled_result(result_sampler, int(current_mip), int(current_mip+1-base_mip), vertex_out.tex_coords).rgb, 1.0);
+	else
+		out_color = vec4(0,0,0, 1);
 
 	if(!UPSAMPLE_ONLY)
-		out_color.rgb += gi_sample();
+		out_color.rgb += gi_sample(int(current_mip+0.5));
 
 	// last mip level => blend with history
-	if(abs(pcs.arguments.x - pcs.arguments.a) < 0.00001) {
+	if(abs(current_mip - base_mip) < 0.00001) {
 		float history_weight = texelFetch(history_weight_sampler,
 		                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 		                                  0).r;
 
 		out_color *= 1.0 - (history_weight*0.85);
 	}
+
+	out_color = max(out_color, vec4(0));
 }
 
 const float PI = 3.14159265359;
 
-vec3 gi_sample() {
-	int lod = int(pcs.arguments.x + 0.5);
-
+vec3 gi_sample(int lod) {
 	vec2 texture_size = textureSize(color_sampler, lod);
 	ivec2 uv = ivec2(vertex_out.tex_coords * texture_size);
 
@@ -76,7 +83,7 @@ vec3 gi_sample() {
 
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
-	float angle = random(vec4(vertex_out.tex_coords, 0.0, pcs.arguments.x));
+	float angle = random(vec4(vertex_out.tex_coords, 0.0, lod));
 	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 20.0;
 
 	for(int i=0; i<SAMPLES; i++) {
@@ -89,7 +96,7 @@ vec3 gi_sample() {
 		ivec2 p = ivec2(uv + vec2(sin_angle, cos_angle) * r);
 		if(p.x>=0.0 && p.x<=texture_size.x && p.y>=0.0 && p.y<=texture_size.y) {
 			float weight;
-			vec3 sc = calc_illumination_from(texture_size, p, uv, depth, P, N, weight);
+			vec3 sc = calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
 
 			// fade out around the screen border
 			vec2 p_ndc = vec2(p) / texture_size * 2 - 1;
@@ -121,10 +128,8 @@ vec3 to_view_space(vec2 uv, float depth) {
 	return mix(view_ray_x1, view_ray_x2, uv.y) * depth;
 }
 
-vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
+vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight) {
-	int lod = int(pcs.arguments.x + 0.5);
-
 	float depth  = texelFetch(depth_sampler, src_uv, lod).r;
 	vec3 P = to_view_space(src_uv / tex_size, depth);// x_i
 	vec3 Pn = normalize(P);
@@ -177,7 +182,7 @@ vec3 calc_illumination_from(vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float s
 	float cos_beta  = dot(Pn, N);
 	float z = depth * global_uniforms.proj_planes.y;
 
-	float ds = pcs.arguments.b * z*z * clamp(cos_alpha / cos_beta, 1.0, 20.0);
+	float ds = pcs.prev_projection[2][3] * z*z * clamp(cos_alpha / cos_beta, 1.0, 20.0);
 
 	float R2 = 1.0 / PI * NdotL_src * ds;
 	float area = R2 / (r2 + R2); // point-to-differential area form-factor

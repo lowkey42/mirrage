@@ -29,7 +29,7 @@ layout(set=1, binding = 10)uniform sampler2D prev_depth_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
-	vec4 arguments;
+	mat4 prev_projection;
 } pcs;
 
 #include "gi_blend_common.glsl"
@@ -42,8 +42,22 @@ void main() {
 
 	vec3 pos = depth * vertex_out.view_ray;
 
-	vec4 prev_uv = pcs.reprojection * vec4(pos, 1.0);
-	prev_uv.xy = (prev_uv.xy/prev_uv.w)*0.5+0.5;
+	mat4 prev_projection = pcs.prev_projection;
+	prev_projection[0][3] = 0;
+	prev_projection[1][3] = 0;
+	prev_projection[3][3] = 0;
+
+	float current_mip = pcs.prev_projection[0][3];
+	float max_mip     = pcs.prev_projection[1][3];
+	float ao_factor   = pcs.prev_projection[3][3];
+
+
+	vec4 prev_pos = pcs.reprojection * vec4(pos, 1.0);
+	prev_pos /= prev_pos.w;
+
+	vec4 prev_uv = prev_projection * prev_pos;
+	prev_uv /= prev_uv.w;
+	prev_uv.xy = prev_uv.xy*0.5+0.5;
 
 	out_input    = vec4(0, 0, 0, 0);
 	out_diffuse  = vec4(0, 0, 0, 1);
@@ -59,14 +73,16 @@ void main() {
 		vec3 gi = calculate_gi(vertex_out.tex_coords, radiance, specular,
 		                       albedo_sampler, mat_data_sampler, diffuse);
 
-		float ao = mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, pcs.arguments.a);
-		ao = mix(1.0, ao, pcs.arguments.a);
+		float ao = mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, ao_factor);
+		ao = mix(1.0, ao, ao_factor);
 
 		out_input = vec4(diffuse * ao, 0.0);
 
-		float prev_depth = textureLod(prev_depth_sampler, prev_uv.xy, 0.0).r;
+		float proj_prev_depth = -prev_pos.z;
+		float prev_depth = textureLod(prev_depth_sampler, prev_uv.xy, 0.0).r * global_uniforms.proj_planes.y;
 		out_diffuse.rgb  = radiance;
 		out_specular.rgb = specular;
-		out_weight.r     = 1.0 - smoothstep(0.01, 1.0, abs(prev_depth-depth)*global_uniforms.proj_planes.y);
+		out_weight.r     = 1.0 - smoothstep(0.01, 0.1, abs(prev_depth-proj_prev_depth));
+		out_input *= out_weight.r;
 	}
 }

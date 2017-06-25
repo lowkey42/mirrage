@@ -20,7 +20,7 @@ layout(set=1, binding = 11)uniform sampler2D history_weight_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 projection;
-	vec4 arguments;
+	mat4 prev_projection;
 } pcs;
 
 
@@ -61,8 +61,8 @@ float isosceles_triangle_next_adjacent(float adjacentLength, float incircleRadiu
 }
 
 vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L) {
-	float min_lod = pcs.arguments.x;
-	float max_lod = pcs.arguments.y-1;
+	float min_lod = pcs.prev_projection[0][3];
+	float max_lod = pcs.prev_projection[1][3]-1;
 	vec2  depth_size  = textureSize(depth_sampler, int(min_lod + 0.5));
 	float screen_size = max(depth_size.x, depth_size.y);
 	float glossiness = 1.0 - roughness;
@@ -116,7 +116,7 @@ vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L) {
 }
 
 void main() {
-	float startLod = pcs.arguments.x;
+	float startLod = pcs.prev_projection[0][3];
 	vec2 depthSize = textureSize(depth_sampler, int(startLod + 0.5));
 
 	out_color = vec4(0,0,0,1);
@@ -156,5 +156,7 @@ void main() {
 	                                  0).r;
 
 	out_color *= 1.0 - (history_weight*0.8);
+
+	out_color = max(out_color, vec4(0));
 }
 

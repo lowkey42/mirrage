@@ -21,7 +21,7 @@ layout(set=1, binding = 7) uniform sampler2D ao_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
-	vec4 arguments;
+	mat4 prev_projection;
 } pcs;
 
 #include "gi_blend_common.glsl"
@@ -35,11 +35,11 @@ void main() {
 
 //	out_color = vec4(1,1,1,1);
 
-	if(pcs.arguments.a>0.0)
-		out_color.rgb *= mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, pcs.arguments.a);
+	if(pcs.prev_projection[3][3]>0.0)
+		out_color.rgb *= mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, pcs.prev_projection[3][3]);
 
-	if(pcs.arguments.b>=0)
-		out_color = vec4(textureLod(result_spec_sampler, vertex_out.tex_coords, pcs.arguments.b).rgb, 1.0);
+	if(pcs.prev_projection[2][3]>=0)
+		out_color = vec4(textureLod(result_spec_sampler, vertex_out.tex_coords, pcs.prev_projection[2][3]).rgb, 1.0);
 
 //	out_color = vec4(texture(ao_sampler, vertex_out.tex_coords).rrr, 1.0);
 }

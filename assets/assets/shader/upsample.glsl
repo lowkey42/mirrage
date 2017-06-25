@@ -17,9 +17,6 @@ float weight_depth(float x) {
 }
 
 vec4 upsampled_result(sampler2D color_sampler, int depth_lod, int color_lod, vec2 tex_coords) {
-	if(color_lod > pcs.arguments.y)
-		return vec4(0,0,0,0);
-	
 	vec2 texture_size = textureSize(color_sampler, color_lod);
 	float depth = texelFetch(depth_sampler, ivec2(texture_size*tex_coords*2), depth_lod).r;
 	

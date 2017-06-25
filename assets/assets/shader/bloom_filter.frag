@@ -29,7 +29,7 @@ vec3 expose(vec3 color, float threshold) {
 	float exposure = log2(clamp(key/avg_luminance, 0.8, 5.0));
 	exposure -= threshold;
 
-	return color * exp2(exposure);
+	return max(color * exp2(exposure), vec3(0));
 }
 
 void main() {

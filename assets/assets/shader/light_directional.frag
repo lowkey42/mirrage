@@ -67,7 +67,7 @@ void main() {
 	vec3 radiance = model_uniforms.light_color.rgb * model_uniforms.light_color.a;
 
 
-	float shadow = sample_shadowmap(position + N*0.04);
+	float shadow = sample_shadowmap(position + N*0.06);
 
 	out_color = vec4(0,0,0,0);
 	out_color_diff = vec4(0,0,0,0);
@@ -105,7 +105,7 @@ float sample_shadowmap(vec3 view_pos) {
 
 	//return penumbra_softness>=0.5 ? 1.0 : 0.0;
 
-	if(num_occluders==0)
+	if(num_occluders==0 && SHADOW_QUALITY<=1)
 		return 1.0;
 
 	float sample_size = mix(2.0/shadowmap_size, light_size, penumbra_softness);
@@ -116,7 +116,7 @@ float sample_shadowmap(vec3 view_pos) {
 	if(SHADOW_QUALITY<=1)
 		samples = min(samples, 8);
 
-	float z_bias = 0.00025;
+	float z_bias = 0.00035;
 
 	float angle = random(vec4(lightspace_pos.xyz, global_uniforms.time.y));
 	float sin_angle = sin(angle);
@@ -134,7 +134,7 @@ float sample_shadowmap(vec3 view_pos) {
 		                                     vec3(p, lightspace_pos.z-z_bias)));
 	}
 
-	return clamp(visiblity, 0.0, 1.0);
+	return clamp(smoothstep(0, 1, visiblity), 0.0, 1.0);
 }
 
 float calc_avg_occluder(vec3 surface_lightspace, float search_area,
@@ -154,7 +154,7 @@ float calc_avg_occluder(vec3 surface_lightspace, float search_area,
 		
 		float depth = texture(sampler2D(shadowmaps[shadowmap], shadowmap_depth_sampler),
 		                      surface_lightspace.xy + offset * search_area).r;
-		if(depth < surface_lightspace.z - 0.0005) {
+		if(depth < surface_lightspace.z - 0.0004) {
 			depth_acc += depth;
 			depth_count += 1.0;
 			num_occluders += 1;
