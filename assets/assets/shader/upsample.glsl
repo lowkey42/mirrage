@@ -5,9 +5,9 @@
 #include "random.glsl"
 
 
-float weight_offset(float x) {
+float weight_offset(float x, float sharpness) {
 	float b = 0;
-	float c = 2*2 + 2*2;
+	float c = (2*2 + 2*2) / sharpness;
 	return 0.5 * exp(- (x-b)*(x-b) / (2*c*c));
 }
 float weight_depth(float x) {
@@ -16,7 +16,7 @@ float weight_depth(float x) {
 	return 0.05 * exp(- (x-b)*(x-b) / (2*c*c));
 }
 
-vec4 upsampled_result(sampler2D color_sampler, int depth_lod, int color_lod, vec2 tex_coords) {
+vec4 upsampled_result(sampler2D color_sampler, int depth_lod, int color_lod, vec2 tex_coords, float sharpness) {
 	vec2 texture_size = textureSize(color_sampler, color_lod);
 	float depth = texelFetch(depth_sampler, ivec2(texture_size*tex_coords*2), depth_lod).r;
 	
@@ -29,7 +29,7 @@ vec4 upsampled_result(sampler2D color_sampler, int depth_lod, int color_lod, vec
 			
 			float d = texelFetch(depth_sampler, ivec2((texture_size*tex_coords + offset)*2), depth_lod).r;
 			
-			float weight = weight_offset(dot(offset,offset)) * weight_depth(depth-d);
+			float weight = weight_offset(dot(offset,offset), sharpness) * weight_depth(depth-d);
 			
 			color += weight * texelFetch(color_sampler, ivec2(texture_size*tex_coords + offset), color_lod);
 			weight_sum += weight;

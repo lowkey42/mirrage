@@ -50,7 +50,7 @@ void main() {
 	float base_mip    = pcs.prev_projection[3][3];
 
 	if(current_mip < max_mip)
-		out_color = vec4(upsampled_result(result_sampler, int(current_mip), int(current_mip+1-base_mip), vertex_out.tex_coords).rgb, 1.0);
+		out_color = vec4(upsampled_result(result_sampler, int(current_mip), int(current_mip+1-base_mip), vertex_out.tex_coords, 0.5).rgb, 1.0);
 	else
 		out_color = vec4(0,0,0, 1);
 

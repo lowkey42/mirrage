@@ -66,8 +66,8 @@ void main() {
 
 	if(prev_uv.x>0.0 && prev_uv.x<1.0 && prev_uv.y>0.0 && prev_uv.y<1.0) {
 		// load diff + spec GI
-		vec3 radiance = upsampled_result(history_diff_sampler, 0, 0, prev_uv.xy).rgb;
-		vec3 specular = upsampled_result(history_spec_sampler, 0, 0, prev_uv.xy).rgb;
+		vec3 radiance = upsampled_result(history_diff_sampler, 0, 0, prev_uv.xy, 2.0).rgb;
+		vec3 specular = upsampled_result(history_spec_sampler, 0, 0, prev_uv.xy, 4.0).rgb;
 
 		vec3 diffuse;
 		vec3 gi = calculate_gi(vertex_out.tex_coords, radiance, specular,

@@ -146,9 +146,9 @@ void main() {
 
 		out_color.rgb = max(color * factor_distance, vec3(0));
 	}
-	out_color.rgb = max(out_color.rgb, textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI));
+	//out_color.rgb = max(out_color.rgb, textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI));
 
-	out_color.rgb *= 0.6;
+//	out_color.rgb *= 0.6;
 
 
 	float history_weight = texelFetch(history_weight_sampler,
