@@ -50,7 +50,7 @@ void main() {
 	float base_mip    = pcs.prev_projection[3][3];
 
 	if(current_mip < max_mip)
-		out_color = vec4(upsampled_result(result_sampler, int(current_mip), int(current_mip+1-base_mip), vertex_out.tex_coords, 0.5).rgb, 1.0);
+		out_color = vec4(upsampled_result(result_sampler, int(current_mip), int(current_mip+1-base_mip), vertex_out.tex_coords, 1.0).rgb, 1.0);
 	else
 		out_color = vec4(0,0,0, 1);
 
@@ -84,7 +84,7 @@ vec3 gi_sample(int lod) {
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
 	float angle = random(vec4(vertex_out.tex_coords, 0.0, lod));
-	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 20.0;
+	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 23.0;
 
 	for(int i=0; i<SAMPLES; i++) {
 		float r = mix(LAST_SAMPLE ? 2.0 : R/2.0, R, float(i)/float(SAMPLES));
