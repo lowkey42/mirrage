@@ -76,7 +76,7 @@ void main() {
 		float ao = mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, ao_factor);
 		ao = ao*0.8 + 0.2;
 
-		out_input = vec4(diffuse * ao * 0.9, 0.0);
+		out_input = vec4(diffuse * ao, 0.0);
 
 		float proj_prev_depth = -prev_pos.z;
 		float prev_depth = textureLod(prev_depth_sampler, prev_uv.xy, 0.0).r * global_uniforms.proj_planes.y;
