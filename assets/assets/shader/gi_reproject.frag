@@ -78,11 +78,11 @@ void main() {
 
 		out_input = vec4(diffuse * ao, 0.0);
 
-		float proj_prev_depth = -prev_pos.z;
+		float proj_prev_depth = abs(prev_pos.z);
 		float prev_depth = textureLod(prev_depth_sampler, prev_uv.xy, 0.0).r * global_uniforms.proj_planes.y;
 		out_diffuse.rgb  = radiance;
 		out_specular.rgb = specular;
-		out_weight.r     = 1.0 - smoothstep(0.01, 0.05, abs(prev_depth-proj_prev_depth));
+		out_weight.r     = 1.0 - smoothstep(0.005, 0.1, abs(prev_depth-proj_prev_depth));
 		out_input *= out_weight.r;
 	}
 }
