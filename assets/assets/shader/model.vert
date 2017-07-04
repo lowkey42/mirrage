@@ -7,14 +7,12 @@
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
-layout(location = 2) in vec3 tangent;
-layout(location = 3) in vec2 tex_coords;
+layout(location = 2) in vec2 tex_coords;
 
 layout(location = 0) out Vertex_data {
 	vec3 world_pos;
 	vec3 view_pos;
 	vec3 normal;
-	vec3 tangent;
 	vec2 tex_coords;
 } vertex_out;
 
@@ -37,7 +35,6 @@ void main() {
 	gl_Position = global_uniforms.proj_mat * view_pos;
 
 	vertex_out.normal  = (model_to_view *  vec4(normal, 0.0)).xyz;
-	vertex_out.tangent = (model_to_view *  vec4(tangent, 0.0)).xyz;
 
 	vertex_out.tex_coords = tex_coords;
 }

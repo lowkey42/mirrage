@@ -9,7 +9,6 @@ layout(location = 0) in Vertex_data {
 	vec3 world_pos;
 	vec3 view_pos;
 	vec3 normal;
-	vec3 tangent;
 	vec2 tex_coords;
 } vertex_out;
 
