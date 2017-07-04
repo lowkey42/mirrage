@@ -36,7 +36,7 @@ vec3 tangent_space_to_world(vec3 N);
 void main() {
 	vec4 albedo = texture(albedo_sampler, vertex_out.tex_coords);
 
-	if(albedo.a < 0.1)
+	if(albedo.a < 0.5)
 		discard;
 
 	float metallic  = texture(metallic_sampler, vertex_out.tex_coords).r;
