@@ -11,13 +11,13 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 out_color;
 
-layout(set=1, binding = 0) uniform sampler2D color_sampler;
-layout(set=1, binding = 1) uniform sampler2D depth_sampler;
-layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
-layout(set=1, binding = 3) uniform sampler2D result_diff_sampler;
-layout(set=1, binding = 4) uniform sampler2D result_spec_sampler;
-layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
-layout(set=1, binding = 7) uniform sampler2D ao_sampler;
+layout(set=1, binding = 0) uniform sampler2D depth_sampler;
+layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
+layout(set=1, binding = 2) uniform sampler2D result_diff_sampler;
+layout(set=1, binding = 3) uniform sampler2D result_spec_sampler;
+layout(set=1, binding = 4) uniform sampler2D albedo_sampler;
+layout(set=1, binding = 5) uniform sampler2D ao_sampler;
+layout(set=1, binding = 6) uniform sampler2D brdf_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
@@ -31,7 +31,7 @@ void main() {
 	vec3 diffuse;
 	out_color = vec4(calculate_gi(vertex_out.tex_coords, vertex_out.tex_coords, 0,
 	                              result_diff_sampler, result_spec_sampler,
-	                              albedo_sampler, mat_data_sampler, diffuse), 0.0);
+	                              albedo_sampler, mat_data_sampler, brdf_sampler, diffuse), 0.0);
 
 //	out_color = vec4(1,1,1,1);
 

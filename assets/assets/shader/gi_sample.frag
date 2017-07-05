@@ -15,8 +15,7 @@ layout(set=1, binding = 0) uniform sampler2D color_sampler;
 layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_sampler;
-layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
-layout(set=1, binding = 11)uniform sampler2D history_weight_sampler;
+layout(set=1, binding = 4) uniform sampler2D history_weight_sampler;
 
 layout (constant_id = 0) const bool LAST_SAMPLE = false;
 layout (constant_id = 1) const float R = 40;
@@ -50,7 +49,7 @@ void main() {
 	float base_mip    = pcs.prev_projection[3][3];
 
 	if(current_mip < max_mip)
-		out_color = vec4(upsampled_result(result_sampler, int(current_mip), int(current_mip+1-base_mip), vertex_out.tex_coords, 1.0).rgb, 1.0);
+		out_color = vec4(upsampled_result(result_sampler, 0, 0, vertex_out.tex_coords, 1.0).rgb, 1.0);
 	else
 		out_color = vec4(0,0,0, 1);
 
@@ -72,18 +71,18 @@ void main() {
 const float PI = 3.14159265359;
 
 vec3 gi_sample(int lod) {
-	vec2 texture_size = textureSize(color_sampler, lod);
+	vec2 texture_size = textureSize(color_sampler, 0);
 	ivec2 uv = ivec2(vertex_out.tex_coords * texture_size);
 
-	float depth  = texelFetch(depth_sampler, uv, lod).r;
-	vec4 mat_data = texelFetch(mat_data_sampler, uv, lod);
+	float depth  = texelFetch(depth_sampler, uv, 0).r;
+	vec4 mat_data = texelFetch(mat_data_sampler, uv, 0);
 	vec3 N = decode_normal(mat_data.rg);
 
 	vec3 P = depth * vertex_out.view_ray;
 
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
-	float angle = random(vec4(vertex_out.tex_coords, 0.0, lod));
+	float angle = random(vec4(vertex_out.tex_coords, 0.0, 0));
 	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 23.0;
 
 	for(int i=0; i<SAMPLES; i++) {
@@ -130,7 +129,7 @@ vec3 to_view_space(vec2 uv, float depth) {
 
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight) {
-	float depth  = texelFetch(depth_sampler, src_uv, lod).r;
+	float depth  = texelFetch(depth_sampler, src_uv, 0).r;
 	vec3 P = to_view_space(src_uv / tex_size, depth);// x_i
 	vec3 Pn = normalize(P);
 
@@ -160,7 +159,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 //		}
 	}
 */
-	vec4 mat_data = texelFetch(mat_data_sampler, src_uv, lod);
+	vec4 mat_data = texelFetch(mat_data_sampler, src_uv, 0);
 	vec3 N = decode_normal(mat_data.rg);
 
 	vec3 diff = shaded_point - P;
@@ -173,7 +172,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	float r2 = max(r*r, 0.1);
 	vec3 dir = diff / r;
 
-	vec3 radiance = texelFetch(color_sampler, src_uv, lod).rgb;
+	vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;
 
 	float NdotL_src = clamp(dot(N, dir), 0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)

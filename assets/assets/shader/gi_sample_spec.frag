@@ -15,8 +15,7 @@ layout(set=1, binding = 0) uniform sampler2D color_sampler;
 layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_sampler;
-layout(set=1, binding = 5) uniform sampler2D albedo_sampler;
-layout(set=1, binding = 11)uniform sampler2D history_weight_sampler;
+layout(set=1, binding = 4) uniform sampler2D history_weight_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 projection;
@@ -40,7 +39,7 @@ const float PI = 3.14159265359;
 
 float roughness_to_spec_lobe_angle(float roughness) {
 	// see: http://graphicrants.blogspot.de/2013/08/specular-brdf-reference.html
-	float power = clamp(2/max(0.00001, roughness*roughness) - 2, 32.0, 1024*20);
+	float power = clamp(2/max(0.0001, roughness*roughness) - 2, 32.0, 1024*20);
 
 	return acos(pow(0.244, 1.0/(power + 1.0)));
 }

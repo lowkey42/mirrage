@@ -20,8 +20,8 @@ layout(location = 0) out vec4 color_out;
 layout (constant_id = 0) const bool HORIZONTAL = true;
 layout (constant_id = 1) const int COMBINE = 0;
 
-layout(set=1, binding = 2) uniform sampler2D color_samplerA;
-layout(set=1, binding = 3) uniform sampler2D color_samplerB;
+layout(set=1, binding = 0) uniform sampler2D color_sampler;
+layout(set=1, binding = 1) uniform sampler2D downsampled_color_sampler;
 
 layout(push_constant) uniform Settings {
 	vec4 options;
@@ -31,11 +31,7 @@ layout(push_constant) uniform Settings {
 vec3 read(vec2 uv, inout float weight_sum, float static_weight) {
 	weight_sum += static_weight;
 
-	if(HORIZONTAL) {
-		return textureLod(color_samplerA, uv, pcs.options.y).rgb * static_weight;
-	} else {
-		return textureLod(color_samplerB, uv, pcs.options.y).rgb * static_weight;
-	}
+	return textureLod(color_sampler, uv, pcs.options.y).rgb * static_weight;
 }
 
 void main() {
@@ -54,7 +50,7 @@ void main() {
 
 	if(COMBINE>0) {
 		for(int i=1; i<COMBINE; i++) {
-			color_out.rgb += textureLod(color_samplerB, vertex_out.uv_center, i).rgb;
+			color_out.rgb += textureLod(downsampled_color_sampler, vertex_out.uv_center, i).rgb;
 		}
 	}
 

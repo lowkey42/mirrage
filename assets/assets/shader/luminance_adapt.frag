@@ -12,8 +12,8 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 out_color;
 
-layout(set=1, binding = 1) uniform sampler2D current_lum_sampler;
-layout(set=1, binding = 2) uniform sampler2D prev_lum_sampler;
+layout(set=1, binding = 0) uniform sampler2D current_lum_sampler;
+layout(set=1, binding = 1) uniform sampler2D prev_lum_sampler;
 
 layout(push_constant) uniform Push_constants {
 	vec4 parameters;

@@ -20,8 +20,7 @@ layout(location = 0) out vec4 color_out;
 layout (constant_id = 0) const bool HORIZONTAL = true;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
-layout(set=1, binding = 2) uniform sampler2D color_samplerA;
-layout(set=1, binding = 3) uniform sampler2D color_samplerB;
+layout(set=1, binding = 1) uniform sampler2D color_sampler;
 
 vec3 read(vec2 uv, float center_depth, inout float weight_sum, float static_weight) {
 	float d = texture(depth_sampler, vertex_out.uv_center).r;
@@ -29,11 +28,7 @@ vec3 read(vec2 uv, float center_depth, inout float weight_sum, float static_weig
 	float w = clamp(exp(-dz*dz), 0.1, 1.0) * static_weight;
 	weight_sum += w;
 
-	if(HORIZONTAL) {
-		return texture(color_samplerA, uv).rgb * w;
-	} else {
-		return texture(color_samplerB, uv).rgb * w;
-	}
+	return texture(color_sampler, uv).rgb * w;
 }
 
 void main() {
