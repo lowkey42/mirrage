@@ -1,0 +1,40 @@
+#pragma once
+
+#include <mirrage/graphic/texture.hpp>
+
+
+namespace lux {
+namespace renderer {
+
+	struct GBuffer {
+		public:
+			GBuffer(graphic::Device& device, std::uint32_t width, std::uint32_t height);
+
+			const std::uint32_t mip_levels;
+
+			vk::Format depth_format;
+			graphic::Render_target_2D depth;         // depth-buffer
+
+			vk::Format albedo_mat_id_format;
+			graphic::Render_target_2D albedo_mat_id; // RGB of objects + Material-ID
+
+			vk::Format mat_data_format;
+			graphic::Render_target_2D mat_data;      // matId=0: 16Bit-Normals, Roughness, Metal
+
+			vk::Format color_format;
+			graphic::Render_target_2D colorA;        //< lighting result
+			graphic::Render_target_2D colorB;        //< for ping-pong rendering
+
+			util::maybe<graphic::Texture_2D&> ambient_occlusion;
+
+			vk::UniqueDescriptorSetLayout shadowmaps_layout;
+			vk::UniqueDescriptorSet       shadowmaps;
+
+			util::maybe<graphic::Texture_2D_array&> voxels;
+
+			util::maybe<graphic::Texture_2D&> avg_log_luminance;
+			util::maybe<graphic::Texture_2D&> bloom;
+	};
+
+}
+}

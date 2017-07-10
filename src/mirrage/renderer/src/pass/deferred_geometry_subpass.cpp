@@ -1,0 +1,83 @@
+#include <mirrage/renderer/pass/deferred_geometry_subpass.hpp>
+
+#include <mirrage/renderer/pass/deferred_pass.hpp>
+
+#include <mirrage/ecs/components/transform_comp.hpp>
+#include <mirrage/ecs/ecs.hpp>
+#include <mirrage/graphic/render_pass.hpp>
+#include <mirrage/renderer/model.hpp>
+
+
+namespace lux {
+namespace renderer {
+
+	Deferred_geometry_subpass::Deferred_geometry_subpass(Deferred_renderer& r,
+	                                                     ecs::Entity_manager& entities)
+	    : _renderer(r), _models(entities.list<Model_comp>()) {
+	}
+
+	void Deferred_geometry_subpass::configure_pipeline(Deferred_renderer& renderer,
+	                                                   graphic::Pipeline_description& p) {
+
+		p.rasterization.cullMode = vk::CullModeFlagBits::eNone;
+		p.add_descriptor_set_layout(renderer.model_loader().material_descriptor_set_layout());
+		p.vertex<Model_vertex>(0, false,
+		                       0, &Model_vertex::position,
+		                       1, &Model_vertex::normal,
+		                       2, &Model_vertex::tex_coords);
+
+	}
+	void Deferred_geometry_subpass::configure_subpass(Deferred_renderer&,
+	                                                  graphic::Subpass_builder& pass) {
+		pass.stage("default"_strid)
+		    .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
+		    .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
+
+		pass.stage("emissive"_strid)
+		    .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
+		    .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
+	}
+
+	void Deferred_geometry_subpass::update(util::Time) {
+	}
+	void Deferred_geometry_subpass::pre_draw(vk::CommandBuffer& command_buffer) {
+		for(auto& model : _models) {
+			// TODO: should be done by culling step instead of rendering (once we have culling)
+			if(!model.model()) {
+				// TODO: async
+				model.model(_renderer.model_loader().load(model.model_aid()));
+			}
+
+			model.model()->generate_barriers(command_buffer);
+		}
+	}
+
+	void Deferred_geometry_subpass::draw(vk::CommandBuffer&    command_buffer,
+	                                     graphic::Render_pass& render_pass) {
+		auto _ = _renderer.profiler().push("Geometry");
+
+		Deferred_push_constants dpc{};
+
+		for(auto& model : _models) {
+			auto& transform = model.owner().get<ecs::components::Transform_comp>()
+			                  .get_or_throw("Required Transform_comp missing");
+
+			dpc.model = transform.to_mat4();
+			dpc.light_data.x = _renderer.settings().debug_disect;
+			render_pass.push_constant("dpc"_strid, dpc);
+
+			model.model()->bind(command_buffer, render_pass, 0,
+			                    [&](auto& material, auto offset, auto count) {
+				if(!material->material_id()) {
+					render_pass.set_stage("default"_strid);
+				} else {
+					render_pass.set_stage(material->material_id());
+				}
+
+				command_buffer.drawIndexed(count, 1, offset, 0, 0);
+			});
+		}
+	}
+
+}
+}

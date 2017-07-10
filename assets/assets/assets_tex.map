@@ -1,9 +1,9 @@
 tex: = textures/
 
 tex:black = textures/default_black.png
-tex:white = textures/default_white.png
+tex:white = textures/default_white.ktx
 tex:normal = textures/default_normal.png
-tex:placeholder = textures/default_placeholder.png
+tex:placeholder = textures/default_placeholder.ktx
 
 tex:x_font = textures/x.template_regular_48.tga
 tex:satisfy_font = textures/satisfy_regular_20.tga

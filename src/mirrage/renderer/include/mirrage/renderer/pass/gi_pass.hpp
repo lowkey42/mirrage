@@ -1,0 +1,110 @@
+#pragma once
+
+#include <mirrage/renderer/deferred_renderer.hpp>
+
+#include <mirrage/graphic/render_pass.hpp>
+
+
+namespace lux {
+namespace renderer {
+
+	class Gi_pass : public Pass {
+		public:
+			Gi_pass(Deferred_renderer&,
+			        graphic::Render_target_2D& in_out,
+			        graphic::Render_target_2D& diffuse_in);
+
+
+			void update(util::Time dt) override;
+			void draw(vk::CommandBuffer&, Command_buffer_source&,
+			          vk::DescriptorSet global_uniform_set, std::size_t swapchain_image) override;
+
+			auto name()const noexcept -> const char* override {return "SSGI";}
+			
+		private:
+			Deferred_renderer&                   _renderer;
+			vk::UniqueSampler                    _gbuffer_sampler;
+			graphic::Image_descriptor_set_layout _descriptor_set_layout;
+			graphic::Render_target_2D&           _color_in_out;
+			graphic::Render_target_2D&           _color_diffuse_in;
+			bool                                 _first_frame = true;
+			glm::mat4                            _prev_view;
+			glm::mat4                            _prev_proj;
+			
+			// current GI result + history buffer (diffuse only)
+			graphic::Render_target_2D       _gi_diffuse;
+			graphic::Render_target_2D       _gi_diffuse_history;
+
+			// current GI result + history buffer (specular only)
+			graphic::Render_target_2D       _gi_specular;
+			graphic::Render_target_2D       _gi_specular_history;
+
+			// depth from previous frame (used to reject reprojected samples)
+			graphic::Render_target_2D       _prev_depth;
+
+			vk::Format                      _history_weight_format;
+			graphic::Render_target_2D       _history_weight;
+
+			// preintegration of BRDF. Based on:
+			//     http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+			//     https://learnopengl.com/#!PBR/IBL/Specular-IBL
+			vk::Format                      _integrated_brdf_format;
+			graphic::Render_target_2D       _integrated_brdf;
+			graphic::Framebuffer            _brdf_integration_framebuffer;
+			graphic::Render_pass            _brdf_integration_renderpass;
+
+			// blend reprojected history into current current frame to simulate multiple bounces
+			graphic::Framebuffer            _reproject_framebuffer;
+			graphic::Render_pass            _reproject_renderpass;
+			vk::UniqueDescriptorSet         _reproject_descriptor_set;
+			
+			// GI sampling for diffuse illumination
+			std::vector<graphic::Framebuffer>    _sample_framebuffers;
+			graphic::Render_pass                 _sample_renderpass;
+			std::vector<vk::UniqueDescriptorSet> _sample_descriptor_sets;
+
+			// SS cone tracing for specular illumination
+			graphic::Framebuffer            _sample_spec_framebuffer;
+			graphic::Render_pass            _sample_spec_renderpass;
+			vk::UniqueDescriptorSet         _sample_spec_descriptor_set;
+
+			// write back GI results
+			graphic::Framebuffer            _blend_framebuffer;
+			graphic::Render_pass            _blend_renderpass;
+			vk::UniqueDescriptorSet         _blend_descriptor_set;
+
+
+			// calculates the texture with the preintegrated BRDF
+			void _integrate_brdf        (vk::CommandBuffer& command_buffer);
+
+			// blends _gi_diffuse_history into _color_diffuse_in to simulate multiple bounces
+			void _reproject_history     (vk::CommandBuffer& command_buffer,
+			                             vk::DescriptorSet globals);
+
+			// generates mipmaps for _color_diffuse_in
+			void _generate_mipmaps      (vk::CommandBuffer& command_buffer,
+			                             vk::DescriptorSet globals);
+
+			// calculates GI samples and stores them into the levels of _gi_diffuse and _gi_specular
+			void _generate_gi_samples   (vk::CommandBuffer& command_buffer);
+
+			// blends the _gi_diffuse and _gi_specular into _color_in_out
+			void _draw_gi               (vk::CommandBuffer& command_buffer);
+	};
+
+	class Gi_pass_factory : public Pass_factory {
+		public:
+			auto create_pass(Deferred_renderer&,
+			                 ecs::Entity_manager&,
+			                 util::maybe<Meta_system&>,
+			                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
+
+			auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue,
+			                 int current_score) -> int override;
+
+			void configure_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue,
+			                      graphic::Device_create_info&) override;
+	};
+
+}
+}

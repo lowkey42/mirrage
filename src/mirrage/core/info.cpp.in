@@ -1,0 +1,14 @@
+#include <mirrage/info.hpp>
+
+
+namespace lux {
+
+	namespace version_info {
+		const std::string name = "@VERSION_NAME@";
+		const std::string hash = "@GIT_HASH@";
+		const std::string date = "@GIT_DATE@";
+		const std::string subject = "@GIT_SUBJECT@";
+	}
+
+
+}

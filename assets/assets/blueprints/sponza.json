@@ -2,7 +2,7 @@
 	"Transform":{
 	},
 	"Model": {
-		"aid": "model:sponza.obj"
+		"aid": "model:sponza.mmf"
 	},
 	"Shadowcaster": {}
 }

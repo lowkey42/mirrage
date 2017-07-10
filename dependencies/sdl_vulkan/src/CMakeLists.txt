@@ -5,4 +5,17 @@ target_link_libraries(SDL_vulkan
   ${SDL2_LIBRARIES}
   ${VULKAN_LIBRARY}
   ${X11_XCB_LIBRARIES})
-install(TARGETS SDL_vulkan DESTINATION lib)
+
+target_include_directories(SDL_vulkan INTERFACE
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../include>
+	$<INSTALL_INTERFACE:include>)
+install(TARGETS SDL_vulkan EXPORT SDL_vulkan
+	INCLUDES DESTINATION include
+	ARCHIVE DESTINATION lib
+	LIBRARY DESTINATION lib
+	RUNTIME DESTINATION bin
+)
+INSTALL(EXPORT SDL_vulkan
+	FILE SDL_vulkan.cmake
+	DESTINATION lib/cmake
+)

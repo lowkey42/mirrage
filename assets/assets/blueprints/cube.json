@@ -2,6 +2,6 @@
 	"Transform":{
 	},
 	"Model": {
-		"aid": "model:cube.obj"
+		"aid": "model:cube"
 	}
 }
