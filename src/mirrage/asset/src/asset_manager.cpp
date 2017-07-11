@@ -20,7 +20,7 @@
 	#include <emscripten.h>
 #endif
 
-using namespace lux::util;
+using namespace mirrage::util;
 
 namespace {
 
@@ -40,7 +40,7 @@ namespace {
 
 	auto last_of(const std::string& str, char c) {
 		auto idx = str.find_last_of(c);
-		return idx!=std::string::npos ? lux::util::just(idx+1) : lux::util::nothing;
+		return idx!=std::string::npos ? mirrage::util::just(idx+1) : mirrage::util::nothing;
 	}
 
 	auto split_path(const std::string& path) {
@@ -116,7 +116,7 @@ namespace {
 	constexpr auto default_source = {std::make_tuple("assets", false), std::make_tuple("assets.zip", true)};
 }
 
-namespace lux {
+namespace mirrage {
 namespace asset {
 
 	std::string pwd() {

@@ -11,9 +11,9 @@
 #include <iostream>
 #include <string>
 
-using namespace lux::asset;
+using namespace mirrage::asset;
 
-namespace lux {
+namespace mirrage {
 
 // Blueprint
 	namespace ecs {

@@ -14,7 +14,7 @@
 #include <mirrage/utils/maybe.hpp>
 
 
-namespace lux {
+namespace mirrage {
 	namespace renderer {class Deferred_renderer_factory;}
 
 	class Game_engine : public Engine {

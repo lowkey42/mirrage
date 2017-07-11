@@ -4,7 +4,7 @@
 #include <mirrage/graphic/texture.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	Command_buffer_pool::Command_buffer_pool(const vk::Device& device, vk::UniqueCommandPool pool)

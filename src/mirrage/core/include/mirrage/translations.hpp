@@ -15,7 +15,7 @@
 #include <unordered_set>
 
 
-namespace lux {
+namespace mirrage {
 
 	using Category_id = std::string;
 	using Language_id = std::string;

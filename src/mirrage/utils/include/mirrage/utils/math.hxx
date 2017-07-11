@@ -3,7 +3,7 @@
 #endif
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	namespace {

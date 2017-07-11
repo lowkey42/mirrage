@@ -13,7 +13,7 @@
 #include <mirrage/renderer/pass/tone_mapping_pass.hpp>
 
 
-namespace lux {
+namespace mirrage {
 
 	Game_engine::Game_engine(const std::string& title, std::uint32_t version_major,
 	                         std::uint32_t version_minor, bool debug,

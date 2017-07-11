@@ -7,7 +7,7 @@
 #include <future>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	// model components are intially loaded as Model_unloaded_comp, replaced by Model_loading_comp

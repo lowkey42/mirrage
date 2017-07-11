@@ -12,7 +12,7 @@
 #include <vector>
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	template<class T>

@@ -1,7 +1,7 @@
 #include <mirrage/renderer/pass/gui_pass.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	namespace {

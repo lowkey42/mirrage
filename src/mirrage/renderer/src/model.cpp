@@ -12,9 +12,9 @@
 #include <assimp/IOSystem.hpp>
 
 
-using namespace lux::graphic;
+using namespace mirrage::graphic;
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	namespace {

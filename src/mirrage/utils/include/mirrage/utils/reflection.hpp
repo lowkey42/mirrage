@@ -11,7 +11,7 @@
 #include <typeinfo>
 #include <type_traits>
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	extern std::string demangle(const char* name);

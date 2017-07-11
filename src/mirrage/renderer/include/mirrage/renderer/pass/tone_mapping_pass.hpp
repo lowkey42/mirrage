@@ -5,7 +5,7 @@
 #include <mirrage/graphic/render_pass.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	class Tone_mapping_pass : public Pass {

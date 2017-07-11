@@ -25,7 +25,7 @@
 #include <memory>
 
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 	struct Serializer;
 

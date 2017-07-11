@@ -23,7 +23,7 @@
 #include <atomic>
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	class Message_bus;

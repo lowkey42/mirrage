@@ -21,7 +21,7 @@
 #include <atomic>
 
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 
 	template<class T>

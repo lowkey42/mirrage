@@ -13,7 +13,7 @@
 #include <glm/vec2.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace input {
 
 	struct Char_input {std::string character;};

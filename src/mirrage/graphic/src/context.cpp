@@ -36,7 +36,7 @@ extern "C" {
 	}
 }
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	using namespace util::unit_literals;

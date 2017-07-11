@@ -14,7 +14,7 @@
 #include <SDL2/SDL.h>
 
 
-namespace lux {
+namespace mirrage {
 namespace input {
 
 	enum class Key : int32_t {
@@ -346,23 +346,23 @@ namespace input {
 }
 
 namespace std {
-	template <> struct hash<lux::input::Key> {
-		size_t operator()(lux::input::Key ac)const noexcept {
+	template <> struct hash<mirrage::input::Key> {
+		size_t operator()(mirrage::input::Key ac)const noexcept {
 			return static_cast<size_t>(ac);
 		}
 	};
-	template <> struct hash<lux::input::Pad_button> {
-		size_t operator()(lux::input::Pad_button ac)const noexcept {
+	template <> struct hash<mirrage::input::Pad_button> {
+		size_t operator()(mirrage::input::Pad_button ac)const noexcept {
 			return static_cast<size_t>(ac);
 		}
 	};
-	template <> struct hash<lux::input::Pad_stick> {
-		size_t operator()(lux::input::Pad_stick ac)const noexcept {
+	template <> struct hash<mirrage::input::Pad_stick> {
+		size_t operator()(mirrage::input::Pad_stick ac)const noexcept {
 			return static_cast<size_t>(ac);
 		}
 	};
-	template <> struct hash<lux::input::Mouse_click> {
-		size_t operator()(lux::input::Mouse_click b)const noexcept {
+	template <> struct hash<mirrage::input::Mouse_click> {
+		size_t operator()(mirrage::input::Mouse_click b)const noexcept {
 			return static_cast<size_t>(b.button) + 101 * static_cast<std::size_t>(b.clicks+128);
 		}
 	};

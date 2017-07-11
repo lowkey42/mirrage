@@ -3,7 +3,7 @@
 #include <mirrage/engine.hpp>
 
 
-namespace lux {
+namespace mirrage {
 
 	Screen_manager::Screen_manager(Engine& engine)
 	  : _engine(engine) {

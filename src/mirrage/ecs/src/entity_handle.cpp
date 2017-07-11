@@ -7,7 +7,7 @@
 #include <string>
 
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 
 	auto get_entity_id(Entity_handle h, Entity_manager& manager) -> Entity_id {

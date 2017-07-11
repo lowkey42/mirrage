@@ -10,7 +10,7 @@
 #include <sf2/sf2.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	void load_component(ecs::Deserializer& state, Model_comp& comp) {

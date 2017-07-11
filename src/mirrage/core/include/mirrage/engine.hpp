@@ -18,7 +18,7 @@
 
 union SDL_Event;
 
-namespace lux {
+namespace mirrage {
 	namespace asset {class Asset_manager;}
 	namespace input {class Input_manager;}
 	namespace graphic {class Context; class Device; class Window;}

@@ -17,7 +17,7 @@
 #include <iostream>
 
 
-namespace lux {
+namespace mirrage {
 
 	namespace {
 		struct Sub_mesh_data {

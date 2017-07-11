@@ -17,7 +17,7 @@
 #include <string>
 
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 
 	class Entity_manager;

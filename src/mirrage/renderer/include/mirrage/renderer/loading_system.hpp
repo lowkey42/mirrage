@@ -7,7 +7,7 @@
 #include <mirrage/utils/units.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	/**

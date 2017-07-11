@@ -1,7 +1,7 @@
 #include <mirrage/renderer/pass/tone_mapping_pass.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	namespace {

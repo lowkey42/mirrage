@@ -3,7 +3,7 @@
 #include <mirrage/graphic/device.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	Profiler_result::Profiler_result(std::string name, std::uint32_t qid_begin, std::uint32_t qid_end,

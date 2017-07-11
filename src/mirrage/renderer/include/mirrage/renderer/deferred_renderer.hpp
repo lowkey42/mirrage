@@ -11,7 +11,7 @@
 #include <vulkan/vulkan.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 	class Entity_manager;
 }

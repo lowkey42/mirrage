@@ -5,7 +5,7 @@
 #endif
 
 
-namespace lux {
+namespace mirrage {
 namespace asset {
 
 	template<class T>

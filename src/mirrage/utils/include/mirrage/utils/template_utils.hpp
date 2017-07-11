@@ -13,7 +13,7 @@
 #include <algorithm>
 #include <functional>
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	template<typename T>
@@ -66,7 +66,7 @@ namespace util {
 #define CLEANUP_CONCATENATE(s1, s2) CLEANUP_CONCATENATE_DIRECT(s1, s2)
 #define CLEANUP_ANONYMOUS_VARIABLE(str) CLEANUP_CONCATENATE(str, __LINE__)
 
-#define ON_EXIT auto CLEANUP_ANONYMOUS_VARIABLE(_on_scope_exit) = ::lux::util::detail::cleanup_scope_guard() + [&]
+#define ON_EXIT auto CLEANUP_ANONYMOUS_VARIABLE(_on_scope_exit) = ::mirrage::util::detail::cleanup_scope_guard() + [&]
 
 
 	template<typename T>

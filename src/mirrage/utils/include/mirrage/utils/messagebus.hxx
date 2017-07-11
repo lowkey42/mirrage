@@ -7,7 +7,7 @@
 #include <mirrage/utils/reflection.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	template<class T>

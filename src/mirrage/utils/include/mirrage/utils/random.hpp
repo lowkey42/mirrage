@@ -10,7 +10,7 @@
 #include <random>
 #include <ctime>
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	namespace details {

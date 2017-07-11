@@ -12,7 +12,7 @@
 #include <cstdint>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	class Device;

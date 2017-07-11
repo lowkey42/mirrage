@@ -15,7 +15,7 @@
 #include <type_traits>
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	constexpr float PI = 3.14159265358979323846264338327950288f;

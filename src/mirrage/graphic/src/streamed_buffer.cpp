@@ -3,7 +3,7 @@
 #include <mirrage/graphic/device.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	Streamed_buffer::Streamed_buffer(Device& device, std::size_t capacity, vk::BufferUsageFlags usage)

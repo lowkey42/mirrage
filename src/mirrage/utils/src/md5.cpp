@@ -37,7 +37,7 @@ documentation and/or software.
 #include <cstdio>
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	// a small class for calculating MD5 hashes of strings or byte arrays

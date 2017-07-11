@@ -20,7 +20,7 @@
 #include <string>
 
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 
 	struct Deserializer;

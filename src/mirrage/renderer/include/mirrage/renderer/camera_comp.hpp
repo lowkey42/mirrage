@@ -4,7 +4,7 @@
 #include <mirrage/utils/units.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace ecs {namespace components {class Transform_comp;}}
 
 namespace renderer {

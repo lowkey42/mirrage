@@ -13,7 +13,7 @@
 #include <tuple>
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 	
 	enum class func_type {
@@ -103,5 +103,5 @@ namespace util {
 }
 }
 
-#define FOE_SELF(MEMBER_NAME) ::lux::util::member_fptr(this, &std::decay_t<decltype(*this)>::MEMBER_NAME)
+#define FOE_SELF(MEMBER_NAME) ::mirrage::util::member_fptr(this, &std::decay_t<decltype(*this)>::MEMBER_NAME)
 

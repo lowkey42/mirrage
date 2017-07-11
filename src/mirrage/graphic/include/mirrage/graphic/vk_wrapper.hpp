@@ -14,7 +14,7 @@
 #include <vector>
 
 
-namespace lux {
+namespace mirrage {
 	namespace asset{
 		class Asset_manager;
 		class AID;

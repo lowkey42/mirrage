@@ -15,7 +15,7 @@
 #include <mirrage/utils/maybe.hpp>
 
 
-namespace lux {
+namespace mirrage {
 
 	class Test_screen : public Screen {
 		public:

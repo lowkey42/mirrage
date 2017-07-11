@@ -22,7 +22,7 @@
 typedef struct SDL_Window SDL_Window;
 
 
-namespace lux {
+namespace mirrage {
 	namespace asset{
 		class Asset_manager;
 	}

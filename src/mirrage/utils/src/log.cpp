@@ -7,7 +7,7 @@
 #include <sstream>
 #include <cstring>
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	namespace {

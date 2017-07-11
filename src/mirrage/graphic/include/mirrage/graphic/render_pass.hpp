@@ -15,7 +15,7 @@
 #include <unordered_map>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	using Attachment_ref = struct Attachment_t*;

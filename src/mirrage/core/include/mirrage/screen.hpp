@@ -14,7 +14,7 @@
 #include <memory>
 
 
-namespace lux {
+namespace mirrage {
 	class Engine;
 
 	enum class Prev_screen_policy {

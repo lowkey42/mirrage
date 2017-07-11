@@ -35,7 +35,7 @@ documentation and/or software.
 #include <cstring>
 #include <iostream>
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	extern std::string md5(const std::string& str);

@@ -8,7 +8,7 @@
 #include <array>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	class Voxelization_pass : public Pass {

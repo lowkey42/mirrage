@@ -3,7 +3,7 @@
 #include <mirrage/graphic/window.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 	
 	using namespace graphic;

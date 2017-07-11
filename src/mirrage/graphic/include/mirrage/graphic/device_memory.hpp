@@ -8,7 +8,7 @@
 #include <memory>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	enum class Memory_lifetime {

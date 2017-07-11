@@ -5,7 +5,7 @@
 #include <mirrage/graphic/render_pass.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	class Bloom_pass : public Pass {

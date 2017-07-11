@@ -10,7 +10,7 @@
 #include <vector>
 #include <atomic>
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	namespace detail {

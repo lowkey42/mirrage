@@ -1,6 +1,6 @@
 #include <mirrage/ecs/component.hpp>
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 
 	void Sparse_index_policy::attach(Entity_id owner, Component_index comp) {

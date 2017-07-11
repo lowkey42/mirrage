@@ -8,7 +8,7 @@
 #include <mirrage/graphic/render_pass.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	using namespace util::unit_literals;

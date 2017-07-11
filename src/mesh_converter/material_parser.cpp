@@ -14,7 +14,7 @@
 #include <stb_image.h>
 
 
-namespace lux {
+namespace mirrage {
 
 	namespace {
 		constexpr auto albedo_texture_type       = aiTextureType_DIFFUSE;

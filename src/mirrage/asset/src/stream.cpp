@@ -11,7 +11,7 @@
 #include <cstring>
 #include <cstdio>
 
-namespace lux {
+namespace mirrage {
 namespace asset {
 
 	Loading_failed::~Loading_failed() = default;

@@ -15,7 +15,7 @@
 #endif
 
 
-namespace lux {
+namespace mirrage {
 namespace input {
 
 	using namespace util::unit_literals;

@@ -12,7 +12,7 @@
 #include <string>
 #include <memory>
 
-namespace lux {
+namespace mirrage {
 namespace asset {
 
 	using Asset_type = util::Str_id;
@@ -43,14 +43,14 @@ namespace asset {
 }
 }
 
-inline lux::asset::AID operator "" _aid(const char* str, std::size_t) {
-	return lux::asset::AID(str);
+inline mirrage::asset::AID operator "" _aid(const char* str, std::size_t) {
+	return mirrage::asset::AID(str);
 }
 
 namespace std {
-	template <> struct hash<lux::asset::AID> {
-		size_t operator()(const lux::asset::AID& aid)const noexcept {
-			return 71*hash<lux::asset::Asset_type>()(aid.type())
+	template <> struct hash<mirrage::asset::AID> {
+		size_t operator()(const mirrage::asset::AID& aid)const noexcept {
+			return 71*hash<mirrage::asset::Asset_type>()(aid.type())
 			        + hash<string>()(aid.name());
 		}
 	};

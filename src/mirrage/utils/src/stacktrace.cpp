@@ -22,7 +22,7 @@
 		#include <unistd.h>
 	#endif
 
-	namespace lux {
+	namespace mirrage {
 	namespace util {
 
 		namespace {
@@ -434,7 +434,7 @@
 	}
 
 #else
-	namespace lux {
+	namespace mirrage {
 	namespace util {
 		void init_stacktrace(std::string exeName) {
 		}

@@ -15,7 +15,7 @@
 #include <string>
 
 
-namespace lux {
+namespace mirrage {
 	namespace asset{
 		class Asset_manager;
 		class AID;

@@ -5,7 +5,7 @@
 #include <cxxabi.h>
 #include <cstdlib>
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	std::string demangle(const char* name) {
@@ -23,7 +23,7 @@ namespace util {
 }
 
 #else
-namespace lux {
+namespace mirrage {
 namespace util {
 	std::string demangle(const char* name) {
 		return name;

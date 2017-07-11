@@ -7,7 +7,7 @@
 // TODO/FIXME: remove/replace or move into utils
 #define unlikely(X) (__builtin_expect(X, false))
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 	
 	

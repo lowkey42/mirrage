@@ -3,7 +3,7 @@
 #include <memory>
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	purgatory::purgatory(std::size_t reserve) {

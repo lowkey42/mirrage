@@ -7,7 +7,7 @@
 #include <mirrage/renderer/model_comp.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	using namespace graphic;

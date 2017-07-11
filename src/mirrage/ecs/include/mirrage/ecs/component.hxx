@@ -6,7 +6,7 @@
 #include "component.hpp"
 #endif
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 
 

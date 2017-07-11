@@ -1,6 +1,6 @@
 #include <mirrage/renderer/loading_system.hpp>
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	Loading_system::Loading_system(ecs::Entity_manager& ecs,

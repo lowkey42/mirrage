@@ -10,7 +10,7 @@
 #include <memory>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	namespace {

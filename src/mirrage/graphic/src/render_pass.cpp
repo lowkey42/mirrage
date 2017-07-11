@@ -3,7 +3,7 @@
 #include <gsl/gsl>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	const vk::ColorComponentFlags all_color_components = vk::ColorComponentFlagBits::eR

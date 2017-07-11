@@ -16,7 +16,7 @@
 #include <type_traits>
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	namespace details {
@@ -498,5 +498,5 @@ namespace util {
 
 	#define LUX_PROCESS_MAYBE_ARG_EXP(name) decltype(name.get_or_throw()) name
 
-	#define LUX_PROCESS_MAYBE(...) ::lux::util::process(__VA_ARGS__) >> [&](LUX_APPLY(LUX_PROCESS_MAYBE_ARG_EXP, __VA_ARGS__))
+	#define LUX_PROCESS_MAYBE(...) ::mirrage::util::process(__VA_ARGS__) >> [&](LUX_APPLY(LUX_PROCESS_MAYBE_ARG_EXP, __VA_ARGS__))
 #endif

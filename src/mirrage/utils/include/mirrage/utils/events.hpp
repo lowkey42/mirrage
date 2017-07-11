@@ -11,7 +11,7 @@
 #include <vector>
 #include <algorithm>
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	template<typename... ET>

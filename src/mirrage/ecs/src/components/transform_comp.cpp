@@ -8,7 +8,7 @@
 #include <glm/gtx/quaternion.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 namespace components {
 

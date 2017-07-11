@@ -10,7 +10,7 @@
 #include <string>
 
 
-namespace lux {
+namespace mirrage {
 
 	namespace version_info {
 		extern const std::string name;

@@ -3,7 +3,7 @@
 #include <mirrage/ecs/components/transform_comp.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	using namespace util::unit_literals;

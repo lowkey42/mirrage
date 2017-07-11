@@ -12,14 +12,14 @@
 #include <string>
 #include <tuple>
 
-using namespace lux;
+using namespace mirrage;
 
 auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string>;
 
 // ./mesh_converter sponza.obj
 // ./mesh_converter --output=/foo/bar sponza.obj
 int main(int argc, char** argv) {
-	lux::util::init_stacktrace(argv[0]);
+	mirrage::util::init_stacktrace(argv[0]);
 
 	if(argc<1) {
 		std::cerr << "Too few arguments!\n"
@@ -47,7 +47,7 @@ auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util
 	});
 
 	if(found == args.end())
-		return lux::util::nothing;
+		return mirrage::util::nothing;
 
 	// found contains the key and the value
 	if(util::contains(*found, '=') && found->back()!='=') {

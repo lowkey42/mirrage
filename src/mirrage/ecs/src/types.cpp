@@ -7,7 +7,7 @@
 #include <string>
 
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 
 	namespace detail {

@@ -13,7 +13,7 @@
 #include <cmath>
 #include <algorithm>
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	class Str_id {
@@ -97,13 +97,13 @@ namespace util {
 }
 }
 
-inline constexpr lux::util::Str_id operator "" _strid(const char* str, std::size_t) {
-	return lux::util::Str_id(str);
+inline constexpr mirrage::util::Str_id operator "" _strid(const char* str, std::size_t) {
+	return mirrage::util::Str_id(str);
 }
 
 namespace std {
-	template <> struct hash<lux::util::Str_id> {
-		constexpr size_t operator()(lux::util::Str_id id)const noexcept {
+	template <> struct hash<mirrage::util::Str_id> {
+		constexpr size_t operator()(mirrage::util::Str_id id)const noexcept {
 			return id;
 		}
 	};

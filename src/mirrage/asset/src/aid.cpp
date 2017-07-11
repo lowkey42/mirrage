@@ -3,7 +3,7 @@
 #include <mirrage/utils/string_utils.hpp>
 #include <mirrage/utils/log.hpp>
 
-namespace lux {
+namespace mirrage {
 namespace asset {
 
 	AID::AID(Asset_type t, std::string n)

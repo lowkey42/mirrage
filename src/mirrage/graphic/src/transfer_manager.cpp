@@ -3,7 +3,7 @@
 #include <mirrage/graphic/device.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 

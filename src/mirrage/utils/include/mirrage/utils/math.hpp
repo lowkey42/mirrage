@@ -14,7 +14,7 @@
 #include <vector>
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	template<typename Pos, typename Vel>

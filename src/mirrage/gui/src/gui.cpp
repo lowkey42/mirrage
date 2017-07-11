@@ -14,7 +14,7 @@
 #include <string>
 
 
-namespace lux {
+namespace mirrage {
 namespace gui {
 
 	namespace {

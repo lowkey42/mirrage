@@ -11,7 +11,7 @@
 #include <glm/gtx/string_cast.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	namespace {

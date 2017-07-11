@@ -1,7 +1,7 @@
 #include <mirrage/info.hpp>
 
 
-namespace lux {
+namespace mirrage {
 
 	namespace version_info {
 		const std::string name = "@VERSION_NAME@";

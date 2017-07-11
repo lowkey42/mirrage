@@ -21,7 +21,7 @@
 #include <unordered_map>
 
 
-namespace lux {
+namespace mirrage {
 	namespace asset {
 		class Asset_manager;
 	}

@@ -26,7 +26,7 @@
 
 struct nk_context;
 
-namespace lux {
+namespace mirrage {
 	class Engine;
 
 namespace asset {class AID;}

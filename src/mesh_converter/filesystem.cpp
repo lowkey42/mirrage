@@ -11,7 +11,7 @@
 #endif
 
 
-namespace lux {
+namespace mirrage {
 
 	void create_directory(const std::string& dir) {
 #ifdef WIN

@@ -17,7 +17,7 @@ namespace Assimp {
 	class Importer;
 }
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 	
 	extern auto create_material_descriptor_set_layout(graphic::Device&,

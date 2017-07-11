@@ -13,7 +13,7 @@
 	#include <chrono>
 #endif
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	inline double current_time_sec() {

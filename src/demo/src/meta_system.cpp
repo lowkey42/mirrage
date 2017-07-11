@@ -5,7 +5,7 @@
 #include <mirrage/renderer/loading_system.hpp>
 
 
-namespace lux {
+namespace mirrage {
 
 	Meta_system::Meta_system(Game_engine& engine)
 	    : _entities(engine.assets(), this)

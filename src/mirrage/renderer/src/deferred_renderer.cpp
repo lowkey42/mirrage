@@ -8,9 +8,9 @@
 #include <gsl/gsl>
 #include <glm/glm.hpp>
 
-using namespace lux::graphic;
+using namespace mirrage::graphic;
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	Deferred_renderer::Deferred_renderer(Deferred_renderer_factory& factory,

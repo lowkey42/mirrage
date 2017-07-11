@@ -8,7 +8,7 @@
 #include <cmath>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 	
 	namespace {

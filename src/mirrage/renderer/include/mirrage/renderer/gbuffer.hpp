@@ -3,7 +3,7 @@
 #include <mirrage/graphic/texture.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	struct GBuffer {

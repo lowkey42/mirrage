@@ -3,7 +3,7 @@
 #include <mirrage/utils/log.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	void Command_manager::execute(std::unique_ptr<Command> cmd) {

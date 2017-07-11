@@ -8,7 +8,7 @@
 
 #include <glm/gtx/norm.hpp>
 
-namespace lux {
+namespace mirrage {
 namespace input {
 
 	sf2_structDef(Reaction, action, type)

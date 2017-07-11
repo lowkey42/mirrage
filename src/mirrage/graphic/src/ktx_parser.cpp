@@ -4,7 +4,7 @@
 
 #include <mirrage/utils/log.hpp>
 
-namespace lux {
+namespace mirrage {
 	namespace graphic {
 
 	// heavily based on load_ktx from GLI

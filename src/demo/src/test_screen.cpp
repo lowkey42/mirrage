@@ -22,7 +22,7 @@
 #include <sstream>
 
 
-namespace lux {
+namespace mirrage {
 	using namespace ecs::components;
 	using namespace util::unit_literals;
 	using namespace graphic;

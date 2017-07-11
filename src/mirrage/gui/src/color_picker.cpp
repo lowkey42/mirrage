@@ -3,7 +3,7 @@
 #include <glm/gtx/norm.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace gui {
 
 	namespace {

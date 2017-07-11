@@ -5,7 +5,7 @@
 #include <vulkan/vulkan.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	// https://www.khronos.org/opengles/sdk/tools/KTX/file_format_spec/

@@ -1,7 +1,7 @@
 #include <mirrage/renderer/pass/blit_pass.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	namespace {

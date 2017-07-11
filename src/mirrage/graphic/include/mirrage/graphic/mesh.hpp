@@ -13,7 +13,7 @@
 #include <cstdint>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	template<typename T>

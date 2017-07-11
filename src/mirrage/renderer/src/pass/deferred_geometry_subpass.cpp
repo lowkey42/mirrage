@@ -8,7 +8,7 @@
 #include <mirrage/renderer/model.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	Deferred_geometry_subpass::Deferred_geometry_subpass(Deferred_renderer& r,

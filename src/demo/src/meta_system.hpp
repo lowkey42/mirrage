@@ -5,7 +5,7 @@
 #include <mirrage/ecs/ecs.hpp>
 
 
-namespace lux {
+namespace mirrage {
 	namespace renderer {class Deferred_renderer;}
 	namespace renderer {class Loading_system;}
 

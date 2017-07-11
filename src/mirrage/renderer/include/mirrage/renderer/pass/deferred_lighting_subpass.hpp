@@ -4,7 +4,7 @@
 #include <mirrage/renderer/light_comp.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {struct Pipeline_description;}
 namespace graphic {class Subpass_builder;}
 

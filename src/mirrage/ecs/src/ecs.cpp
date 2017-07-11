@@ -14,7 +14,7 @@
 
 
 
-namespace lux {
+namespace mirrage {
 namespace ecs {
 
 	Entity_manager::Entity_manager(asset::Asset_manager& assets, util::any_ptr ud)

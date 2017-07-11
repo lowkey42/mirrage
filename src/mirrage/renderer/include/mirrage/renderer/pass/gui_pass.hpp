@@ -10,7 +10,7 @@
 #include <vector>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	class Gui_pass : public Pass, public gui::Gui_renderer {

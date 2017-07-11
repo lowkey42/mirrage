@@ -20,7 +20,7 @@
 #include <iostream>
 #include <exception>
 
-using namespace lux; // import game namespace
+using namespace mirrage; // import game namespace
 using namespace std::string_literals;
 
 
@@ -79,7 +79,7 @@ namespace {
 
 		try {
 			util::init_stacktrace(argv[0]);
-			lux::asset::setup_storage();
+			mirrage::asset::setup_storage();
 
 		} catch (const util::Error& ex) {
 			CRASH_REPORT("Exception in init: "<<ex.what());

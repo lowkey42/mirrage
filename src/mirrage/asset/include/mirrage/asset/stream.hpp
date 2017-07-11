@@ -19,7 +19,7 @@
 #include <vector>
 
 
-namespace lux {
+namespace mirrage {
 namespace asset {
 	struct File_handle;
 	class Asset_manager;
@@ -81,7 +81,7 @@ namespace asset {
 #ifdef ENABLE_SF2_ASSETS
 #include <sf2/sf2.hpp>
 
-namespace lux {
+namespace mirrage {
 namespace asset {
 	/**
 	 * Specialize this template for each asset-type
@@ -118,7 +118,7 @@ namespace asset {
 }
 #else
 
-namespace lux {
+namespace mirrage {
 namespace asset {
 	/**
 	 * Specialize this template for each asset-type

@@ -13,7 +13,7 @@
 #include <chrono>
 
 
-namespace lux {
+namespace mirrage {
 namespace {
 	void init_sub_system(Uint32 f, const std::string& name, bool required=true) {
 		if(SDL_InitSubSystem(f)!=0) {

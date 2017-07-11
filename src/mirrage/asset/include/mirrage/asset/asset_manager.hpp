@@ -27,7 +27,7 @@
  *		asset::Ptr<Texture> itemTex = assetMgr.load<Texture>("tex:items/health/small"_aid);
  * }
  */
-namespace lux {
+namespace mirrage {
 namespace asset {
 	class Asset_manager;
 

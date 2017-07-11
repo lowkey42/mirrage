@@ -4,7 +4,7 @@
 #include <mirrage/utils/units.hpp>
 
 
-namespace lux {
+namespace mirrage {
 namespace renderer {
 
 	class Directional_light_comp : public ecs::Component<Directional_light_comp> {

@@ -10,7 +10,7 @@
 #include <string>
 #include <stdexcept>
 
-namespace lux {
+namespace mirrage {
 namespace util {
 
 	extern void init_stacktrace(std::string exe_path);

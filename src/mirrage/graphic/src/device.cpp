@@ -9,7 +9,7 @@
 #include <gsl/gsl>
 
 
-namespace lux {
+namespace mirrage {
 namespace graphic {
 
 	namespace {

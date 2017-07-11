@@ -5,7 +5,7 @@
 #include <locale>
 
 
-namespace lux {
+namespace mirrage {
 
 	namespace {
 		struct Language_info {
