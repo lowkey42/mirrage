@@ -20,6 +20,7 @@ namespace renderer {
 		ecs::Entity_handle        owner;
 		glm::vec3                 light_source_position;
 		glm::quat                 light_source_orientation;
+		ecs::Component_index      caster_count=0;
 
 		Shadowmap(graphic::Device&, std::uint32_t size, vk::Format);
 		Shadowmap(Shadowmap&&rhs)noexcept;

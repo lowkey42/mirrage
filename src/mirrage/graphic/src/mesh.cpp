@@ -20,11 +20,6 @@ namespace graphic {
 	    , _indices(index_count / sizeof(std::uint32_t)) {
 	}
 
-	void Mesh::generate_barriers(const Command_buffer& cb) {
-		_buffer.generate_barrier(cb, vk::PipelineStageFlagBits::eVertexInput,
-		                         vk::AccessFlagBits::eIndexRead|vk::AccessFlagBits::eVertexAttributeRead);
-	}
-
 	void Mesh::bind(vk::CommandBuffer cb, std::uint32_t vertex_binding) {
 		cb.bindVertexBuffers(vertex_binding, {_buffer.buffer()}, {0});
 		cb.bindIndexBuffer(_buffer.buffer(), _index_offset, vk::IndexType::eUint32);

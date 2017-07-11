@@ -27,6 +27,7 @@ add_library(mirrage_renderer STATIC
 	src/deferred_renderer.cpp
 	src/gbuffer.cpp
 	src/light_comp.cpp
+	src/loading_system.cpp
 	src/model_comp.cpp
 	src/model.cpp
 	

@@ -208,7 +208,8 @@ namespace renderer {
 			return; // nothing drawn, nothing to do
 
 
-		auto ff = _device->finish_frame();
+		auto transfer_barriers = *_device->destroy_after_frame(std::move(_command_buffer_pool.create_primary()[0]));
+		auto ff = _device->finish_frame(transfer_barriers);
 		auto& frame_fence = std::get<0>(ff);
 		auto& transfer_semaphore = std::get<1>(ff);
 
@@ -222,7 +223,8 @@ namespace renderer {
 		if(transfer_semaphore.is_some()) {
 			wait_count++;
 			wait_semaphores[1] = transfer_semaphore.get_or_throw();
-			wait_stages[1] = vk::PipelineStageFlagBits::eTopOfPipe;
+			wait_stages[1] = vk::PipelineStageFlagBits::eAllCommands;
+			_queued_commands.insert(_queued_commands.begin(), transfer_barriers);
 		}
 
 		auto submit_info = vk::SubmitInfo {

@@ -138,8 +138,8 @@ namespace graphic {
 				return _delete_queue.destroy_later(std::forward<T>(obj));
 			}
 
-			auto finish_frame() -> std::tuple<vk::Fence, util::maybe<vk::Semaphore>> {
-				auto semaphore = _transfer_manager.next_frame();
+			auto finish_frame(vk::CommandBuffer transfer_barriers) -> std::tuple<vk::Fence, util::maybe<vk::Semaphore>> {
+				auto semaphore = _transfer_manager.next_frame(transfer_barriers);
 				return std::make_tuple(_delete_queue.start_new_frame(), std::move(semaphore));
 			}
 			

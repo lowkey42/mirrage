@@ -7,6 +7,8 @@
 
 namespace lux {
 	namespace renderer {class Deferred_renderer;}
+	namespace renderer {class Loading_system;}
+
 
 	class Meta_system {
 		public:
@@ -24,6 +26,7 @@ namespace lux {
 		private:
 			ecs::Entity_manager                          _entities;
 			std::unique_ptr<renderer::Deferred_renderer> _renderer;
+			std::unique_ptr<renderer::Loading_system>    _model_loading;
 	};
 
 }

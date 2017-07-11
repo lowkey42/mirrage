@@ -241,7 +241,7 @@ namespace renderer {
 	void Shadowmapping_pass::draw(vk::CommandBuffer& command_buffer,
 	                              Command_buffer_source&,
 	                              vk::DescriptorSet global_uniform_set, std::size_t) {
-		
+
 		// free shadowmaps of deleted lights
 		for(auto& sm : _shadowmaps) {
 			if(sm.owner && !_entities.validate(sm.owner)) {
@@ -272,7 +272,8 @@ namespace renderer {
 				
 				auto pos_diff = glm::length2(light_transform.position() - shadowmap.light_source_position);
 				auto orientation_diff = glm::abs(glm::dot(light_transform.orientation(), shadowmap.light_source_orientation));
-				if(pos_diff <= 0.00001f && orientation_diff >= 0.999999f) {
+				if(pos_diff <= 0.00001f && orientation_diff >= 0.999999f
+				        && shadowmap.caster_count==_entities.list<Model_comp>().size()) {
 					continue; // skip update
 				}
 			}
@@ -280,20 +281,9 @@ namespace renderer {
 			auto& shadowmap = _shadowmaps.at(light.shadowmap_id());
 			shadowmap.light_source_position    = light_transform.position();
 			shadowmap.light_source_orientation = light_transform.orientation();
+			shadowmap.caster_count             = _entities.list<Model_comp>().size();
 			
 			pcs.light_view_proj = light.calc_shadowmap_view_proj();
-
-			// barrier for model loading
-			for(auto& caster : _shadowcasters) {
-				caster.owner().get<Model_comp>().process([&](Model_comp& model) {
-					// TODO: duplicated from deferred_geometry_subpass, should only be in a single place (that is neither of those)!
-					if(!model.model()) {
-						model.model(_renderer.model_loader().load(model.model_aid()));
-					}
-
-					model.model()->generate_barriers(command_buffer);
-				});
-			}
 			
 			auto& target_fb = shadowmap.framebuffer;
 			_render_pass.execute(command_buffer, target_fb, [&] {

@@ -8,77 +8,17 @@ namespace graphic {
 
 
 	Static_buffer::Static_buffer(Static_buffer&& rhs)noexcept
-	    : _buffer(std::move(rhs._buffer)), _new_owner(std::move(rhs._new_owner))
-	    , _last_owner(std::move(rhs._last_owner)) {
+	    : _buffer(std::move(rhs._buffer)) {
 	}
 	Static_buffer& Static_buffer::operator=(Static_buffer&& rhs)noexcept {
 		_buffer = std::move(rhs._buffer);
-		_new_owner = std::move(rhs._new_owner);
-		_last_owner = std::move(rhs._last_owner);
 		return *this;
-	}
-	void Static_buffer::generate_barrier(const Command_buffer& command_buffer,
-	                                     vk::PipelineStageFlags pipeline_stage, vk::AccessFlags access) {
-		if(_last_owner.is_nothing() || _last_owner.get_or_throw()==_new_owner)
-			return;
-
-		//  queue family release operation
-		auto buffer_barrier = vk::BufferMemoryBarrier {
-			vk::AccessFlags{}, access, _last_owner.get_or_throw(), _new_owner,
-			*_buffer, 0, VK_WHOLE_SIZE
-		};
-		// srcStageMask should be 0 (based on the spec) but validation layer complains
-		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, pipeline_stage,
-		                               vk::DependencyFlags{}, {}, {buffer_barrier}, {});
-
-		_last_owner = util::nothing;
 	}
 
 	Static_image::Static_image(Static_image&& rhs)noexcept
 	    : _image(std::move(rhs._image))
 	    , _mip_count(std::move(rhs._mip_count))
-	    , _dimensions(std::move(rhs._dimensions))
-	    , _new_owner(std::move(rhs._new_owner))
-	    , _last_owner(std::move(rhs._last_owner)) {
-	}
-	void Static_image::generate_barrier(const Command_buffer& command_buffer) {
-		if(_last_owner.is_some()) {
-			//  queue family release operation
-			auto subresource = vk::ImageSubresourceRange {
-				vk::ImageAspectFlagBits::eColor, 0, _mip_count, 0, _dimensions.layers
-			};
-
-			auto barrier = vk::ImageMemoryBarrier {
-				vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eTransferRead
-			               | vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eTransferWrite,
-				vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferDstOptimal,
-				_last_owner.get_or_throw(), _new_owner, *_image, subresource
-			};
-			// srcStageMask should be 0 (based on the spec) but validation layer complains
-			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
-			                               vk::PipelineStageFlagBits::eAllCommands,
-			                               vk::DependencyFlags{}, {}, {}, {barrier});
-
-			if(!_generate_mips) {
-				image_layout_transition(command_buffer, *_image,
-				                        vk::ImageLayout::eTransferDstOptimal,
-				                        vk::ImageLayout::eShaderReadOnlyOptimal,
-				                        vk::ImageAspectFlagBits::eColor,
-				                        0, _mip_count);
-			}
-
-			if(_generate_mips) {
-				_generate_mips = false;
-				// generate complete mip chain
-				generate_mipmaps(command_buffer, *_image, vk::ImageLayout::eTransferDstOptimal,
-				                 vk::ImageLayout::eShaderReadOnlyOptimal,
-				                 _dimensions.width, _dimensions.height, _mip_count);
-			}
-
-			_last_owner = util::nothing;
-		}
-
-
+	    , _dimensions(std::move(rhs._dimensions)) {
 	}
 
 	void Dynamic_buffer::update(const Command_buffer& cb, vk::DeviceSize offset,
@@ -166,7 +106,7 @@ namespace graphic {
 	                                    std::function<void(char*)> write_data,
 	                                    bool dedicated) -> Static_image {
 
-		mip_levels=0;
+		mip_levels=0; // TODO: test code: delete
 
 		auto stored_mip_levels = std::max(1u, mip_levels);
 		auto actual_mip_levels = mip_levels;
@@ -231,7 +171,7 @@ namespace graphic {
 		                              real_dimensions, std::move(mip_image_sizes));
 
 		return {std::move(final_image), actual_mip_levels, mip_levels==0,
-			    real_dimensions, owner, _queue_family};
+			    real_dimensions};
 	}
 
 	auto Transfer_manager::upload_buffer(vk::BufferUsageFlags usage, std::uint32_t owner,
@@ -250,7 +190,7 @@ namespace graphic {
 
 		if(_device.is_unified_memory_architecture()) {
 			// no transfer required
-			return {std::move(staging_buffer), owner};
+			return {std::move(staging_buffer)};
 		}
 
 
@@ -260,7 +200,7 @@ namespace graphic {
 
 		_buffer_transfers.emplace_back(std::move(staging_buffer), *final_buffer, size, owner);
 
-		return {std::move(final_buffer), owner, _queue_family};
+		return {std::move(final_buffer)};
 	}
 
 	auto Transfer_manager::_create_staging_buffer(vk::BufferUsageFlags usage,
@@ -300,9 +240,12 @@ namespace graphic {
 		        latest_usage, latest_usage_access};
 	}
 
-	auto Transfer_manager::next_frame() -> util::maybe<vk::Semaphore> {
+	auto Transfer_manager::next_frame(vk::CommandBuffer main_queue_commands) -> util::maybe<vk::Semaphore> {
 		if(_buffer_transfers.empty() && _image_transfers.empty())
 			return util::nothing;
+
+		main_queue_commands.begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+
 
 		auto& command_buffer = *_command_buffers.current();
 
@@ -317,11 +260,22 @@ namespace graphic {
 				t.dst, 0, VK_WHOLE_SIZE
 			};
 			// dstStageMask should be 0 (based on the spec) but validation layer complains
-			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
 			                               vk::PipelineStageFlagBits::eAllCommands,
 			                               vk::DependencyFlags{}, {}, {buffer_barrier}, {});
 
 			_device.destroy_after_frame(std::move(t.src));
+
+		// executed in graphics queue
+			//  queue family aquire operation
+			auto aq_buffer_barrier = vk::BufferMemoryBarrier {
+				vk::AccessFlags{}, vk::AccessFlags{}, _queue_family, t.owner,
+				t.dst, 0, VK_WHOLE_SIZE
+			};
+			// srcStageMask should be 0 (based on the spec) but validation layer complains
+			main_queue_commands.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+			                                    vk::PipelineStageFlagBits::eAllCommands,
+			                                    vk::DependencyFlags{}, {}, {aq_buffer_barrier}, {});
 		}
 		_buffer_transfers.clear();
 
@@ -345,10 +299,47 @@ namespace graphic {
 			                               vk::DependencyFlags{}, {}, {}, {barrier});
 
 			_device.destroy_after_frame(std::move(t.src));
+
+
+		// executed in graphics queue
+			{
+				// queue family aquire operation
+				auto subresource = vk::ImageSubresourceRange {
+					vk::ImageAspectFlagBits::eColor, 0, t.mip_count_actual, 0, t.dimensions.layers
+				};
+
+				auto barrier = vk::ImageMemoryBarrier {
+					vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eTransferRead
+				               | vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eTransferWrite,
+					vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eTransferDstOptimal,
+					_queue_family, t.owner, t.dst, subresource
+				};
+				// srcStageMask should be 0 (based on the spec) but validation layer complains
+				main_queue_commands.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
+				                               vk::PipelineStageFlagBits::eAllCommands,
+				                               vk::DependencyFlags{}, {}, {}, {barrier});
+
+				if(t.generate_mips) {
+					// generate complete mip chain
+					generate_mipmaps(main_queue_commands, t.dst, vk::ImageLayout::eTransferDstOptimal,
+					                 vk::ImageLayout::eShaderReadOnlyOptimal,
+					                 t.dimensions.width, t.dimensions.height, t.mip_count_actual);
+
+				} else {
+					image_layout_transition(main_queue_commands, t.dst,
+					                        vk::ImageLayout::eTransferDstOptimal,
+					                        vk::ImageLayout::eShaderReadOnlyOptimal,
+					                        vk::ImageAspectFlagBits::eColor,
+					                        0, t.mip_count_actual);
+				}
+
+			}
 		}
 		_image_transfers.clear();
 
 		command_buffer.end();
+
+		main_queue_commands.end();
 
 		auto submit_info = vk::SubmitInfo {
 			0, nullptr, nullptr,

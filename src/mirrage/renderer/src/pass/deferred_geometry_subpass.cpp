@@ -41,15 +41,6 @@ namespace renderer {
 	void Deferred_geometry_subpass::update(util::Time) {
 	}
 	void Deferred_geometry_subpass::pre_draw(vk::CommandBuffer& command_buffer) {
-		for(auto& model : _models) {
-			// TODO: should be done by culling step instead of rendering (once we have culling)
-			if(!model.model()) {
-				// TODO: async
-				model.model(_renderer.model_loader().load(model.model_aid()));
-			}
-
-			model.model()->generate_barriers(command_buffer);
-		}
 	}
 
 	void Deferred_geometry_subpass::draw(vk::CommandBuffer&    command_buffer,

@@ -80,7 +80,7 @@ namespace graphic {
 		           vk::Extent3D{dim.width, dim.height, dim.depth},
 		           clamp_mip_levels(dim.width, dim.height, mip_levels),
 		           dim.layers, vk::SampleCountFlagBits::e1, vk::ImageTiling::eOptimal,
-		           usage}, false, Memory_lifetime::normal, dedicated), mip_levels, false, dim,  0)
+		           usage}, false, Memory_lifetime::normal, dedicated), mip_levels, false, dim)
 		    , _image_view(device.create_image_view(_image.image(), format, 0, _image.mip_level_count(), aspects)) {
 		}
 
@@ -100,9 +100,6 @@ namespace graphic {
 		Base_texture::Base_texture(Device& device, Static_image image, vk::Format format)
 		    : _image(std::move(image))
 		    , _image_view(device.create_image_view(this->image(), format, 0, _image.mip_level_count())) {
-		}
-		void Base_texture::generate_barrier(const Command_buffer& cb) {
-			_image.generate_barrier(cb);
 		}
 
 		auto build_mip_views(Device& device, std::uint32_t mip_levels,

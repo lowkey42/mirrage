@@ -65,15 +65,6 @@ namespace lux {
 
 		_sun = _meta_system.entities().emplace("sun");
 
-// WORKAROUND until I've rewritten the transfer_manager/model loading
-		for(auto& model : _meta_system.entities().list<renderer::Model_comp>()) {
-			if(!model.model()) {
-				model.model(_meta_system.renderer().model_loader().load(model.model_aid()));
-			}
-		}
-		_meta_system.renderer().device().wait_idle();
-// END WORKAROUND
-
 		_set_preset(1);
 
 		_mailbox.subscribe_to([&](input::Once_action& e){

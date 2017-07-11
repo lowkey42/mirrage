@@ -145,7 +145,7 @@ namespace ecs {
 
 			bool save(Entity_handle owner, Serializer& serializer)override {
 				return find(owner).process(false, [&](T& comp) {
-					serializer.write_value(T::name());
+					serializer.write_value(T::name_save_as());
 					save_component(serializer, comp);
 					return true;
 				});

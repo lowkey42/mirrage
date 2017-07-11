@@ -45,7 +45,6 @@ namespace lux {
 			};
 
 			auto mip_levels = std::floor(std::log2(std::min(width, height))) + 1;
-			mip_levels = 1;
 
 			auto texture = gli::texture2d(srgb ? gli::FORMAT_RGBA8_SRGB_PACK8
 			                                   : gli::FORMAT_RGBA8_UNORM_PACK8,

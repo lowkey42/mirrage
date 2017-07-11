@@ -42,8 +42,6 @@ namespace graphic {
 			     std::function<void(char*)> write_vertices, std::function<void(char*)> write_indices);
 
 
-			void generate_barriers(const Command_buffer&);
-
 			void bind(vk::CommandBuffer, std::uint32_t vertex_binding);
 
 			auto index_count()const noexcept {return _indices;}

@@ -32,10 +32,10 @@ vec3 decode_tangent_normal(vec2 tn);
 vec3 tangent_space_to_world(vec3 N);
 
 void main() {
-	vec4 albedo = textureLod(albedo_sampler, vertex_out.tex_coords, 3);
+	vec4 albedo = texture(albedo_sampler, vertex_out.tex_coords);
 
-//	if(albedo.a < 0.1)
-//		discard;
+	if(albedo.a < 0.1)
+		discard;
 
 	vec4 mat_data = texture(mat_data_sampler, vertex_out.tex_coords); // TODO: LOD bias?
 

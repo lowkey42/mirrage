@@ -27,7 +27,6 @@ namespace graphic {
 
 				auto view()const noexcept {return *_image_view;}
 				auto image()const noexcept {return _image.image();}
-				void generate_barrier(const Command_buffer&);
 
 				auto width()const noexcept {return _image.width();}
 				auto height()const noexcept {return _image.height();}

@@ -218,9 +218,6 @@ namespace renderer {
 		_mesh_buffer.flush(cb, vk::PipelineStageFlagBits::eVertexInput,
 		                   vk::AccessFlagBits::eVertexAttributeRead | vk::AccessFlagBits::eIndexRead);
 
-		for(auto& texture : _loaded_textures) {
-			texture->texture->generate_barrier(cb);
-		}
 
 		_render_pass.unsafe_begin_renderpass(cb, fb); // ended by finalize_draw()
 

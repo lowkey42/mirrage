@@ -46,8 +46,8 @@ void main() {
 		out_color = vec4(textureLod(mat_data_sampler, vertex_out.tex_coords, pcs.prev_projection[2][3]).rgb, 1.0);
 	}
 
-	out_color = vec4(decode_normal(textureLod(mat_data_sampler, vertex_out.tex_coords, 0).rg), 1.0);
-	out_color = vec4(textureLod(albedo_sampler, vertex_out.tex_coords, 0).rgb, 1.0);
+//	out_color = vec4(decode_normal(textureLod(mat_data_sampler, vertex_out.tex_coords, 0).rg), 1.0);
+//	out_color = vec4(textureLod(albedo_sampler, vertex_out.tex_coords, 0).rgb, 1.0);
 
 //	out_color = vec4(texture(ao_sampler, vertex_out.tex_coords).rrr, 1.0);
 }

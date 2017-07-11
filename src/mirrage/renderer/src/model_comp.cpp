@@ -14,6 +14,17 @@ namespace lux {
 namespace renderer {
 
 	void load_component(ecs::Deserializer& state, Model_comp& comp) {
+		FAIL("Shouldn't be called directly");
+	}
+
+	void save_component(ecs::Serializer& state, const Model_comp& comp) {
+		state.write_virtual(
+			sf2::vmember("aid", comp._model_aid.str())
+		);
+	}
+
+
+	void load_component(ecs::Deserializer& state, Model_unloaded_comp& comp) {
 		auto aid_str = std::string{};
 
 		state.read_virtual(
@@ -25,12 +36,22 @@ namespace renderer {
 
 			if(aid != comp._model_aid) {
 				comp._model_aid = aid;
-				comp._model.reset();
 			}
 		}
 	}
 
-	void save_component(ecs::Serializer& state, const Model_comp& comp) {
+	void save_component(ecs::Serializer& state, const Model_unloaded_comp& comp) {
+		state.write_virtual(
+			sf2::vmember("aid", comp._model_aid.str())
+		);
+	}
+
+
+	void load_component(ecs::Deserializer&, Model_loading_comp&) {
+		FAIL("Shouldn't be called directly");
+	}
+
+	void save_component(ecs::Serializer& state, const Model_loading_comp& comp) {
 		state.write_virtual(
 			sf2::vmember("aid", comp._model_aid.str())
 		);

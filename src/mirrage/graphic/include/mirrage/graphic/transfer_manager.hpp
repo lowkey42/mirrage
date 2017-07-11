@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <cstdint>
+#include <tuple>
 
 
 namespace lux {
@@ -19,33 +20,29 @@ namespace graphic {
 	class Device;
 
 
+	// TODO: wrapper classes (Static_buffer/Static_image) are not realy required anymore and we
+	//        'could' just return Backed_buffer/Backed_image
 	class Static_buffer {
 		public:
-			Static_buffer(Backed_buffer buffer, std::uint32_t new_owner,
-			              util::maybe<std::uint32_t> last_owner=util::nothing)
-			    : _buffer(std::move(buffer)), _new_owner(new_owner), _last_owner(last_owner) {}
+			Static_buffer(Backed_buffer buffer)
+			    : _buffer(std::move(buffer)) {}
 			Static_buffer(Static_buffer&&)noexcept ;
 			Static_buffer& operator=(Static_buffer&&)noexcept;
 
 			auto buffer()const noexcept {return *_buffer;}
-			void generate_barrier(const Command_buffer&, vk::PipelineStageFlags, vk::AccessFlags);
 
 		private:
 			Backed_buffer _buffer;
-			std::uint32_t _new_owner;
-			util::maybe<std::uint32_t> _last_owner;
 	};
 	class Static_image {
 		public:
 			Static_image(Backed_image image, std::uint32_t mip_count, bool generate_mips,
-			             Image_dimensions dimensions,
-			             std::uint32_t new_owner, util::maybe<std::uint32_t> last_owner=util::nothing)
+			             Image_dimensions dimensions)
 			    : _image(std::move(image)), _mip_count(mip_count), _generate_mips(generate_mips)
-			    , _dimensions(dimensions), _new_owner(new_owner), _last_owner(last_owner) {}
+			    , _dimensions(dimensions) {}
 			Static_image(Static_image&&)noexcept;
 
 			auto image()const noexcept {return *_image;}
-			void generate_barrier(const Command_buffer&);
 
 			auto mip_level_count()const noexcept {return _mip_count;}
 			auto width()const noexcept {return _dimensions.width;}
@@ -58,8 +55,6 @@ namespace graphic {
 			std::uint32_t _mip_count;
 			bool          _generate_mips;
 			Image_dimensions _dimensions;
-			std::uint32_t _new_owner;
-			util::maybe<std::uint32_t> _last_owner;
 	};
 
 	class Dynamic_buffer {
@@ -190,9 +185,11 @@ namespace graphic {
 
 			/**
 			 * @brief has to be called exacly once per frame, executes the transfer operations
+			 * @arg The command buffer that will be filled with all required barriers (should be
+			 *        submitted before anything else in this frame)
 			 * @return the semaphore that all draw operations have to wait on
 			 */
-			auto next_frame() -> util::maybe<vk::Semaphore>;
+			auto next_frame(vk::CommandBuffer) -> util::maybe<vk::Semaphore>;
 
 		private:
 			struct Transfer_buffer_req {

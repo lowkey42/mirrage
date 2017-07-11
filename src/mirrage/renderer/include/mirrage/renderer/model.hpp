@@ -8,8 +8,9 @@
 #include <gsl/gsl>
 #include <glm/glm.hpp>
 
-#include <memory>
 #include <cstdint>
+#include <future>
+#include <memory>
 
 
 namespace Assimp {
@@ -39,9 +40,7 @@ namespace renderer {
 			Material(graphic::Device&, vk::UniqueDescriptorSet, vk::Sampler,
 			         graphic::Texture_cache& tex_cache,
 			         const Material_data& data);
-			
-			void generate_barriers(const graphic::Command_buffer&);
-			
+
 			void bind(graphic::Render_pass& pass);
 
 			auto material_id()const noexcept {return _material_id;}
@@ -134,8 +133,6 @@ namespace renderer {
 
 			auto aid()const noexcept -> auto& {return _aid;}
 
-			void generate_barriers(const graphic::Command_buffer&);
-
 			// binds the vertices and indices
 			void bind_mesh(const graphic::Command_buffer&, std::uint32_t vertex_binding);
 
@@ -169,7 +166,7 @@ namespace renderer {
 			             graphic::Texture_cache&, std::size_t max_unique_materials);
 			~Model_loader();
 			
-			auto load(const asset::AID&) -> Model_ptr;
+			auto load(const asset::AID&) -> std::shared_future<Model_ptr>;
 			
 			auto material_descriptor_set_layout()const {return *_material_descriptor_set_layout;}
 

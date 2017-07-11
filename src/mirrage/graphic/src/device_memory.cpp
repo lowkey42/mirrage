@@ -186,9 +186,9 @@ namespace graphic {
 			const vk::Device& _device;
 			std::uint32_t _type;
 			
-			Device_memory_pool<4L*1024, 256L*1024*1024> _temporary_pool;
-			Device_memory_pool<512L, 256L*1024*1024>    _normal_pool;
-			Device_memory_pool<512L, 256L*1024*1024>    _persistent_pool;
+			Device_memory_pool<1024L*1024, 256L*1024*1024> _temporary_pool;
+			Device_memory_pool<1024L*1024, 256L*1024*1024>    _normal_pool;
+			Device_memory_pool<1024L*1024, 256L*1024*1024>    _persistent_pool;
 	};
 
 
@@ -285,13 +285,6 @@ namespace graphic {
 
 		for(auto id : pool_ids) {
 			if(type_mask & (1u<<id)) {
-				auto alloc_info = vk::MemoryAllocateInfo{size, id};
-				auto mem = _device.allocateMemoryUnique(alloc_info);
-				return Device_memory{this, +[](void* self, std::uint32_t,
-				                               std::uint32_t, vk::DeviceMemory memory) {
-					static_cast<Device_memory_allocator*>(self)->_device.freeMemory(memory);
-				}, 0, 0, mem.release(), 0};
-				/*
 				auto& pool = _pools[id];
 				if(!pool) {
 					pool.reset(new Device_heap(_device, id));
@@ -307,7 +300,7 @@ namespace graphic {
 					if(e.code()==vk::Result::eErrorOutOfDeviceMemory && shrink_to_fit()>0) {
 						return pool->alloc(size, alignment, lifetime);
 					}
-				}*/
+				}
 			}
 		}
 

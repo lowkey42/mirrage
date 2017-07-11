@@ -69,6 +69,10 @@ namespace ecs {
 	 * Any component C may provide the following additional ADL functions for serialisation:
 	 *  - void load_component(ecs::Deserializer& state, C& v)
 	 *  - void save_component(ecs::Serializer& state, const C& v)
+	 *
+	 * The static constexpr methods name_save_as() may also be "overriden" replaced
+	 *   in a component to implement more complex compontent behaviour (e.g. a Live- and a Storage-
+	 *   Component that share the same name when storead but gets always loaded as a Storage-Component).
 	 */
 	template<class T, class Index_policy=Sparse_index_policy, class Storage_policy=Pool_storage_policy<32, T>>
 	class Component {
@@ -94,6 +98,7 @@ namespace ecs {
 			using storage_policy = Storage_policy;
 			using Pool           = Component_container<T>;
 			// static constexpr auto name() {return "Component";}
+			static constexpr const char* name_save_as() {return T::name();}
 
 			Component() : _manager(nullptr), _owner(invalid_entity) {}
 			Component(Entity_manager& manager, Entity_handle owner)

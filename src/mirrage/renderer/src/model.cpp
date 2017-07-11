@@ -61,12 +61,7 @@ namespace renderer {
 
 		device.vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
-	
-	void Material::generate_barriers(const Command_buffer& cb) {
-		if(_albedo)    _albedo->generate_barrier(cb);
-		if(_mat_data)  _mat_data->generate_barrier(cb);
-	}
-	
+
 	void Material::bind(graphic::Render_pass& pass) {
 		pass.bind_descriptor_sets(1, {&*_descriptor_set, 1});
 	}
@@ -80,13 +75,6 @@ namespace renderer {
 	             util::maybe<const asset::AID> aid)
 	: _mesh(device, owner_qfamily, vertex_count, index_count, write_vertices, write_indices)
 	, _sub_meshes(std::move(sub_meshes)), _aid(aid) {
-	}
-	
-	void Model::generate_barriers(const Command_buffer& cb) {
-		_mesh.generate_barriers(cb);
-		for(auto& sm : _sub_meshes) {
-			sm.material->generate_barriers(cb);
-		}
 	}
 
 	void Model::bind_mesh(const graphic::Command_buffer& cb,
@@ -187,14 +175,17 @@ namespace renderer {
 		return model;
 	}
 
-	auto Model_loader::load(const asset::AID& aid) -> Model_ptr {
+	auto Model_loader::load(const asset::AID& aid) -> std::shared_future<Model_ptr> {
 		auto& model = _models[aid];
 
 		if(!model) {
 			model = _parse_obj(aid);
 		}
 
-		return model;
+		std::promise<Model_ptr> promise;
+		std::shared_future<Model_ptr> future(promise.get_future());
+		promise.set_value(model);
+		return future;
 	}
 
 	auto Model_loader::_load_material(const asset::AID& aid) -> Material_ptr {
