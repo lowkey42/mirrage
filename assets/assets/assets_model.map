@@ -1,0 +1,5 @@
+model: = models/
+mat: = materials/
+
+model:cube = models/cube.mmf
+

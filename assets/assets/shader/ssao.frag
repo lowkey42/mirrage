@@ -14,7 +14,7 @@ layout(location = 0) out vec4 out_color;
 layout (constant_id = 0) const int SAMPLES = 16;
 layout (constant_id = 1) const int LOG_MAX_OFFSET = 4;
 layout (constant_id = 2) const int SPIRAL_TURNS = 7;
-layout (constant_id = 3) const float RADIUS = 1.1;
+layout (constant_id = 3) const float RADIUS = 0.9;
 layout (constant_id = 4) const float BIAS = 0.01;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
@@ -129,6 +129,7 @@ void main() {
 
 	// Hash function used in the HPG12 AlchemyAO paper
 	float random_pattern_rotation_angle = (3 * center_px.x ^ center_px.y + center_px.x * center_px.y) * 10;
+	random_pattern_rotation_angle = random(vec4(center_px.x, center_px.y, 0, 0));
 
 	// Choose the screen-space sample radius
 	// proportional to the projected area of the sphere
@@ -142,7 +143,7 @@ void main() {
 	float temp = RADIUS * RADIUS * RADIUS;
 	sum /= temp * temp;
 	out_color.r = max(0.0, 1.0 - sum * (5.0 / SAMPLES));
-	out_color.r*=out_color.r * out_color.r;
+//	out_color.r*=out_color.r * out_color.r;
 
 
 /*
