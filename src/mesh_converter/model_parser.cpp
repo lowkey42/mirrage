@@ -77,7 +77,6 @@ namespace mirrage {
 
 		auto scene = importer.ReadFile(path,
 		                               aiProcess_JoinIdenticalVertices
-		                               | aiProcess_GenNormals
 		                               | aiProcess_GenSmoothNormals
 		                               | aiProcess_Triangulate
 		                               | aiProcess_PreTransformVertices

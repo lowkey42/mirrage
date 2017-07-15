@@ -149,7 +149,6 @@ void main() {
 
 //	out_color.rgb *= 0.6;
 
-
 	float history_weight = texelFetch(history_weight_sampler,
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 	                                  0).r;

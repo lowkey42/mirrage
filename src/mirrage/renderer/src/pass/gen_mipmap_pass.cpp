@@ -92,54 +92,28 @@ namespace renderer {
 			
 			return render_pass;
 		}
-
-		auto create_descriptor_set_layout(graphic::Device& device,
-		                                  vk::Sampler sampler) -> vk::UniqueDescriptorSetLayout {
-			auto bindings = std::array<vk::DescriptorSetLayoutBinding, 2>();
-
-			for(auto i = std::uint32_t(0); i<bindings.size(); i++) {
-				bindings[i] = vk::DescriptorSetLayoutBinding {
-				                i, vk::DescriptorType::eCombinedImageSampler,
-				                1,
-				                vk::ShaderStageFlagBits::eFragment,
-				                &sampler};
-			}
-
-			return device.create_descriptor_set_layout(bindings);
-		}
 	}
 
 
 	Gen_mipmap_pass::Gen_mipmap_pass(Deferred_renderer& renderer)
 	    : _renderer(renderer)
-	    , _gubffer_sampler(renderer.device().create_sampler(
+	    , _gbuffer_sampler(renderer.device().create_sampler(
 	                       renderer.gbuffer().mip_levels, vk::SamplerAddressMode::eClampToBorder,
 	                       vk::BorderColor::eIntOpaqueBlack,
 	                       vk::Filter::eLinear,
 	                       vk::SamplerMipmapMode::eNearest))
-	    , _descriptor_set_layout(create_descriptor_set_layout(renderer.device(), *_gubffer_sampler))
-	    , _descriptor_set(renderer.create_descriptor_set(*_descriptor_set_layout))
+	    , _descriptor_set_layout(renderer.device(), *_gbuffer_sampler, 2)
 	    
 	    , _mipmap_gen_renderpass(build_mip_render_pass(renderer,
 	                                                   *_descriptor_set_layout,
 	                                                   _mipmap_gen_framebuffers)) {
 
-		auto desc_images = std::array<vk::DescriptorImageInfo, 2>{};
-		desc_images[0] = vk::DescriptorImageInfo{*_gubffer_sampler, renderer.gbuffer().depth.view(),
-		                                         vk::ImageLayout::eShaderReadOnlyOptimal};
-
-		desc_images[1] = vk::DescriptorImageInfo{*_gubffer_sampler, renderer.gbuffer().mat_data.view(),
-		                                         vk::ImageLayout::eShaderReadOnlyOptimal};
-
-		auto desc_writes = std::array<vk::WriteDescriptorSet, 2>();
-		for(auto i = std::uint32_t(0); i<desc_writes.size(); i++) {
-			desc_writes[i] =  vk::WriteDescriptorSet{*_descriptor_set, i, 0,
-			                                         1,
-			                                         vk::DescriptorType::eCombinedImageSampler,
-			                                         &desc_images[i], nullptr};
+		for(auto i : util::range(_renderer.gbuffer().mip_levels)) {
+			_descriptor_sets.emplace_back(_descriptor_set_layout.create_set(
+			                                  renderer.descriptor_pool(),
+			                                  {renderer.gbuffer().depth.view(i),
+			                                   renderer.gbuffer().mat_data.view(i)}));
 		}
-
-		renderer.device().vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
 
 
@@ -153,7 +127,7 @@ namespace renderer {
 
 		// importance-based mip-map shader produces slidely more artiacts than hardware mip-mapping (and is slower)
 		//   => disabled for now
-		const auto low_quality_levels = _renderer.gbuffer().mip_levels;//1u;
+		const auto low_quality_levels = 2u;//_renderer.gbuffer().mip_levels;//1u;
 
 		// blit the first level
 		graphic::generate_mipmaps(command_buffer,
@@ -192,7 +166,7 @@ namespace renderer {
 			_mipmap_gen_renderpass.execute(command_buffer, fb, [&] {
 				auto descriptor_sets = std::array<vk::DescriptorSet, 2> {
 					global_uniform_set,
-					*_descriptor_set
+					*_descriptor_sets.at(i-1)
 				};
 				_mipmap_gen_renderpass.bind_descriptor_sets(0, descriptor_sets);
 

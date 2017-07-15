@@ -38,12 +38,13 @@ namespace mirrage {
 	};
 
 	namespace {
-		constexpr auto presets = std::array<Preset, 5> {{
+		constexpr auto presets = std::array<Preset, 6> {{
 				Preset{{-0.00465f,2.693f,0.03519f}, 0.f, 0.f, 0.92f, 1.22f, 5600.f, false},
 				Preset{{-6.2272f,17.4041f,0.70684f}, 1.5745f, 1.37925f, 0.64f, 1.41f, 5600.f, false},
 				Preset{{-6.92102f,4.65626f,8.85025f}, -4.71325f, 0.0302201f, 0.74f, 1.22f, 5600.f, true},
 				Preset{{5.93751f,5.96643f,-4.34917f}, -0.0337765f, 0.0992601f, 0.62f, 1.22f, 5600.f, false},
-				Preset{{10.0168f,5.75801f,4.25396f}, 0.267295f, -0.00228794f, 0.62f, 1.85f, 5600.f, false}
+				Preset{{10.0168f,5.75801f,4.25396f}, 0.267295f, -0.00228794f, 0.62f, 1.85f, 5600.f, false},
+				Preset{{1000.07f,3.43446f,10.7669f}, 1.55168f, -0.0196647f, std::numeric_limits<float>::quiet_NaN(), 0.f, 5600.f, false}
 		}};
 	}
 
@@ -57,7 +58,14 @@ namespace mirrage {
 	               "No renderer specified to render UI elements!")) {
 
 		_camera = _meta_system.entities().emplace("camera");
-		
+
+		// TODO: check if model is available
+		auto cornell = _meta_system.entities().emplace("cornell");
+		cornell.get<Transform_comp>().process([&](auto& transform) {
+			transform.position({1000, 0, 0});
+		});
+
+		// TODO: check if model is available
 		auto sponza = _meta_system.entities().emplace("sponza");
 		sponza.get<Transform_comp>().process([&](auto& transform) {
 			transform.scale(0.01f);
@@ -76,7 +84,6 @@ namespace mirrage {
 					_meta_system.entities().emplace("cube").get<Transform_comp>().process([&](auto& transform) {
 						auto& cam = _camera.get<Transform_comp>().get_or_throw();
 						transform.position(cam.position() + cam.direction());
-						transform.scale(0.5f); // scale to 1m^3
 					});
 
 					break;
@@ -113,6 +120,9 @@ namespace mirrage {
 					break;
 				case "preset_e"_strid:
 					_set_preset(5);
+					break;
+				case "preset_f"_strid:
+					_set_preset(6);
 					break;
 			}
 		});
@@ -254,8 +264,9 @@ namespace mirrage {
 
 			nk_layout_row_dynamic(ctx, 40, 2);
 			nk_label(ctx, "Preset", NK_TEXT_LEFT);
-			auto preset_options = std::array<const char*, 6>{{
-					"Free Motion", "Center", "Top-Down", "Side-Scroller", "Hallway", "Hallway2"
+			auto preset_options = std::array<const char*, 7>{{
+					"Free Motion", "Center", "Top-Down", "Side-Scroller", "Hallway", "Hallway2",
+					"Cornell Box"
 			}};
 			_set_preset(nk_combo(ctx, preset_options.data(), preset_options.size(),
 			                     _selected_preset, 25,nk_vec2(200.f, 400)));

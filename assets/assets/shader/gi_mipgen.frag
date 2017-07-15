@@ -62,23 +62,19 @@ float g3(float x) {
 }
 
 void main() {
-	float src_lod = pcs.arguments.x - 1.0;
-
-	vec2 pixel_size = vec2(1.0) / textureSize(depth_sampler, int(src_lod));
-
 	float depth[4];
 	vec4  mat_data[4];
 	vec3  normal[4];
 	float score[4];
 
 
-	ivec2 center = ivec2(vertex_out.tex_coords*textureSize(depth_sampler, int(src_lod+1)));
+	ivec2 center = ivec2(vertex_out.tex_coords*textureSize(depth_sampler, 0));
 
 	for(int i=0; i<4; i++) {
-		ivec2 p = center*2 + offsets[i];
+		ivec2 p = center + offsets[i];
 
-		depth[i]    = texelFetch(depth_sampler,    p, int(src_lod)).r;
-		mat_data[i] = texelFetch(mat_data_sampler, p, int(src_lod));
+		depth[i]    = texelFetch(depth_sampler,    p, 0).r;
+		mat_data[i] = texelFetch(mat_data_sampler, p, 0);
 		normal[i]   = decode_normal(mat_data[i].rg);
 		score[i] = 0;
 	}
@@ -93,10 +89,10 @@ void main() {
 		}
 	}
 	for(int j=4; j<16; j++) {
-		ivec2 p_j = center*2 + offsets[j];
+		ivec2 p_j = center + offsets[j];
 
-		float d = texelFetch(depth_sampler,                  p_j, int(src_lod)).r;
-		vec3  n = decode_normal(texelFetch(mat_data_sampler, p_j, int(src_lod)).rg);
+		float d = texelFetch(depth_sampler,                  p_j, 0).r;
+		vec3  n = decode_normal(texelFetch(mat_data_sampler, p_j, 0).rg);
 
 		for(int i=0; i<4; i++) {
 			score[i] += g1(vec2(offsets[j]).length()) * g2(1.0 - dot(n, normal[i])) * g3(d - depth[i]);
@@ -117,5 +113,5 @@ void main() {
 	out_mat_data = mat_data[top_index];
 
 //	out_depth = textureLod(depth_sampler, vertex_out.tex_coords, src_lod);
-//	out_mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, src_lod);
+	out_mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0);
 }

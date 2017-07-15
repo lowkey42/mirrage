@@ -23,15 +23,15 @@ namespace renderer {
 			auto name()const noexcept -> const char* override {return "Gen. Mipmaps";}
 			
 		private:
-			Deferred_renderer&              _renderer;
-			std::uint32_t                   _mip_count;
-			vk::UniqueSampler               _gubffer_sampler;
-			vk::UniqueDescriptorSetLayout   _descriptor_set_layout;
-			vk::UniqueDescriptorSet         _descriptor_set;
+			Deferred_renderer&                   _renderer;
+			std::uint32_t                        _mip_count;
+			vk::UniqueSampler                    _gbuffer_sampler;
+			graphic::Image_descriptor_set_layout _descriptor_set_layout;
 
 			// used to generate mipmaps of layer N, based on layer N-1
-			std::vector<graphic::Framebuffer> _mipmap_gen_framebuffers;
-			graphic::Render_pass              _mipmap_gen_renderpass;
+			std::vector<vk::UniqueDescriptorSet> _descriptor_sets;
+			std::vector<graphic::Framebuffer>    _mipmap_gen_framebuffers;
+			graphic::Render_pass                 _mipmap_gen_renderpass;
 	};
 
 	class Gen_mipmap_pass_factory : public Pass_factory {

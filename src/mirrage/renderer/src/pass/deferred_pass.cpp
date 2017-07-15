@@ -148,7 +148,7 @@ namespace renderer {
 			auto attachments = std::array<Framebuffer_attachment_desc, 6>{{
 				{depth_buffer.view(0), 1.f},
 				{gbuffer.depth.view(0), util::Rgba(1.f)},
-				{gbuffer.albedo_mat_id.view(0), util::Rgba{temperature_to_color(25000.f)*0.2f,1}},
+				{gbuffer.albedo_mat_id.view(0), util::Rgba{0,0,0,0}},//util::Rgba{temperature_to_color(25000.f)*0.2f,1}},
 				{gbuffer.mat_data.view(0), util::Rgba{0,0,0,0}},
 				{color_target.view(0), util::Rgba{0,0,0,0}},
 				{color_target_diff.view(0), util::Rgba{0,0,0,0}}

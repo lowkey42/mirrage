@@ -21,6 +21,7 @@
                 "T_3": {"type":"once", "action":"preset_c"},
                 "T_4": {"type":"once", "action":"preset_d"},
                 "T_5": {"type":"once", "action":"preset_e"},
+                "T_6": {"type":"once", "action":"preset_f"},
 
                 "C": {"type":"once", "action":"d_disect"},
                 "P": {"type":"once", "action":"print"}
