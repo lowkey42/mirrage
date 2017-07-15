@@ -49,8 +49,8 @@ vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampl
                   sampler2D albedo_sampler, sampler2D mat_sampler, sampler2D brdf_sampler,
                   out vec3 diffuse) {
     // load diff + spec GI
-	vec3 radiance = upsampled_result(diff_sampler, 0, gi_lod, gi_uv, 0.5).rgb;
-	vec3 specular = upsampled_result(spec_sampler, 0,      0, gi_uv, 2.0).rgb;
+	vec3 radiance = upsampled_result(depth_sampler, diff_sampler, 0, gi_lod, gi_uv, 0.5).rgb;
+	vec3 specular = upsampled_result(depth_sampler, spec_sampler, 0,      0, gi_uv, 2.0).rgb;
 
     return calculate_gi(uv, radiance, specular, albedo_sampler, mat_sampler, brdf_sampler, diffuse);
 }

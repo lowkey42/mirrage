@@ -14,8 +14,8 @@ layout(location = 0) out vec4 out_color;
 layout (constant_id = 0) const int SAMPLES = 16;
 layout (constant_id = 1) const int LOG_MAX_OFFSET = 4;
 layout (constant_id = 2) const int SPIRAL_TURNS = 7;
-layout (constant_id = 3) const float RADIUS = 1.1;
-layout (constant_id = 4) const float BIAS = 0.01;
+layout (constant_id = 3) const float RADIUS = 0.8;
+layout (constant_id = 4) const float BIAS = 0.005;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
@@ -88,14 +88,9 @@ float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, 
 
 	const float epsilon = 0.01;
 
-//	if(vv>0.8)
-	float c = 4.0 * max(1.0 - vv / (RADIUS*RADIUS), 0.0) * max(vn - BIAS, 0.0) * border_fade_factor;
-
 	float f = max(RADIUS*RADIUS - vv, 0.0);
 
-	float b = f * f * f * max((vn - BIAS) / (epsilon + vv), 0.0) * border_fade_factor;
-
-	return mix(c,b, 0.5);
+	return f * f * f * max((vn - BIAS) / (epsilon + vv), 0.0) * border_fade_factor;
 }
 
 /** Used for packing Z into the GB channels */
@@ -124,8 +119,7 @@ void main() {
 
 	packKey(CSZToKey(P.z), out_color.gb);
 
-	// TODO/TEST: reconstruct face normals from depth
-	vec3 N = decode_normal(texelFetch(mat_data_sampler, center_px, 0).rg);//*/normalize(cross(dFdy(P), dFdx(P)));
+	vec3 N = decode_normal(texelFetch(mat_data_sampler, center_px, 0).rg);
 
 	// Hash function used in the HPG12 AlchemyAO paper
 	float random_pattern_rotation_angle = (3 * center_px.x ^ center_px.y + center_px.x * center_px.y) * 10;
@@ -142,42 +136,14 @@ void main() {
 	float temp = RADIUS * RADIUS * RADIUS;
 	sum /= temp * temp;
 	out_color.r = max(0.0, 1.0 - sum * (5.0 / SAMPLES));
-	out_color.r*=out_color.r * out_color.r;
+	out_color.r = pow(out_color.r+0.02, 1.0 + (out_color.r-0.1));
 
-
-/*
 	// Bilateral box-filter over a quad for free, respecting depth edges
 	// (the difference that this makes is subtle)
-	if (abs(dFdx(P.z)) < 0.02) {
+	if (abs(dFdx(P.z)) < 0.05) {
 		out_color.r -= dFdx(out_color.r) * ((center_px.x & 1) - 0.5);
 	}
-	if (abs(dFdy(P.z)) < 0.02) {
+	if (abs(dFdy(P.z)) < 0.05) {
 		out_color.r -= dFdy(out_color.r) * ((center_px.y & 1) - 0.5);
 	}
-*/
-
-/*
-	vec3 random = normalize(vec3(PDnrand3(vertex_out.tex_coords).xy*2-1, 0.0));
-	vec3 tangent = normalize(random - N * dot(random, N));
-	vec3 bitangent = cross(N, tangent);
-	mat3 TBN = mat3(tangent, bitangent, N);
-
-	// iterate over the sample kernel and calculate occlusion factor
-	float occlusion = 0.0;
-	for(int i = 0; i < KERNEL_SIZE; ++i) {
-		// expected view space position of sample
-		vec3 expected = P + TBN * samples[i] * RADIUS;
-
-		// actual view space position of sample (reconstructed from gBuffer depth)
-		vec3 actual = to_view_space(to_uv(expected));
-
-		// range check & accumulate
-		float range_check = 1.0 - smoothstep(0.0, 1.0, RADIUS / abs(P.z - actual.z));
-		range_check = 1.0 - range_check*range_check;
-		range_check *= clamp(abs(min(0.0, actual.z)), 0.0, 1.0);
-		occlusion += (actual.z > expected.z + BIAS ? 1.0 : 0.0) * range_check;
-	}
-	out_color.r = 1.0 - (occlusion / KERNEL_SIZE);
-	out_color.r = out_color.r * out_color.r;
-	*/
 }

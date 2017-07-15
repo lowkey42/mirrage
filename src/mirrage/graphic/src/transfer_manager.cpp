@@ -106,7 +106,7 @@ namespace graphic {
 	                                    std::function<void(char*)> write_data,
 	                                    bool dedicated) -> Static_image {
 
-		mip_levels=0; // TODO: test code: delete
+		mip_levels=0; // TODO: workaround for broken mipmaps, when loaded from GLI generated KTX-Files
 
 		auto stored_mip_levels = std::max(1u, mip_levels);
 		auto actual_mip_levels = mip_levels;
@@ -134,9 +134,9 @@ namespace graphic {
 			(void) i;
 
 			auto size = *reinterpret_cast<std::uint32_t*>(ptr);
-			ptr += 4;                    // imageSize
-			ptr += size;                 // data
-			ptr += 3 - ((size + 3) % 4); // mipPadding
+			size += 3 - ((size + 3) % 4); // mipPadding
+			ptr += sizeof(std::uint32_t); // imageSize
+			ptr += size;                  // data
 
 			mip_image_sizes.emplace_back(size);
 		}
@@ -363,7 +363,7 @@ namespace graphic {
 
 		for(auto i : util::range(t.mip_count_loaded)) {
 			auto size = t.mip_image_sizes[i];
-			offset += 4; // imageSize
+			offset += sizeof(std::uint32_t); // imageSize
 
 			INVARIANT(offset+size <= t.size, "Overflow in _transfer_image");
 
@@ -373,8 +373,6 @@ namespace graphic {
 			                           std::max(1u, t.dimensions.height >> i),
 			                           std::max(1u, t.dimensions.depth  >> i)};
 			regions.emplace_back(offset, 0, 0, subresource, vk::Offset3D{}, extent);
-
-			size += 3 - ((size + 3) % 4); // mipPadding
 			offset += size;
 		}
 

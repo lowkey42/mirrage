@@ -67,15 +67,15 @@ void main() {
 
 	if(prev_uv.x>0.0 && prev_uv.x<1.0 && prev_uv.y>0.0 && prev_uv.y<1.0) {
 		// load diff + spec GI
-		vec3 radiance = upsampled_result(history_diff_sampler, 0, 0, prev_uv.xy, 1.0).rgb;
-		vec3 specular = upsampled_result(history_spec_sampler, 0, 0, prev_uv.xy, 1.0).rgb;
+		vec3 radiance = upsampled_result(prev_depth_sampler, history_diff_sampler, 0, 0, prev_uv.xy, 1.0).rgb;
+		vec3 specular = upsampled_result(prev_depth_sampler, history_spec_sampler, 0, 0, prev_uv.xy, 1.0).rgb;
 
 		vec3 diffuse;
 		vec3 gi = calculate_gi(vertex_out.tex_coords, radiance, specular,
 		                       albedo_sampler, mat_data_sampler, brdf_sampler, diffuse);
 
 		float ao = mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, ao_factor);
-		ao = ao*0.8 + 0.2;
+		ao = ao*0.9 + 0.1;
 
 		out_input = vec4(diffuse * ao, 0.0);
 

@@ -229,7 +229,7 @@ namespace renderer {
 			command_buffer.draw(3, 1, 0, 0);
 		});
 
-		for(int i=0; i<1; i++) {
+		for(int i=0; i<2; i++) {
 			// blur horizontal
 			_blur_render_pass.execute(command_buffer, _blur_framebuffer, [&] {
 				_blur_render_pass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
