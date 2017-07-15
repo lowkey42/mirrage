@@ -123,6 +123,7 @@ void main() {
 
 	// Hash function used in the HPG12 AlchemyAO paper
 	float random_pattern_rotation_angle = (3 * center_px.x ^ center_px.y + center_px.x * center_px.y) * 10;
+	random_pattern_rotation_angle = random(vec4(center_px.x, center_px.y, 0, 0));
 
 	// Choose the screen-space sample radius
 	// proportional to the projected area of the sphere
