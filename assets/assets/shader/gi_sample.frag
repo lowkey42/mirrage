@@ -110,7 +110,7 @@ vec3 gi_sample(int lod) {
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
 	if(PRIORITISE_NEAR_SAMPLES)
-		c = c * pow(2.0, 6) * SAMPLES / max(samples_used, SAMPLES*0.3);
+		c = c * pow(2.0, 7);// * SAMPLES / max(samples_used, SAMPLES*0.3);
 	else
 		c = c * pow(2.0, lod*2);
 

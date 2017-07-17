@@ -41,9 +41,9 @@ void main() {
 	}
 
 	if(pcs.prev_projection[2][3]>=0) {
-		out_color.rgb = upsampled_result(depth_sampler, result_spec_sampler, 0, 0, vertex_out.tex_coords, pcs.prev_projection[2][3]*2).rgb;
+		out_color.rgb = upsampled_result(depth_sampler, result_diff_sampler, 0, 0, vertex_out.tex_coords, pcs.prev_projection[2][3]*2).rgb;
 
-		out_color = vec4(textureLod(mat_data_sampler, vertex_out.tex_coords, pcs.prev_projection[2][3]).rgb, 1.0);
+	//	out_color = vec4(textureLod(mat_data_sampler, vertex_out.tex_coords, pcs.prev_projection[2][3]).rgb, 1.0);
 	}
 
 //	out_color = vec4(decode_normal(textureLod(mat_data_sampler, vertex_out.tex_coords, 0).rg), 1.0);

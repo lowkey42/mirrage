@@ -1,6 +1,6 @@
 {
 	"Transform":{
-		"scale": {"x": 5, "y": 5, "z":5}
+		"scale": {"x": 3, "y": 3, "z":3}
 	},
 	"Model": {
 		"aid": "model:cornell.mmf"

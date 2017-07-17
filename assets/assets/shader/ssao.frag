@@ -14,8 +14,8 @@ layout(location = 0) out vec4 out_color;
 layout (constant_id = 0) const int SAMPLES = 16;
 layout (constant_id = 1) const int LOG_MAX_OFFSET = 4;
 layout (constant_id = 2) const int SPIRAL_TURNS = 7;
-layout (constant_id = 3) const float RADIUS = 0.8;
-layout (constant_id = 4) const float BIAS = 0.005;
+layout (constant_id = 3) const float RADIUS = 0.7;
+layout (constant_id = 4) const float BIAS = 0.01;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
@@ -84,13 +84,11 @@ float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, 
 	float vv = dot(v, v);
 	float vn = dot(v, n_C);
 
-	float border_fade_factor = clamp(abs(min(0.0, Q.z)), 0.0, 1.0);
-
 	const float epsilon = 0.01;
 
 	float f = max(RADIUS*RADIUS - vv, 0.0);
 
-	return f * f * f * max((vn - BIAS) / (epsilon + vv), 0.0) * border_fade_factor;
+	return f * f * f * max((vn - BIAS) / (epsilon + vv), 0.0);
 }
 
 /** Used for packing Z into the GB channels */
@@ -113,17 +111,16 @@ void packKey(float key, out vec2 p) {
 
 void main() {
 	ivec2 center_px = ivec2(vertex_out.tex_coords*textureSize(depth_sampler, MIN_MIP));
+	ivec2 center_px_normal = ivec2(vertex_out.tex_coords*textureSize(mat_data_sampler, 0));
 
 	float depth = texelFetch(depth_sampler, center_px, MIN_MIP).r;
 	vec3 P = depth * vertex_out.view_ray;
 
 	packKey(CSZToKey(P.z), out_color.gb);
 
-	vec3 N = decode_normal(texelFetch(mat_data_sampler, center_px, 0).rg);
+	vec3 N = decode_normal(texelFetch(mat_data_sampler, center_px_normal, 0).rg);
 
-	// Hash function used in the HPG12 AlchemyAO paper
-	float random_pattern_rotation_angle = (3 * center_px.x ^ center_px.y + center_px.x * center_px.y) * 10;
-	random_pattern_rotation_angle = random(vec4(center_px.x, center_px.y, 0, 0));
+	float random_pattern_rotation_angle = random(vec4(center_px.x, center_px.y, 0, 0));
 
 	// Choose the screen-space sample radius
 	// proportional to the projected area of the sphere

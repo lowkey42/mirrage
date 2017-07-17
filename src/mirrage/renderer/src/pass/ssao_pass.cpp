@@ -151,7 +151,7 @@ namespace renderer {
 			return format.get_or_throw();
 		}
 
-		constexpr auto ao_mip_level = 0;
+		constexpr auto ao_mip_level = 1;
 	}
 
 
@@ -212,7 +212,7 @@ namespace renderer {
 		};
 
 		Push_constants pcs;
-		pcs.options.x = 0;//_renderer.gbuffer().mip_levels - ao_mip_level;
+		pcs.options.x = _renderer.gbuffer().mip_levels - ao_mip_level;
 
 		auto& cam = _renderer.active_camera().get_or_throw();
 		float height = _ao_result_buffer.height();
