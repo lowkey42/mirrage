@@ -6,6 +6,11 @@
 #include "random.glsl"
 
 
+float luminance_ups(vec3 c) {
+	vec3 f = vec3(0.299,0.587,0.114);
+	return sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
+}
+
 float weight_offset(float x, float sharpness) {
 	float b = 0;
 	float c = (2.0*2.0) * 4 / sharpness;
@@ -36,12 +41,14 @@ vec4 upsampled_result(sampler2D depth_sampler, sampler2D color_sampler, int dept
 			
 			float weight = weight_offset(dot(offset,offset), sharpness) * weight_depth(depth-d, depth_dev);
 			
-			color += weight * texelFetch(color_sampler, ivec2(color_size * p), color_lod);
+			vec4 c = texelFetch(color_sampler, ivec2(color_size * p), color_lod);
+			color += weight * c / (1 + luminance_ups(c.rgb));
 			weight_sum += weight;
 		}
 	}
 	
-	return color / weight_sum;
+	color /= weight_sum;
+	return color / (1 - luminance_ups(color.rgb));
 }
 
 #endif

@@ -110,12 +110,12 @@ vec3 gi_sample(int lod) {
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
 	if(PRIORITISE_NEAR_SAMPLES)
-		c = c * pow(2.0, 7);// * SAMPLES / max(samples_used, SAMPLES*0.3);
+	c = c * pow(2.0, max(lod*2, 3));
 	else
 		c = c * pow(2.0, lod*2);
 
 	// fade out if too few samples hit anything on screen
-	c *= smoothstep(0.1, 0.2, samples_used/SAMPLES);
+//	c *= smoothstep(0.1, 0.2, samples_used/SAMPLES);
 
 	return c;
 }

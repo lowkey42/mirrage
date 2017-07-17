@@ -163,6 +163,17 @@ namespace renderer {
 			                   vk::PipelineStageFlagBits::eFragmentShader,
 			                   vk::DependencyFlags{}, {}, {}, {barrier});
 
+			auto barrier2 = vk::ImageMemoryBarrier {
+				vk::AccessFlagBits::eColorAttachmentWrite, vk::AccessFlagBits::eShaderRead,
+				vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
+				VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED,
+				_renderer.gbuffer().mat_data.image(), subresource
+			};
+			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                   vk::PipelineStageFlagBits::eFragmentShader,
+			                   vk::DependencyFlags{}, {}, {}, {barrier2});
+
+
 			_mipmap_gen_renderpass.execute(command_buffer, fb, [&] {
 				auto descriptor_sets = std::array<vk::DescriptorSet, 2> {
 					global_uniform_set,

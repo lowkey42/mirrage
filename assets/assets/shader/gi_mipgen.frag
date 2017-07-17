@@ -82,10 +82,10 @@ void main() {
 	// calc score
 	for(int j=0; j<4; j++) {
 		for(int i=0; i<j; i++) {
-			score[i] += g1(vec2(offsets[j]).length()) * g2(1.0 - dot(normal[j], normal[i])) * g3(depth[j] - depth[i]);
+			score[i] += g1(vec2(offsets[j]-offsets[i]).length()) * g2(1.0 - dot(normal[j], normal[i])) * g3(depth[j] - depth[i]);
 		}
 		for(int i=j+1; i<4; i++) {
-			score[i] += g1(vec2(offsets[j]).length()) * g2(1.0 - dot(normal[j], normal[i])) * g3(depth[j] - depth[i]);
+			score[i] += g1(vec2(offsets[j]-offsets[i]).length()) * g2(1.0 - dot(normal[j], normal[i])) * g3(depth[j] - depth[i]);
 		}
 	}
 	for(int j=4; j<16; j++) {
@@ -113,5 +113,5 @@ void main() {
 	out_mat_data = mat_data[top_index];
 
 //	out_depth = textureLod(depth_sampler, vertex_out.tex_coords, src_lod);
-	out_mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0);
+//	out_mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0);
 }
