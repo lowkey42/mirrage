@@ -135,7 +135,7 @@ void main() {
 	vec3 raycast_hit_point;
 	if(traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
 							depthSize, 1.0, global_uniforms.proj_planes.x,
-							max(4, 4), 0.1, 128, 32.0, int(startLod + 0.5),
+							max(4, 4), 0.5, 128, 32.0, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 		
 		vec3 L = raycast_hit_point - P;
@@ -144,10 +144,9 @@ void main() {
 		float factor_distance = 1.0 - length(raycast_hit_point - P) / 16.0;
 
 		out_color.rgb = max(color * factor_distance, vec3(0));
+	} else {
+		out_color.rgb = textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI);
 	}
-	//out_color.rgb = max(out_color.rgb, textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI));
-
-//	out_color.rgb *= 0.6;
 
 	float history_weight = texelFetch(history_weight_sampler,
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),

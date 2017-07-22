@@ -80,11 +80,6 @@ namespace util {
 	}
 
 	template<typename T>
-	constexpr T max(T a, T b) {
-		return a<b ? b : a;
-	}
-
-	template<typename T>
 	void erase_fast(std::vector<T>& c, const T& v) {
 		using std::swap;
 

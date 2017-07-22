@@ -8,6 +8,8 @@
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/profiler.hpp>
 
+#include <mirrage/utils/math.hpp>
+
 #include <vulkan/vulkan.hpp>
 
 
@@ -28,6 +30,12 @@ namespace renderer {
 		int shadow_quality = 99; // 0 = lowest
 		int gi_mip_levels = 6;
 		int gi_start_mip_level = 2; // >=1 !
+		int gi_spec_mip_level = 0;
+
+		auto gi_base_mip_level()const noexcept {
+			return util::min(gi_start_mip_level, gi_spec_mip_level);
+		}
+
 		bool gi = true;
 		bool dynamic_shadows = false;
 		bool debug_disect = false;

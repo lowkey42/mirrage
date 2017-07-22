@@ -3,7 +3,7 @@
 #extension GL_ARB_shading_language_420pack : enable
 
 #include "normal_encoding.glsl"
-
+#include "global_uniforms.glsl"
 
 layout(location = 0) in Vertex_data {
 	vec2 uv_center;
@@ -22,10 +22,12 @@ layout (constant_id = 0) const bool HORIZONTAL = true;
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D color_sampler;
 
+
 vec3 read(vec2 uv, float center_depth, inout float weight_sum, float static_weight) {
-	float d = texture(depth_sampler, vertex_out.uv_center).r;
+	float d = texelFetch(depth_sampler, ivec2(uv*textureSize(depth_sampler, 0)), 0).r;
 	float dz = center_depth - d;
-	float w = clamp(exp(-dz*dz), 0.1, 1.0) * static_weight;
+	float d_dev = mix(0.02, 1.0, d) / global_uniforms.proj_planes.y;
+	float w = exp(-dz*dz/(2*d_dev*d_dev)) * static_weight;
 	weight_sum += w;
 
 	return texture(color_sampler, uv).rgb * w;

@@ -1,6 +1,7 @@
 #include <mirrage/renderer/pass/ssao_pass.hpp>
 
 #include <mirrage/graphic/window.hpp>
+#include <mirrage/utils/math.hpp>
 
 #include <glm/gtx/string_cast.hpp>
 
@@ -212,7 +213,7 @@ namespace renderer {
 		};
 
 		Push_constants pcs;
-		pcs.options.x = _renderer.gbuffer().mip_levels - ao_mip_level;
+		pcs.options.x = util::max(1, _renderer.gbuffer().mip_levels - ao_mip_level - 1);
 
 		auto& cam = _renderer.active_camera().get_or_throw();
 		float height = _ao_result_buffer.height();

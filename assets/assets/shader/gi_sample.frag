@@ -16,6 +16,8 @@ layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_sampler;
 layout(set=1, binding = 4) uniform sampler2D history_weight_sampler;
+layout(set=1, binding = 5) uniform sampler2D depth_all_levels_sampler;
+layout(set=1, binding = 6) uniform sampler2D mat_data_all_levels_sampler;
 
 layout (constant_id = 0) const bool LAST_SAMPLE = false;
 layout (constant_id = 1) const float R = 40;
@@ -49,7 +51,7 @@ void main() {
 	float base_mip    = pcs.prev_projection[3][3];
 
 	if(current_mip < max_mip)
-		out_color = vec4(upsampled_result(depth_sampler, result_sampler, 0, 0, vertex_out.tex_coords, 1.0).rgb, 1.0);
+		out_color = vec4(upsampled_result(depth_all_levels_sampler, mat_data_all_levels_sampler, result_sampler, int(current_mip), 0, vertex_out.tex_coords, 1.0).rgb, 1.0);
 	else
 		out_color = vec4(0,0,0, 1);
 
@@ -62,13 +64,21 @@ void main() {
 		                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 		                                  0).r;
 
-		out_color *= 1.0 - (history_weight*0.8);
+		out_color *= 1.0 - (history_weight*0.9);
 	}
 
 	out_color = max(out_color, vec4(0));
 }
 
 const float PI = 3.14159265359;
+
+vec3 saturation(vec3 c, float change) {
+	vec3 f = vec3(0.299,0.587,0.114);
+	float p = sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
+
+	return vec3(p) + (c-vec3(p))*vec3(change);
+}
+
 
 vec3 gi_sample(int lod) {
 	vec2 texture_size = textureSize(color_sampler, 0);
@@ -109,10 +119,13 @@ vec3 gi_sample(int lod) {
 	// could be used to blend between screen-space and static GI
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
+
 	if(PRIORITISE_NEAR_SAMPLES)
-	c = c * pow(2.0, max(lod*2, 3));
+		c = c * pow(2.0, clamp(lod*2 + depth*3, 2, 8));
 	else
 		c = c * pow(2.0, lod*2);
+
+	// c = saturation(c, 1.1);
 
 	// fade out if too few samples hit anything on screen
 //	c *= smoothstep(0.1, 0.2, samples_used/SAMPLES);
@@ -169,7 +182,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 		return vec3(0,0,0);
 	}
 
-	float r2 = max(r*r, 0.1);
+	float r2 = r*r;
 	vec3 dir = diff / r;
 
 	vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;

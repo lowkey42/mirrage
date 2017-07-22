@@ -14,8 +14,8 @@ layout(location = 0) out vec4 out_color;
 layout (constant_id = 0) const int SAMPLES = 16;
 layout (constant_id = 1) const int LOG_MAX_OFFSET = 4;
 layout (constant_id = 2) const int SPIRAL_TURNS = 7;
-layout (constant_id = 3) const float RADIUS = 0.7;
-layout (constant_id = 4) const float BIAS = 0.01;
+layout (constant_id = 3) const float RADIUS = 1.3;
+layout (constant_id = 4) const float BIAS = 0.025;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
@@ -46,6 +46,13 @@ vec3 to_view_space(ivec2 ss_p, int mip) {
 	return mix(view_ray_x1, view_ray_x2, uv.y) * depth;
 }
 
+vec3 get_normal(ivec2 ss_p, int mip) {
+	return decode_normal(texelFetch(mat_data_sampler, ss_p, 0).rg);
+
+	ss_p = clamp(ss_p >> mip, ivec2(0), textureSize(mat_data_sampler, mip+MIN_MIP) - ivec2(1));
+	return decode_normal(texelFetch(mat_data_sampler, ss_p, mip+MIN_MIP).rg);
+}
+
 vec2 to_uv(vec3 pos) {
 	vec4 p = global_uniforms.proj_mat * vec4(pos, 1.0);
 	return (p.xy / p.w) * 0.5 + 0.5;
@@ -61,13 +68,6 @@ vec2 tap_location(int i, float spin_angle, out float out_ss_radius) {
 	return vec2(cos(angle), sin(angle));
 }
 
-/** Read the camera-space position of the point at screen-space pixel ssP + unitOffset * ssR.  Assumes length(unitOffset) == 1 */
-vec3 get_offset_position(ivec2 ss_center, vec2 dir, float ss_radius) {
-	int mip = clamp(int(floor(log2(ss_radius))) - LOG_MAX_OFFSET, 0, int(pcs.options.x));
-
-	return to_view_space(ivec2(ss_center + dir*ss_radius), mip);
-}
-
 /** Compute the occlusion due to sample with index \a i about the pixel at \a ssC that corresponds
     to camera-space point \a C with unit normal \a n_C, using maximum screen-space sampling radius \a ssDiskRadius */
 float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, float random_pattern_rotation_angle) {
@@ -77,7 +77,10 @@ float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, 
 	ss_r *= ss_disk_radius;
 
 	// The occluding point in camera space
-	vec3 Q = get_offset_position(ss_center, unit_offset, ss_r);
+	int mip = clamp(int(floor(log2(ss_disk_radius))) - LOG_MAX_OFFSET, 0, int(pcs.options.x));
+	ivec2 ss_p = ivec2(ss_center + unit_offset*ss_r);
+
+	vec3 Q = to_view_space(ss_p, mip);
 
 	vec3 v = Q - C;
 
@@ -86,9 +89,13 @@ float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, 
 
 	const float epsilon = 0.01;
 
+	vec3 N = get_normal(ss_p, mip);
+	float boost = smoothstep(0.01, 0.08, abs(dot(N, n_C)))*0.8+0.2;
+	boost += smoothstep(0.9, 1.0, abs(dot(N, n_C)))*2;
+
 	float f = max(RADIUS*RADIUS - vv, 0.0);
 
-	return f * f * f * max((vn - BIAS) / (epsilon + vv), 0.0);
+	return f * f * f * max((vn - BIAS) / (epsilon + vv), 0.0) * boost;
 }
 
 /** Used for packing Z into the GB channels */
@@ -134,7 +141,7 @@ void main() {
 	float temp = RADIUS * RADIUS * RADIUS;
 	sum /= temp * temp;
 	out_color.r = max(0.0, 1.0 - sum * (5.0 / SAMPLES));
-	out_color.r = pow(out_color.r+0.02, 1.0 + (out_color.r-0.1));
+	out_color.r = pow(out_color.r, 1.0 + out_color.r*2);
 
 	// Bilateral box-filter over a quad for free, respecting depth edges
 	// (the difference that this makes is subtle)

@@ -127,23 +127,25 @@ namespace renderer {
 
 		// importance-based mip-map shader produces slidely more artiacts than hardware mip-mapping (and is slower)
 		//   => disabled for now
-		const auto low_quality_levels = 2u;//_renderer.gbuffer().mip_levels;//1u;
+		const auto low_quality_levels = 1u;//_renderer.gbuffer().mip_levels;//1u;
 
-		// blit the first level
-		graphic::generate_mipmaps(command_buffer,
-		                          _renderer.gbuffer().depth.image(),
-		                          vk::ImageLayout::eShaderReadOnlyOptimal,
-		                          vk::ImageLayout::eShaderReadOnlyOptimal,
-		                          _renderer.gbuffer().depth.width(),
-		                          _renderer.gbuffer().depth.height(),
-		                          low_quality_levels);
-		graphic::generate_mipmaps(command_buffer,
-		                          _renderer.gbuffer().mat_data.image(),
-		                          vk::ImageLayout::eShaderReadOnlyOptimal,
-		                          vk::ImageLayout::eShaderReadOnlyOptimal,
-		                          _renderer.gbuffer().mat_data.width(),
-		                          _renderer.gbuffer().mat_data.height(),
-		                          low_quality_levels);
+		if(low_quality_levels>1) {
+			// blit the first level
+			graphic::generate_mipmaps(command_buffer,
+			                          _renderer.gbuffer().depth.image(),
+			                          vk::ImageLayout::eShaderReadOnlyOptimal,
+			                          vk::ImageLayout::eShaderReadOnlyOptimal,
+			                          _renderer.gbuffer().depth.width(),
+			                          _renderer.gbuffer().depth.height(),
+			                          low_quality_levels);
+			graphic::generate_mipmaps(command_buffer,
+			                          _renderer.gbuffer().mat_data.image(),
+			                          vk::ImageLayout::eShaderReadOnlyOptimal,
+			                          vk::ImageLayout::eShaderReadOnlyOptimal,
+			                          _renderer.gbuffer().mat_data.width(),
+			                          _renderer.gbuffer().mat_data.height(),
+			                          low_quality_levels);
+		}
 
 		// generate mipmaps for GBuffer
 		for(auto i=low_quality_levels; i<_renderer.gbuffer().mip_levels; i++) {
