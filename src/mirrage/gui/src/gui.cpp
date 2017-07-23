@@ -328,10 +328,10 @@ namespace gui {
 					nk_draw_foreach(cmd, &ctx, &commands.buffer) {
 						if (cmd->elem_count==0) continue;
 
-						auto clip = glm::vec4{glm::clamp(cmd->clip_rect.x * scale.x, 0.f, screen_size.x),
-						                      glm::clamp(cmd->clip_rect.y * scale.y, 0.f, screen_size.y),
-						                      glm::clamp(cmd->clip_rect.w * scale.x, 0.f, screen_size.x),
-						                      glm::clamp(cmd->clip_rect.h * scale.y, 0.f, screen_size.y)};
+						auto clip = glm::vec4{glm::clamp(cmd->clip_rect.x * scale.x, viewport.x, viewport.z),
+						                      glm::clamp(cmd->clip_rect.y * scale.y, viewport.y, viewport.w),
+						                      glm::clamp(cmd->clip_rect.w * scale.x, viewport.x, viewport.z),
+						                      glm::clamp(cmd->clip_rect.h * scale.y, viewport.y, viewport.w)};
 
 						renderer.draw_elements(cmd->texture.id, clip, offset, cmd->elem_count);
 

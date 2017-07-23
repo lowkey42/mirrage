@@ -288,7 +288,7 @@ namespace mirrage {
 	}
 	void Test_screen::_draw_settings_window() {
 		auto ctx = _gui.ctx();
-		if (nk_begin_titled(ctx, "debug_controls", "Debug Controls", _gui.centered_left(220, 235),
+		if (nk_begin_titled(ctx, "debug_controls", "Debug Controls", _gui.centered_left(220, 260),
 		                    NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_TITLE|NK_WINDOW_MINIMIZABLE)) {
 
 			nk_layout_row_dynamic(ctx, 20, 2);
