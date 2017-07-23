@@ -28,7 +28,9 @@
                 "R": {"type":"once", "action":"record"},
                 "F1": {"type":"once", "action":"start_record"},
                 "F2": {"type":"once", "action":"save_record"},
-                "F3": {"type":"once", "action":"playback"}
+                "F3": {"type":"once", "action":"playback"},
+
+                "F11": {"type":"once", "action":"toggle_ui"}
             },
 
             "pad_sticks": {

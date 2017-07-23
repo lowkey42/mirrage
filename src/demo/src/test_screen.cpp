@@ -130,6 +130,10 @@ namespace mirrage {
 					});
 					break;
 
+				case "toggle_ui"_strid:
+					_show_ui = !_show_ui;
+					break;
+
 				case "preset_a"_strid:
 					_set_preset(1);
 					break;
@@ -272,8 +276,13 @@ namespace mirrage {
 
 
 	void Test_screen::_draw() {
-		_draw_settings_window();
-		_draw_profiler_window();
+		if(_show_ui) {
+			_draw_settings_window();
+
+			if(_show_profiler) {
+				_draw_profiler_window();
+			}
+		}
 
 		_meta_system.draw();
 	}
@@ -304,10 +313,16 @@ namespace mirrage {
 
 			nk_label(ctx, "Indirect illumination", NK_TEXT_LEFT);
 			int gi_active = renderer_settings.gi ? 1 : 0;
-			if(nk_checkbox_label(ctx, "Active", &gi_active)) {
+			if(nk_checkbox_label(ctx, "GI", &gi_active)) {
 				auto rs_copy = renderer_settings;
 				rs_copy.gi = gi_active==1;
 				_meta_system.renderer().settings(rs_copy);
+			}
+
+			nk_label(ctx, "Show profiler", NK_TEXT_LEFT);
+			auto show_profiler = _show_profiler ? 1 : 0;
+			if(nk_checkbox_label(ctx, "Profiler", &show_profiler)) {
+				_show_profiler = show_profiler==1;
 			}
 
 
@@ -402,8 +417,8 @@ namespace mirrage {
 	}
 	void Test_screen::_draw_profiler_window() {
 		auto ctx = _gui.ctx();
-		if (nk_begin_titled(ctx, "profiler", "Profiler", _gui.centered_right(300, 360),
-		                    NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_TITLE|NK_WINDOW_MINIMIZABLE|NK_WINDOW_CLOSABLE)) {
+		if (nk_begin_titled(ctx, "profiler", "Profiler", _gui.centered_right(310, 360),
+		                    NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_TITLE|NK_WINDOW_MINIMIZABLE)) {
 
 			// TODO: disable when window is hidden
 			_meta_system.renderer().profiler().enable();
@@ -454,7 +469,9 @@ namespace mirrage {
 
 			auto& result = _meta_system.renderer().profiler().results();
 			print_entry(print_entry, result);
+
 		}
+
 		nk_end(ctx);
 	}
 

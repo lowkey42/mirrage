@@ -60,6 +60,9 @@ namespace mirrage {
 			systems::Nim_sequence _current_seq;
 			util::Time            _record_timer{0};
 
+			bool _show_ui       = true;
+			bool _show_profiler = false;
+
 			void _set_preset(int);
 			void _update_sun_position();
 
