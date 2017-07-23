@@ -104,7 +104,7 @@ namespace renderer {
 		}
 
 		constexpr auto offsets = build_halton_2_3<16>();
-		constexpr auto offset_factor = 0.1f;
+		constexpr auto offset_factor = 0.01f;
 	}
 
 
@@ -178,7 +178,7 @@ namespace renderer {
 
 	void Taa_pass::process_camera(Camera_state& cam) {
 		// update fov and push constants
-		cam.fov = cam.fov + 14.0_deg;
+		cam.fov = cam.fov + 12.0_deg;
 		cam.fov_vertical = util::Angle(2.f * std::atan(std::tan(cam.fov.value()/2.f) / cam.aspect_ratio));
 		auto new_projection = glm::perspective(cam.fov_vertical.value(), cam.aspect_ratio,
 		                                       cam.near_plane, cam.far_plane);

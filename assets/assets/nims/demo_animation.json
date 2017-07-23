@@ -329,7 +329,7 @@
             }
         },
         {
-            "length": 5.0,
+            "length": 3.0,
             "entities": {
                 "camera": {
                     "position": {
@@ -452,7 +452,7 @@
             }
         },
         {
-            "length": 6.1,
+            "length": 4.1,
             "entities": {
                 "camera": {
                     "position": {
@@ -493,7 +493,7 @@
             }
         },
         {
-            "length": 3.4,
+            "length": 2.4,
             "entities": {
                 "camera": {
                     "position": {
@@ -534,7 +534,7 @@
             }
         },
         {
-            "length": 3.5,
+            "length": 3.0,
             "entities": {
                 "camera": {
                     "position": {
