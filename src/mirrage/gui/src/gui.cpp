@@ -428,7 +428,7 @@ namespace gui {
 		PImpl(glm::vec4 viewport, asset::Asset_manager& assets,
 		      input::Input_manager& input, Gui_renderer& renderer)
 		    : viewport(viewport)
-		    , screen_size(normalize_screen_size(viewport.z-viewport.x, viewport.w-viewport.y, 1080))
+		    , screen_size(normalize_screen_size(viewport.z-viewport.x, viewport.w-viewport.y, 720))
 		    , ui_matrix(build_ui_mat(screen_size))
 		    , renderer(renderer)
 		    , atlas(assets)

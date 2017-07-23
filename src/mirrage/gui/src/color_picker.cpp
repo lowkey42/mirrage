@@ -12,7 +12,7 @@ namespace gui {
 				nk_layout_row_dynamic(ctx, 120, 1);
 				c = nk_color_picker(ctx, c, hasAlpha ? NK_RGBA : NK_RGB);
 
-				nk_layout_row_dynamic(ctx, 25, 1);
+				nk_layout_row_dynamic(ctx, 14, 1);
 				c.r = (nk_byte)nk_propertyi(ctx, "#R:", 0, c.r, 255, 1,1);
 				c.g = (nk_byte)nk_propertyi(ctx, "#G:", 0, c.g, 255, 1,1);
 				c.b = (nk_byte)nk_propertyi(ctx, "#B:", 0, c.b, 255, 1,1);

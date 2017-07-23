@@ -42,11 +42,13 @@ namespace util {
 	}
 
 	template<typename FirstT, typename SecondT>
-	constexpr auto min(FirstT&& first, SecondT&& second) -> details::min_max_result_t<FirstT, SecondT> {
-		if(first < second)
-			return first;
+	constexpr auto min(FirstT&& first, SecondT&& second) {
+		using result_t = details::min_max_result_t<FirstT, SecondT>;
+
+		if(static_cast<result_t>(first) < static_cast<result_t>(second))
+			return static_cast<result_t>(first);
 		else
-			return second;
+			return static_cast<result_t>(second);
 	}
 
 	template<typename FirstT, typename SecondT, typename... Ts>

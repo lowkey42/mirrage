@@ -8,6 +8,7 @@
 #pragma once
 
 #include "meta_system.hpp"
+#include "systems/nim_system.hpp"
 
 #include <mirrage/gui/gui.hpp>
 #include <mirrage/engine.hpp>
@@ -55,6 +56,9 @@ namespace mirrage {
 			float _cam_pitch = 0;
 
 			int _selected_preset = 0;
+
+			systems::Nim_sequence _current_seq;
+			util::Time            _record_timer{0};
 
 			void _set_preset(int);
 			void _update_sun_position();

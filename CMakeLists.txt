@@ -31,5 +31,5 @@ file(GLOB_RECURSE ALL_FILES
 		 RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
 		 ${CMAKE_CURRENT_SOURCE_DIR}/*.*)
 
-add_custom_target(all_project_files SOURCES ${ALL_FILES})
+add_custom_target(zz_all_project_files SOURCES ${ALL_FILES})
 
