@@ -124,18 +124,23 @@ void main() {
 	vec3 P = depth * vertex_out.view_ray;
 
 	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, startLod);
+	float metallic = mat_data.a;
 	vec3 N = decode_normal(mat_data.rg);
 
 	vec3 V = -normalize(P);
 
 	vec3 dir = -reflect(V, N);
 
+	bool spec_visible = metallic>0.01 || (max(0, dot(normalize(V+dir), dir))<0.6);
+
+	// TODO: calculate max distance based on roughness
 
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
-	if(traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
+	if(spec_visible &&
+	   traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
 							depthSize, 1.0, global_uniforms.proj_planes.x,
-							max(4, 4), 0.5, 64, 20.0, int(startLod + 0.5),
+							max(4, 4), 0.5, 64, 24.0, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 		
 		vec3 L = raycast_hit_point - P;
@@ -145,8 +150,8 @@ void main() {
 
 		out_color.rgb = max(color * factor_distance, vec3(0));
 	} else {
-		out_color.rgb = textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI);
 	}
+	out_color.rgb = max(out_color.rgb, textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI*1.5));
 
 	float history_weight = texelFetch(history_weight_sampler,
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),

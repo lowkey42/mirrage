@@ -27,18 +27,13 @@ vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
 	float depth  = textureLod(depth_sampler, uv, 0.0).r;
 	vec3 P = depth * vertex_out.view_ray;
 	vec3 V = -normalize(P);
-	vec3 L =  -reflect(V, N);
-	vec3 H = normalize(V+L);
 
 	float NdotV = clamp(dot(N, V), 0.0, 1.0);
-	float HdotL = clamp(dot(H, L), 0.0, 1.0);
 
 	vec2 brdf = texture(brdf_sampler, vec2(NdotV, roughness)).rg;
 
-	vec3 F = fresnelSchlick(HdotL, F0);
-
-	vec3 diff = albedo * radiance*(1.0 - F) / PI;
-	vec3 spec = specular.rgb * (F*brdf.x + brdf.y);
+	vec3 diff = albedo * radiance*(1.0 - F0*brdf.x) / PI;
+	vec3 spec = specular.rgb * (F0*brdf.x + brdf.y);
 
 	diffuse = albedo * radiance/PI + F0*radiance / (2*PI*PI);
 
