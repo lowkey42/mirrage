@@ -67,10 +67,7 @@ namespace mirrage {
 		});
 
 		// TODO: check if model is available
-		auto sponza = _meta_system.entities().emplace("sponza");
-		sponza.get<Transform_comp>().process([&](auto& transform) {
-			transform.scale(0.01f);
-		});
+		_meta_system.entities().emplace("sponza");
 
 		_sun = _meta_system.entities().emplace("sun");
 

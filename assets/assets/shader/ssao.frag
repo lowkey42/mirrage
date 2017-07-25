@@ -14,8 +14,8 @@ layout(location = 0) out vec4 out_color;
 layout (constant_id = 0) const int SAMPLES = 16;
 layout (constant_id = 1) const int LOG_MAX_OFFSET = 4;
 layout (constant_id = 2) const int SPIRAL_TURNS = 7;
-layout (constant_id = 3) const float RADIUS = 1.3;
-layout (constant_id = 4) const float BIAS = 0.038;
+layout (constant_id = 3) const float RADIUS = 1.2;
+layout (constant_id = 4) const float BIAS = 0.04;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
@@ -90,8 +90,9 @@ float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, 
 	const float epsilon = 0.01;
 
 	vec3 N = get_normal(ss_p, mip);
-	float boost = smoothstep(0.01, 0.08, abs(dot(N, n_C)))*0.7+0.3;
-	boost += smoothstep(0.9, 1.0, abs(dot(N, n_C)))*2;
+	float occluder_angle = abs(dot(N, n_C));
+	float boost = smoothstep(0.01, 0.1, occluder_angle)*0.5+0.5;
+	boost += smoothstep(0.8, 1.0, occluder_angle)*3;
 
 	float f = max(RADIUS*RADIUS - vv, 0.0);
 
@@ -140,8 +141,7 @@ void main() {
 
 	float temp = RADIUS * RADIUS * RADIUS;
 	sum /= temp * temp;
-	out_color.r = max(0.0, 1.0 - sum * (5.0 / SAMPLES));
-	out_color.r = pow(out_color.r, 1.0 + out_color.r*2);
+	out_color.r = pow(max(0.0, 1.0 - sum * (5.0 / SAMPLES)), 1.5);
 
 	// Bilateral box-filter over a quad for free, respecting depth edges
 	// (the difference that this makes is subtle)

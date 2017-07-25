@@ -104,7 +104,7 @@ namespace renderer {
 		}
 
 		constexpr auto offsets = build_halton_2_3<16>();
-		constexpr auto offset_factor = 0.01f;
+		constexpr auto offset_factor = 0.1f;
 	}
 
 

@@ -121,7 +121,7 @@ vec3 gi_sample(int lod) {
 
 
 	if(PRIORITISE_NEAR_SAMPLES)
-		c = c * pow(2.0, clamp(lod*2 + depth*1.5, 2, 8));
+		c = c * pow(2.0, clamp(lod*2 + depth*1.5, 2, 7));
 	else
 		c = c * pow(2.0, lod*2);
 
