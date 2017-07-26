@@ -127,7 +127,7 @@ namespace renderer {
 
 		// importance-based mip-map shader produces slidely more artiacts than hardware mip-mapping (and is slower)
 		//   => disabled for now
-		const auto low_quality_levels = 1u;//_renderer.gbuffer().mip_levels;//1u;
+		const auto low_quality_levels = 2u;//_renderer.gbuffer().mip_levels;//1u;
 
 		if(low_quality_levels>1) {
 			// blit the first level

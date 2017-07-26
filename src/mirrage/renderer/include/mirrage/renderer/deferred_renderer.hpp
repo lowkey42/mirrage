@@ -28,13 +28,8 @@ namespace renderer {
 	struct Renderer_settings {
 		int shadowmap_resolution = 4096;
 		int shadow_quality = 99; // 0 = lowest
-		int gi_mip_levels = 6;
-		int gi_start_mip_level = 2; // >=1 !
-		int gi_spec_mip_level = 0;
-
-		auto gi_base_mip_level()const noexcept {
-			return util::min(gi_start_mip_level, gi_spec_mip_level);
-		}
+		int gi_diffuse_mip_level = 1; // >=1 !
+		int gi_specular_mip_level = 0;
 
 		bool gi = true;
 		bool dynamic_shadows = false;

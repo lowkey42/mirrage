@@ -45,7 +45,7 @@ namespace mirrage {
 				Preset{{-6.92102f,4.65626f,8.85025f}, -4.71325f, 0.0302201f, 0.74f, 1.22f, 5600.f, true},
 				Preset{{5.93751f,5.96643f,-4.34917f}, -0.0337765f, 0.0992601f, 0.62f, 1.22f, 5600.f, false},
 				Preset{{9.88425f,5.69793f,4.93024f}, 0.450757f, -0.0187274f, 0.62f, 1.85f, 5600.f, false},
-				Preset{{1000.29f,2.24448f,6.25397f}, 1.55188f, -0.0295495f, std::numeric_limits<float>::quiet_NaN(), 0.f, 5600.f, false}
+				Preset{{999.902f,2.21469f,7.26912f}, 1.55188f, -0.0295495f, std::numeric_limits<float>::quiet_NaN(), 0.f, 5600.f, false}
 		}};
 	}
 

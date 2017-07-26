@@ -219,7 +219,8 @@ namespace renderer {
 			                      vk::ImageLayout::eShaderReadOnlyOptimal);
 
 			graphic::clear_texture(command_buffer, _feedback_buffer_b, util::Rgba{0,0,0,0},
-			                       vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
+			                       vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
+			                       0, 1);
 		}
 
 		auto& fb       = _render_into_a ? _framebuffer_a    : _framebuffer_b;

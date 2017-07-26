@@ -23,7 +23,11 @@ namespace renderer {
 			
 		private:
 			Deferred_renderer&                   _renderer;
-			int                                  _base_mip_level;
+			const int                            _base_mip_level;
+			const int                            _max_mip_level;
+			const int                            _diffuse_mip_level;
+			const int                            _specular_mip_level;
+			const int                            _min_mip_level;
 			vk::UniqueSampler                    _gbuffer_sampler;
 			graphic::Image_descriptor_set_layout _descriptor_set_layout;
 			graphic::Render_target_2D&           _color_in_out;

@@ -41,7 +41,7 @@ layout(push_constant) uniform Push_constants {
 #include "upsample.glsl"
 #include "raycast.glsl"
 
-vec3 gi_sample(int lod);
+vec3 gi_sample(int lod, int base_mip);
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight);
 
@@ -56,7 +56,7 @@ void main() {
 		out_color = vec4(0,0,0, 1);
 
 	if(!UPSAMPLE_ONLY)
-		out_color.rgb += gi_sample(int(current_mip+0.5));
+		out_color.rgb += gi_sample(int(current_mip+0.5), int(base_mip+0.5));
 
 	// last mip level => blend with history
 	if(abs(current_mip - base_mip) < 0.00001) {
@@ -80,7 +80,7 @@ vec3 saturation(vec3 c, float change) {
 }
 
 
-vec3 gi_sample(int lod) {
+vec3 gi_sample(int lod, int base_mip) {
 	vec2 texture_size = textureSize(color_sampler, 0);
 	ivec2 uv = ivec2(vertex_out.tex_coords * texture_size);
 
@@ -121,7 +121,7 @@ vec3 gi_sample(int lod) {
 
 
 	if(PRIORITISE_NEAR_SAMPLES)
-		c = c * pow(2.0, clamp(lod*2 + depth*1.5, 2, 7));
+		c = c * pow(2.0, clamp((lod-base_mip)*2 + depth*0.5, 2, 7)) * 128.0 / SAMPLES;
 	else
 		c = c * pow(2.0, lod*2);
 
@@ -181,6 +181,9 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 		weight = 0.0;
 		return vec3(0,0,0);
 	}
+
+	// reduce light from far away surfaces to compensate for missing occlusion check
+	r += smoothstep(6, 15, r)*20;
 
 	float r2 = r*r;
 	vec3 dir = diff / r;

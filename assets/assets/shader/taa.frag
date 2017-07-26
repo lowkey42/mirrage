@@ -166,7 +166,7 @@ void main() {
 
 
 	vec3 prev_clamped = clip_aabb(cmin.xyz, cmax.xyz, clamp(cavg, cmin, cmax), prev);
-	prev_clamped = mix(prev_clamped, prev, min(1, feedback+0.05));
+	prev_clamped = mix(prev_clamped, prev, feedback);
 
 	float lum_curr = luminance(curr);
 	float lum_prev = luminance(prev_clamped);
@@ -175,8 +175,7 @@ void main() {
 	float weight = 1.0 - lum_diff;
 	float t = mix(0.88, 0.97, weight*weight);
 
-	vec3 noise = PDsrand3(vertex_out.tex_coords + global_uniforms.time.y + 0.6959174) / 510.0;
-	out_color = vec4(max(vec3(0), mix(curr, prev_clamped, t)/* + noise*/), 1.0);
+	out_color = vec4(max(vec3(0), mix(curr, prev_clamped, t)), 1.0);
 
 	out_color.rgb = out_color.rgb / (1 - luminance(out_color.rgb));
 
@@ -184,7 +183,7 @@ void main() {
 	float prev_lum_diff = abs(lum_prev_unclamped - lum_prev) / max(lum_prev_unclamped, max(lum_prev, 0.2));
 	float new_feedback = min(1, pow(abs(prev_lum_diff - lum_diff), 5))-depth_mismatch*0.8;
 
-	feedback = mix(feedback, clamp(new_feedback*20, 0, 1), 0.25);
+	feedback = mix(feedback, clamp(new_feedback*15, 0, 1), 0.25);
 
 	out_feedback = vec4(feedback, 0, 0, 1);
 
