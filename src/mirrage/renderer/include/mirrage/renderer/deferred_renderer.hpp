@@ -62,6 +62,7 @@ namespace renderer {
 		glm::vec4 eye_pos;
 		glm::vec4 proj_planes; //< near, far, fov horizontal, fov vertical
 		glm::vec4 time; //< time, sin(time), delta_time
+		glm::vec4 proj_info;
 	};
 
 	using Command_buffer_source = std::function<vk::CommandBuffer()>;

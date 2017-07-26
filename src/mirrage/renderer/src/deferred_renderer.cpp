@@ -130,6 +130,12 @@ namespace renderer {
 		_global_uniforms.proj_planes.z = camera.fov;
 		_global_uniforms.proj_planes.w = camera.fov_vertical;
 		_global_uniforms.time = glm::vec4(_time_acc, glm::sin(_time_acc), _delta_time, 0);
+		_global_uniforms.proj_info = glm::vec4(
+				-2.f / camera.projection[0][0],
+				-2.f / camera.projection[1][1],
+				(1.f - camera.projection[0][2]) / camera.projection[0][0],
+				(1.f + camera.projection[1][2]) / camera.projection[1][1]
+		);
 		_global_uniform_buffer.update_obj(cb, _global_uniforms);
 	}
 

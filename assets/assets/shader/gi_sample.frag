@@ -88,7 +88,7 @@ vec3 gi_sample(int lod) {
 	vec4 mat_data = texelFetch(mat_data_sampler, uv, 0);
 	vec3 N = decode_normal(mat_data.rg);
 
-	vec3 P = depth * vertex_out.view_ray;
+	vec3 P = position_from_ldepth(vertex_out.tex_coords, depth);
 
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
@@ -143,7 +143,7 @@ vec3 to_view_space(vec2 uv, float depth) {
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight) {
 	float depth  = texelFetch(depth_sampler, src_uv, 0).r;
-	vec3 P = to_view_space(src_uv / tex_size, depth);// x_i
+	vec3 P = position_from_ldepth(src_uv / tex_size, depth);// x_i
 	vec3 Pn = normalize(P);
 
 

@@ -64,6 +64,7 @@ namespace renderer {
 	    , inv_view(build_inv_view(position, orientation))
 	    , view(glm::inverse(inv_view))
 	    , projection(cam.calc_projection(viewport))
+	    , pure_projection(projection)
 	    , view_projection(projection * view)
 	    , near_plane(cam.near_plane())
 	    , far_plane(cam.far_plane())

@@ -451,12 +451,6 @@ namespace renderer {
 	                   | vk::ImageUsageFlagBits::eColorAttachment,
 	                   vk::ImageAspectFlagBits::eColor)
 
-	    , _prev_depth(renderer.device(), {renderer.gbuffer().depth.width(), renderer.gbuffer().depth.height()},
-	                  1, renderer.gbuffer().depth_format,
-	                  vk::ImageUsageFlagBits::eTransferDst|vk::ImageUsageFlagBits::eSampled
-	                  | vk::ImageUsageFlagBits::eInputAttachment,
-	                  vk::ImageAspectFlagBits::eColor)
-
 	    , _history_weight_format(get_history_weight_format(renderer.device()))
 	    , _history_weight(renderer.device(), {in_out.width(_base_mip_level), in_out.height(_base_mip_level)},
 	                      1, _history_weight_format,
@@ -491,7 +485,7 @@ namespace renderer {
 	                                     renderer.gbuffer().ambient_occlusion.get_or_other(_gi_diffuse_history).view(),
 	                                     _gi_diffuse_history.view(),
 	                                     _gi_specular_history.view(),
-	                                     _prev_depth.view(),
+	                                     renderer.gbuffer().prev_depth.view(),
 	                                     _integrated_brdf.view()}))
 	    
 	    , _sample_renderpass(build_sample_render_pass(renderer,
@@ -563,36 +557,10 @@ namespace renderer {
 			_integrate_brdf(command_buffer);
 
 			for(auto rt : {&_gi_diffuse, &_gi_specular, &_gi_diffuse_history, &_gi_specular_history}) {
-				DEBUG("clear "<<rt);
-				auto mip_levels = rt->mip_levels();
-				graphic::image_layout_transition(command_buffer,
-				                                 rt->image(),
-				                                 vk::ImageLayout::eUndefined,
-				                                 vk::ImageLayout::eTransferDstOptimal,
-				                                 vk::ImageAspectFlagBits::eColor,
-				                                 0, mip_levels);
-
-				command_buffer.clearColorImage(rt->image(),
-				                               vk::ImageLayout::eTransferDstOptimal,
-				                               vk::ClearColorValue{std::array<float,4>{0.f, 0.f, 0.f, 0.f}},
-				                               {vk::ImageSubresourceRange{
-				                                    vk::ImageAspectFlagBits::eColor,
-				                                    0, mip_levels,
-				                                    0, 1
-				                                }});
-
-				graphic::image_layout_transition(command_buffer,
-				                                 rt->image(),
-				                                 vk::ImageLayout::eTransferDstOptimal,
-				                                 vk::ImageLayout::eShaderReadOnlyOptimal,
-				                                 vk::ImageAspectFlagBits::eColor,
-				                                 0, mip_levels);
+				graphic::clear_texture(command_buffer, *rt, util::Rgba{0,0,0,0},
+				                       vk::ImageLayout::eUndefined,
+				                       vk::ImageLayout::eShaderReadOnlyOptimal);
 			}
-
-			graphic::blit_texture(command_buffer, _renderer.gbuffer().depth,
-			                      vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
-			                      _prev_depth,
-			                      vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 			_prev_view = _renderer.global_uniforms().view_mat;
 			_prev_proj = _renderer.global_uniforms().proj_mat;
@@ -613,12 +581,6 @@ namespace renderer {
 		graphic::blit_texture(command_buffer, _gi_specular,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      _gi_specular_history,
-		                      vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-		// save current depth buffer for next frame
-		graphic::blit_texture(command_buffer, _renderer.gbuffer().depth,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      _prev_depth,
 		                      vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
 

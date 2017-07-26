@@ -121,7 +121,7 @@ void main() {
 	out_color = vec4(0,0,0,1);
 
 	float depth  = textureLod(depth_sampler, vertex_out.tex_coords, startLod).r;
-	vec3 P = depth * vertex_out.view_ray;
+	vec3 P = position_from_ldepth(vertex_out.tex_coords, depth);
 
 	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, startLod);
 	float metallic = mat_data.a;

@@ -1,9 +1,10 @@
 #pragma once
 
 #include <mirrage/utils/maybe.hpp>
-#include <mirrage/utils/str_id.hpp>
-#include <mirrage/utils/ring_buffer.hpp>
 #include <mirrage/utils/purgatory.hpp>
+#include <mirrage/utils/ring_buffer.hpp>
+#include <mirrage/utils/str_id.hpp>
+#include <mirrage/utils/units.hpp>
 
 #include <vulkan/vulkan.hpp>
 
@@ -310,6 +311,10 @@ namespace graphic {
 	extern void blit_texture(vk::CommandBuffer cb,
 	                         const detail::Base_texture& src, vk::ImageLayout initial_src_layout, vk::ImageLayout final_src_layout,
 	                         detail::Base_texture& dst, vk::ImageLayout initial_dst_layout, vk::ImageLayout final_dst_layout);
+
+	extern void clear_texture(vk::CommandBuffer cb, const detail::Base_texture& src, util::Rgba color,
+	                          vk::ImageLayout initial_layout, vk::ImageLayout final_layout,
+	                          std::uint32_t initial_mip_level=0, std::uint32_t mip_levels=0);
 	
 }
 }

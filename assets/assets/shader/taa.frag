@@ -13,10 +13,13 @@ layout(location = 0) in Vertex_data {
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
+layout(location = 1) out vec4 out_feedback;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D curr_color_sampler;
 layout(set=1, binding = 2) uniform sampler2D prev_color_sampler;
+layout(set=1, binding = 3) uniform sampler2D prev_depth_sampler;
+layout(set=1, binding = 4) uniform sampler2D prev_feedback_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
@@ -28,7 +31,6 @@ float luminance(vec3 c) {
 	vec3 f = vec3(0.299,0.587,0.114);
 	return sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
 }
-
 
 vec3 clip_aabb(vec3 aabb_min, vec3 aabb_max, vec3 p, vec3 q) {
 	// note: only clips towards aabb center (but fast!)
@@ -75,6 +77,16 @@ vec4 PDsrand4( vec2 n ) {
 	return PDnrand4( n ) * 2 - 1;
 }
 
+float read_feedback(vec2 uv) {
+	vec2 offset = 1.0 / textureSize(prev_feedback_sampler,0) * (1 + 1.0/3.0);
+	float f = max(texture(prev_feedback_sampler, uv+offset).r, texture(prev_feedback_sampler, uv-offset).r);
+
+	if(f<2.0/255.0)
+		f = 0;
+
+	return f;
+}
+
 vec3 curr_color_normalized(vec2 uv) {
 	vec3 c = texture(curr_color_sampler, uv).rgb;
 	return c / (1 + luminance(c));
@@ -108,14 +120,25 @@ void main() {
 	uv = uv - offset/2;
 	vec3 curr = curr_color_normalized(uv).rgb;
 
+	float prev_depth = texture(prev_depth_sampler, prev_uv.xy).r;
+	float proj_prev_depth = abs(prev_uv.z) / global_uniforms.proj_planes.y;
+
+	float depth_mismatch = smoothstep(0.002, 0.01, abs(prev_depth-proj_prev_depth));
+
+
 	if(prev_uv.x<0.0 || prev_uv.x>=1.0 || prev_uv.y<0.0 || prev_uv.y>=1.0) {
 		out_color = vec4(curr / (1 - luminance(curr)), 1.0);
+		out_feedback = vec4(0, 0, 0, 1);
 		return;
 	}
 
 	vec3 prev  = prev_color_normalized(prev_uv.xy).rgb;
+	float feedback = read_feedback(prev_uv.xy);
 
 	vec2 texel_size = 1.0 / textureSize(curr_color_sampler, 0);
+
+	texel_size *= 1.33;
+
 	vec2 du = vec2(texel_size.x, 0.0);
 	vec2 dv = vec2(0.0, texel_size.y);
 
@@ -141,7 +164,9 @@ void main() {
 	cmax = 0.5 * (cmax + cmax5);
 	cavg = 0.5 * (cavg + cavg5);
 
+
 	vec3 prev_clamped = clip_aabb(cmin.xyz, cmax.xyz, clamp(cavg, cmin, cmax), prev);
+	prev_clamped = mix(prev_clamped, prev, min(1, feedback+0.05));
 
 	float lum_curr = luminance(curr);
 	float lum_prev = luminance(prev_clamped);
@@ -154,6 +179,14 @@ void main() {
 	out_color = vec4(max(vec3(0), mix(curr, prev_clamped, t)/* + noise*/), 1.0);
 
 	out_color.rgb = out_color.rgb / (1 - luminance(out_color.rgb));
+
+	float lum_prev_unclamped = luminance(prev);
+	float prev_lum_diff = abs(lum_prev_unclamped - lum_prev) / max(lum_prev_unclamped, max(lum_prev, 0.2));
+	float new_feedback = min(1, pow(abs(prev_lum_diff - lum_diff), 5))-depth_mismatch*0.8;
+
+	feedback = mix(feedback, clamp(new_feedback*20, 0, 1), 0.25);
+
+	out_feedback = vec4(feedback, 0, 0, 1);
 
 //	out_color.rgb = vec3(weight*weight);
 }

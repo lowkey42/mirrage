@@ -25,7 +25,7 @@ vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
 	vec3 N = decode_normal(mat_data.rg);
 
 	float depth  = textureLod(depth_sampler, uv, 0.0).r;
-	vec3 P = depth * vertex_out.view_ray;
+	vec3 P = position_from_ldepth(vertex_out.tex_coords, depth);
 	vec3 V = -normalize(P);
 
 	float NdotV = clamp(dot(N, V), 0.0, 1.0);

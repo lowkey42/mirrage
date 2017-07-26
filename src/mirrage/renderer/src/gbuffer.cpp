@@ -43,6 +43,11 @@ namespace renderer {
 	            | vk::ImageUsageFlagBits::eInputAttachment  | vk::ImageUsageFlagBits::eTransferSrc
 	            | vk::ImageUsageFlagBits::eTransferDst,
 	            vk::ImageAspectFlagBits::eColor)
+	    , prev_depth(device, {width, height}, 1, depth_format,
+	                 vk::ImageUsageFlagBits::eSampled
+	                 | vk::ImageUsageFlagBits::eTransferSrc
+	                 | vk::ImageUsageFlagBits::eTransferDst,
+	                 vk::ImageAspectFlagBits::eColor)
 
 	    , albedo_mat_id_format(device.get_texture_rgba_format().get_or_throw("No rgba-format supported"))
 	    , albedo_mat_id(device, {width, height}, mip_levels, albedo_mat_id_format,

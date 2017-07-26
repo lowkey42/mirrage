@@ -46,7 +46,7 @@ void main() {
 	vec4  albedo_mat_id = subpassLoad(albedo_mat_id_sampler);
 	vec4  mat_data      = subpassLoad(mat_data_sampler);
 
-	vec3 position = depth * vertex_out.view_ray;
+	vec3 position = position_from_ldepth(vertex_out.tex_coords, depth);
 	vec3 V = -normalize(position);
 	vec3 albedo = albedo_mat_id.rgb;
 	int  material = int(albedo_mat_id.a*255);

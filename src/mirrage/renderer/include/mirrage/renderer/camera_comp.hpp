@@ -50,6 +50,7 @@ namespace renderer {
 			glm::mat4 inv_view;
 			glm::mat4 view;
 			glm::mat4 projection;
+			glm::mat4 pure_projection;
 			glm::mat4 view_projection;
 			float near_plane;
 			float far_plane;

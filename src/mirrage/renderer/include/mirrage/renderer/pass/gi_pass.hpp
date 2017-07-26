@@ -40,9 +40,6 @@ namespace renderer {
 			graphic::Render_target_2D       _gi_specular;
 			graphic::Render_target_2D       _gi_specular_history;
 
-			// depth from previous frame (used to reject reprojected samples)
-			graphic::Render_target_2D       _prev_depth;
-
 			vk::Format                      _history_weight_format;
 			graphic::Render_target_2D       _history_weight;
 

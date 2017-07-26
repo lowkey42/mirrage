@@ -14,6 +14,7 @@ namespace renderer {
 
 			vk::Format depth_format;
 			graphic::Render_target_2D depth;         // depth-buffer
+			graphic::Render_target_2D prev_depth;    // depth-buffer from previouse frame
 
 			vk::Format albedo_mat_id_format;
 			graphic::Render_target_2D albedo_mat_id; // RGB of objects + Material-ID
