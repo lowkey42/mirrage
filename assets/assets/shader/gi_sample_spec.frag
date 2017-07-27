@@ -59,16 +59,12 @@ float isosceles_triangle_next_adjacent(float adjacentLength, float incircleRadiu
 	return adjacentLength - (incircleRadius * 2.0f);
 }
 
-vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L) {
+vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L, float coneTheta) {
 	float min_lod = pcs.prev_projection[0][3];
-	float max_lod = pcs.prev_projection[1][3]-1;
+	float max_lod = max(min_lod, pcs.prev_projection[1][3]-1);
 	vec2  depth_size  = textureSize(depth_sampler, int(min_lod + 0.5));
 	float screen_size = max(depth_size.x, depth_size.y);
 	float glossiness = 1.0 - roughness;
-
-	// convert to cone angle (maximum extent of the specular lobe aperture)
-	// only want half the full cone angle since we're slicing the isosceles triangle in half to get a right triangle
-	float coneTheta = roughness_to_spec_lobe_angle(roughness) * 0.5f;
 
 	vec2  delta = (hit_uv - vertex_out.tex_coords);
 	float adjacent_length = length(delta);
@@ -124,34 +120,41 @@ void main() {
 	vec3 P = position_from_ldepth(vertex_out.tex_coords, depth);
 
 	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, startLod);
-	float metallic = mat_data.a;
 	vec3 N = decode_normal(mat_data.rg);
+	float roughness = mat_data.b;
+	float metallic = mat_data.a;
 
 	vec3 V = -normalize(P);
 
 	vec3 dir = -reflect(V, N);
 
-	bool spec_visible = metallic>0.01 || (max(0, dot(normalize(V+dir), dir))<0.6);
+	bool spec_visible = metallic>0.01 || (max(0, dot(normalize(V+dir), dir))<0.7);
+
+	// convert to cone angle (maximum extent of the specular lobe aperture)
+	// only want half the full cone angle since we're slicing the isosceles triangle in half to get a right triangle
+	float coneTheta = roughness_to_spec_lobe_angle(roughness) * 0.5f;
 
 	// TODO: calculate max distance based on roughness
+	float max_distance = min(128, 4 / (tan(coneTheta)*2));
+	float max_steps = max_distance*6;
 
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
 	if(spec_visible &&
 	   traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
-							depthSize, 1.0, global_uniforms.proj_planes.x,
-							max(4, 4), 0.5, 64, 24.0, int(startLod + 0.5),
+							depthSize, 2.0, global_uniforms.proj_planes.x,
+							max(4, 4), 0.5, max_distance, max_steps, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 		
 		vec3 L = raycast_hit_point - P;
 		
-		vec3 color = cone_tracing(mat_data.b, raycast_hit_uv/depthSize, dir);
-		float factor_distance = 1.0 - length(raycast_hit_point - P) / 16.0;
+		vec3 color = cone_tracing(roughness, raycast_hit_uv/depthSize, dir, coneTheta);
+		float factor_distance = 1.0 - length(L) / 20.0;
 
 		out_color.rgb = max(color * factor_distance, vec3(0));
 	} else {
+		out_color.rgb = max(out_color.rgb, textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI*1.5));
 	}
-	out_color.rgb = max(out_color.rgb, textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI*1.5));
 
 	float history_weight = texelFetch(history_weight_sampler,
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),

@@ -252,7 +252,7 @@ namespace renderer {
 
 	void Taa_pass::process_camera(Camera_state& cam) {
 		// update fov and push constants
-		cam.fov = cam.fov;// + 12.0_deg;
+		cam.fov = cam.fov + 8.0_deg;
 		cam.fov_vertical = util::Angle(2.f * std::atan(std::tan(cam.fov.value()/2.f) / cam.aspect_ratio));
 		auto new_projection = glm::perspective(cam.fov_vertical.value(), cam.aspect_ratio,
 		                                       cam.near_plane, cam.far_plane);

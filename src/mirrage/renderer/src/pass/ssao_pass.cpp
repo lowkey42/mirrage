@@ -215,9 +215,8 @@ namespace renderer {
 		Push_constants pcs;
 		pcs.options.x = util::max(1, _renderer.gbuffer().mip_levels - ao_mip_level - 1);
 
-		auto& cam = _renderer.active_camera().get_or_throw();
 		float height = _ao_result_buffer.height();
-		float v_fov  = cam.fov_vertical.value();
+		float v_fov  = _renderer.global_uniforms().proj_planes.w;
 		pcs.options.y = height / (-2.f * glm::tan(v_fov*0.5f));
 
 		pcs.options.z = ao_mip_level;

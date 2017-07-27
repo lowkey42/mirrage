@@ -136,6 +136,8 @@ float sample_shadowmap(vec3 view_pos) {
 		                                     vec3(p, lightspace_pos.z-z_bias)));
 	}
 
+	visiblity *= visiblity;
+
 	return clamp(smoothstep(0, 1, visiblity), 0.0, 1.0);
 }
 

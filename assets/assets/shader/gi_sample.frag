@@ -121,7 +121,7 @@ vec3 gi_sample(int lod, int base_mip) {
 
 
 	if(PRIORITISE_NEAR_SAMPLES)
-		c = c * pow(2.0, clamp((lod-base_mip)*2 + depth*0.5, 2, 7)) * 128.0 / SAMPLES;
+		c = c * pow(2.0, clamp((lod-base_mip)*2 + depth*4, 2, 7)) * 128.0 / SAMPLES;
 	else
 		c = c * pow(2.0, lod*2);
 
