@@ -91,7 +91,7 @@ float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, 
 
 	vec3 N = get_normal(ss_p, mip);
 	float occluder_angle = abs(dot(N, n_C));
-	float boost = smoothstep(0.01, 0.1, occluder_angle)*0.5+0.5;
+	float boost = smoothstep(0.01, 0.1, occluder_angle)*0.4+0.6;
 	boost += smoothstep(0.8, 1.0, occluder_angle)*3;
 
 	float f = max(RADIUS*RADIUS - vv, 0.0);
@@ -141,7 +141,7 @@ void main() {
 
 	float temp = RADIUS * RADIUS * RADIUS;
 	sum /= temp * temp;
-	out_color.r = pow(max(0.0, 1.0 - sum * (5.0 / SAMPLES)), 1.5);
+	out_color.r = pow(max(0.0, 1.0 - sum * (5.0 / SAMPLES)), 2);
 
 	// Bilateral box-filter over a quad for free, respecting depth edges
 	// (the difference that this makes is subtle)
