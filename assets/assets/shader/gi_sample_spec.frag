@@ -61,7 +61,7 @@ float isosceles_triangle_next_adjacent(float adjacentLength, float incircleRadiu
 
 vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L, float coneTheta) {
 	float min_lod = pcs.prev_projection[0][3];
-	float max_lod = max(min_lod, pcs.prev_projection[1][3]-1);
+	float max_lod = max(min_lod, pcs.prev_projection[1][3]);
 	vec2  depth_size  = textureSize(depth_sampler, int(min_lod + 0.5));
 	float screen_size = max(depth_size.x, depth_size.y);
 	float glossiness = 1.0 - roughness;
@@ -83,6 +83,7 @@ vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L, float coneTheta) {
 
 		vec2 uv = (vertex_out.tex_coords + adjacent_unit*(adjacent_length - incircle_size));
 		float lod = incircle_size<0.00001 ? min_lod : clamp(log2(incircle_size * screen_size), min_lod, max_lod);
+		lod = max(0, lod-1);
 
 		vec4 s = vec4(textureLod(color_sampler, uv, lod).rgb, 1) * glossiness_mult;
 		if(lod > max_lod-0.5) {
@@ -153,7 +154,7 @@ void main() {
 
 		out_color.rgb = max(color * factor_distance, vec3(0));
 	} else {
-		out_color.rgb = max(out_color.rgb, textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI*1.5));
+		out_color.rgb = max(out_color.rgb, textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI*2));
 	}
 
 	float history_weight = texelFetch(history_weight_sampler,
