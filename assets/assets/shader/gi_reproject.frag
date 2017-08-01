@@ -77,7 +77,7 @@ void main() {
 	if(prev_uv.y<0) {
 		global_weight *= 1 + prev_uv.y*20.0;
 		prev_uv.y = 0;
-	} else if(prev_uv.x>1) {
+	} else if(prev_uv.y>1) {
 		global_weight *= 1 + (prev_uv.y-1)*20.0;
 		prev_uv.y = 1;
 	}
@@ -102,7 +102,8 @@ void main() {
 		float prev_depth = textureLod(prev_depth_sampler, prev_uv.xy, 0.0).r * global_uniforms.proj_planes.y;
 		out_diffuse.rgb  = radiance;
 		out_specular.rgb = specular;
-		out_weight.r     = (1.0 - smoothstep(0.005, 0.1, abs(prev_depth-proj_prev_depth))) * global_weight;
+		out_weight.r     = (1.0 - smoothstep(0.002, 0.02, abs(prev_depth-proj_prev_depth)))
+		                 * global_weight;
 		out_input *= out_weight.r;
 	}
 }

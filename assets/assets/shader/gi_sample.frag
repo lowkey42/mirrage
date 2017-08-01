@@ -84,6 +84,10 @@ vec3 gi_sample(int lod, int base_mip) {
 	vec2 texture_size = textureSize(color_sampler, 0);
 	ivec2 uv = ivec2(vertex_out.tex_coords * texture_size);
 
+	// FIXME: workaround for white bar at right/bottom border
+	if(uv.y >= texture_size.y-1 || uv.x >= texture_size.x-1)
+		return vec3(0, 0, 0);
+
 	float depth  = texelFetch(depth_sampler, uv, 0).r;
 	vec4 mat_data = texelFetch(mat_data_sampler, uv, 0);
 	vec3 N = decode_normal(mat_data.rg);
@@ -103,13 +107,9 @@ vec3 gi_sample(int lod, int base_mip) {
 		float cos_angle = cos(angle);
 
 		ivec2 p = ivec2(uv + vec2(sin_angle, cos_angle) * r);
-		if(p.x>=0.0 && p.x<=texture_size.x && p.y>=0.0 && p.y<=texture_size.y) {
+		if(p.x>0.0 && p.x<texture_size.x && p.y>0.0 && p.y<texture_size.y) {
 			float weight;
 			vec3 sc = calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
-
-			// fade out around the screen border
-			vec2 p_ndc = vec2(p) / texture_size * 2 - 1;
-			sc *= 1.0 - smoothstep(0.98, 1.0, dot(p_ndc,p_ndc));
 
 			c += sc;
 			samples_used += weight;
@@ -121,7 +121,7 @@ vec3 gi_sample(int lod, int base_mip) {
 
 
 	if(PRIORITISE_NEAR_SAMPLES)
-		c = c * pow(2.0, clamp((lod-base_mip)*2 + depth*4, 2, 7)) * 128.0 / SAMPLES;
+		c = c * pow(2.0, clamp((lod-base_mip)*2, 2, 7)) * 128.0 / SAMPLES;
 	else
 		c = c * pow(2.0, lod*2);
 
@@ -182,11 +182,11 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 		return vec3(0,0,0);
 	}
 
-	// reduce light from far away surfaces to compensate for missing occlusion check
-	r += smoothstep(6, 15, r)*20;
-
-	float r2 = r*r;
 	vec3 dir = diff / r;
+
+	// reduce light from far away surfaces to compensate for missing occlusion check
+	r += smoothstep(6, 10, r)*10;
+	float r2 = r*r;
 
 	vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;
 

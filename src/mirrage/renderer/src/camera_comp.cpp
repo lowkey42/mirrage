@@ -36,8 +36,7 @@ namespace renderer {
 	}
 
 	auto Camera_comp::calc_projection(glm::vec4 viewport)const -> glm::mat4 {
-		auto fovy = 2.f * std::atan(std::tan(_fov.value()/2.f) / aspect_radio(viewport));
-		auto m = glm::perspective(fovy, aspect_radio(viewport), _near, _far);
+		auto m = glm::perspective(_fov.value(), aspect_radio(viewport), _near, _far);
 		m[1][1] *= -1;
 		return m;
 	}
@@ -69,8 +68,8 @@ namespace renderer {
 	    , near_plane(cam.near_plane())
 	    , far_plane(cam.far_plane())
 	    , aspect_ratio((viewport.z-viewport.x) / (viewport.w-viewport.y))
-	    , fov(cam.fov())
-	    , fov_vertical(2.f * std::atan(std::tan(fov.value()/2.f) / aspect_ratio)) {
+	    , fov_vertical(cam.fov())
+	    , fov_horizontal(2.f * std::atan(std::tan(fov_vertical/2.f) * aspect_ratio)) {
 	}
 
 	auto Camera_state::screen_to_world(glm::vec2 screen_pos, glm::vec3 expected_pos) const noexcept -> glm::vec3 {

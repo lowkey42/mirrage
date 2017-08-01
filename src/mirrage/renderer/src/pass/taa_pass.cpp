@@ -146,7 +146,7 @@ namespace renderer {
 		}
 
 		constexpr auto offsets = build_halton_2_3<8>();
-		constexpr auto offset_factor = 0.4f;
+		constexpr auto offset_factor = 0.25f;
 	}
 
 
@@ -238,7 +238,7 @@ namespace renderer {
 
 			command_buffer.draw(3, 1, 0, 0);
 		});
-		
+
 		graphic::blit_texture(command_buffer,
 		                      _write_frame,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -246,14 +246,23 @@ namespace renderer {
 		                      _prev_frame,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal);
-
+/*
+		graphic::blit_texture(command_buffer,
+		                      _render_into_a ? _feedback_buffer_b : _feedback_buffer_a,
+		                      vk::ImageLayout::eShaderReadOnlyOptimal,
+		                      vk::ImageLayout::eShaderReadOnlyOptimal,
+		                      _write_frame,
+		                      vk::ImageLayout::eShaderReadOnlyOptimal,
+		                      vk::ImageLayout::eShaderReadOnlyOptimal);
+*/
 		_offset_idx = (_offset_idx+2) % (offsets.size());
 	}
 
 	void Taa_pass::process_camera(Camera_state& cam) {
 		// update fov and push constants
-		cam.fov = cam.fov + 8.0_deg;
-		cam.fov_vertical = util::Angle(2.f * std::atan(std::tan(cam.fov.value()/2.f) / cam.aspect_ratio));
+		cam.fov_vertical = cam.fov_vertical + 7.0_deg;
+		cam.fov_horizontal = util::Angle(2.f * std::atan(std::tan(cam.fov_vertical.value()/2.f)
+		                                                 * cam.aspect_ratio));
 		auto new_projection = glm::perspective(cam.fov_vertical.value(), cam.aspect_ratio,
 		                                       cam.near_plane, cam.far_plane);
 		new_projection[1][1] *= -1;

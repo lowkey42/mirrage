@@ -79,9 +79,10 @@ vec4 PDsrand4( vec2 n ) {
 
 float read_feedback(vec2 uv) {
 	vec2 offset = 1.0 / textureSize(prev_feedback_sampler,0) * (1 + 1.0/3.0);
-	float f = max(texture(prev_feedback_sampler, uv+offset).r, texture(prev_feedback_sampler, uv-offset).r);
+	float f = texture(prev_feedback_sampler, uv+offset).r*0.5
+	        + texture(prev_feedback_sampler, uv-offset).r*0.5;
 
-	if(f<2.0/255.0)
+	if(f<4.0/255.0)
 		f = 0;
 
 	return f;
@@ -107,23 +108,28 @@ void main() {
 	reprojection_fov[1][3] = 0;
 
 	vec2 uv = vertex_out.tex_coords;
+
 	vec4 uv_tmp = reprojection_fov * vec4(uv*2-1, 0.5, 1);
 	uv = uv_tmp.xy/uv_tmp.w *0.5+0.5;
 
 	float depth = texture(depth_sampler, uv).r;
 
-	vec3 position = depth * vertex_out.view_ray;
+	vec3 position = position_from_ldepth(vertex_out.tex_coords, depth);
 
 	vec4 prev_uv = constants.reprojection * vec4(position, 1.0);
+
+	vec4 prev_depth_uv = reprojection_fov * prev_uv;
+	prev_depth_uv.xy = (prev_depth_uv.xy/prev_depth_uv.w)*0.5+0.5;
+	float prev_depth = texture(prev_depth_sampler, prev_depth_uv.xy).r;
+	float proj_prev_depth = abs(prev_depth_uv.z) / global_uniforms.proj_planes.y;
+
+	float depth_mismatch = smoothstep(0.002, 0.02, abs(prev_depth-proj_prev_depth));
+
 	prev_uv.xy = (prev_uv.xy/prev_uv.w)*0.5+0.5;
+
 
 	uv = uv - offset/2;
 	vec3 curr = curr_color_normalized(uv).rgb;
-
-	float prev_depth = texture(prev_depth_sampler, prev_uv.xy).r;
-	float proj_prev_depth = abs(prev_uv.z) / global_uniforms.proj_planes.y;
-
-	float depth_mismatch = smoothstep(0.002, 0.01, abs(prev_depth-proj_prev_depth));
 
 
 	if(prev_uv.x<0.0 || prev_uv.x>=1.0 || prev_uv.y<0.0 || prev_uv.y>=1.0) {
@@ -181,9 +187,9 @@ void main() {
 
 	float lum_prev_unclamped = luminance(prev);
 	float prev_lum_diff = abs(lum_prev_unclamped - lum_prev) / max(lum_prev_unclamped, max(lum_prev, 0.2));
-	float new_feedback = min(1, pow(abs(prev_lum_diff - lum_diff), 5))-depth_mismatch*0.8;
+	float new_feedback = min(1, pow(abs(prev_lum_diff - lum_diff), 2)) - depth_mismatch;
 
-	feedback = mix(feedback, clamp(new_feedback*15, 0, 1), 0.25);
+	feedback = mix(feedback, clamp(new_feedback*10, 0, 1), mix(0.2, 0.6, depth_mismatch));
 
 	out_feedback = vec4(feedback, 0, 0, 1);
 

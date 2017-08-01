@@ -2,6 +2,8 @@
 
 #include <mirrage/graphic/window.hpp>
 
+#include <glm/gtx/norm.hpp>
+
 
 namespace mirrage {
 namespace renderer {
@@ -569,12 +571,16 @@ namespace renderer {
 			_first_frame = true;
 			return;
 		}
-		
-		if(_first_frame) {
-			_first_frame = false;
-			
-			_integrate_brdf(command_buffer);
 
+		auto eye_position = glm::vec3(
+		                         _renderer.global_uniforms().eye_pos.x,
+		                         _renderer.global_uniforms().eye_pos.y,
+		                         _renderer.global_uniforms().eye_pos.z );
+
+		auto movement = glm::distance2(eye_position, _prev_eye_position);
+		_prev_eye_position = eye_position;
+
+		if(_first_frame || movement>4.f) {
 			graphic::clear_texture(command_buffer, _gi_diffuse, util::Rgba{0,0,0,0},
 			                       vk::ImageLayout::eUndefined,
 			                       vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -587,6 +593,13 @@ namespace renderer {
 
 			_prev_view = _renderer.global_uniforms().view_mat;
 			_prev_proj = _renderer.global_uniforms().proj_mat;
+		}
+
+		if(_first_frame) {
+			_first_frame = false;
+			
+			_integrate_brdf(command_buffer);
+
 		}
 
 

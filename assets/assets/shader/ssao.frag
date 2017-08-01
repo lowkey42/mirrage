@@ -122,7 +122,7 @@ void main() {
 	ivec2 center_px_normal = ivec2(vertex_out.tex_coords*textureSize(mat_data_sampler, 0));
 
 	float depth = texelFetch(depth_sampler, center_px, MIN_MIP).r;
-	vec3 P = depth * vertex_out.view_ray;
+	vec3 P = position_from_ldepth(vertex_out.tex_coords, depth);
 
 	packKey(CSZToKey(P.z), out_color.gb);
 

@@ -55,8 +55,8 @@ namespace renderer {
 			float near_plane;
 			float far_plane;
 			float aspect_ratio;
-			util::Angle fov;
 			util::Angle fov_vertical;
+			util::Angle fov_horizontal;
 	};
 
 }

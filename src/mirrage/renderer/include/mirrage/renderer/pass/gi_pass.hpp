@@ -35,6 +35,7 @@ namespace renderer {
 			bool                                 _first_frame = true;
 			glm::mat4                            _prev_view;
 			glm::mat4                            _prev_proj;
+			glm::vec3                            _prev_eye_position;
 			
 			// current GI result + history buffer (diffuse only)
 			graphic::Render_target_2D       _gi_diffuse;

@@ -52,7 +52,7 @@ vec4 upsampled_result(sampler2D depth_sampler, sampler2D mat_data_sampler, sampl
 			float weight = weight_offset(dot(offset,offset), sharpness)
 			             * weight_depth(depth-d, depth_dev)
 			             * weight_mat_data(dot(normal_diff, normal_diff));
-			
+
 			vec4 c = texelFetch(color_sampler, ivec2(color_size * p), color_lod);
 			color += weight * c / (1 + luminance_ups(c.rgb));
 			weight_sum += weight;

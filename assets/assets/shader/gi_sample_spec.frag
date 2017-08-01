@@ -137,7 +137,7 @@ void main() {
 
 	// TODO: calculate max distance based on roughness
 	float max_distance = min(128, 4 / (tan(coneTheta)*2));
-	float max_steps = max_distance*6;
+	float max_steps = max_distance*8;
 
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
@@ -161,7 +161,7 @@ void main() {
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 	                                  0).r;
 
-	out_color *= 1.0 - (history_weight*0.75);
+	out_color *= 1.0 - (history_weight*0.8);
 
 	out_color = max(out_color, vec4(0));
 }
