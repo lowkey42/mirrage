@@ -397,6 +397,7 @@ namespace graphic {
 					case Format_usage::image_optimal:
 						return props.optimalTilingFeatures;
 				}
+                FAIL("Unreachable");
 			}();
 			
 			if((features & flags) == flags) {

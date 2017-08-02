@@ -147,6 +147,7 @@ namespace graphic {
 						case Memory_lifetime::persistent:
 							return _persistent_pool.alloc(size, alignment);
 					}
+                    FAIL("Unreachable");
 				}();
 				
 				if(memory.is_some())

@@ -164,6 +164,7 @@ namespace graphic {
 				case vk::ImageLayout::ePresentSrcKHR:
 					return vk::AccessFlagBits::eColorAttachmentWrite;
 			}
+            FAIL("Unreachable");
 		}
 	}
 	

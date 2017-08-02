@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 project(nuklear)
 
 add_library(nuklear INTERFACE)
-target_include_directories(nuklear INTERFACE
+target_include_directories(nuklear SYSTEM INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/nuklear>
 	$<INSTALL_INTERFACE:include>
 )

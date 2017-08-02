@@ -27,6 +27,8 @@ namespace graphic {
 				case Image_type::array_3d:
 				case Image_type::single_3d: return vk::ImageType::e3D;
 			}
+
+            FAIL("Unreachable");
 		}
 	}
 
