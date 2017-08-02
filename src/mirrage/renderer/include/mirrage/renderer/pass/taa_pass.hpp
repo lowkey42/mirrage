@@ -30,16 +30,21 @@ namespace renderer {
 			
 		private:
 			Deferred_renderer&                   _renderer;
-			graphic::Framebuffer                 _framebuffer;
+			graphic::Framebuffer                 _framebuffer_a;
+			graphic::Framebuffer                 _framebuffer_b;
 			vk::UniqueSampler                    _sampler;
 			graphic::Image_descriptor_set_layout _descriptor_set_layout;
+			graphic::Render_target_2D            _feedback_buffer_a;
+			graphic::Render_target_2D            _feedback_buffer_b;
 			graphic::Render_pass                 _render_pass;
 			graphic::Texture_2D&                 _read_frame;
 			graphic::Render_target_2D&           _write_frame;
 			graphic::Render_target_2D            _prev_frame;
-			vk::UniqueDescriptorSet              _descriptor_set;
+			vk::UniqueDescriptorSet              _descriptor_set_a;
+			vk::UniqueDescriptorSet              _descriptor_set_b;
 
 			bool          _first_frame = true;
+			bool          _render_into_a = true;
 			std::size_t   _offset_idx = 0;
 			float         _time_acc = 0.f;
 			glm::mat4     _prev_view_proj;

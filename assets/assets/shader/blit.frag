@@ -48,7 +48,7 @@ vec3 expose(vec3 color, float threshold) {
 	float avg_luminance = max(exp(texture(avg_log_luminance_sampler, vec2(0.5, 0.5)).r), 0.001);
 
 	float key = 1.03f - (2.0f / (2 + log(avg_luminance + 1)/log(10)));
-	float exposure = log2(clamp(key/avg_luminance, 0.4, 5.0));
+	float exposure = log2(clamp(key/avg_luminance, 0.6, 5.0)+0.2);
 	exposure -= threshold;
 
 	return color * exp2(exposure);

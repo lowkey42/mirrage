@@ -196,6 +196,19 @@ namespace asset {
 		write_dir_parent = "/persistent_data";
 #endif
 
+		if(!PHYSFS_addToSearchPath(PHYSFS_getBaseDir(), 1) ||
+				!PHYSFS_addToSearchPath(append_file(PHYSFS_getBaseDir(), "..").c_str(), 1)  ||
+				!PHYSFS_addToSearchPath(pwd().c_str(), 1))
+			FAIL("Unable to construct search path: "<< PHYSFS_getLastError());
+		
+		// add optional search path
+		PHYSFS_addToSearchPath(append_file(append_file(append_file(PHYSFS_getBaseDir(), ".."), app_name), "assets").c_str(), 1);
+
+
+		if(exists_dir("write_dir")) {
+			write_dir_parent = "write_dir";
+		}
+
 		create_dir(write_dir_parent);
 
 		std::string write_dir = append_file(write_dir_parent, app_name);
@@ -203,14 +216,8 @@ namespace asset {
 
 		INFO("Write dir: "<<write_dir);
 
-		if(!PHYSFS_addToSearchPath(PHYSFS_getBaseDir(), 1) ||
-				!PHYSFS_addToSearchPath(append_file(PHYSFS_getBaseDir(), "..").c_str(), 1)  ||
-				!PHYSFS_addToSearchPath(pwd().c_str(), 1) ||
-				!PHYSFS_addToSearchPath(write_dir.c_str(), 0))
+		if(!PHYSFS_addToSearchPath(write_dir.c_str(), 0))
 			FAIL("Unable to construct search path: "<< PHYSFS_getLastError());
-		
-		// add optional search path
-		PHYSFS_addToSearchPath(append_file(append_file(append_file(PHYSFS_getBaseDir(), ".."), "magnum_opus"), "assets").c_str(), 1);
 
 		if(!PHYSFS_setWriteDir(write_dir.c_str()))
 			FAIL("Unable to set write-dir to \""<<write_dir<<"\": "<< PHYSFS_getLastError());

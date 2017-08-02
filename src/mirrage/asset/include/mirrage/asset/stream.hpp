@@ -90,7 +90,8 @@ namespace asset {
 	 */
 	template<class T>
 	struct Loader {
-		static_assert(sf2::is_annotated_struct<T>::value, "Required AssetLoader specialization not provided.");
+		static_assert(sf2::is_loadable<T, sf2::format::Json_reader>::value,
+		              "Required AssetLoader specialization not provided.");
 
 		static auto load(istream in) -> std::shared_ptr<T> {
 			auto r = std::make_shared<T>();

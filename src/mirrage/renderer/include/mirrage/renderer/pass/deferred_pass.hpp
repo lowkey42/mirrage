@@ -38,6 +38,8 @@ namespace renderer {
 			auto name()const noexcept -> const char* override {return "Deferred";}
 
 		private:
+			Deferred_renderer& _renderer;
+
 			graphic::Render_target_2D _depth;
 
 			Deferred_geometry_subpass _gpass;
@@ -45,6 +47,8 @@ namespace renderer {
 
 			graphic::Framebuffer _gbuffer_framebuffer;
 			graphic::Render_pass _render_pass;
+
+			bool _first_frame = true;
 	};
 
 	class Deferred_pass_factory : public Pass_factory {

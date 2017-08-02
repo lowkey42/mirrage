@@ -1,5 +1,6 @@
 {
 	"Transform":{
+		"scale": {"x": 0.01, "y": 0.01, "z": 0.01}
 	},
 	"Model": {
 		"aid": "model:sponza.mmf"

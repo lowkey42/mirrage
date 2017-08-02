@@ -166,7 +166,8 @@ namespace renderer {
 	                             util::maybe<Meta_system&>,
 	                             graphic::Render_target_2D& color_target,
 	                             graphic::Render_target_2D& color_target_diff)
-	    : _depth(renderer.device(), {color_target.width(), color_target.height()}, 1,
+	    : _renderer(renderer)
+	    , _depth(renderer.device(), {color_target.width(), color_target.height()}, 1,
 	             renderer.device().get_depth_format(), vk::ImageUsageFlagBits::eDepthStencilAttachment
 	             | vk::ImageUsageFlagBits::eInputAttachment, vk::ImageAspectFlagBits::eDepth)
 	    , _gpass(renderer, entities)
@@ -187,6 +188,15 @@ namespace renderer {
 	                         vk::DescriptorSet global_uniform_set,
 	                         std::size_t) {
 
+		if(!_first_frame) {
+			graphic::blit_texture(command_buffer, _renderer.gbuffer().depth,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                      _renderer.gbuffer().prev_depth,
+			                      vk::ImageLayout::eUndefined,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal);
+		}
+
 		_gpass.pre_draw(command_buffer);
 
 		_render_pass.execute(command_buffer, _gbuffer_framebuffer, [&] {
@@ -198,6 +208,17 @@ namespace renderer {
 
 			_lpass.draw(command_buffer, _render_pass);
 		});
+
+		if(_first_frame) {
+			_first_frame = false;
+
+			graphic::blit_texture(command_buffer, _renderer.gbuffer().depth,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                      _renderer.gbuffer().prev_depth,
+			                      vk::ImageLayout::eUndefined,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal);
+		}
 	}
 
 	void Deferred_pass::shrink_to_fit() {

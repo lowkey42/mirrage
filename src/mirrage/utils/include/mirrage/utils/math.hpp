@@ -10,12 +10,75 @@
 #include <mirrage/utils/units.hpp>
 
 #include <tuple>
+#include <type_traits>
 #include <memory>
 #include <vector>
 
 
 namespace mirrage {
 namespace util {
+
+	namespace details {
+		template<typename... Ts>
+	    struct min_max_result {
+			using common_type = std::common_type_t<Ts...>;
+			using no_temporaries = std::conjunction<std::negation<std::is_lvalue_reference<Ts>>...>;
+			using reference_allowed = std::conjunction<std::is_convertible<std::add_lvalue_reference_t<Ts>,
+			                                                               std::add_lvalue_reference_t<common_type>>...>;
+
+			using use_references = std::conjunction<no_temporaries, reference_allowed>;
+
+			using type = std::conditional_t<use_references::value, std::add_lvalue_reference_t<common_type>, common_type>;
+	    };
+
+			template<typename... Ts>
+			using min_max_result_t = typename min_max_result<Ts...>::type;
+	}
+
+	// min
+	template<typename FirstT>
+	constexpr auto min(FirstT&& first) {
+		return first;
+	}
+
+	template<typename FirstT, typename SecondT>
+	constexpr auto min(FirstT&& first, SecondT&& second) {
+		using result_t = details::min_max_result_t<FirstT, SecondT>;
+
+		if(static_cast<result_t>(first) < static_cast<result_t>(second))
+			return static_cast<result_t>(first);
+		else
+			return static_cast<result_t>(second);
+	}
+
+	template<typename FirstT, typename SecondT, typename... Ts>
+	constexpr auto min(FirstT&& first, SecondT&& second, Ts&&... rest) -> details::min_max_result_t<FirstT, SecondT, Ts...> {
+		return min(min(std::forward<FirstT>(first), std::forward<SecondT>(second)),
+		           std::forward<Ts>(rest)...);
+	}
+
+	// max
+	template<typename FirstT>
+	constexpr auto max(FirstT&& first) {
+		return first;
+	}
+
+	template<typename FirstT, typename SecondT>
+	constexpr auto max(FirstT&& first, SecondT&& second) {
+		using result_t = details::min_max_result_t<FirstT, SecondT>;
+
+		if(static_cast<result_t>(second) < static_cast<result_t>(first))
+			return static_cast<result_t>(first);
+		else
+			return static_cast<result_t>(second);
+	}
+
+	template<typename FirstT, typename SecondT, typename... Ts>
+	constexpr auto max(FirstT&& first, SecondT&& second, Ts&&... rest) -> details::min_max_result_t<FirstT, SecondT, Ts...> {
+		return max(max(std::forward<FirstT>(first), std::forward<SecondT>(second)),
+		           std::forward<Ts>(rest)...);
+	}
+
 
 	template<typename Pos, typename Vel>
 	auto spring(Pos source, Vel v, Pos target, float damping,

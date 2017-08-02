@@ -29,32 +29,36 @@ layout(push_constant) uniform Push_constants {
 
 void main() {
 	vec3 diffuse;
-	out_color = vec4(calculate_gi(vertex_out.tex_coords, vertex_out.tex_coords, 0,
+	out_color = vec4(calculate_gi(vertex_out.tex_coords, vertex_out.tex_coords, 1,
 	                              result_diff_sampler, result_spec_sampler,
 	                              albedo_sampler, mat_data_sampler, brdf_sampler, diffuse), 0.0);
 
 //	out_color = vec4(1,1,1,1);
 
 	if(pcs.prev_projection[3][3]>0.0) {
-		float ao = mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, pcs.prev_projection[3][3]);
+		float ao = upsampled_result(depth_sampler, mat_data_sampler, ao_sampler, 1, 0,
+		                            vertex_out.tex_coords, 1.0).r;
+		ao = mix(1.0, ao, pcs.prev_projection[3][3]);
 		out_color.rgb *= ao*0.9 + 0.1;
 	}
 
-	if(pcs.prev_projection[2][3]>=0) {
-		out_color.rgb = textureLod(result_diff_sampler, vertex_out.tex_coords, pcs.prev_projection[2][3]).rgb;
+	if(pcs.prev_projection[2][3]==0) {
+		out_color.rgb = upsampled_result(depth_sampler, mat_data_sampler, result_spec_sampler,
+		                                 1, 0, vertex_out.tex_coords, 1.0).rgb;
+		out_color.a = 1;
+
+	} else if(pcs.prev_projection[2][3]>=1) {
+		out_color.rgb = textureLod(result_diff_sampler, vertex_out.tex_coords, pcs.prev_projection[2][3]-1).rgb;
+		out_color.a = 1;
+
 /*
 		out_color.rgb = texelFetch(depth_sampler, ivec2(vertex_out.tex_coords
 		                                                * textureSize(depth_sampler, int(pcs.prev_projection[2][3]))),
 		        int(pcs.prev_projection[2][3])).rrr;
 */
-		out_color.a = 1;
 
-	//	out_color = vec4(textureLod(mat_data_sampler, vertex_out.tex_coords, pcs.prev_projection[2][3]).rgb, 1.0);
+	//	out_color = vec4(decode_normal(texelFetch(mat_data_sampler, ivec2(vertex_out.tex_coords*textureSize(mat_data_sampler, int(pcs.prev_projection[2][3]))), int(pcs.prev_projection[2][3])).rg), 1.0);
 	}
-
-//	out_color = vec4(decode_normal(textureLod(mat_data_sampler, vertex_out.tex_coords, 0).rg), 1.0);
-//	out_color = vec4(textureLod(mat_data_sampler, vertex_out.tex_coords, 0).rgb, 1.0);
-//	out_color = vec4(textureLod(albedo_sampler, vertex_out.tex_coords, 0).rgb, 1.0);
 
 //	out_color = vec4(texture(ao_sampler, vertex_out.tex_coords).rrr, 1.0);
 }

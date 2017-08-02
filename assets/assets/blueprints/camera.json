@@ -2,8 +2,11 @@
 	"Transform":{
 	},
 	"Camera": {
-		"fov": 80.0,
+		"fov": 50.0,
 		"near": 0.05,
 		"far": 40.0
+	},
+	"NIM": {
+		"uid": "camera"
 	}
 }

@@ -43,7 +43,6 @@ target_link_libraries(mirrage_graphic
 	PUBLIC
 		mirrage::utils
 		glm
-		gli
 		gsl
 		range-v3
 		mirrage::asset

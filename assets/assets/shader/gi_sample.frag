@@ -16,6 +16,8 @@ layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_sampler;
 layout(set=1, binding = 4) uniform sampler2D history_weight_sampler;
+layout(set=1, binding = 5) uniform sampler2D depth_all_levels_sampler;
+layout(set=1, binding = 6) uniform sampler2D mat_data_all_levels_sampler;
 
 layout (constant_id = 0) const bool LAST_SAMPLE = false;
 layout (constant_id = 1) const float R = 40;
@@ -39,7 +41,7 @@ layout(push_constant) uniform Push_constants {
 #include "upsample.glsl"
 #include "raycast.glsl"
 
-vec3 gi_sample(int lod);
+vec3 gi_sample(int lod, int base_mip);
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight);
 
@@ -49,12 +51,12 @@ void main() {
 	float base_mip    = pcs.prev_projection[3][3];
 
 	if(current_mip < max_mip)
-		out_color = vec4(upsampled_result(depth_sampler, result_sampler, 0, 0, vertex_out.tex_coords, 1.0).rgb, 1.0);
+		out_color = vec4(upsampled_result(depth_all_levels_sampler, mat_data_all_levels_sampler, result_sampler, int(current_mip), 0, vertex_out.tex_coords, 1.0).rgb, 1.0);
 	else
 		out_color = vec4(0,0,0, 1);
 
 	if(!UPSAMPLE_ONLY)
-		out_color.rgb += gi_sample(int(current_mip+0.5));
+		out_color.rgb += gi_sample(int(current_mip+0.5), int(base_mip+0.5));
 
 	// last mip level => blend with history
 	if(abs(current_mip - base_mip) < 0.00001) {
@@ -62,7 +64,7 @@ void main() {
 		                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 		                                  0).r;
 
-		out_color *= 1.0 - (history_weight*0.8);
+		out_color *= 1.0 - (history_weight*0.9);
 	}
 
 	out_color = max(out_color, vec4(0));
@@ -70,15 +72,27 @@ void main() {
 
 const float PI = 3.14159265359;
 
-vec3 gi_sample(int lod) {
+vec3 saturation(vec3 c, float change) {
+	vec3 f = vec3(0.299,0.587,0.114);
+	float p = sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
+
+	return vec3(p) + (c-vec3(p))*vec3(change);
+}
+
+
+vec3 gi_sample(int lod, int base_mip) {
 	vec2 texture_size = textureSize(color_sampler, 0);
 	ivec2 uv = ivec2(vertex_out.tex_coords * texture_size);
+
+	// FIXME: workaround for white bar at right/bottom border
+	if(uv.y >= texture_size.y-1 || uv.x >= texture_size.x-1)
+		return vec3(0, 0, 0);
 
 	float depth  = texelFetch(depth_sampler, uv, 0).r;
 	vec4 mat_data = texelFetch(mat_data_sampler, uv, 0);
 	vec3 N = decode_normal(mat_data.rg);
 
-	vec3 P = depth * vertex_out.view_ray;
+	vec3 P = position_from_ldepth(vertex_out.tex_coords, depth);
 
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
@@ -86,20 +100,16 @@ vec3 gi_sample(int lod) {
 	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 23.0;
 
 	for(int i=0; i<SAMPLES; i++) {
-		float r = mix(LAST_SAMPLE ? 2.0 : R/2.0, R, float(i)/float(SAMPLES));
+		float r = mix(LAST_SAMPLE ? 2.0 : R/2.0, LAST_SAMPLE ? R/2 : R, float(i)/float(SAMPLES));
 
 		angle += angle_step;
 		float sin_angle = sin(angle);
 		float cos_angle = cos(angle);
 
 		ivec2 p = ivec2(uv + vec2(sin_angle, cos_angle) * r);
-		if(p.x>=0.0 && p.x<=texture_size.x && p.y>=0.0 && p.y<=texture_size.y) {
+		if(p.x>0.0 && p.x<texture_size.x && p.y>0.0 && p.y<texture_size.y) {
 			float weight;
 			vec3 sc = calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
-
-			// fade out around the screen border
-			vec2 p_ndc = vec2(p) / texture_size * 2 - 1;
-			sc *= 1.0 - smoothstep(0.98, 1.0, dot(p_ndc,p_ndc));
 
 			c += sc;
 			samples_used += weight;
@@ -109,10 +119,13 @@ vec3 gi_sample(int lod) {
 	// could be used to blend between screen-space and static GI
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
+
 	if(PRIORITISE_NEAR_SAMPLES)
-	c = c * pow(2.0, max(lod*2, 3));
+		c = c * pow(2.0, clamp((lod-base_mip)*2, 2, 7)) * 128.0 / SAMPLES;
 	else
 		c = c * pow(2.0, lod*2);
+
+	// c = saturation(c, 1.1);
 
 	// fade out if too few samples hit anything on screen
 //	c *= smoothstep(0.1, 0.2, samples_used/SAMPLES);
@@ -130,7 +143,7 @@ vec3 to_view_space(vec2 uv, float depth) {
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight) {
 	float depth  = texelFetch(depth_sampler, src_uv, 0).r;
-	vec3 P = to_view_space(src_uv / tex_size, depth);// x_i
+	vec3 P = position_from_ldepth(src_uv / tex_size, depth);// x_i
 	vec3 Pn = normalize(P);
 
 
@@ -169,8 +182,11 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 		return vec3(0,0,0);
 	}
 
-	float r2 = max(r*r, 0.1);
 	vec3 dir = diff / r;
+
+	// reduce light from far away surfaces to compensate for missing occlusion check
+	r += smoothstep(6, 10, r)*10;
+	float r2 = r*r;
 
 	vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;
 

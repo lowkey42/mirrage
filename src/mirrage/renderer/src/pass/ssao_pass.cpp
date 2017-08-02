@@ -1,6 +1,7 @@
 #include <mirrage/renderer/pass/ssao_pass.hpp>
 
 #include <mirrage/graphic/window.hpp>
+#include <mirrage/utils/math.hpp>
 
 #include <glm/gtx/string_cast.hpp>
 
@@ -212,11 +213,10 @@ namespace renderer {
 		};
 
 		Push_constants pcs;
-		pcs.options.x = _renderer.gbuffer().mip_levels - ao_mip_level;
+		pcs.options.x = util::max(1, _renderer.gbuffer().mip_levels - ao_mip_level - 1);
 
-		auto& cam = _renderer.active_camera().get_or_throw();
 		float height = _ao_result_buffer.height();
-		float v_fov  = cam.fov_vertical.value();
+		float v_fov  = _renderer.global_uniforms().proj_planes.w;
 		pcs.options.y = height / (-2.f * glm::tan(v_fov*0.5f));
 
 		pcs.options.z = ao_mip_level;
@@ -229,7 +229,7 @@ namespace renderer {
 			command_buffer.draw(3, 1, 0, 0);
 		});
 
-		for(int i=0; i<2; i++) {
+		for(int i=0; i<4; i++) {
 			// blur horizontal
 			_blur_render_pass.execute(command_buffer, _blur_framebuffer, [&] {
 				_blur_render_pass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);

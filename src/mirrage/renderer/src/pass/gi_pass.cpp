@@ -2,6 +2,8 @@
 
 #include <mirrage/graphic/window.hpp>
 
+#include <glm/gtx/norm.hpp>
+
 
 namespace mirrage {
 namespace renderer {
@@ -14,9 +16,6 @@ namespace renderer {
 			glm::mat4 reprojection; // prev_view * inverse(view)
 			glm::mat4 prev_projection; // m[3].xy = current level, max level
 		};
-
-		//< some of the shaders (gi_blend_common.glsl) implicitly depend on this value!
-		constexpr auto gi_base_mip_level = 1;
 
 
 		auto build_integrate_brdf_render_pass(Deferred_renderer& renderer,
@@ -75,6 +74,7 @@ namespace renderer {
 		auto build_reproject_pass(Deferred_renderer& renderer,
 		                          vk::DescriptorSetLayout desc_set_layout,
 		                          vk::Format history_weight_format,
+		                          int min_mip_level,
 		                          Render_target_2D& input,
 		                          Render_target_2D& diffuse,
 		                          Render_target_2D& specular,
@@ -171,7 +171,7 @@ namespace renderer {
 			auto render_pass = builder.build();
 
 			auto attachments = std::array<Framebuffer_attachment_desc, 4> {{
-			    {input.view(gi_base_mip_level), util::Rgba{}},
+			    {input.view(min_mip_level), util::Rgba{}},
 			    {diffuse.view(0), util::Rgba{}},
 			    {specular.view(0), util::Rgba{0,0,0,0}},
 			    {history_weight.view(0), util::Rgba{0,0,0,0}}
@@ -187,6 +187,7 @@ namespace renderer {
 		
 		auto build_sample_render_pass(Deferred_renderer& renderer,
 		                              vk::DescriptorSetLayout desc_set_layout,
+		                              int min_mip_level, int max_mip_level,
 		                              Render_target_2D& gi_buffer,
 		                              std::vector<Framebuffer>& out_framebuffers) {
 			
@@ -245,8 +246,8 @@ namespace renderer {
 
 			auto render_pass = builder.build();
 			
-			auto end   = renderer.settings().gi_mip_levels;
-			for(auto i=0; i<end-gi_base_mip_level; i++) {
+			auto end   = max_mip_level;
+			for(auto i=0; i<end-min_mip_level; i++) {
 				out_framebuffers.emplace_back( builder.build_framebuffer(
 				        {gi_buffer.view(i), util::Rgba{}},
 				        gi_buffer.width(i),
@@ -397,6 +398,17 @@ namespace renderer {
 			return format.get_or_throw();
 		}
 
+		auto calc_base_mip_level(std::uint32_t width, std::uint32_t height) {
+			return util::max(0, static_cast<int>(std::round(util::min(glm::log2(width/960.f),
+			                                                          glm::log2(height/500.f)))));
+		}
+		auto calc_max_mip_level(std::uint32_t width, std::uint32_t height) {
+			auto w = static_cast<float>(width);
+			auto h = static_cast<float>(height);
+			auto diagonal = std::sqrt(w*w + h*h);
+
+			return static_cast<int>(std::ceil(glm::log2(diagonal / 40.f)));
+		}
 	}
 
 
@@ -404,6 +416,11 @@ namespace renderer {
 	                 graphic::Render_target_2D& in_out,
 	                 graphic::Render_target_2D& diffuse_in)
 	    : _renderer(renderer)
+	    , _base_mip_level(calc_base_mip_level(in_out.width(), in_out.height()))
+	    , _max_mip_level(calc_max_mip_level(in_out.width(), in_out.height()))
+	    , _diffuse_mip_level(_base_mip_level + renderer.settings().gi_diffuse_mip_level)
+	    , _specular_mip_level(_base_mip_level + renderer.settings().gi_specular_mip_level)
+	    , _min_mip_level(std::min(_diffuse_mip_level, _specular_mip_level))
 	    , _gbuffer_sampler(renderer.device().create_sampler(
 	                           12, vk::SamplerAddressMode::eClampToEdge,
 	                           vk::BorderColor::eIntOpaqueBlack,
@@ -414,7 +431,7 @@ namespace renderer {
 	    , _color_diffuse_in(diffuse_in)
 	    
 	    , _gi_diffuse(renderer.device(),
-	                 {in_out.width(gi_base_mip_level), in_out.height(gi_base_mip_level)},
+	                 {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
 	                 0,
 	                 renderer.gbuffer().color_format,
 	                 vk::ImageUsageFlagBits::eSampled
@@ -424,7 +441,7 @@ namespace renderer {
 	                 vk::ImageAspectFlagBits::eColor)
 
 	    , _gi_diffuse_history(renderer.device(),
-	                 {in_out.width(gi_base_mip_level), in_out.height(gi_base_mip_level)},
+	                 {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
 	                 1,
 	                 renderer.gbuffer().color_format,
 	                 vk::ImageUsageFlagBits::eSampled
@@ -433,8 +450,8 @@ namespace renderer {
 	                 vk::ImageAspectFlagBits::eColor)
 
 	    , _gi_specular(renderer.device(),
-	                   {in_out.width(gi_base_mip_level),
-	                    in_out.height(gi_base_mip_level)},
+	                   {in_out.width(_min_mip_level),
+	                    in_out.height(_min_mip_level)},
 	                   1,
 	                   renderer.gbuffer().color_format,
 	                   vk::ImageUsageFlagBits::eSampled
@@ -444,8 +461,8 @@ namespace renderer {
 	                   vk::ImageAspectFlagBits::eColor)
 
 	    , _gi_specular_history(renderer.device(),
-	                   {in_out.width(gi_base_mip_level),
-	                    in_out.height(gi_base_mip_level)},
+	                   {in_out.width(_min_mip_level),
+	                    in_out.height(_min_mip_level)},
 	                   1,
 	                   renderer.gbuffer().color_format,
 	                   vk::ImageUsageFlagBits::eSampled
@@ -453,14 +470,8 @@ namespace renderer {
 	                   | vk::ImageUsageFlagBits::eColorAttachment,
 	                   vk::ImageAspectFlagBits::eColor)
 
-	    , _prev_depth(renderer.device(), {renderer.gbuffer().depth.width(), renderer.gbuffer().depth.height()},
-	                  1, renderer.gbuffer().depth_format,
-	                  vk::ImageUsageFlagBits::eTransferDst|vk::ImageUsageFlagBits::eSampled
-	                  | vk::ImageUsageFlagBits::eInputAttachment,
-	                  vk::ImageAspectFlagBits::eColor)
-
 	    , _history_weight_format(get_history_weight_format(renderer.device()))
-	    , _history_weight(renderer.device(), {in_out.width(gi_base_mip_level), in_out.height(gi_base_mip_level)},
+	    , _history_weight(renderer.device(), {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
 	                      1, _history_weight_format,
 	                      vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
 	                      vk::ImageAspectFlagBits::eColor)
@@ -480,6 +491,7 @@ namespace renderer {
 	    , _reproject_renderpass(build_reproject_pass(renderer,
 	                                                 *_descriptor_set_layout,
 	                                                 _history_weight_format,
+	                                                 _min_mip_level,
 	                                                 _color_diffuse_in,
 	                                                 _gi_diffuse,
 	                                                 _gi_specular,
@@ -490,14 +502,15 @@ namespace renderer {
 	                                    {renderer.gbuffer().depth.view(),
 	                                     renderer.gbuffer().mat_data.view(),
 	                                     renderer.gbuffer().albedo_mat_id.view(0),
-	                                     renderer.gbuffer().ambient_occlusion.get_or_other(_gi_diffuse).view(),
+	                                     renderer.gbuffer().ambient_occlusion.get_or_other(_gi_diffuse_history).view(),
 	                                     _gi_diffuse_history.view(),
 	                                     _gi_specular_history.view(),
-	                                     _prev_depth.view(),
+	                                     renderer.gbuffer().prev_depth.view(),
 	                                     _integrated_brdf.view()}))
 	    
 	    , _sample_renderpass(build_sample_render_pass(renderer,
 	                                                  *_descriptor_set_layout,
+	                                                  _min_mip_level, _max_mip_level,
 	                                                  _gi_diffuse,
 	                                                  _sample_framebuffers))
 
@@ -527,15 +540,17 @@ namespace renderer {
 	                                     renderer.gbuffer().ambient_occlusion.get_or_other(_gi_diffuse).view(),
 	                                     _integrated_brdf.view()}))
 	{
-		auto end   = renderer.settings().gi_mip_levels;
-		_sample_descriptor_sets.reserve(end-gi_base_mip_level);
-		for(auto i=0; i<end-gi_base_mip_level; i++) {
+		auto end   = _max_mip_level;
+		_sample_descriptor_sets.reserve(end-_min_mip_level);
+		for(auto i=0; i<end-_min_mip_level; i++) {
 			auto images = {
-			    _color_diffuse_in.view(i+gi_base_mip_level),
-			    renderer.gbuffer().depth.view(i+gi_base_mip_level),
-			    renderer.gbuffer().mat_data.view(i+gi_base_mip_level),
+			    _color_diffuse_in.view(i+_min_mip_level),
+			    renderer.gbuffer().depth.view(i+_min_mip_level),
+			    renderer.gbuffer().mat_data.view(i+_min_mip_level),
 			    _gi_diffuse.view(i+1),
-			    _history_weight.view()
+			    _history_weight.view(),
+			    renderer.gbuffer().depth.view(),
+			    renderer.gbuffer().mat_data.view()
 			};
 
 			_sample_descriptor_sets.emplace_back(_descriptor_set_layout.create_set(
@@ -556,46 +571,35 @@ namespace renderer {
 			_first_frame = true;
 			return;
 		}
-		
+
+		auto eye_position = glm::vec3(
+		                         _renderer.global_uniforms().eye_pos.x,
+		                         _renderer.global_uniforms().eye_pos.y,
+		                         _renderer.global_uniforms().eye_pos.z );
+
+		auto movement = glm::distance2(eye_position, _prev_eye_position);
+		_prev_eye_position = eye_position;
+
+		if(_first_frame || movement>4.f) {
+			graphic::clear_texture(command_buffer, _gi_diffuse, util::Rgba{0,0,0,0},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal);
+
+			for(auto rt : {&_gi_specular, &_gi_diffuse_history, &_gi_specular_history}) {
+				graphic::clear_texture(command_buffer, *rt, util::Rgba{0,0,0,0},
+				                       vk::ImageLayout::eUndefined,
+				                       vk::ImageLayout::eShaderReadOnlyOptimal, 0, 1);
+			}
+
+			_prev_view = _renderer.global_uniforms().view_mat;
+			_prev_proj = _renderer.global_uniforms().proj_mat;
+		}
+
 		if(_first_frame) {
 			_first_frame = false;
 			
 			_integrate_brdf(command_buffer);
 
-			for(auto rt : {&_gi_diffuse, &_gi_specular, &_gi_diffuse_history, &_gi_specular_history}) {
-				DEBUG("clear "<<rt);
-				auto mip_levels = rt->mip_levels();
-				graphic::image_layout_transition(command_buffer,
-				                                 rt->image(),
-				                                 vk::ImageLayout::eUndefined,
-				                                 vk::ImageLayout::eTransferDstOptimal,
-				                                 vk::ImageAspectFlagBits::eColor,
-				                                 0, mip_levels);
-
-				command_buffer.clearColorImage(rt->image(),
-				                               vk::ImageLayout::eTransferDstOptimal,
-				                               vk::ClearColorValue{std::array<float,4>{0.f, 0.f, 0.f, 0.f}},
-				                               {vk::ImageSubresourceRange{
-				                                    vk::ImageAspectFlagBits::eColor,
-				                                    0, mip_levels,
-				                                    0, 1
-				                                }});
-
-				graphic::image_layout_transition(command_buffer,
-				                                 rt->image(),
-				                                 vk::ImageLayout::eTransferDstOptimal,
-				                                 vk::ImageLayout::eShaderReadOnlyOptimal,
-				                                 vk::ImageAspectFlagBits::eColor,
-				                                 0, mip_levels);
-			}
-
-			graphic::blit_texture(command_buffer, _renderer.gbuffer().depth,
-			                      vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
-			                      _prev_depth,
-			                      vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-			_prev_view = _renderer.global_uniforms().view_mat;
-			_prev_proj = _renderer.global_uniforms().proj_mat;
 		}
 
 
@@ -614,12 +618,6 @@ namespace renderer {
 		                      vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      _gi_specular_history,
 		                      vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
-
-		// save current depth buffer for next frame
-		graphic::blit_texture(command_buffer, _renderer.gbuffer().depth,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      _prev_depth,
-		                      vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
 
 	void Gi_pass::_integrate_brdf(vk::CommandBuffer& command_buffer) {
@@ -631,12 +629,12 @@ namespace renderer {
 	void Gi_pass::_reproject_history(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals) {
 		auto _ = _renderer.profiler().push("Reproject");
 
-		if(gi_base_mip_level>0) {
+		if(_min_mip_level>0) {
 			graphic::generate_mipmaps(command_buffer, _color_diffuse_in.image(),
 			                          vk::ImageLayout::eShaderReadOnlyOptimal,
 			                          vk::ImageLayout::eShaderReadOnlyOptimal,
 			                          _color_diffuse_in.width(), _color_diffuse_in.height(),
-			                          gi_base_mip_level+1);
+			                          _min_mip_level+1);
 		}
 
 		_reproject_renderpass.execute(command_buffer, _reproject_framebuffer, [&] {
@@ -652,8 +650,8 @@ namespace renderer {
 			INVARIANT(pcs.prev_projection[0][3]==0 && pcs.prev_projection[1][3]==0 && pcs.prev_projection[3][3]==0,
 			          "m[0][3]!=0 or m[1][3]!=0 or m[3][3]!=0");
 
-			pcs.prev_projection[0][3] = gi_base_mip_level;
-			pcs.prev_projection[1][3] = _renderer.settings().gi_mip_levels - 1;
+			pcs.prev_projection[0][3] = _min_mip_level;
+			pcs.prev_projection[1][3] = _max_mip_level - 1;
 
 			if(_renderer.gbuffer().ambient_occlusion.is_some()) {
 				pcs.prev_projection[3][3] = 1.0;
@@ -679,7 +677,7 @@ namespace renderer {
 		                          vk::ImageLayout::eShaderReadOnlyOptimal,
 		                          _color_diffuse_in.width(), _color_diffuse_in.height(),
 		                          _renderer.gbuffer().mip_levels,
-		                          gi_base_mip_level);
+		                          _min_mip_level);
 	}
 
 	namespace {
@@ -690,23 +688,23 @@ namespace renderer {
 		}
 	}
 	void Gi_pass::_generate_gi_samples(vk::CommandBuffer& command_buffer) {
-		auto begin   = _renderer.settings().gi_start_mip_level;
-		auto end     = _renderer.settings().gi_mip_levels;
+		auto begin   = _diffuse_mip_level;
+		auto end     = _max_mip_level;
 
 
 		auto pcs = Gi_constants{};
-		pcs.prev_projection[1][3] = _renderer.settings().gi_mip_levels - 1;
-		pcs.prev_projection[3][3] = gi_base_mip_level;
+		pcs.prev_projection[1][3] = _max_mip_level - 1;
+		pcs.prev_projection[3][3] = _min_mip_level;
 
 		{
 			auto _ = _renderer.profiler().push("Sample (diffuse)");
-			for(auto i=end-1; i>=std::min(gi_base_mip_level, begin); i--) {
-				auto& fb = _sample_framebuffers.at(i-gi_base_mip_level);
+			for(auto i=end-1; i>=std::min(_min_mip_level, begin); i--) {
+				auto& fb = _sample_framebuffers.at(i-_min_mip_level);
 
 				if(i < end-1) {
 					// barrier against write to previous mipmap level
 					auto subresource = vk::ImageSubresourceRange {
-						vk::ImageAspectFlagBits::eColor, gsl::narrow<std::uint32_t>(i-gi_base_mip_level + 1), 1, 0, 1
+						vk::ImageAspectFlagBits::eColor, gsl::narrow<std::uint32_t>(i-_min_mip_level + 1), 1, 0, 1
 					};
 					auto barrier = vk::ImageMemoryBarrier {
 						vk::AccessFlagBits::eColorAttachmentWrite, vk::AccessFlagBits::eShaderRead,
@@ -726,7 +724,7 @@ namespace renderer {
 						_sample_renderpass.set_stage("upsample"_strid);
 					}
 
-					_sample_renderpass.bind_descriptor_set(1, *_sample_descriptor_sets[i-gi_base_mip_level]);
+					_sample_renderpass.bind_descriptor_set(1, *_sample_descriptor_sets[i-_min_mip_level]);
 
 					pcs.prev_projection[0][3] = i;
 					auto fov_h = _renderer.global_uniforms().proj_planes.z;
@@ -743,7 +741,9 @@ namespace renderer {
 		_sample_spec_renderpass.execute(command_buffer, _sample_spec_framebuffer, [&] {
 			_sample_spec_renderpass.bind_descriptor_set(1, *_sample_spec_descriptor_set);
 
-			pcs.prev_projection[0][3] = gi_base_mip_level;
+			// Mip-level used by spec.
+			//  Always zero (for now). Skips pixels when gi_spec_mip_level>0 but reduces blocky artefacts.
+			pcs.prev_projection[0][3] = 0;
 
 			auto screen_size = glm::vec2{_color_diffuse_in.width(pcs.prev_projection[0][3]), _color_diffuse_in.height(pcs.prev_projection[0][3])};
 			auto ndc_to_uv = glm::translate({}, glm::vec3(screen_size/2.f, 0.f))
@@ -764,8 +764,8 @@ namespace renderer {
 			_blend_renderpass.bind_descriptor_set(1, *_blend_descriptor_set);
 
 			auto pcs = Gi_constants{};
-			pcs.prev_projection[0][3] = gi_base_mip_level;
-			pcs.prev_projection[1][3] = _renderer.settings().gi_mip_levels - 1;
+			pcs.prev_projection[0][3] = _min_mip_level;
+			pcs.prev_projection[1][3] = _max_mip_level - 1;
 			pcs.prev_projection[2][3] = _renderer.settings().debug_gi_layer;
 
 			if(_renderer.gbuffer().ambient_occlusion.is_some()) {

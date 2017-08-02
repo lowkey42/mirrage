@@ -322,5 +322,37 @@ namespace graphic {
 			                        vk::ImageAspectFlagBits::eColor, 0, 1);
 		}
 	}
+
+	void clear_texture(vk::CommandBuffer cb, const detail::Base_texture& img, util::Rgba color,
+	                   vk::ImageLayout initial_layout, vk::ImageLayout final_layout,
+	                   std::uint32_t initial_mip_level, std::uint32_t mip_levels) {
+
+		if(mip_levels==0) {
+			mip_levels = std::floor(std::log2(std::min(img.width(), img.height()))) + 1;
+		}
+
+		graphic::image_layout_transition(cb,
+		                                 img.image(),
+		                                 initial_layout,
+		                                 vk::ImageLayout::eTransferDstOptimal,
+		                                 vk::ImageAspectFlagBits::eColor,
+		                                 initial_mip_level, mip_levels);
+
+		cb.clearColorImage(img.image(),
+		                   vk::ImageLayout::eTransferDstOptimal,
+		                   vk::ClearColorValue{std::array<float,4>{color.r, color.g, color.b, color.a}},
+		                   {vk::ImageSubresourceRange{
+		                        vk::ImageAspectFlagBits::eColor,
+		                        initial_mip_level, mip_levels,
+		                        0, 1
+		                    }});
+
+		graphic::image_layout_transition(cb,
+		                                 img.image(),
+		                                 vk::ImageLayout::eTransferDstOptimal,
+		                                 final_layout,
+		                                 vk::ImageAspectFlagBits::eColor,
+		                                 initial_mip_level, mip_levels);
+	}
 }
 }

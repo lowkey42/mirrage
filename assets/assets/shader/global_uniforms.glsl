@@ -10,6 +10,12 @@ layout(binding = 0) uniform Global_uniforms {
 	vec4 eye_pos;
 	vec4 proj_planes; //< near, far, fov horizontal, fov vertical
 	vec4 time; //< time, sin(time), delta_time
+	vec4 proj_info;
 } global_uniforms;
+
+vec3 position_from_ldepth(vec2 uv, float z) {
+	z *= -global_uniforms.proj_planes.y;
+	return vec3((uv.xy * global_uniforms.proj_info.xy + global_uniforms.proj_info.zw), 1) * z;
+}
 
 #endif

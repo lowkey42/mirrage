@@ -569,4 +569,7 @@ namespace sf2 {
 		Deserializer<Reader>{std::move(r)}.read_virtual(std::forward<Members>(m)...);
 	}
 
+	template<class T, class Reader>
+	using is_loadable = std::disjunction<is_annotated<T>, details::has_load<Reader,T>>;
+
 }

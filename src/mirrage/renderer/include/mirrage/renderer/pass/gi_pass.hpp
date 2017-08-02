@@ -23,6 +23,11 @@ namespace renderer {
 			
 		private:
 			Deferred_renderer&                   _renderer;
+			const int                            _base_mip_level;
+			const int                            _max_mip_level;
+			const int                            _diffuse_mip_level;
+			const int                            _specular_mip_level;
+			const int                            _min_mip_level;
 			vk::UniqueSampler                    _gbuffer_sampler;
 			graphic::Image_descriptor_set_layout _descriptor_set_layout;
 			graphic::Render_target_2D&           _color_in_out;
@@ -30,6 +35,7 @@ namespace renderer {
 			bool                                 _first_frame = true;
 			glm::mat4                            _prev_view;
 			glm::mat4                            _prev_proj;
+			glm::vec3                            _prev_eye_position;
 			
 			// current GI result + history buffer (diffuse only)
 			graphic::Render_target_2D       _gi_diffuse;
@@ -38,9 +44,6 @@ namespace renderer {
 			// current GI result + history buffer (specular only)
 			graphic::Render_target_2D       _gi_specular;
 			graphic::Render_target_2D       _gi_specular_history;
-
-			// depth from previous frame (used to reject reprojected samples)
-			graphic::Render_target_2D       _prev_depth;
 
 			vk::Format                      _history_weight_format;
 			graphic::Render_target_2D       _history_weight;

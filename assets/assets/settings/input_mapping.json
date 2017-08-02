@@ -24,7 +24,13 @@
                 "T_6": {"type":"once", "action":"preset_f"},
 
                 "C": {"type":"once", "action":"d_disect"},
-                "P": {"type":"once", "action":"print"}
+                "P": {"type":"once", "action":"print"},
+                "R": {"type":"once", "action":"record"},
+                "F1": {"type":"once", "action":"start_record"},
+                "F2": {"type":"once", "action":"save_record"},
+                "F3": {"type":"once", "action":"playback"},
+
+                "F11": {"type":"once", "action":"toggle_ui"}
             },
 
             "pad_sticks": {

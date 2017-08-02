@@ -2,6 +2,7 @@
 
 #include "game_engine.hpp"
 #include "meta_system.hpp"
+#include "systems/nim_system.hpp"
 
 #include <mirrage/renderer/light_comp.hpp>
 #include <mirrage/renderer/model_comp.hpp>
@@ -43,8 +44,8 @@ namespace mirrage {
 				Preset{{-6.2272f,17.4041f,0.70684f}, 1.5745f, 1.37925f, 0.64f, 1.41f, 5600.f, false},
 				Preset{{-6.92102f,4.65626f,8.85025f}, -4.71325f, 0.0302201f, 0.74f, 1.22f, 5600.f, true},
 				Preset{{5.93751f,5.96643f,-4.34917f}, -0.0337765f, 0.0992601f, 0.62f, 1.22f, 5600.f, false},
-				Preset{{10.0168f,5.75801f,4.25396f}, 0.267295f, -0.00228794f, 0.62f, 1.85f, 5600.f, false},
-				Preset{{1000.29f,2.24448f,6.25397f}, 1.55188f, -0.0295495f, std::numeric_limits<float>::quiet_NaN(), 0.f, 5600.f, false}
+				Preset{{9.88425f,5.69793f,4.93024f}, 0.450757f, -0.0187274f, 0.62f, 1.85f, 5600.f, false},
+				Preset{{999.902f,2.21469f,7.26912f}, 1.55188f, -0.0295495f, std::numeric_limits<float>::quiet_NaN(), 0.f, 5600.f, false}
 		}};
 	}
 
@@ -66,10 +67,7 @@ namespace mirrage {
 		});
 
 		// TODO: check if model is available
-		auto sponza = _meta_system.entities().emplace("sponza");
-		sponza.get<Transform_comp>().process([&](auto& transform) {
-			transform.scale(0.01f);
-		});
+		_meta_system.entities().emplace("sponza");
 
 		_sun = _meta_system.entities().emplace("sun");
 
@@ -78,7 +76,11 @@ namespace mirrage {
 		_mailbox.subscribe_to([&](input::Once_action& e){
 			switch(e.id) {
 				case "quit"_strid:
-					_engine.screens().leave();
+					if(_meta_system.nims().is_playing()) {
+						_meta_system.nims().stop();
+						_set_preset(1);
+					} else
+						_engine.screens().leave();
 					break;
 				case "create"_strid:
 					_meta_system.entities().emplace("cube").get<Transform_comp>().process([&](auto& transform) {
@@ -105,6 +107,29 @@ namespace mirrage {
 					     "  Disected:           "<<_meta_system.renderer().settings().debug_disect);
 					break;
 				}
+
+				case "start_record"_strid:
+					_meta_system.nims().start_recording(_current_seq);
+					_record_timer = 0_s;
+					break;
+				case "record"_strid:
+					_meta_system.nims().record(_record_timer, _current_seq);
+					_record_timer = 0_s;
+					break;
+				case "save_record"_strid:
+					_engine.assets().save("nim:demo_animation"_aid, _current_seq);
+					break;
+				case "playback"_strid:
+					_engine.assets().load_maybe<systems::Nim_sequence>("nim:demo_animation"_aid, false)
+					        .process([&](auto&& rec) {
+						_selected_preset = 0;
+						_meta_system.nims().play_looped(rec);
+					});
+					break;
+
+				case "toggle_ui"_strid:
+					_show_ui = !_show_ui;
+					break;
 
 				case "preset_a"_strid:
 					_set_preset(1);
@@ -173,6 +198,10 @@ namespace mirrage {
 			return;
 		}
 
+		if(!_meta_system.nims().is_playing()) {
+			_meta_system.nims().stop();
+		}
+
 		_selected_preset = preset_id;
 
 		if(preset_id<=0)
@@ -216,6 +245,8 @@ namespace mirrage {
 	void Test_screen::_update(util::Time dt) {
 		_mailbox.update_subscriptions();
 
+		_record_timer += dt;
+
 		_camera.get<Transform_comp>().process([&](auto& transform) {
 			if(dot(_move, _move) > 0.1f)
 				transform.move_local(_move * (10_km/1_h * dt).value());
@@ -242,17 +273,23 @@ namespace mirrage {
 
 
 	void Test_screen::_draw() {
-		_draw_settings_window();
-		_draw_profiler_window();
+		if(_show_ui) {
+			_draw_settings_window();
+
+			if(_show_profiler) {
+				_draw_profiler_window();
+			}
+		}
 
 		_meta_system.draw();
 	}
 	void Test_screen::_draw_settings_window() {
 		auto ctx = _gui.ctx();
-		if (nk_begin_titled(ctx, "debug_controls", "Debug Controls", _gui.centered_left(400, 400),
+		if (nk_begin_titled(ctx, "debug_controls", "Debug Controls", _gui.centered_left(220, 260),
 		                    NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_TITLE|NK_WINDOW_MINIMIZABLE)) {
 
-			nk_layout_row_dynamic(ctx, 40, 2);
+			nk_layout_row_dynamic(ctx, 20, 2);
+			nk_label(ctx, "Debug Layer", NK_TEXT_LEFT);
 			auto& renderer_settings = _meta_system.renderer().settings();
 			auto dgil = nk_propertyi(ctx, "gi_layer", -1, renderer_settings.debug_gi_layer, 5, 1, 0.1);
 			if(dgil!=renderer_settings.debug_gi_layer) {
@@ -262,67 +299,73 @@ namespace mirrage {
 
 			}
 
-			nk_layout_row_dynamic(ctx, 40, 2);
 			nk_label(ctx, "Preset", NK_TEXT_LEFT);
 			auto preset_options = std::array<const char*, 7>{{
 					"Free Motion", "Center", "Top-Down", "Side-Scroller", "Hallway", "Hallway2",
 					"Cornell Box"
 			}};
 			_set_preset(nk_combo(ctx, preset_options.data(), preset_options.size(),
-			                     _selected_preset, 25,nk_vec2(200.f, 400)));
+			                     _selected_preset, 14, nk_vec2(100.f, 200)));
 
 
-			nk_layout_row_dynamic(ctx, 40, 2);
 			nk_label(ctx, "Indirect illumination", NK_TEXT_LEFT);
 			int gi_active = renderer_settings.gi ? 1 : 0;
-			if(nk_checkbox_label(ctx, "Active", &gi_active)) {
+			if(nk_checkbox_label(ctx, "GI", &gi_active)) {
 				auto rs_copy = renderer_settings;
 				rs_copy.gi = gi_active==1;
 				_meta_system.renderer().settings(rs_copy);
 			}
 
-
-			nk_layout_row_dynamic(ctx, 40, 1);
-			nk_label(ctx, "Directional Light", NK_TEXT_LEFT);
-
-			nk_layout_row_dynamic(ctx, 25, 1);
-
-			auto elevation = nk_propertyf(ctx, "Elevation", 0.f,
-			                              _sun_elevation, 1.f, 0.1f, 0.01f);
-			if(elevation!=_sun_elevation) {
-				_sun_elevation = elevation;
-				_set_preset(0);
+			nk_label(ctx, "Show profiler", NK_TEXT_LEFT);
+			auto show_profiler = _show_profiler ? 1 : 0;
+			if(nk_checkbox_label(ctx, "Profiler", &show_profiler)) {
+				_show_profiler = show_profiler==1;
 			}
 
-			auto azimuth = nk_propertyf(ctx, "Azimuth", -2.f,
-			                            _sun_azimuth, 2.f, 0.1f, 0.01f);
-			if(azimuth!=_sun_azimuth) {
-				_sun_azimuth = azimuth;
-				_set_preset(0);
-			}
 
-			_update_sun_position();
+			if(!_meta_system.nims().is_playing()) {
+				nk_layout_row_dynamic(ctx, 20, 1);
+				nk_label(ctx, "Directional Light", NK_TEXT_LEFT);
 
-			_sun.get<renderer::Directional_light_comp>().process([&](renderer::Directional_light_comp& light) {
-				auto new_size = nk_propertyf(ctx, "Size", 0.5f,
-				                             light.source_radius()/1_m, 20.f, 0.1f, 0.01f);
-				light.source_radius(new_size*1_m);
+				nk_layout_row_dynamic(ctx, 14, 1);
 
-				auto new_temp = nk_propertyf(ctx, "Color", 500.f,
-				                             _sun_color_temperature, 20000.f, 500.f, 50.f);
-
-				if(new_temp != _sun_color_temperature) {
-					light.temperature(_sun_color_temperature = new_temp);
+				auto elevation = nk_propertyf(ctx, "Elevation", 0.f,
+				                              _sun_elevation, 1.f, 0.05f, 0.001f);
+				if(elevation!=_sun_elevation) {
+					_sun_elevation = elevation;
 					_set_preset(0);
 				}
 
-				auto color = util::Rgba{light.color(), light.intensity()/200.f};
-				if(gui::color_picker(ctx, color, 350.f)) {
-					light.color({color.r, color.g, color.b});
-					light.intensity(color.a*200.f);
+				auto azimuth = nk_propertyf(ctx, "Azimuth", -2.f,
+				                            _sun_azimuth, 2.f, 0.05f, 0.001f);
+				if(azimuth!=_sun_azimuth) {
+					_sun_azimuth = azimuth;
 					_set_preset(0);
 				}
-			});
+
+				_update_sun_position();
+
+				_sun.get<renderer::Directional_light_comp>().process([&](renderer::Directional_light_comp& light) {
+					auto new_size = nk_propertyf(ctx, "Size", 0.5f,
+					                             light.source_radius()/1_m, 20.f, 0.1f, 0.01f);
+					light.source_radius(new_size*1_m);
+
+					auto new_temp = nk_propertyf(ctx, "Color", 500.f,
+					                             _sun_color_temperature, 20000.f, 500.f, 50.f);
+
+					if(new_temp != _sun_color_temperature) {
+						light.temperature(_sun_color_temperature = new_temp);
+						_set_preset(0);
+					}
+
+					auto color = util::Rgba{light.color(), light.intensity()/200.f};
+					if(gui::color_picker(ctx, color, 210.f)) {
+						light.color({color.r, color.g, color.b});
+						light.intensity(color.a*200.f);
+						_set_preset(0);
+					}
+				});
+			}
 		}
 		nk_end(ctx);
 	}
@@ -371,26 +414,26 @@ namespace mirrage {
 	}
 	void Test_screen::_draw_profiler_window() {
 		auto ctx = _gui.ctx();
-		if (nk_begin_titled(ctx, "profiler", "Profiler", _gui.centered_right(600, 700),
-		                    NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_TITLE|NK_WINDOW_MINIMIZABLE|NK_WINDOW_CLOSABLE)) {
+		if (nk_begin_titled(ctx, "profiler", "Profiler", _gui.centered_right(310, 360),
+		                    NK_WINDOW_BORDER|NK_WINDOW_MOVABLE|NK_WINDOW_TITLE|NK_WINDOW_MINIMIZABLE)) {
 
 			// TODO: disable when window is hidden
 			_meta_system.renderer().profiler().enable();
 
-			nk_layout_row_dynamic(ctx, 40, 1);
+			nk_layout_row_dynamic(ctx, 20, 1);
 			if(nk_button_label(ctx, "Reset")) {
 				_meta_system.renderer().profiler().reset();
 			}
 
 			constexpr auto rows = std::array<float, 5> {{0.4f, 0.15f, 0.15f, 0.15f, 0.15f}};
-			nk_layout_row(ctx, NK_DYNAMIC, 50, rows.size(), rows.data());
+			nk_layout_row(ctx, NK_DYNAMIC, 25, rows.size(), rows.data());
 			nk_label(ctx, "RenderPass", NK_TEXT_CENTERED);
 			nk_label(ctx, "Curr (ms)",  NK_TEXT_CENTERED);
 			nk_label(ctx, "Min (ms)",   NK_TEXT_CENTERED);
 			nk_label(ctx, "Avg (ms)",   NK_TEXT_CENTERED);
 			nk_label(ctx, "Max (ms)",   NK_TEXT_CENTERED);
 
-			nk_layout_row(ctx, NK_DYNAMIC, 25, rows.size(), rows.data());
+			nk_layout_row(ctx, NK_DYNAMIC, 10, rows.size(), rows.data());
 
 
 			auto print_entry = [&](auto&& printer, const Profiler_result& result,
@@ -423,7 +466,9 @@ namespace mirrage {
 
 			auto& result = _meta_system.renderer().profiler().results();
 			print_entry(print_entry, result);
+
 		}
+
 		nk_end(ctx);
 	}
 

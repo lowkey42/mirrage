@@ -1,0 +1,3 @@
+nim:demo_animation = nims/demo_animation.json
+
+nim: = nims/

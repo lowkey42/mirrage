@@ -8,6 +8,8 @@
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/profiler.hpp>
 
+#include <mirrage/utils/math.hpp>
+
 #include <vulkan/vulkan.hpp>
 
 
@@ -26,8 +28,9 @@ namespace renderer {
 	struct Renderer_settings {
 		int shadowmap_resolution = 4096;
 		int shadow_quality = 99; // 0 = lowest
-		int gi_mip_levels = 6;
-		int gi_start_mip_level = 2; // >=1 !
+		int gi_diffuse_mip_level = 1; // >=1 !
+		int gi_specular_mip_level = 0;
+
 		bool gi = true;
 		bool dynamic_shadows = false;
 		bool debug_disect = false;
@@ -54,6 +57,7 @@ namespace renderer {
 		glm::vec4 eye_pos;
 		glm::vec4 proj_planes; //< near, far, fov horizontal, fov vertical
 		glm::vec4 time; //< time, sin(time), delta_time
+		glm::vec4 proj_info;
 	};
 
 	using Command_buffer_source = std::function<vk::CommandBuffer()>;
