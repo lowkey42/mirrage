@@ -39,20 +39,23 @@ namespace graphic {
 
 
 	namespace {
-		auto create_desc_set_bindings(vk::Sampler sampler, std::uint32_t image_number,
-		                              vk::ShaderStageFlags stages) {
+        auto create_layout(graphic::Device& device,
+                           vk::Sampler sampler, std::uint32_t image_number,
+                           vk::ShaderStageFlags stages) {
 			auto bindings = std::vector<vk::DescriptorSetLayoutBinding>();
 			bindings.reserve(image_number);
+
+            auto samplers = std::vector<vk::Sampler>(image_number, sampler);
 
 			for(auto i = std::uint32_t(0); i<image_number; i++) {
 				bindings.emplace_back(
 				                i, vk::DescriptorType::eCombinedImageSampler,
 				                1,
 				                stages,
-				                &sampler);
+                                samplers.data());
 			}
 
-			return bindings;
+            return device.create_descriptor_set_layout(bindings);
 		}
 	}
 	Image_descriptor_set_layout::Image_descriptor_set_layout(graphic::Device& device,
@@ -60,8 +63,7 @@ namespace graphic {
 	                                                         std::uint32_t image_number,
 	                                                         vk::ShaderStageFlags stages)
 	    : _device(device), _sampler(sampler), _image_number(image_number)
-	    , _layout(device.create_descriptor_set_layout(create_desc_set_bindings(sampler, image_number,
-	                                                                           stages))) {
+        , _layout(create_layout(device, sampler, image_number, stages)) {
 	}
 
 	void Image_descriptor_set_layout::update_set(vk::DescriptorSet set,
