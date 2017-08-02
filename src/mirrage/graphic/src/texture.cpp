@@ -5,8 +5,6 @@
 #include <mirrage/graphic/context.hpp>
 #include <mirrage/graphic/device.hpp>
 
-#include <gli/gli.hpp>
-
 #include <memory>
 
 
