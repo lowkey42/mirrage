@@ -29,7 +29,7 @@ namespace mirrage {
 		};
 	}
 
-	auto parse_header(std::istream& in, const std::string& filename) -> Ktx_header {
+    auto parse_header(asset::istream& in, const std::string& filename) -> Ktx_header {
 		auto type_tag_data = std::array<unsigned char, sizeof(type_tag)>();
 
 		in.read(reinterpret_cast<char*>(type_tag_data.data()), type_tag_data.size());
@@ -41,13 +41,11 @@ namespace mirrage {
 		in.read(reinterpret_cast<char*>(&header), sizeof(ktx_header10));
 
 		// skip to pixel data
-		in.ignore(header.BytesOfKeyValueData);
-		auto data_begin = in.tellg();
-		in.seekg(0, in.end);
-		auto data_end = in.tellg();
-		in.seekg(data_begin, in.beg);
+        in.ignore(header.BytesOfKeyValueData);
 
-		auto bytes_left = data_end - data_begin;
+        auto bytes_left = in.length() - type_tag_data.size() - sizeof(ktx_header10) - header.BytesOfKeyValueData;
+
+        INVARIANT(bytes_left>0, "Can't load empty image \"" << filename << "\" ");
 
 
 		auto our_header = Ktx_header();
