@@ -5,12 +5,11 @@
 #include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 
-layout(location = 0) in Vertex_data {
-	vec3 world_pos;
-	vec3 view_pos;
-	vec3 normal;
-	vec2 tex_coords;
-} vertex_out;
+layout(location = 0) in vec3 world_pos;
+layout(location = 1) in vec3 view_pos;
+layout(location = 2) in vec3 normal;
+layout(location = 3) in vec2 tex_coords;
+
 
 layout(location = 0) out vec4 depth_out;
 layout(location = 1) out vec4 albedo_mat_id_out;
@@ -32,12 +31,12 @@ vec3 decode_tangent_normal(vec2 tn);
 vec3 tangent_space_to_world(vec3 N);
 
 void main() {
-	vec4 albedo = texture(albedo_sampler, vertex_out.tex_coords);
+	vec4 albedo = texture(albedo_sampler, tex_coords);
 
 	if(albedo.a < 0.1)
 		discard;
 
-	vec4 mat_data = texture(mat_data_sampler, vertex_out.tex_coords); // TODO: LOD bias?
+	vec4 mat_data = texture(mat_data_sampler, tex_coords); // TODO: LOD bias?
 
 	vec3  normal    = tangent_space_to_world(decode_tangent_normal(mat_data.rg));
 	//normal.z = abs(normal.z); // TODO: remove?
@@ -47,12 +46,12 @@ void main() {
 
 	roughness = mix(0.05, 0.99, roughness*roughness);
 
-	depth_out         = vec4(-vertex_out.view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
-	albedo_mat_id_out = vec4(albedo.rgb, 0.0);
-	mat_data_out      = vec4(encode_normal(normal), roughness, metallic);
+    depth_out         = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
+        albedo_mat_id_out = vec4(albedo.rgb, 0.0);
+    mat_data_out      = vec4(encode_normal(normal), roughness, metallic);
 
 	float disect = model_uniforms.options.x;
-	if(disect>0 && vertex_out.world_pos.z>=disect)
+	if(disect>0 && world_pos.z>=disect)
 		discard;
 }
 
@@ -66,14 +65,14 @@ vec3 decode_tangent_normal(vec2 tn) {
 }
 
 vec3 tangent_space_to_world(vec3 N) {
-	vec3 VN = normalize(vertex_out.normal);
+	vec3 VN = normalize(normal);
 
 // calculate tangent (assimp generated tangent contain weird artifacts)
-	vec3 p_dx = dFdx(vertex_out.view_pos);
-	vec3 p_dy = dFdy(vertex_out.view_pos);
+	vec3 p_dx = dFdx(view_pos);
+	vec3 p_dy = dFdy(view_pos);
 
-	vec2 tc_dx = dFdx(vertex_out.tex_coords);
-	vec2 tc_dy = dFdy(vertex_out.tex_coords);
+	vec2 tc_dx = dFdx(tex_coords);
+	vec2 tc_dy = dFdy(tex_coords);
 
 
 	  // TODO: check alternativ
