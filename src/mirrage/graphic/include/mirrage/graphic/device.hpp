@@ -12,7 +12,6 @@
 #include <mirrage/utils/ring_buffer.hpp>
 
 #include <vulkan/vulkan.hpp>
-#include <range/v3/view.hpp>
 
 #include <unordered_map>
 #include <string>
@@ -27,8 +26,8 @@ namespace graphic {
 			Swapchain() = default;
 			Swapchain(const vk::Device& dev, Window&, vk::SwapchainCreateInfoKHR);
 
-			auto get_images()const {
-				return _image_views | ranges::view::transform([&](auto& v){return v.get();}) | ranges::to_vector;
+			auto get_images()const -> auto& {
+				return _image_views;
 			}
 			auto acquireNextImage(vk::Semaphore, vk::Fence)const -> std::size_t;
 

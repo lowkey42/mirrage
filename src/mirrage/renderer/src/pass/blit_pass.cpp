@@ -56,7 +56,7 @@ namespace renderer {
 			auto render_pass = builder.build();
 
 			for(auto& sc_image : renderer.swapchain().get_images()) {
-				out_framebuffers.emplace_back(builder.build_framebuffer({sc_image, util::Rgba{}},
+				out_framebuffers.emplace_back(builder.build_framebuffer({*sc_image, util::Rgba{}},
 				                                                        renderer.swapchain().image_width(),
 				                                                        renderer.swapchain().image_height()));
 			}
