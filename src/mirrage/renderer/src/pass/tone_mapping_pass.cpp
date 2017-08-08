@@ -210,7 +210,8 @@ namespace renderer {
 	                     std::size_t) {
 
 		auto pcs = Push_constants{};
-		pcs.parameters.x = 0.8f; // TODO: make configurable
+		pcs.parameters.x = 0.06f; // TODO: make configurable
+		pcs.parameters.y = 0.7f; // TODO: make configurable
 
 		if(_first_frame) {
 			_first_frame = false;

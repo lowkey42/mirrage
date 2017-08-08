@@ -172,14 +172,8 @@ namespace systems {
 		if(!_playing)
 			return;
 
-		auto prev_position = _current_position;
-
 		_current_position += dt /_playing->frame_length(static_cast<int>(_current_position))
 		                     * _playback_speed;
-
-		if(static_cast<int>(_current_position)!=static_cast<int>(prev_position)) {
-			DEBUG("New frame "<<_current_position<<" with length "<<_playing->frame_length(static_cast<int>(_current_position)).value());
-		}
 
 		if(_loop) {
 			_current_position = std::fmod(_current_position, _playing->frames());

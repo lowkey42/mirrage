@@ -20,11 +20,10 @@ layout(push_constant) uniform Push_constants {
 } pcs;
 
 void main() {
-	const float tau = pcs.parameters.x;
-
 	float current = exp(texture(current_lum_sampler, vertex_out.tex_coords).r);
 	float prev = exp(texture(prev_lum_sampler, vertex_out.tex_coords).r);
 
+	const float tau = current>prev ? pcs.parameters.x : pcs.parameters.y;
 	float lum = prev + (current - prev) * (1 - exp(-global_uniforms.time.z * tau));
 
 	out_color = vec4(log(lum), 0, 0, 1.0);
