@@ -89,11 +89,11 @@ float read_feedback(vec2 uv) {
 }
 
 vec3 curr_color_normalized(vec2 uv) {
-	vec3 c = texture(curr_color_sampler, uv).rgb;
+	vec3 c = textureLod(curr_color_sampler, uv, 0).rgb;
 	return c / (1 + luminance(c));
 }
 vec3 prev_color_normalized(vec2 uv) {
-	vec3 c = texture(prev_color_sampler, uv).rgb;
+	vec3 c = textureLod(prev_color_sampler, uv, 0).rgb;
 	return c / (1 + luminance(c));
 }
 
@@ -152,7 +152,7 @@ void main() {
 	vec3 ctc = curr_color_normalized(uv - dv).rgb;
 	vec3 ctr = curr_color_normalized(uv - dv + du).rgb;
 	vec3 cml = curr_color_normalized(uv - du).rgb;
-	vec3 cmc = curr_color_normalized(uv).rgb;
+	vec3 cmc = curr;
 	vec3 cmr = curr_color_normalized(uv + du).rgb;
 	vec3 cbl = curr_color_normalized(uv + dv - du).rgb;
 	vec3 cbc = curr_color_normalized(uv + dv).rgb;
@@ -172,7 +172,7 @@ void main() {
 
 
 	vec3 prev_clamped = clip_aabb(cmin.xyz, cmax.xyz, clamp(cavg, cmin, cmax), prev);
-	prev_clamped = mix(prev_clamped, prev, feedback);
+	// disabled feedback-buffer   prev_clamped = mix(prev_clamped, prev, feedback);
 
 	float lum_curr = luminance(curr);
 	float lum_prev = luminance(prev_clamped);

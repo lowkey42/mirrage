@@ -36,7 +36,7 @@ void main() {
 	if(albedo.a < 0.1)
 		discard;
 
-	vec4 mat_data = texture(mat_data_sampler, tex_coords); // TODO: LOD bias?
+	vec4 mat_data = texture(mat_data_sampler, tex_coords, 1); // TODO: LOD bias?
 
 	vec3  normal    = tangent_space_to_world(decode_tangent_normal(mat_data.rg));
 	//normal.z = abs(normal.z); // TODO: remove?
