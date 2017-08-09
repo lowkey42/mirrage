@@ -20,7 +20,6 @@ SET(PHYSFS_ARCHIVE_7Z FALSE)
 SET(PHYSFS_BUILD_SHARED FALSE)
 add_subdirectory(physfs)
 
-include(range-v3_interface.cmake)
 add_subdirectory(sdl_vulkan)
 add_subdirectory(sf2)
 add_subdirectory(stb_image)

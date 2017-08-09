@@ -8,7 +8,6 @@
 #include <mirrage/utils/units.hpp>
 
 #include <vulkan/vulkan.hpp>
-#include <range/v3/view.hpp>
 
 #include <vector>
 #include <memory>

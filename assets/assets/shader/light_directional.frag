@@ -81,7 +81,7 @@ void main() {
 	}
 
 	// TODO: remove ambient
-	out_color.rgb += albedo * radiance * 0.00001;
+//	out_color.rgb += albedo * radiance * 0.00001;
 //	out_color.rgb += albedo * radiance * 0.007 * vec3(1, 0.8, 0.8);
 //	out_color.rgb += F0 * radiance * 0.0005 * vec3(1, 0.8, 0.8);
 }

@@ -44,7 +44,6 @@ target_link_libraries(mirrage_graphic
 		mirrage::utils
 		glm
 		gsl
-		range-v3
 		mirrage::asset
 		sf2
 		sdl2::sdl2

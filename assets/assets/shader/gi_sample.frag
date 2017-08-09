@@ -116,6 +116,9 @@ vec3 gi_sample(int lod, int base_mip) {
 		}
 	}
 
+	// experiment to replace missing sky-light
+	// c += vec3(0.97,0.89,1)/4000 *max(0, dot(N, vec3(0,1,0)));
+
 	// could be used to blend between screen-space and static GI
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
@@ -202,7 +205,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	float R2 = 1.0 / PI * NdotL_src * ds;
 	float area = R2 / (r2 + R2); // point-to-differential area form-factor
 
-	weight = visibility * NdotL_dst * NdotL_src > 0.0 ? 1.0 : 0.0;
+	weight = visibility * NdotL_dst * area > 0.0 ? 1.0 : 0.0;
 
 //	weight = NdotL_dst * NdotL_src > 0.0 ? 1.0 : 0.0;
 //	return radiance * NdotL_dst * weight / r2;
