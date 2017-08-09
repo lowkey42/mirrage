@@ -8,7 +8,7 @@
 #include <cstring>
 #include <cstdio>
 
-#ifdef WIN
+#ifdef _WIN32
 	#include <windows.h>
 	#include <direct.h>
 #else
@@ -31,7 +31,7 @@ namespace {
 			return folder+"/"+file;
 	}
 	void create_dir(const std::string& dir) {
-#ifdef WIN
+#ifdef _WIN32
 		CreateDirectory(dir.c_str(), NULL);
 #else
 		mkdir(dir.c_str(), 0777);
@@ -184,7 +184,7 @@ namespace asset {
 
 		// TODO: Windows savegames should be stored in FOLDERID_SavedGames, but the API and conventions are a pain in the ass
 		std::string write_dir_parent = append_file(PHYSFS_getUserDir(),
-#ifdef WIN
+#ifdef _WIN32
 			"Documents/My Games"
 #else
 			".config"

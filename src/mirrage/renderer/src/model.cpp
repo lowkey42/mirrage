@@ -27,11 +27,15 @@ namespace renderer {
 
 	auto create_material_descriptor_set_layout(Device& device, vk::Sampler sampler) -> vk::UniqueDescriptorSetLayout {
 		auto bindings = std::array<vk::DescriptorSetLayoutBinding, material_textures>();
+		auto samplers = std::array<vk::Sampler, material_textures>();
+
+		std::fill_n(samplers.begin(), material_textures, sampler);
+
 		std::fill_n(bindings.begin(), material_textures, vk::DescriptorSetLayoutBinding {
 		                0, vk::DescriptorType::eCombinedImageSampler,
 		                1,
 		                vk::ShaderStageFlagBits::eFragment,
-		                &sampler} );
+		                samplers.data()} );
 
 		for(auto i=std::size_t(0); i<material_textures; i++) {
 			bindings[i].binding = i;
@@ -73,8 +77,8 @@ namespace renderer {
 	             std::function<void(char*)> write_indices,
 	             std::vector<Sub_mesh> sub_meshes,
 	             util::maybe<const asset::AID> aid)
-	: _mesh(device, owner_qfamily, vertex_count, index_count, write_vertices, write_indices)
-	, _sub_meshes(std::move(sub_meshes)), _aid(aid) {
+	    : _mesh(device, owner_qfamily, vertex_count, index_count, write_vertices, write_indices)
+	    , _sub_meshes(std::move(sub_meshes)), _aid(aid) {
 	}
 
 	void Model::bind_mesh(const graphic::Command_buffer& cb,

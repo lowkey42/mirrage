@@ -24,7 +24,7 @@ target_compile_options(mirrage_utils PRIVATE -Wextra -Wall -pedantic -Werror -Wn
 target_compile_definitions(mirrage_utils PUBLIC GLM_FORCE_RADIANS)
 target_compile_definitions(mirrage_utils PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
 target_compile_definitions(mirrage_utils PUBLIC ENABLE_SF2_ASSETS)
-target_compile_definitions(mirrage_utils PUBLIC STACKTRACE)
+# target_compile_definitions(mirrage_utils PUBLIC STACKTRACE)
 
 target_include_directories(mirrage_utils PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
