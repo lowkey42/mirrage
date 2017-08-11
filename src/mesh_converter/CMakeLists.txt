@@ -13,7 +13,9 @@ add_executable(mesh_converter
 	filesystem.cpp
 )
 
-target_compile_options(mesh_converter PRIVATE -Wextra -Wall -pedantic -Werror -Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
+set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
+target_compile_options(mesh_converter PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
+
 
 target_link_libraries(mesh_converter
 	PRIVATE

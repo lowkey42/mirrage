@@ -9,9 +9,11 @@
 
 #include <mirrage/utils/str_id.hpp>
 
-#include <memory>
 #include <glm/vec2.hpp>
 #include <SDL2/SDL.h>
+
+#include <memory>
+#include <tuple>
 
 
 namespace mirrage {

@@ -3,7 +3,8 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 
 All rights reserved.
 
@@ -42,7 +43,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /** @file ColladaParser.cpp
  *  @brief Implementation of the Collada parser helper
  */
-
 
 #ifndef ASSIMP_BUILD_NO_COLLADA_IMPORTER
 
@@ -1865,7 +1865,7 @@ void ColladaParser::ReadMesh( Mesh* pMesh)
                 ReadIndexData( pMesh);
             } else
             {
-                // ignore the rest
+                // ignore the restf
                 SkipElement();
             }
         }
@@ -2215,8 +2215,9 @@ void ColladaParser::ReadIndexData( Mesh* pMesh)
             else if (IsElement("extra"))
             {
                 SkipElement("extra");
-            } else
-            {
+            } else if ( IsElement("ph")) {                
+                SkipElement("ph");
+            } else {
                 ThrowException( format() << "Unexpected sub element <" << mReader->getNodeName() << "> in tag <" << elementName << ">" );
             }
         }

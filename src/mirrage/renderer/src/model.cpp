@@ -5,12 +5,6 @@
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/render_pass.hpp>
 
-#include <assimp/Importer.hpp>      // C++ importer interface
-#include <assimp/scene.h>           // Output data structure
-#include <assimp/postprocess.h>     // Post processing flags
-#include <assimp/IOStream.hpp>
-#include <assimp/IOSystem.hpp>
-
 
 using namespace mirrage::graphic;
 
@@ -179,17 +173,14 @@ namespace renderer {
 		return model;
 	}
 
-	auto Model_loader::load(const asset::AID& aid) -> std::shared_future<Model_ptr> {
+    auto Model_loader::load(const asset::AID& aid) -> future<Model_ptr> {
 		auto& model = _models[aid];
 
 		if(!model) {
 			model = _parse_obj(aid);
 		}
 
-		std::promise<Model_ptr> promise;
-		std::shared_future<Model_ptr> future(promise.get_future());
-		promise.set_value(model);
-		return future;
+        return model;
 	}
 
 	auto Model_loader::_load_material(const asset::AID& aid) -> Material_ptr {

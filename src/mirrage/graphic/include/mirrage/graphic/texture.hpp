@@ -18,7 +18,7 @@ namespace graphic {
 	class Device;
 
 	namespace detail {
-		auto clamp_mip_levels(std::uint32_t width, std::uint32_t height, std::uint32_t& mipmaps) -> std::uint32_t;
+        auto clamp_mip_levels(std::uint32_t width, std::uint32_t height, std::uint32_t mipmaps) -> std::uint32_t;
 
 		class Base_texture {
 			public:

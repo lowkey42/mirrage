@@ -16,7 +16,8 @@ add_library(mirrage_asset STATIC
 )
 add_library(mirrage::asset ALIAS mirrage_asset)
 
-target_compile_options(mirrage_asset PRIVATE -Wextra -Wall -pedantic -Werror -Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
+set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
+target_compile_options(mirrage_asset PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 
 
 target_include_directories(mirrage_asset PUBLIC
@@ -27,7 +28,6 @@ target_link_libraries(mirrage_asset
 	PUBLIC
 		mirrage::utils
 		gsl
-		assimp
 		physfs-static
 )
    

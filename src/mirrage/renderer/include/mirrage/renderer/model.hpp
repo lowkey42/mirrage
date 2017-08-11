@@ -13,13 +13,25 @@
 #include <memory>
 
 
-namespace Assimp {
-	class Importer;
-}
-
 namespace mirrage {
 namespace renderer {
 	
+    // TODO: replace with real feature class that will be used later
+    //         Originally used std::shared_future<> here but couldn't
+    //         get it to run (not segfault) on windows after ~2 day.
+    template<class T>
+    using future = util::maybe<T>;
+
+    template<class T>
+    auto is_future_ready(const future<T>& f) {
+        return f.is_some();
+    }
+    template<class T>
+    auto get_future_value(future<T>& f) {
+        return f.get_or_throw();
+    }
+
+
 	extern auto create_material_descriptor_set_layout(graphic::Device&,
 	                                                  vk::Sampler) -> vk::UniqueDescriptorSetLayout;
 	
@@ -166,7 +178,7 @@ namespace renderer {
 			             graphic::Texture_cache&, std::size_t max_unique_materials);
 			~Model_loader();
 			
-			auto load(const asset::AID&) -> std::shared_future<Model_ptr>;
+            auto load(const asset::AID&) -> future<Model_ptr>;
 			
 			auto material_descriptor_set_layout()const {return *_material_descriptor_set_layout;}
 
@@ -181,8 +193,6 @@ namespace renderer {
 			vk::UniqueSampler             _sampler;
 			vk::UniqueDescriptorSetLayout _material_descriptor_set_layout;
 			graphic::Descriptor_pool      _material_descriptor_set_pool;
-
-			std::unique_ptr<Assimp::Importer> _assimp_importer;
 
 			std::unordered_map<asset::AID, Material_ptr> _materials;
 			std::unordered_map<asset::AID, Model_ptr>    _models;

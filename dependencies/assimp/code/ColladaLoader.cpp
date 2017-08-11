@@ -3,7 +3,8 @@
 Open Asset Import Library (assimp)
 ---------------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 
 All rights reserved.
 
@@ -130,7 +131,6 @@ void ColladaLoader::SetupProperties(const Importer* pImp)
     noSkeletonMesh = pImp->GetPropertyInteger(AI_CONFIG_IMPORT_NO_SKELETON_MESHES,0) != 0;
     ignoreUpDirection = pImp->GetPropertyInteger(AI_CONFIG_IMPORT_COLLADA_IGNORE_UP_DIRECTION,0) != 0;
 }
-
 
 // ------------------------------------------------------------------------------------------------
 // Get file extension list
@@ -1725,6 +1725,8 @@ void ColladaLoader::BuildMaterials( ColladaParser& pParser, aiScene* /*pScene*/)
 aiString ColladaLoader::FindFilenameForEffectTexture( const ColladaParser& pParser,
     const Collada::Effect& pEffect, const std::string& pName)
 {
+    aiString result;
+
     // recurse through the param references until we end up at an image
     std::string name = pName;
     while( 1)
@@ -1743,11 +1745,17 @@ aiString ColladaLoader::FindFilenameForEffectTexture( const ColladaParser& pPars
     ColladaParser::ImageLibrary::const_iterator imIt = pParser.mImageLibrary.find( name);
     if( imIt == pParser.mImageLibrary.end())
     {
-        throw DeadlyImportError( format() <<
-            "Collada: Unable to resolve effect texture entry \"" << pName << "\", ended up at ID \"" << name << "\"." );
-    }
+        //missing texture should not stop the conversion
+        //throw DeadlyImportError( format() <<
+        //    "Collada: Unable to resolve effect texture entry \"" << pName << "\", ended up at ID \"" << name << "\"." );
 
-    aiString result;
+        DefaultLogger::get()->warn("Collada: Unable to resolve effect texture entry \"" + pName + "\", ended up at ID \"" + name + "\".");
+
+        //set default texture file name
+        result.Set(name + ".jpg");
+        ConvertPath(result);
+        return result;
+    }
 
     // if this is an embedded texture image setup an aiTexture for it
     if (imIt->second.mFileName.empty())
@@ -1895,14 +1903,13 @@ const Collada::Node* ColladaLoader::FindNodeBySID( const Collada::Node* pNode, c
 }
 
 // ------------------------------------------------------------------------------------------------
-// Finds a proper name for a node derived from the collada-node's properties
+// Finds a proper unique name for a node derived from the collada-node's properties.
+// The name must be unique for proper node-bone association.
 std::string ColladaLoader::FindNameForNode( const Collada::Node* pNode)
 {
-    // now setup the name of the node. We take the name if not empty, otherwise the collada ID
-    // FIX: Workaround for XSI calling the instanced visual scene 'untitled' by default.
-    if (!pNode->mName.empty() && pNode->mName != "untitled")
-        return pNode->mName;
-    else if (!pNode->mID.empty())
+    // Now setup the name of the assimp node. The collada name might not be
+    // unique, so we use the collada ID.
+    if (!pNode->mID.empty())
         return pNode->mID;
     else if (!pNode->mSID.empty())
     return pNode->mSID;

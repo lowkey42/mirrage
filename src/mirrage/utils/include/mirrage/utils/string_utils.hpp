@@ -9,6 +9,7 @@
 
 #include <mirrage/utils/maybe.hpp>
 
+#include <cctype>
 #include <string>
 #include <algorithm>
 #include <iostream>

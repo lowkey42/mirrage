@@ -66,16 +66,17 @@ namespace renderer {
 
 			Model_loading_comp() = default;
 			Model_loading_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner,
-			                   asset::AID model_aid={}, std::shared_future<Model_ptr> model={})
+                               asset::AID model_aid={}, future<Model_ptr> model={})
 			    : Component(manager, owner), _model_aid(std::move(model_aid))
 			    , _model(std::move(model)) {}
 
 			auto model_aid()const -> auto& {return _model_aid;}
 			auto model()const -> auto& {return _model;}
+            auto model() -> auto& {return _model;}
 
 		private:
 			asset::AID _model_aid;
-			std::shared_future<Model_ptr> _model;
+            future<Model_ptr> _model;
 	};
 
 }

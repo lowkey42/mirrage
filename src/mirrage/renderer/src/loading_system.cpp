@@ -17,11 +17,10 @@ namespace renderer {
 		_finish_loading();
 	}
 	void Loading_system::_finish_loading() {
-		for(auto& model : _loading_models) {
-			// check if load has finished and replace ourself with the real model_comp
-			if(model.model().wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+        for(auto& model : _loading_models) {
+            if(is_future_ready(model.model())) {
 				auto owner = model.owner();
-				owner.emplace<Model_comp>(model.model_aid(), model.model().get());
+                owner.emplace<Model_comp>(model.model_aid(), get_future_value(model.model()));
 				owner.erase<Model_loading_comp>();
 			}
 		}

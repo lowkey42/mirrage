@@ -209,7 +209,7 @@ namespace util {
 			return maybe<T>::nothing();
 		}
 	};
-	inline constexpr nothing_t nothing;
+	constexpr nothing_t nothing;
 
 	template<typename T>
 	maybe<std::remove_reference_t<T>> just(T&& inst) {

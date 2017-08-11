@@ -210,34 +210,26 @@ namespace renderer {
 	                     std::size_t) {
 
 		auto pcs = Push_constants{};
-		pcs.parameters.x = 0.06f; // TODO: make configurable
-		pcs.parameters.y = 0.7f; // TODO: make configurable
+		pcs.parameters.x = 0.08f; // TODO: make configurable
+		pcs.parameters.y = 0.8f; // TODO: make configurable
 
 		if(_first_frame) {
 			_first_frame = false;
 
-			graphic::image_layout_transition(command_buffer,
-			                                 _prev_avg_luminance.image(),
-			                                 vk::ImageLayout::eUndefined,
-			                                 vk::ImageLayout::eTransferDstOptimal,
-			                                 vk::ImageAspectFlagBits::eColor,
-			                                 0, 1);
+			constexpr auto initial_lum = -40.f;
+			graphic::clear_texture(command_buffer,
+			                       _prev_avg_luminance,
+			                       util::Rgba{initial_lum,initial_lum,initial_lum,initial_lum},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal,
+			                       0, 1);
 
-			command_buffer.clearColorImage(_prev_avg_luminance.image(),
-			                               vk::ImageLayout::eTransferDstOptimal,
-			                               vk::ClearColorValue{std::array<float,4>{0.f, 0.f, 0.f, 0.f}},
-			                               {vk::ImageSubresourceRange{
-			                                    vk::ImageAspectFlagBits::eColor,
-			                                    0, 1,
-			                                    0, 1
-			                                }});
-
-			graphic::image_layout_transition(command_buffer,
-			                                 _prev_avg_luminance.image(),
-			                                 vk::ImageLayout::eTransferDstOptimal,
-			                                 vk::ImageLayout::eShaderReadOnlyOptimal,
-			                                 vk::ImageAspectFlagBits::eColor,
-			                                 0, 1);
+			graphic::clear_texture(command_buffer,
+			                       _curr_avg_luminance,
+			                       util::Rgba{initial_lum,initial_lum,initial_lum,initial_lum},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal,
+			                       0, 1);
 		}
 
 		// extract luminance

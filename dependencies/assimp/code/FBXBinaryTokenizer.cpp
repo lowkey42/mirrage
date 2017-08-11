@@ -2,7 +2,8 @@
 Open Asset Import Library (assimp)
 ----------------------------------------------------------------------
 
-Copyright (c) 2006-2016, assimp team
+Copyright (c) 2006-2017, assimp team
+
 All rights reserved.
 
 Redistribution and use of this software in source and binary forms,
@@ -160,8 +161,7 @@ uint32_t ReadWord(const char* input, const char*& cursor, const char* end)
 }
 
 // ------------------------------------------------------------------------------------------------
-uint64_t ReadDoubleWord(const char* input, const char*& cursor, const char* end)
-{
+uint64_t ReadDoubleWord(const char* input, const char*& cursor, const char* end) {
     const size_t k_to_read = sizeof(uint64_t);
     if(Offset(cursor, end) < k_to_read) {
         TokenizeError("cannot ReadDoubleWord, out of bounds",input, cursor);
@@ -174,7 +174,6 @@ uint64_t ReadDoubleWord(const char* input, const char*& cursor, const char* end)
 
     return dword;
 }
-
 
 // ------------------------------------------------------------------------------------------------
 uint8_t ReadByte(const char* input, const char*& cursor, const char* end)
@@ -446,8 +445,9 @@ void TokenizeBinary(TokenList& output_tokens, const char* input, unsigned int le
     const uint32_t flags = ReadWord(input, cursor, input + length);
 
     const uint8_t padding_0 = ReadByte(input, cursor, input + length); // unused
+    (void) padding_0;
     const uint8_t padding_1 = ReadByte(input, cursor, input + length); // unused
-
+    (void) padding_1;
     while (cursor < input + length)
     {
         if(!ReadScope(output_tokens, input, cursor, input + length, flags)) {

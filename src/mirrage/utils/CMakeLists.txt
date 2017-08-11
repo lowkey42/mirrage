@@ -19,7 +19,8 @@ add_library(mirrage_utils STATIC
 )
 add_library(mirrage::utils ALIAS mirrage_utils)
 
-target_compile_options(mirrage_utils PRIVATE -Wextra -Wall -pedantic -Werror -Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
+set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
+target_compile_options(mirrage_utils PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 
 target_compile_definitions(mirrage_utils PUBLIC GLM_FORCE_RADIANS)
 target_compile_definitions(mirrage_utils PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)

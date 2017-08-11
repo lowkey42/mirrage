@@ -10,16 +10,7 @@ set(VERSION_PATCH 0)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake")
 
 find_package(SDL2 REQUIRED)
-find_package(Vulkan)
-IF (NOT Vulkan_FOUND)
-	find_library(Vulkan_LIBRARY NAMES vulkan-1 vulkan PATHS ${CMAKE_SOURCE_DIR}/libs/vulkan)
-	IF (Vulkan_LIBRARY)
-		set(Vulkan_FOUND ON)
-		MESSAGE("Using bundled Vulkan library version")
-	ELSE()
-		message( FATAL_ERROR "Vulkan library not found!" )
-	ENDIF()
-ENDIF()
+find_package(Vulkan REQUIRED)
 
 include_directories(
   ${SDL2_INCLUDE_DIRS}

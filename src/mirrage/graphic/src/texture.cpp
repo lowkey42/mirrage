@@ -32,7 +32,7 @@ namespace graphic {
 
 	namespace detail {
 
-		auto clamp_mip_levels(std::uint32_t width, std::uint32_t height, std::uint32_t& mipmaps) -> std::uint32_t {
+        auto clamp_mip_levels(std::uint32_t width, std::uint32_t height, std::uint32_t mipmaps) -> std::uint32_t {
 			if(mipmaps<=0)
 				mipmaps = 9999;
 
@@ -80,7 +80,7 @@ namespace graphic {
 		           vk::Extent3D{dim.width, dim.height, dim.depth},
 		           clamp_mip_levels(dim.width, dim.height, mip_levels),
 		           dim.layers, vk::SampleCountFlagBits::e1, vk::ImageTiling::eOptimal,
-		           usage}, false, Memory_lifetime::normal, dedicated), mip_levels, false, dim)
+                   usage}, false, Memory_lifetime::normal, dedicated), clamp_mip_levels(dim.width, dim.height, mip_levels), false, dim)
 		    , _image_view(device.create_image_view(_image.image(), format, 0, _image.mip_level_count(), aspects)) {
 		}
 

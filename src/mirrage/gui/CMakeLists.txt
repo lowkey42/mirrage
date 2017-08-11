@@ -16,7 +16,8 @@ add_library(mirrage_gui STATIC
 )
 add_library(mirrage::gui ALIAS mirrage_gui)
 
-target_compile_options(mirrage_gui PRIVATE -Wextra -Wall -pedantic -Werror -Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
+set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
+target_compile_options(mirrage_gui PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 
 
 target_include_directories(mirrage_gui PUBLIC

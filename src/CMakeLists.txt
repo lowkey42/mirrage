@@ -14,6 +14,12 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic -Werror -Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
+elseif(MSVC)
+	set(MIRRAGE_DEFAULT_COMPILER_ARGS /Za)
+endif()
+
 add_subdirectory(demo)
 add_subdirectory(mesh_converter)
 add_subdirectory(mirrage)

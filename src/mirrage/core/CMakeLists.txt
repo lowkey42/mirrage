@@ -25,7 +25,8 @@ add_library(mirrage STATIC
 )
 add_library(mirrage::mirrage ALIAS mirrage)
 
-target_compile_options(mirrage PRIVATE -Wextra -Wall -pedantic -Werror -Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
+set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
+target_compile_options(mirrage PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 
 
 target_include_directories(mirrage PUBLIC

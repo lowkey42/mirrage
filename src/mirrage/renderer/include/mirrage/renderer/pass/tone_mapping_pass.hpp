@@ -27,7 +27,7 @@ namespace renderer {
 			vk::UniqueSampler                    _sampler;
 			graphic::Image_descriptor_set_layout _descriptor_set_layout;
 			vk::Format                           _luminance_format;
-			bool                                 _first_frame = false;
+			bool                                 _first_frame = true;
 
 			// calculate scene luminance for tone mapping
 			graphic::Render_target_2D _luminance_buffer;

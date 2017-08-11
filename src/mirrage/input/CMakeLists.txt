@@ -21,7 +21,8 @@ add_library(mirrage_input STATIC
 )
 add_library(mirrage::input ALIAS mirrage_input)
 
-target_compile_options(mirrage_input PRIVATE -Wextra -Wall -pedantic -Werror -Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
+set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
+target_compile_options(mirrage_input PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 
 
 target_include_directories(mirrage_input PUBLIC
