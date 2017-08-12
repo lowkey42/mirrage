@@ -175,10 +175,13 @@ namespace renderer {
 	    , _lights_directional(entities.list<Directional_light_comp>())
 	    , _shadowcasters(entities.list<Shadowcaster_comp>())
 	    , _shadowmaps(util::make_vector(
+	                      Shadowmap(renderer.device(), renderer.settings().shadowmap_resolution, _shadowmap_format),
 	                      Shadowmap(renderer.device(), renderer.settings().shadowmap_resolution, _shadowmap_format)
 	      ))
 	    , _render_pass(build_render_pass(renderer, _depth, get_depth_format(renderer.device()),
 	                                     _shadowmap_format, _shadowmaps)) {
+
+		entities.register_component_type<Shadowcaster_comp>();
 
 		auto shadowmap_bindings = std::array<vk::DescriptorSetLayoutBinding, 3>();
 		shadowmap_bindings[0] = vk::DescriptorSetLayoutBinding{
@@ -253,12 +256,16 @@ namespace renderer {
 		auto pcs = Push_constants{};
 
 		for(auto& light : _lights_directional) {
+			if(!light.owner().has<Shadowcaster_comp>())
+				continue;
+
 			auto& light_transform = light.owner().get<ecs::components::Transform_comp>().get_or_throw();
 			
 			if(light.shadowmap_id()==-1) {
 				for(auto i=0; i<gsl::narrow<int>(_shadowmaps.size()); i++) {
 					if(!_shadowmaps[i].owner) {
 						light.shadowmap_id(i);
+						_shadowmaps[i].owner = light.owner_handle();
 						break;
 					}
 				}

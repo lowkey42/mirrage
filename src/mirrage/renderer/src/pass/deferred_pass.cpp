@@ -96,10 +96,7 @@ namespace renderer {
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
 			pipeline.multisample = vk::PipelineMultisampleStateCreateInfo{};
 			pipeline.color_blending = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
-					vk::PipelineDepthStencilStateCreateFlags{},
-					true, true, vk::CompareOp::eLess
-			};
+			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{};
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 
 			pipeline.add_push_constant("dpc"_strid, sizeof(Deferred_push_constants),
@@ -107,6 +104,10 @@ namespace renderer {
 
 
 			auto geometry_pipeline = pipeline;
+			geometry_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
+			        vk::PipelineDepthStencilStateCreateFlags{},
+			        true, true, vk::CompareOp::eLess
+		    };
 			gpass.configure_pipeline(renderer, geometry_pipeline);
 			auto& geometry_pass = builder.add_subpass(geometry_pipeline)
 			                             .color_attachment(depth_sampleable)
@@ -120,8 +121,10 @@ namespace renderer {
 			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{};
 			lpass.configure_pipeline(renderer, light_pipeline);
 			auto& light_pass = builder.add_subpass(light_pipeline)
-			                          .color_attachment(color)
-			                          .color_attachment(color_diffuse)
+			                          .color_attachment(color, graphic::all_color_components,
+			                                            graphic::blend_add)
+			                          .color_attachment(color_diffuse, graphic::all_color_components,
+			                                            graphic::blend_add)
 			                          .input_attachment(depth_sampleable)
 			                          .input_attachment(albedo_mat_id)
 			                          .input_attachment(mat_data);

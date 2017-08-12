@@ -22,6 +22,9 @@ namespace renderer {
 			void intensity(float v)noexcept {_intensity = v;}
 			void color(util::Rgb v)noexcept {_color = v;}
 			void shadowmap_id(int id)noexcept {_shadowmap_id = id;}
+			void shadow_size(float v)noexcept {_shadow_size = v;}
+			void shadow_near_plane(float v)noexcept {_shadow_near_plane = v;}
+			void shadow_far_plane(float v)noexcept {_shadow_far_plane = v;}
 
 			auto source_radius()const noexcept {return _source_radius;}
 			auto intensity()const noexcept {return _intensity;}

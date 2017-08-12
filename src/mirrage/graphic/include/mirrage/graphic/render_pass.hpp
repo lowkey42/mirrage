@@ -189,6 +189,11 @@ namespace graphic {
 		vk::BlendFactor::eOne, vk::BlendFactor::eOneMinusSrcAlpha, vk::BlendOp::eAdd
 	};
 
+	inline constexpr auto blend_add = Attachment_blend {
+	    vk::BlendFactor::eOne, vk::BlendFactor::eOne, vk::BlendOp::eAdd,
+	    vk::BlendFactor::eOne, vk::BlendFactor::eOne, vk::BlendOp::eAdd
+    };
+
 	class Subpass_builder {
 		public:
 			auto stage(Stage_id) -> Stage_builder&;

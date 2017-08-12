@@ -9,6 +9,8 @@
 		"near_plane": 1.0,
 		"far_plane": 80
 	},
+	"Shadowcaster": {
+	},
 	"NIM": {
 		"uid": "sun"
 	}
