@@ -40,10 +40,7 @@ vec3 to_view_space(ivec2 ss_p, int mip) {
 	ss_p = clamp(ss_p >> mip, ivec2(0), textureSize(depth_sampler, mip+MIN_MIP) - ivec2(1));
 	float depth = texelFetch(depth_sampler, ss_p, mip+MIN_MIP).r;
 
-	vec3 view_ray_x1 = mix(vertex_out.corner_view_rays[0], vertex_out.corner_view_rays[1], uv.x);
-	vec3 view_ray_x2 = mix(vertex_out.corner_view_rays[2], vertex_out.corner_view_rays[3], uv.x);
-
-	return mix(view_ray_x1, view_ray_x2, uv.y) * depth;
+	return position_from_ldepth(uv, depth);
 }
 
 vec3 get_normal(ivec2 ss_p, int mip) {
@@ -84,14 +81,14 @@ float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, 
 
 	vec3 v = Q - C;
 
-	float vv = dot(v, v);
-	float vn = dot(v, n_C);
+	float vv = max(0, dot(v, v));
+	float vn = max(0, dot(v, n_C));
 
 	const float epsilon = 0.01;
 
 	vec3 N = get_normal(ss_p, mip);
 	float occluder_angle = abs(dot(N, n_C));
-	float boost = smoothstep(0.01, 0.1, occluder_angle)*0.4+0.6;
+	float boost = smoothstep(0.01, 0.1, occluder_angle)*0.6+0.4;
 	boost += smoothstep(0.8, 1.0, occluder_angle)*3;
 
 	float f = max(RADIUS*RADIUS - vv, 0.0);

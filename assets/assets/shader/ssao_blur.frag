@@ -26,7 +26,7 @@ layout(set=1, binding = 1) uniform sampler2D color_sampler;
 vec3 read(vec2 uv, float center_depth, inout float weight_sum, float static_weight) {
 	float d = texelFetch(depth_sampler, ivec2(uv*textureSize(depth_sampler, 0)), 0).r;
 	float dz = center_depth - d;
-	float d_dev = mix(0.02, 1.0, d) / global_uniforms.proj_planes.y;
+	float d_dev = mix(0.0, 0.5, d) / global_uniforms.proj_planes.y;
 	float w = exp(-dz*dz/(2*d_dev*d_dev)) * static_weight;
 	weight_sum += w;
 
@@ -36,9 +36,8 @@ vec3 read(vec2 uv, float center_depth, inout float weight_sum, float static_weig
 void main() {
 	float center_depth = texelFetch(depth_sampler, ivec2(vertex_out.uv_center*textureSize(depth_sampler, 0)), 0).r;
 
-	float weight_sum=0;
-	vec3 result = vec3(0,0,0);
-	result += read(vertex_out.uv_center, center_depth, weight_sum, 0.1964825501511404);
+	float weight_sum = 0.1964825501511404;
+	vec3 result = texture(color_sampler, vertex_out.uv_center).rgb * 0.1964825501511404;
 	result += read(vertex_out.uv_l1, center_depth, weight_sum, 0.2969069646728344);
 	result += read(vertex_out.uv_l2, center_depth, weight_sum, 0.09447039785044732);
 	result += read(vertex_out.uv_l3, center_depth, weight_sum, 0.010381362401148057);

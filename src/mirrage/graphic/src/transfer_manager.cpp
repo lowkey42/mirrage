@@ -106,8 +106,6 @@ namespace graphic {
 	                                    std::function<void(char*)> write_data,
 	                                    bool dedicated) -> Static_image {
 
-		mip_levels=0; // TODO: workaround for broken mipmaps, when loaded from GLI generated KTX-Files
-
 		auto stored_mip_levels = std::max(1u, mip_levels);
 		auto actual_mip_levels = mip_levels;
 		if(actual_mip_levels==0)

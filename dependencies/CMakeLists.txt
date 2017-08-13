@@ -10,7 +10,6 @@ if(NOT assimp_FOUND)
 	set_property(TARGET assimp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/assimp/include")
 endif()
 
-add_subdirectory(gli)
 add_subdirectory(glm)
 include(gsl_interface.cmake)
 add_subdirectory(moodycamel)

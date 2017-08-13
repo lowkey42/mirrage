@@ -23,7 +23,6 @@ target_link_libraries(mesh_converter
 		mirrage::renderer
 		mirrage::utils
 		assimp
-		gli
 		sf2
 		stb_image
 )

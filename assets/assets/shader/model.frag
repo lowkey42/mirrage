@@ -36,15 +36,14 @@ void main() {
 	if(albedo.a < 0.1)
 		discard;
 
-	vec4 mat_data = texture(mat_data_sampler, tex_coords, 1); // TODO: LOD bias?
+	vec4 mat_data = texture(mat_data_sampler, tex_coords, 1);
 
 	vec3  normal    = tangent_space_to_world(decode_tangent_normal(mat_data.rg));
-	//normal.z = abs(normal.z); // TODO: remove?
 
 	float roughness = mat_data.b;
 	float metallic  = mat_data.a;
 
-	roughness = mix(0.05, 0.99, roughness*roughness);
+	roughness = mix(0.01, 0.99, roughness*roughness);
 
     depth_out         = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
         albedo_mat_id_out = vec4(albedo.rgb, 0.0);
