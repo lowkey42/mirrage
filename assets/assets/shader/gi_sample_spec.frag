@@ -33,6 +33,11 @@ layout(push_constant) uniform Push_constants {
 const float PI = 3.14159265359;
 
 
+float luminance_norm(vec3 c) {
+	vec3 f = vec3(0.299,0.587,0.114);
+	return sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
+}
+
 // losely based on https://www.gamedev.net/topic/658702-help-with-gpu-pro-5-hi-z-screen-space-reflections/?view=findpost&p=5173175
 //   and http://roar11.com/2015/07/screen-space-glossy-reflections/
 
@@ -156,6 +161,8 @@ void main() {
 	} else {
 		out_color.rgb = max(out_color.rgb, textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (2*PI*PI*2));
 	}
+
+	out_color.rgb /= (1 + luminance_norm(out_color.rgb));
 
 	float history_weight = texelFetch(history_weight_sampler,
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),

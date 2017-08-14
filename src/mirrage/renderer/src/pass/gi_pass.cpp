@@ -226,11 +226,11 @@ namespace renderer {
 			    .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 			
 			pass.stage("sample_last"_strid)
-			    .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 0, true)
+			    .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 0, 1)
 			    .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			pass.stage("upsample"_strid)
-			    .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 3, true)
+			    .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 3, 1)
 			    .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			builder.add_dependency(util::nothing, vk::PipelineStageFlagBits::eColorAttachmentOutput,
@@ -314,6 +314,74 @@ namespace renderer {
 			        {gi_spec_buffer.view(0), util::Rgba{}},
 			        gi_spec_buffer.width(),
 			        gi_spec_buffer.height());
+
+			return render_pass;
+		}
+
+		auto build_blur_render_pass(Deferred_renderer& renderer,
+		                            vk::DescriptorSetLayout desc_set_layout,
+		                            graphic::Render_target_2D& blur_buffer,
+		                            graphic::Render_target_2D& result_buffer,
+		                            graphic::Framebuffer& out_blur_framebuffer,
+		                            graphic::Framebuffer& out_result_framebuffer) {
+
+			auto builder = renderer.device().create_render_pass_builder();
+
+			auto color = builder.add_attachment(vk::AttachmentDescription{
+				vk::AttachmentDescriptionFlags{},
+				renderer.gbuffer().color_format,
+				vk::SampleCountFlagBits::e1,
+				vk::AttachmentLoadOp::eDontCare,
+				vk::AttachmentStoreOp::eStore,
+				vk::AttachmentLoadOp::eDontCare,
+				vk::AttachmentStoreOp::eDontCare,
+				vk::ImageLayout::eUndefined,
+				vk::ImageLayout::eShaderReadOnlyOptimal
+			});
+
+			auto pipeline = graphic::Pipeline_description {};
+			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
+			pipeline.multisample = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{};
+
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+
+			pipeline.add_push_constant("pcs"_strid, sizeof(Gi_constants),
+			                           vk::ShaderStageFlagBits::eVertex|vk::ShaderStageFlagBits::eFragment);
+
+			auto& pass = builder.add_subpass(pipeline)
+			                    .color_attachment(color);
+
+			pass.stage("blur_h"_strid)
+			    .shader("frag_shader:ssao_blur"_aid, graphic::Shader_stage::fragment)
+			    .shader("vert_shader:ssao_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 1);
+
+			pass.stage("blur_v"_strid)
+			    .shader("frag_shader:ssao_blur"_aid, graphic::Shader_stage::fragment)
+			    .shader("vert_shader:ssao_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 0);
+
+			builder.add_dependency(util::nothing, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlags{},
+			                       pass, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead|vk::AccessFlagBits::eColorAttachmentWrite);
+
+			builder.add_dependency(pass, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead|vk::AccessFlagBits::eColorAttachmentWrite,
+			                       util::nothing, vk::PipelineStageFlagBits::eBottomOfPipe,
+			                       vk::AccessFlagBits::eMemoryRead|vk::AccessFlagBits::eShaderRead|vk::AccessFlagBits::eTransferRead);
+
+
+			auto render_pass = builder.build();
+
+			out_blur_framebuffer = builder.build_framebuffer({blur_buffer.view(0), util::Rgba{}},
+				                                              blur_buffer.width(),
+				                                              blur_buffer.height());
+
+			out_result_framebuffer = builder.build_framebuffer({result_buffer.view(0), util::Rgba{}},
+				                                               result_buffer.width(),
+				                                               result_buffer.height());
 
 			return render_pass;
 		}
@@ -426,7 +494,8 @@ namespace renderer {
 	                           vk::BorderColor::eIntOpaqueBlack,
 	                           vk::Filter::eLinear,
 	                           vk::SamplerMipmapMode::eLinear))
-	    , _descriptor_set_layout(renderer.device(), *_gbuffer_sampler, 8)
+	    , _descriptor_set_layout(renderer.device(), *_gbuffer_sampler, 8,
+	                             vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex)
 	    , _color_in_out(in_out)
 	    , _color_diffuse_in(diffuse_in)
 	    
@@ -525,7 +594,22 @@ namespace renderer {
 	                                      renderer.gbuffer().mat_data.view(),
 	                                      _gi_diffuse.view(),
 	                                      _history_weight.view()}))
-	    
+
+	    , _blur_render_pass(build_blur_render_pass(renderer,
+	                                               *_descriptor_set_layout,
+	                                               _gi_specular_history,
+	                                               _gi_specular,
+	                                               _blur_horizonal_framebuffer,
+	                                               _blur_vertical_framebuffer))
+	    , _blur_descriptor_set_horizontal(_descriptor_set_layout.create_set(
+	                                     renderer.descriptor_pool(),
+	                                     {renderer.gbuffer().depth.view(),
+	                                      _gi_specular.view()}))
+	    , _blur_descriptor_set_vertical  (_descriptor_set_layout.create_set(
+	                                     renderer.descriptor_pool(),
+	                                     {renderer.gbuffer().depth.view(),
+	                                      _gi_specular_history.view()}))
+
 	    , _blend_renderpass(build_blend_render_pass(renderer,
 	                                                *_descriptor_set_layout,
 	                                                _color_in_out,
@@ -737,20 +821,44 @@ namespace renderer {
 			}
 		}
 
-		auto _ = _renderer.profiler().push("Sample (spec)");
-		_sample_spec_renderpass.execute(command_buffer, _sample_spec_framebuffer, [&] {
-			_sample_spec_renderpass.bind_descriptor_set(1, *_sample_spec_descriptor_set);
+		{
+			auto _ = _renderer.profiler().push("Sample (spec)");
+			_sample_spec_renderpass.execute(command_buffer, _sample_spec_framebuffer, [&] {
+				_sample_spec_renderpass.bind_descriptor_set(1, *_sample_spec_descriptor_set);
 
-			// Mip-level used by spec.
-			//  Always zero (for now). Skips pixels when gi_spec_mip_level>0 but reduces blocky artefacts.
-			pcs.prev_projection[0][3] = 0;
+				// Mip-level used by spec.
+				//  Always zero (for now). Skips pixels when gi_spec_mip_level>0 but reduces blocky artefacts.
+				pcs.prev_projection[0][3] = 0;
 
-			auto screen_size = glm::vec2{_color_diffuse_in.width(pcs.prev_projection[0][3]), _color_diffuse_in.height(pcs.prev_projection[0][3])};
-			auto ndc_to_uv = glm::translate({}, glm::vec3(screen_size/2.f, 0.f))
-			        * glm::scale({}, glm::vec3(screen_size/2.f, 1.f));
-			pcs.reprojection = ndc_to_uv * _renderer.global_uniforms().proj_mat;
+				auto screen_size = glm::vec2{_color_diffuse_in.width(pcs.prev_projection[0][3]), _color_diffuse_in.height(pcs.prev_projection[0][3])};
+				auto ndc_to_uv = glm::translate({}, glm::vec3(screen_size/2.f, 0.f))
+				        * glm::scale({}, glm::vec3(screen_size/2.f, 1.f));
+				pcs.reprojection = ndc_to_uv * _renderer.global_uniforms().proj_mat;
 
-			_sample_spec_renderpass.push_constant("pcs"_strid, pcs);
+				_sample_spec_renderpass.push_constant("pcs"_strid, pcs);
+
+				command_buffer.draw(3, 1, 0, 0);
+			});
+		}
+
+
+		auto _ = _renderer.profiler().push("Sample (spec blur)");
+		for(int i=0; i<1; i++) {
+			_blur_spec_gi(command_buffer);
+		}
+	}
+
+	void Gi_pass::_blur_spec_gi(vk::CommandBuffer& command_buffer) {
+		// blur horizontal
+		_blur_render_pass.execute(command_buffer, _blur_horizonal_framebuffer, [&] {
+			_blur_render_pass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
+			_blur_render_pass.set_stage("blur_h"_strid);
+			command_buffer.draw(3, 1, 0, 0);
+		});
+		// blur vertical
+		_blur_render_pass.execute(command_buffer, _blur_vertical_framebuffer, [&] {
+			_blur_render_pass.bind_descriptor_set(1, *_blur_descriptor_set_vertical);
+			_blur_render_pass.set_stage("blur_v"_strid);
 
 			command_buffer.draw(3, 1, 0, 0);
 		});

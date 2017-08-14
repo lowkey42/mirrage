@@ -152,7 +152,7 @@ namespace renderer {
 			return format.get_or_throw();
 		}
 
-		constexpr auto ao_mip_level = 0;
+		constexpr auto ao_mip_level = 1;
 	}
 
 

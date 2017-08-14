@@ -19,13 +19,13 @@ layout(set=1, binding = 4) uniform sampler2D history_weight_sampler;
 layout(set=1, binding = 5) uniform sampler2D depth_all_levels_sampler;
 layout(set=1, binding = 6) uniform sampler2D mat_data_all_levels_sampler;
 
-layout (constant_id = 0) const bool LAST_SAMPLE = false;
+layout (constant_id = 0) const int LAST_SAMPLE = 0;
 layout (constant_id = 1) const float R = 40;
 layout (constant_id = 2) const int SAMPLES = 128;
-layout (constant_id = 3) const bool UPSAMPLE_ONLY = false;
+layout (constant_id = 3) const int UPSAMPLE_ONLY = 0;
 
 // nearer samples have a higher weight. Less physically correct but results in more notacable color bleeding
-layout (constant_id = 4) const bool PRIORITISE_NEAR_SAMPLES = true;
+layout (constant_id = 4) const int PRIORITISE_NEAR_SAMPLES = 1;
 
 
 layout(push_constant) uniform Push_constants {
@@ -55,7 +55,7 @@ void main() {
 	else
 		out_color = vec4(0,0,0, 1);
 
-	if(!UPSAMPLE_ONLY)
+	if(UPSAMPLE_ONLY==0)
 		out_color.rgb += gi_sample(int(current_mip+0.5), int(base_mip+0.5));
 
 	// last mip level => blend with history
@@ -100,7 +100,7 @@ vec3 gi_sample(int lod, int base_mip) {
 	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 23.0;
 
 	for(int i=0; i<SAMPLES; i++) {
-		float r = mix(LAST_SAMPLE ? 2.0 : R/2.0, LAST_SAMPLE ? R/2 : R, float(i)/float(SAMPLES));
+		float r = mix(LAST_SAMPLE==1 ? 2.0 : R/2.0, LAST_SAMPLE==1 ? R/2 : R, float(i)/float(SAMPLES));
 
 		angle += angle_step;
 		float sin_angle = sin(angle);
@@ -123,7 +123,7 @@ vec3 gi_sample(int lod, int base_mip) {
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
 
-	if(PRIORITISE_NEAR_SAMPLES)
+	if(PRIORITISE_NEAR_SAMPLES==1)
 		c = c * pow(2.0, clamp((lod-base_mip)*2, 2, 7)) * 128.0 / SAMPLES;
 	else
 		c = c * pow(2.0, lod*2);

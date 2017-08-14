@@ -18,12 +18,12 @@ namespace renderer {
 	                                     ecs::Entity_manager& ecs,
 	                                     util::maybe<Meta_system&> userdata)
 	    : _factory(factory)
-	    , _descriptor_set_pool(device().create_descriptor_pool(128, {
+	    , _descriptor_set_pool(device().create_descriptor_pool(256, {
 	          {vk::DescriptorType::eUniformBuffer, 8},
-	          {vk::DescriptorType::eCombinedImageSampler, 128},
+	          {vk::DescriptorType::eCombinedImageSampler, 256},
 	          {vk::DescriptorType::eInputAttachment, 64},
-	          {vk::DescriptorType::eSampledImage, 128},
-	          {vk::DescriptorType::eSampler, 32}
+	          {vk::DescriptorType::eSampledImage, 256},
+	          {vk::DescriptorType::eSampler, 64}
 	      }))
 	    , _gbuffer(device(), factory._window.width(), factory._window.height())
 	    , _profiler(device(), 64)

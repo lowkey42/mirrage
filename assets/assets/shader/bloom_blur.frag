@@ -17,7 +17,7 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 color_out;
 
-layout (constant_id = 0) const bool HORIZONTAL = true;
+layout (constant_id = 0) const int HORIZONTAL = 1;
 layout (constant_id = 1) const int COMBINE = 0;
 
 layout(set=1, binding = 0) uniform sampler2D color_sampler;

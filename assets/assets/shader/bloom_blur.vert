@@ -16,7 +16,7 @@ out gl_PerVertex {
 	vec4 gl_Position;
 };
 
-layout (constant_id = 0) const bool HORIZONTAL = true;
+layout (constant_id = 0) const int HORIZONTAL = 1;
 
 layout(set=1, binding = 0) uniform sampler2D color_sampler;
 
@@ -31,7 +31,7 @@ void main() {
 
 	vec2 size = textureSize(color_sampler, int(pcs.options.y+0.5));
 
-	vec2 tex_offset = (HORIZONTAL ? vec2(1,0) : vec2(0,1)) / size;
+	vec2 tex_offset = (HORIZONTAL==1 ? vec2(1,0) : vec2(0,1)) / size;
 
 	vertex_out.uv_center = uv;
 

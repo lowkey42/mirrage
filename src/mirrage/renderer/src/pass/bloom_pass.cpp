@@ -105,16 +105,16 @@ namespace renderer {
 			                    .color_attachment(screen);
 
 			pass.stage("blur_h"_strid)
-			    .shader("frag_shader:bloom_blur"_aid, graphic::Shader_stage::fragment, "main", 0, true)
-			    .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, true);
+			    .shader("frag_shader:bloom_blur"_aid, graphic::Shader_stage::fragment, "main", 0, 1)
+			    .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 1);
 
 			pass.stage("blur_v"_strid)
-			    .shader("frag_shader:bloom_blur"_aid, graphic::Shader_stage::fragment, "main", 0, false)
-			    .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, false);
+			    .shader("frag_shader:bloom_blur"_aid, graphic::Shader_stage::fragment, "main", 0, 0)
+			    .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 0);
 
 			pass.stage("blur_v_last"_strid)
-			    .shader("frag_shader:bloom_blur"_aid, graphic::Shader_stage::fragment, "main", 0, false, 1, MipLevels)
-			    .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, false);
+			    .shader("frag_shader:bloom_blur"_aid, graphic::Shader_stage::fragment, "main", 0, 0, 1, MipLevels)
+			    .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 0);
 
 			builder.add_dependency(util::nothing, vk::PipelineStageFlagBits::eColorAttachmentOutput,
 			                       vk::AccessFlags{},

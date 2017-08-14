@@ -7,10 +7,17 @@
 #include "color_conversion.glsl"
 
 
+float luminance_norm(vec3 c) {
+	vec3 f = vec3(0.299,0.587,0.114);
+	return sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
+}
+
 vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
                   sampler2D albedo_sampler, sampler2D mat_sampler, sampler2D brdf_sampler,
                   out vec3 diffuse) {
 	const float PI = 3.14159265359;
+
+	specular /= 1 - luminance_norm(specular);
 
 	// load / calculate material properties and factors
 	vec3 albedo = textureLod(albedo_sampler, uv, 0.0).rgb;
@@ -45,7 +52,7 @@ vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampl
                   out vec3 diffuse) {
     // load diff + spec GI
     vec3 radiance = upsampled_result(depth_sampler, mat_data_sampler, diff_sampler, gi_lod, 0, gi_uv, 1.0).rgb;
-	vec3 specular = upsampled_result(depth_sampler, mat_data_sampler, spec_sampler, gi_lod, 0, gi_uv, 1.0).rgb;
+	vec3 specular = textureLod(spec_sampler, gi_uv, 0).rgb;
 
     return calculate_gi(uv, radiance, specular, albedo_sampler, mat_sampler, brdf_sampler, diffuse);
 }

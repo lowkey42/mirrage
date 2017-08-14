@@ -71,6 +71,13 @@ namespace renderer {
 			graphic::Render_pass            _sample_spec_renderpass;
 			vk::UniqueDescriptorSet         _sample_spec_descriptor_set;
 
+			// blur pass for specular illumination
+			graphic::Framebuffer            _blur_horizonal_framebuffer;
+			graphic::Framebuffer            _blur_vertical_framebuffer;
+			graphic::Render_pass            _blur_render_pass;
+			vk::UniqueDescriptorSet         _blur_descriptor_set_horizontal;
+			vk::UniqueDescriptorSet         _blur_descriptor_set_vertical;
+
 			// write back GI results
 			graphic::Framebuffer            _blend_framebuffer;
 			graphic::Render_pass            _blend_renderpass;
@@ -90,6 +97,9 @@ namespace renderer {
 
 			// calculates GI samples and stores them into the levels of _gi_diffuse and _gi_specular
 			void _generate_gi_samples   (vk::CommandBuffer& command_buffer);
+
+			// blurs the specular samples
+			void _blur_spec_gi          (vk::CommandBuffer& command_buffer);
 
 			// blends the _gi_diffuse and _gi_specular into _color_in_out
 			void _draw_gi               (vk::CommandBuffer& command_buffer);
