@@ -36,8 +36,7 @@ void main() {
 //	out_color = vec4(1,1,1,1);
 
 	if(pcs.prev_projection[3][3]>0.0) {
-		float ao = upsampled_result(depth_sampler, mat_data_sampler, ao_sampler, 1, 0,
-		                            vertex_out.tex_coords, 1.0).r;
+		float ao = texture(ao_sampler, vertex_out.tex_coords).r;
 		ao = mix(1.0, ao, pcs.prev_projection[3][3]);
 		out_color.rgb *= ao*0.9 + 0.1;
 	}

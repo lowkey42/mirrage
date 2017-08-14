@@ -135,10 +135,10 @@ namespace graphic {
 			            std::string entry_point="main") -> Stage_builder&;
 			
 			template<typename... T>
-			auto shader(const asset::AID& id, Shader_stage stage,
+			auto shader(const asset::AID& aid, Shader_stage stage,
 			            std::string entry_point,
 			            T&&... constants) -> Stage_builder& {
-				shader(id, stage, entry_point);
+				shader(aid, stage, entry_point);
 				util::apply2([&](auto&& id, auto&& value) {
 					pipeline().stages.back().add_constant(
 						std::forward<decltype(id)>(id),

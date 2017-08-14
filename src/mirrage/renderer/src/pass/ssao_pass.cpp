@@ -111,12 +111,12 @@ namespace renderer {
 			                    .color_attachment(ao);
 
 			pass.stage("blur_h"_strid)
-			    .shader("frag_shader:ssao_blur"_aid, graphic::Shader_stage::fragment, "main", 0, true)
-			    .shader("vert_shader:ssao_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, true);
+			    .shader("frag_shader:ssao_blur"_aid, graphic::Shader_stage::fragment)
+			    .shader("vert_shader:ssao_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 1);
 
 			pass.stage("blur_v"_strid)
-			    .shader("frag_shader:ssao_blur"_aid, graphic::Shader_stage::fragment, "main", 0, false)
-			    .shader("vert_shader:ssao_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, false);
+			    .shader("frag_shader:ssao_blur"_aid, graphic::Shader_stage::fragment)
+			    .shader("vert_shader:ssao_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 0);
 
 			builder.add_dependency(util::nothing, vk::PipelineStageFlagBits::eColorAttachmentOutput,
 			                       vk::AccessFlags{},
@@ -152,7 +152,7 @@ namespace renderer {
 			return format.get_or_throw();
 		}
 
-		constexpr auto ao_mip_level = 1;
+		constexpr auto ao_mip_level = 0;
 	}
 
 
@@ -229,10 +229,11 @@ namespace renderer {
 			command_buffer.draw(3, 1, 0, 0);
 		});
 
-		for(int i=0; i<1; i++) {
+		for(int i=0; i<4; i++) {
 			// blur horizontal
 			_blur_render_pass.execute(command_buffer, _blur_framebuffer, [&] {
 				_blur_render_pass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
+				_blur_render_pass.set_stage("blur_h"_strid);
 				command_buffer.draw(3, 1, 0, 0);
 			});
 			// blur vertical

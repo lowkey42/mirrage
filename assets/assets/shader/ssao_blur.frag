@@ -17,8 +17,6 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 color_out;
 
-layout (constant_id = 0) const bool HORIZONTAL = true;
-
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D color_sampler;
 
@@ -26,7 +24,7 @@ layout(set=1, binding = 1) uniform sampler2D color_sampler;
 vec3 read(vec2 uv, float center_depth, inout float weight_sum, float static_weight) {
 	float d = texelFetch(depth_sampler, ivec2(uv*textureSize(depth_sampler, 0)), 0).r;
 	float dz = center_depth - d;
-	float d_dev = mix(0.0, 0.5, d) / global_uniforms.proj_planes.y;
+	float d_dev = mix(0.01, 0.25, d) / global_uniforms.proj_planes.y;
 	float w = exp(-dz*dz/(2*d_dev*d_dev)) * static_weight;
 	weight_sum += w;
 
