@@ -97,7 +97,7 @@ namespace asset {
 	protected:
 		PHYSFS_File * const file;
 	public:
-		fbuf(File_handle* file, std::size_t bufferSize = 1024*8)
+		fbuf(File_handle* file, std::size_t bufferSize = 1024L*256)
 				: bufferSize(bufferSize), file((PHYSFS_File*)file) {
 			buffer = new char[bufferSize];
 			char * end = buffer + bufferSize;

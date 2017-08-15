@@ -187,9 +187,9 @@ namespace graphic {
 			const vk::Device& _device;
 			std::uint32_t _type;
 			
-			Device_memory_pool<1024L*1024, 256L*1024*1024> _temporary_pool;
-			Device_memory_pool<1024L*1024, 256L*1024*1024>    _normal_pool;
-			Device_memory_pool<1024L*1024, 256L*1024*1024>    _persistent_pool;
+			Device_memory_pool<1024L*1024*4, 256L*1024*1024> _temporary_pool;
+			Device_memory_pool<1024L*1024*1, 256L*1024*1024> _normal_pool;
+			Device_memory_pool<1024L*1024*1, 256L*1024*1024> _persistent_pool;
 	};
 
 

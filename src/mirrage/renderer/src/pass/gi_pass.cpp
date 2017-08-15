@@ -355,12 +355,12 @@ namespace renderer {
 			                    .color_attachment(color);
 
 			pass.stage("blur_h"_strid)
-			    .shader("frag_shader:ssao_blur"_aid, graphic::Shader_stage::fragment)
-			    .shader("vert_shader:ssao_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 1);
+			    .shader("frag_shader:gi_spec_blur"_aid, graphic::Shader_stage::fragment)
+			    .shader("vert_shader:gi_spec_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 1);
 
 			pass.stage("blur_v"_strid)
-			    .shader("frag_shader:ssao_blur"_aid, graphic::Shader_stage::fragment)
-			    .shader("vert_shader:ssao_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 0);
+			    .shader("frag_shader:gi_spec_blur"_aid, graphic::Shader_stage::fragment)
+			    .shader("vert_shader:gi_spec_blur"_aid, graphic::Shader_stage::vertex,   "main", 0, 0);
 
 			builder.add_dependency(util::nothing, vk::PipelineStageFlagBits::eColorAttachmentOutput,
 			                       vk::AccessFlags{},
@@ -828,7 +828,7 @@ namespace renderer {
 
 				// Mip-level used by spec.
 				//  Always zero (for now). Skips pixels when gi_spec_mip_level>0 but reduces blocky artefacts.
-				pcs.prev_projection[0][3] = 0;
+				pcs.prev_projection[0][3] = _base_mip_level;
 
 				auto screen_size = glm::vec2{_color_diffuse_in.width(pcs.prev_projection[0][3]), _color_diffuse_in.height(pcs.prev_projection[0][3])};
 				auto ndc_to_uv = glm::translate({}, glm::vec3(screen_size/2.f, 0.f))

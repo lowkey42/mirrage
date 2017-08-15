@@ -87,8 +87,7 @@ vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L, float coneTheta) {
 		float incircle_size   = isosceles_triangle_inradius(adjacent_length, opposite_length);
 
 		vec2 uv = (vertex_out.tex_coords + adjacent_unit*(adjacent_length - incircle_size));
-		float lod = incircle_size<0.00001 ? min_lod : clamp(log2(incircle_size * screen_size), min_lod, max_lod);
-		lod = max(0, lod-1);
+		float lod = incircle_size<0.00001 ? min_lod : clamp(log2(incircle_size * screen_size)-1, min_lod, max_lod);
 
 		vec4 s = vec4(textureLod(color_sampler, uv, lod).rgb, 1) * glossiness_mult;
 		if(lod > max_lod-0.5) {
@@ -125,7 +124,7 @@ void main() {
 	float depth  = textureLod(depth_sampler, vertex_out.tex_coords, startLod).r;
 	vec3 P = position_from_ldepth(vertex_out.tex_coords, depth);
 
-	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, startLod);
+	vec4 mat_data = textureLod(mat_data_sampler, vertex_out.tex_coords, 0);
 	vec3 N = decode_normal(mat_data.rg);
 	float roughness = mat_data.b;
 	float metallic = mat_data.a;
@@ -142,7 +141,7 @@ void main() {
 
 	// TODO: calculate max distance based on roughness
 	float max_distance = min(128, 4 / (tan(coneTheta)*2));
-	float max_steps = max_distance*8;
+	float max_steps = max_distance*10;
 
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
