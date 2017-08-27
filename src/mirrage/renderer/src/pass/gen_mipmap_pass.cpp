@@ -137,14 +137,18 @@ namespace renderer {
 			                          vk::ImageLayout::eShaderReadOnlyOptimal,
 			                          _renderer.gbuffer().depth.width(),
 			                          _renderer.gbuffer().depth.height(),
-			                          low_quality_levels);
+			                          low_quality_levels,
+			                          0,
+			                          false);
 			graphic::generate_mipmaps(command_buffer,
 			                          _renderer.gbuffer().mat_data.image(),
 			                          vk::ImageLayout::eShaderReadOnlyOptimal,
 			                          vk::ImageLayout::eShaderReadOnlyOptimal,
 			                          _renderer.gbuffer().mat_data.width(),
 			                          _renderer.gbuffer().mat_data.height(),
-			                          low_quality_levels);
+			                          low_quality_levels,
+			                          0,
+			                          false);
 		}
 
 		// generate mipmaps for GBuffer

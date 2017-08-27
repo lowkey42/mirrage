@@ -305,7 +305,8 @@ namespace graphic {
 	                             std::uint32_t width,
 	                             std::uint32_t height,
 	                             std::uint32_t mip_count=0,
-	                             std::uint32_t start_mip_level=0);
+	                             std::uint32_t start_mip_level=0,
+	                             bool filter_linear = true);
 	
 	namespace detail {class Base_texture;}
 	extern void blit_texture(vk::CommandBuffer cb,

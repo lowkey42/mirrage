@@ -64,7 +64,7 @@ void main() {
 		                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 		                                  0).r;
 
-		out_color *= 1.0 - (history_weight*0.9);
+		out_color *= 1.0 - (history_weight*0.85);
 	}
 
 	out_color = max(out_color, vec4(0));
@@ -124,9 +124,11 @@ vec3 gi_sample(int lod, int base_mip) {
 
 
 	if(PRIORITISE_NEAR_SAMPLES==1)
-		c = c * pow(2.0, clamp((lod-base_mip)*2, 2, 7)) * 128.0 / SAMPLES;
+		c = c * pow(2.0, clamp((lod-base_mip)*2, 4, 7));
 	else
-		c = c * pow(2.0, lod*2);
+		c = c * pow(2.0, (lod-base_mip)*2);
+
+	c  *= 128.0 / SAMPLES;
 
 	// c = saturation(c, 1.1);
 

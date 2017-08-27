@@ -66,6 +66,10 @@ namespace asset {
 			auto lines() -> std::vector<std::string>;
 			auto content() -> std::string;
 			auto bytes() -> std::vector<char>;
+
+			// low-level direct read operation (without intermediate buffer). Disturbs normal stream operation
+			// No further reads allowed after this operation!
+			void read_direct(char* target, std::size_t size);
 	};
 	class ostream : public stream, public std::ostream {
 		public:

@@ -45,7 +45,7 @@ vec4 upsampled_result(sampler2D depth_sampler, sampler2D mat_data_sampler, sampl
 			vec2 offset = vec2(x,y);
 			vec2 p = tex_coords + offset / color_size;
 			
-			float d = texelFetch(depth_sampler, ivec2(depth_size * p), 0).r;
+			float d = texelFetch(depth_sampler, ivec2(mat_data_size * p), depth_lod).r;
 			vec2  n = texelFetch(mat_data_sampler, ivec2(mat_data_size * p), depth_lod).xy;
 			vec2 normal_diff = normal - n;
 			

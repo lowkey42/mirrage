@@ -159,8 +159,8 @@ namespace renderer {
 		// load data
 		auto model = std::make_shared<Model>(_device, _owner_qfamily,
 		                                     header.vertex_count, header.index_count,
-		                                     [&](char* dest) {in.read(dest, header.vertex_count);},
-		                                     [&](char* dest) {in.read(dest, header.index_count);},
+		                                     [&](char* dest) {in.read_direct(dest, header.vertex_count);},
+		                                     [&](char* dest) {in.read_direct(dest, header.index_count);},
 		                                     std::move(sub_meshes), aid);
 
 		auto footer = std::uint32_t(0);

@@ -79,8 +79,10 @@ namespace mirrage {
 					if(_meta_system.nims().is_playing()) {
 						_meta_system.nims().stop();
 						_set_preset(1);
-					} else
+					} else {
+						std::terminate();
 						_engine.screens().leave();
+					}
 					break;
 				case "create"_strid:
 					_meta_system.entities().emplace("cube").get<Transform_comp>().process([&](auto& transform) {

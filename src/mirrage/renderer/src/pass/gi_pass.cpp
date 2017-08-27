@@ -730,6 +730,15 @@ namespace renderer {
 
 			auto pcs = Gi_constants{};
 			pcs.reprojection = _prev_view * glm::inverse(_renderer.global_uniforms().view_mat);
+			INVARIANT(pcs.reprojection[0][3]==0 && pcs.reprojection[1][3]==0  &&
+			          pcs.reprojection[2][3]==0 && pcs.reprojection[3][3]==1,
+			          "m[0][3]!=0 or m[1][3]!=0 or m[2][3]!=0 or m[3][3]!=1");
+
+			pcs.reprojection[0][3] = -2.f / _prev_proj[0][0];
+			pcs.reprojection[1][3] = -2.f / _prev_proj[1][1];
+			pcs.reprojection[2][3] = (1.f - _prev_proj[0][2]) / _prev_proj[0][0];
+			pcs.reprojection[3][3] = (1.f + _prev_proj[1][2]) / _prev_proj[1][1];
+
 			pcs.prev_projection = _prev_proj;
 			INVARIANT(pcs.prev_projection[0][3]==0 && pcs.prev_projection[1][3]==0 && pcs.prev_projection[3][3]==0,
 			          "m[0][3]!=0 or m[1][3]!=0 or m[3][3]!=0");

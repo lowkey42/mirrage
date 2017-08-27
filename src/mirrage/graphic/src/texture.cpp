@@ -136,7 +136,7 @@ namespace graphic {
 			                                             _owner_qfamily, dimensions,
 			                                             header.format, header.mip_levels,
 			                                             header.size, [&](char* dest) {
-				in.get_or_throw().read(dest, header.size);
+				in.get_or_throw().read_direct(dest, header.size);
 			});
 
 			// TODO: create different type based on header.type

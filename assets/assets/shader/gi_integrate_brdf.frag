@@ -12,9 +12,6 @@ layout(location = 0) out vec4 out_color;
 layout (constant_id = 0) const uint SAMPLE_COUNT = 1024u;
 
 
-#include "brdf.glsl"
-
-
 float RadicalInverse_VdC(uint bits) {
 	bits = (bits << 16u) | (bits >> 16u);
 	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
@@ -50,6 +47,23 @@ vec3 ImportanceSampleGGX(vec2 Xi, vec3 N, float roughness) {
 
 	vec3 sampleVec = tangent * H.x + bitangent * H.y + N * H.z;
 	return normalize(sampleVec);
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness) {
+	float k = (roughness*roughness) / 2.0;
+
+	float nom   = NdotV;
+	float denom = NdotV * (1.0 - k) + k;
+
+	return nom / denom;
+}
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
+	float NdotV = max(dot(N, V), 0.0);
+	float NdotL = max(dot(N, L), 0.0);
+	float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+	float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+
+	return ggx1 * ggx2;
 }
 
 void main() {

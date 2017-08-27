@@ -201,7 +201,8 @@ namespace graphic {
 	                      std::uint32_t width,
 	                      std::uint32_t height,
 	                      std::uint32_t mip_count,
-	                      std::uint32_t start_mip_level) {
+	                      std::uint32_t start_mip_level,
+	                      bool filter_linear) {
 
 		if(mip_count==0) {
 			mip_count = std::floor(std::log2(std::min(width, height))) + 1;
@@ -248,7 +249,7 @@ namespace graphic {
 			};
 			cb.blitImage(image, vk::ImageLayout::eTransferSrcOptimal,
 			             image, vk::ImageLayout::eTransferDstOptimal,
-			             {blit}, vk::Filter::eLinear);
+			             {blit}, filter_linear ? vk::Filter::eLinear : vk::Filter::eNearest);
 
 			image_layout_transition(cb, image, vk::ImageLayout::eTransferDstOptimal,
 			                        vk::ImageLayout::eTransferSrcOptimal,

@@ -191,6 +191,10 @@ namespace asset {
 
 		return res;
 	}
+	void istream::read_direct(char* target, std::size_t size) {
+		seekg(0, cur);
+		PHYSFS_read((PHYSFS_File*)_file, target, 1, size);
+	}
 
 
 	ostream::ostream(AID aid, Asset_manager& manager, const std::string& path)
