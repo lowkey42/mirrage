@@ -13,12 +13,12 @@
 enum class Color {
 	RED, GREEN, BLUE
 };
-sf2_enumDef(Color, RED, GREEN, BLUE)
+sf2_enumDef(Color, RED, GREEN, BLUE);
 
 struct Position {
 	float x, y, z;
 };
-sf2_structDef(Position, x, y, z)
+sf2_structDef(Position, x, y, z);
 
 struct Player {
 	public:
@@ -32,7 +32,7 @@ struct Player {
 		Color color;
 		std::string name;
 };
-sf2_structDef(Player, position, color, name)
+sf2_structDef(Player, position, color, name);
 
 struct Data {
 	float a;

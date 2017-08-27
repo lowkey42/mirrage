@@ -9,19 +9,19 @@
 enum class Color {
 	RED, GREEN, BLUE
 };
-sf2_enumDef(Color, RED, GREEN, BLUE)
+sf2_enumDef(Color, RED, GREEN, BLUE);
 
 struct Position {
 	float x, y, z;
 };
-sf2_structDef(Position, x, y, z)
+sf2_structDef(Position, x, y, z);
 
 struct Player {
 	Position position;
 	Color color;
 	std::string name;
 };
-sf2_structDef(Player, position, color, name)
+sf2_structDef(Player, position, color, name);
 
 
 int main() {

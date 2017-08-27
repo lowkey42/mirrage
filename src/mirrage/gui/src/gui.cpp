@@ -29,8 +29,8 @@ namespace gui {
 		struct Gui_cfg {
 			std::vector<Font_desc> fonts;
 		};
-		sf2_structDef(Font_desc, aid, size, default_font)
-		sf2_structDef(Gui_cfg, fonts)
+		sf2_structDef(Font_desc, aid, size, default_font);
+		sf2_structDef(Gui_cfg, fonts);
 
 		void nk_sdl_clipbard_paste(nk_handle, struct nk_text_edit *edit) {
 			auto text = SDL_GetClipboardText();

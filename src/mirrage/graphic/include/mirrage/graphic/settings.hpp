@@ -52,16 +52,16 @@ namespace graphic {
 
 
 #ifdef sf2_structDef
-	sf2_enumDef(Fullscreen, no, yes, yes_borderless)
+	sf2_enumDef(Fullscreen, no, yes, yes_borderless);
 	sf2_structDef(Window_settings,
 		width,
 		height,
 		display,
 		fullscreen
-	)
+	);
 	sf2_structDef(Graphics_settings,
 		windows
-	)
+	);
 #endif
 
 }

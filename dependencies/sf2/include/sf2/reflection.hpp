@@ -296,12 +296,12 @@ namespace sf2 {
 
 #define sf2_enumDef(TYPE, ...) inline auto& sf2_enum_info_factory(TYPE*) {\
 	using sf2_current_type = TYPE;\
-	static const auto data = ::sf2::Enum_info<TYPE>{\
+	static auto data = ::sf2::Enum_info<TYPE>{\
 			::sf2::String_literal{#TYPE}, \
 			{SF2_APPLY(SF2_EXTRACT_VALUE,__VA_ARGS__)}\
 	};\
 	return data;\
-}
+} auto& sf2_enum_info_factory(TYPE*)
 
 
 #define SF2_EXTRACT_TYPE(n) decltype(sf2_current_type::n)
@@ -309,13 +309,13 @@ namespace sf2 {
 
 #define sf2_structDef(TYPE, ...) inline auto& sf2_struct_info_factory(TYPE*) {\
 	using sf2_current_type = TYPE;\
-	static /*FIXME: removed due to bug in GCC: constexpr*/ auto data = ::sf2::Struct_info<TYPE,\
+	static constexpr auto data = ::sf2::Struct_info<TYPE,\
 		SF2_APPLY(SF2_EXTRACT_TYPE,__VA_ARGS__)>{\
 			::sf2::String_literal{#TYPE}, \
 			SF2_APPLY(SF2_EXTRACT_MEMBER,__VA_ARGS__)\
 	};\
 	return data;\
-}
+} auto& sf2_struct_info_factory(TYPE*)
 
 #define sf2_accesor(TYPE) auto& sf2_struct_info_factory(TYPE*)
 

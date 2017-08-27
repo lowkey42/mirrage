@@ -12,12 +12,12 @@ namespace mirrage {
 			std::vector<std::string> supported_languages;
 			std::string default_language;
 		};
-		sf2_structDef(Language_info, supported_languages, default_language)
+		sf2_structDef(Language_info, supported_languages, default_language);
 
 		struct Language_cfg {
 			std::string text_language;
 		};
-		sf2_structDef(Language_cfg, text_language)
+		sf2_structDef(Language_cfg, text_language);
 
 		auto get_env_language() {
 			auto locale = std::locale{""}.name();

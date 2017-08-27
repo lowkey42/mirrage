@@ -45,7 +45,7 @@ namespace renderer {
 		dynamic_shadows,
 		debug_disect,
 		debug_gi_layer
-	)
+	);
 #endif
 
 	struct Global_uniforms {

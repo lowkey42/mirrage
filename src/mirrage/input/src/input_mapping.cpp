@@ -11,10 +11,10 @@
 namespace mirrage {
 namespace input {
 
-	sf2_structDef(Reaction, action, type)
+	sf2_structDef(Reaction, action, type);
 	sf2_structDef(Context, id, keys, pad_buttons, pad_sticks,
 	              mouse_buttons, mouse_movement, mouse_wheel_up, mouse_wheel_down,
-	              mouse_drag)
+	              mouse_drag);
 
 	namespace {
 		const auto mapping_aid = "cfg:input_mapping"_aid;
@@ -35,7 +35,7 @@ namespace input {
 			}
 		};
 
-		sf2_structDef(Context_map, initial, contexts)
+		sf2_structDef(Context_map, initial, contexts);
 
 		std::tuple<std::unordered_map<Context_id, Context>, Context_id>
 		  load_context_map(asset::Asset_manager& assets,

@@ -312,12 +312,12 @@ namespace input {
 		RShift,
 		RAlt,
 		RSuper
-	)
+	);
 
 	sf2_enumDef(Pad_stick,
 		left,
 		right
-	)
+	);
 
 	sf2_enumDef(Pad_button,
 		a,
@@ -337,11 +337,11 @@ namespace input {
 		d_pad_right,
 		left_trigger,
 		right_trigger
-	)
+	);
 
-	sf2_structDef(Mouse_click, button, clicks)
+	sf2_structDef(Mouse_click, button, clicks);
 
-	sf2_enumDef(Reaction_type, none, once, continuous, range)
+	sf2_enumDef(Reaction_type, none, once, continuous, range);
 #endif
 
 }

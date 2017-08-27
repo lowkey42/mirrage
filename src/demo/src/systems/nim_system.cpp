@@ -37,8 +37,8 @@ namespace systems {
 			std::unordered_map<util::Str_id, Frame_obj_data> entities;
 		};
 
-		sf2_structDef(Frame_obj_data, position, orientation, light_color)
-		sf2_structDef(Frame_data, length, entities)
+		sf2_structDef(Frame_obj_data, position, orientation, light_color);
+		sf2_structDef(Frame_data, length, entities);
 	}
 
 	void load(sf2::JsonDeserializer& s, Nim_sequence& seq) {
