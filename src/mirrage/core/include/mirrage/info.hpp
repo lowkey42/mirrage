@@ -10,14 +10,9 @@
 #include <string>
 
 
-namespace mirrage {
-
-	namespace version_info {
-		extern const std::string name;
-		extern const std::string hash;
-		extern const std::string date;
-		extern const std::string subject;
-	}
-
-
+namespace mirrage::version_info {
+	extern const std::string name;
+	extern const std::string hash;
+	extern const std::string date;
+	extern const std::string subject;
 }

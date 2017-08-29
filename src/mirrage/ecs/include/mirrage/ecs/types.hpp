@@ -16,13 +16,11 @@
 #include <moodycamel/concurrentqueue.hpp>
 
 #include <cstdint>
-#include <vector>
 #include <string>
+#include <vector>
 
 
-namespace mirrage {
-namespace ecs {
-
+namespace mirrage::ecs {
 	struct Deserializer;
 	struct Serializer;
 
@@ -30,7 +28,7 @@ namespace ecs {
 	class Entity_facet;
 
 	using Component_index = int32_t;
-	using Component_type = int_fast16_t;
+	using Component_type  = int_fast16_t;
 
 	namespace detail {
 		extern Component_type id_generator();
@@ -56,47 +54,40 @@ namespace ecs {
 	 * See ecs.hxx for implementation of template methods
 	 */
 	class Entity_facet {
-		public:
-			Entity_facet() : _manager(nullptr), _owner(invalid_entity) {}
-			Entity_facet(Entity_manager& manager, Entity_handle owner);
+	  public:
+		Entity_facet() : _manager(nullptr), _owner(invalid_entity) {}
+		Entity_facet(Entity_manager& manager, Entity_handle owner);
 
-			template<typename T>
-			util::maybe<T&> get();
+		template <typename T>
+		util::maybe<T&> get();
 
-			template<typename T>
-			bool has();
+		template <typename T>
+		bool has();
 
-			template<typename T, typename... Args>
-			void emplace(Args&&... args);
+		template <typename T, typename... Args>
+		void emplace(Args&&... args);
 
-			template<typename T, typename F, typename... Args>
-			void emplace_init(F&& init, Args&&... args);
+		template <typename T, typename F, typename... Args>
+		void emplace_init(F&& init, Args&&... args);
 
-			template<typename T>
-			void erase();
+		template <typename T>
+		void erase();
 
-			template<typename... T>
-			void erase_other();
+		template <typename... T>
+		void erase_other();
 
-			auto manager()noexcept -> Entity_manager& {return *_manager;}
-			auto handle()const noexcept {return _owner;}
+		auto manager() noexcept -> Entity_manager& { return *_manager; }
+		auto handle() const noexcept { return _owner; }
 
-			auto valid()const noexcept -> bool;
+		auto valid() const noexcept -> bool;
 
-			explicit operator bool()const noexcept {return valid();}
-			operator Entity_handle()const noexcept {return handle();}
+		explicit operator bool() const noexcept { return valid(); }
+		operator Entity_handle() const noexcept { return handle(); }
 
-			void reset() {
-				_owner = invalid_entity;
-			}
+		void reset() { _owner = invalid_entity; }
 
-		private:
-			Entity_manager* _manager;
-			Entity_handle _owner;
+	  private:
+		Entity_manager* _manager;
+		Entity_handle   _owner;
 	};
-
-
-
-} /* namespace ecs */
 }
-

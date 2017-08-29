@@ -7,23 +7,18 @@
 
 #pragma once
 
-#include <string>
 #include <stdexcept>
+#include <string>
 
-namespace mirrage {
-namespace util {
+namespace mirrage::util {
 
 	extern void init_stacktrace(std::string exe_path);
 
 	extern bool is_stacktrace_available();
 
-	extern std::string gen_stacktrace(int frames_to_skip=0);
+	extern std::string gen_stacktrace(int frames_to_skip = 0);
 
 	struct Error : public std::runtime_error {
-		explicit Error(const std::string& msg)
-		  : std::runtime_error(msg+"\n At "+gen_stacktrace(1)) {}
+		explicit Error(const std::string& msg) : std::runtime_error(msg + "\n At " + gen_stacktrace(1)) {}
 	};
-
 }
-}
-

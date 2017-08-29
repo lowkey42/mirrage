@@ -7,8 +7,7 @@
 #include <string>
 
 
-namespace mirrage {
-namespace ecs {
+namespace mirrage::ecs {
 
 	namespace detail {
 		extern Component_type id_generator() {
@@ -19,12 +18,8 @@ namespace ecs {
 
 
 	Entity_facet::Entity_facet(Entity_manager& manager, Entity_handle owner)
-	    : _manager(&manager), _owner(owner) {
-		INVARIANT(valid(), "Created Entity_facet for invalid entity: "<<entity_name(owner));
+	  : _manager(&manager), _owner(owner) {
+		INVARIANT(valid(), "Created Entity_facet for invalid entity: " << entity_name(owner));
 	}
-	auto Entity_facet::valid()const noexcept -> bool {
-		return _manager && _manager->validate(_owner);
-	}
-
-}
+	auto Entity_facet::valid() const noexcept -> bool { return _manager && _manager->validate(_owner); }
 }

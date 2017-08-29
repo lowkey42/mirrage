@@ -15,22 +15,27 @@
 
 
 namespace mirrage {
-	namespace renderer {class Deferred_renderer_factory;}
+	namespace renderer {
+		class Deferred_renderer_factory;
+	}
 
 	class Game_engine : public Engine {
-		public:
-			Game_engine(const std::string& title, std::uint32_t version_major,
-			            std::uint32_t version_minor, bool debug,
-			            int argc, char** argv, char** env);
-			~Game_engine();
+	  public:
+		Game_engine(const std::string& title,
+		            std::uint32_t      version_major,
+		            std::uint32_t      version_minor,
+		            bool               debug,
+		            int                argc,
+		            char**             argv,
+		            char**             env);
+		~Game_engine();
 
-			auto renderer_factory()noexcept -> auto& {return *_renderer_factory;}
+		auto renderer_factory() noexcept -> auto& { return *_renderer_factory; }
 
-		protected:
-			void _on_post_frame(util::Time) override;
+	  protected:
+		void _on_post_frame(util::Time) override;
 
-		private:
-			std::unique_ptr<renderer::Deferred_renderer_factory> _renderer_factory;
+	  private:
+		std::unique_ptr<renderer::Deferred_renderer_factory> _renderer_factory;
 	};
-
 }

@@ -7,8 +7,7 @@
 #include <string>
 
 
-namespace mirrage {
-namespace ecs {
+namespace mirrage::ecs {
 
 	auto get_entity_id(Entity_handle h, Entity_manager& manager) -> Entity_id {
 		if(manager.validate(h)) {
@@ -21,6 +20,4 @@ namespace ecs {
 	auto entity_name(Entity_handle h) -> std::string {
 		return util::to_string(h.id()) + ":" + util::to_string<int>(h.revision());
 	}
-
-}
 }

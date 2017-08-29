@@ -2,28 +2,23 @@
 
 #include "nim_system.hpp"
 
-#include <mirrage/ecs/ecs.hpp>
 #include <mirrage/ecs/components/transform_comp.hpp>
+#include <mirrage/ecs/ecs.hpp>
 #include <mirrage/renderer/light_comp.hpp>
-#include <mirrage/utils/sf2_glm.hpp>
 #include <mirrage/utils/math.hpp>
+#include <mirrage/utils/sf2_glm.hpp>
 
 
-namespace mirrage {
-namespace systems {
+namespace mirrage::systems {
 
 	using namespace util::unit_literals;
 
 	void load_component(ecs::Deserializer& state, Nim_comp& comp) {
-		state.read_virtual(
-			sf2::vmember("uid", comp._uid)
-		);
+		state.read_virtual(sf2::vmember("uid", comp._uid));
 	}
 
 	void save_component(ecs::Serializer& state, const Nim_comp& comp) {
-		state.write_virtual(
-			sf2::vmember("uid", comp._uid)
-		);
+		state.write_virtual(sf2::vmember("uid", comp._uid));
 	}
 
 	namespace {
@@ -73,10 +68,10 @@ namespace systems {
 
 			for(auto i : util::range(seq._affected_entities.size())) {
 				auto& entity_uid = seq._affected_entities[i];
-				auto& state = seq._entity_states.at(i);
+				auto& state      = seq._entity_states.at(i);
 
 				auto iter = frame.entities.find(entity_uid);
-				if(iter!=frame.entities.end()) {
+				if(iter != frame.entities.end()) {
 					state.positions.emplace_back(iter->second.position);
 					state.orientations.emplace_back(iter->second.orientation);
 					state.light_colors.emplace_back(iter->second.light_color);
@@ -100,14 +95,14 @@ namespace systems {
 
 		frames.reserve(seq.frames());
 		for(auto i : util::range(seq.frames())) {
-			auto& frame = frames.emplace_back();
+			auto& frame  = frames.emplace_back();
 			frame.length = seq._frame_lengths.at(i) / second;
 
 			for(auto j : util::range(seq._affected_entities.size())) {
 				auto& entity_state = seq._entity_states[j];
-				auto position    = entity_state.positions[i];
-				auto orientation = glm::eulerAngles(entity_state.orientations[i]);
-				auto light_color = entity_state.light_colors[i];
+				auto  position     = entity_state.positions[i];
+				auto  orientation  = glm::eulerAngles(entity_state.orientations[i]);
+				auto  light_color  = entity_state.light_colors[i];
 				frame.entities.emplace(seq._affected_entities[j],
 				                       Frame_obj_data{position, orientation, light_color});
 			}
@@ -116,12 +111,10 @@ namespace systems {
 		s.write_virtual(sf2::vmember("frames", frames));
 	}
 
-	Nim_system::Nim_system(ecs::Entity_manager& ecs)
-	    : _nim_components(ecs.list<Nim_comp>()) {
-	}
+	Nim_system::Nim_system(ecs::Entity_manager& ecs) : _nim_components(ecs.list<Nim_comp>()) {}
 
 	namespace {
-		template<class T>
+		template <class T>
 		auto catmull_rom(float t, const std::vector<T>& points, float closed) -> T {
 			INVARIANT(!points.empty(), "Can't interpolate between zero points!");
 
@@ -134,7 +127,7 @@ namespace systems {
 			// clamp points
 			if(closed) {
 				P0_idx = P0_idx % points.size();
-				if(P0_idx<0) {
+				if(P0_idx < 0) {
 					P0_idx = points.size() + P0_idx;
 				}
 				P1_idx = P1_idx % points.size();
@@ -143,7 +136,7 @@ namespace systems {
 
 			} else {
 				P0_idx = util::min(P0_idx, points.size());
-				P1_idx = P0_idx>0 ? P0_idx-1 : P0_idx;
+				P1_idx = P0_idx > 0 ? P0_idx - 1 : P0_idx;
 				P2_idx = util::min(P2_idx, points.size());
 				P3_idx = util::min(P3_idx, points.size());
 			}
@@ -155,16 +148,13 @@ namespace systems {
 			auto P3 = points.at(P3_idx);
 
 			// calc relativ t
-			auto rt = std::fmod(t, 1.f);
-			auto rt2 = rt*rt;
-			auto rt3 = rt2*rt;
+			auto rt  = std::fmod(t, 1.f);
+			auto rt2 = rt * rt;
+			auto rt3 = rt2 * rt;
 
 			// interpolate point
-			return 0.5f * (
-			            (2.f * P1)
-			          + (-P0 + P2)*rt
-			          + (2.f * P0 + -5.f*P1 + 4.f*P2 + -P3) * rt2
-			          + (-P0 + 3.f*P1 + -3.f*P2 + P3) * rt3);
+			return 0.5f * ((2.f * P1) + (-P0 + P2) * rt + (2.f * P0 + -5.f * P1 + 4.f * P2 + -P3) * rt2
+			               + (-P0 + 3.f * P1 + -3.f * P2 + P3) * rt3);
 		}
 	}
 
@@ -172,33 +162,33 @@ namespace systems {
 		if(!_playing)
 			return;
 
-		_current_position += dt /_playing->frame_length(static_cast<int>(_current_position))
-		                     * _playback_speed;
+		_current_position +=
+		        dt / _playing->frame_length(static_cast<int>(_current_position)) * _playback_speed;
 
 		if(_loop) {
 			_current_position = std::fmod(_current_position, _playing->frames());
 		}
 
-		auto reached_end = _current_position>=_end_position && !_loop;
+		auto reached_end = _current_position >= _end_position && !_loop;
 
 		if(reached_end) {
 			_current_position = _end_position;
 		}
 
-		_playing->apply([&](const auto& entity_uid, const auto& positions, const auto& orientations,
-		                    const auto& colors) {
+		_playing->apply([&](
+		        const auto& entity_uid, const auto& positions, const auto& orientations, const auto& colors) {
 			auto iter = _affected_entities.find(entity_uid);
-			if(iter!=_affected_entities.end()) {
-				ecs::Entity_facet& entity = iter->second;
-				auto& transform = entity.get<ecs::components::Transform_comp>().get_or_throw();
+			if(iter != _affected_entities.end()) {
+				ecs::Entity_facet& entity    = iter->second;
+				auto&              transform = entity.get<ecs::components::Transform_comp>().get_or_throw();
 
 				auto idx_0 = static_cast<int>(std::floor(_current_position));
-				auto idx_1 = _loop ? (idx_0 + 1) % orientations.size()
-				                   : util::min(idx_0 + 1, orientations.size());
-				auto t = std::fmod(_current_position, 1.f);
+				auto idx_1 =
+				        _loop ? (idx_0 + 1) % orientations.size() : util::min(idx_0 + 1, orientations.size());
+				auto t           = std::fmod(_current_position, 1.f);
 				auto orientation = glm::slerp(orientations[idx_0], orientations[idx_1], t);
 
-				auto position    = catmull_rom(_current_position, positions, _loop);
+				auto position = catmull_rom(_current_position, positions, _loop);
 
 				auto light_color = catmull_rom(_current_position, colors, _loop);
 
@@ -224,19 +214,17 @@ namespace systems {
 
 		_update_lookup_table();
 
-		_playback_speed = speed;
+		_playback_speed   = speed;
 		_current_position = begin;
-		_end_position = end>=0 ? end : _playing->frames();
-		_loop = false;
+		_end_position     = end >= 0 ? end : _playing->frames();
+		_loop             = false;
 	}
-	void Nim_system::play_looped(Nim_sequence_ptr seq,  float speed) {
+	void Nim_system::play_looped(Nim_sequence_ptr seq, float speed) {
 		play(seq, 0, -1, speed);
 		_loop = true;
 	}
 
-	void Nim_system::stop()  {
-		_playing.reset();
-	}
+	void Nim_system::stop() { _playing.reset(); }
 
 	void Nim_system::start_recording(Nim_sequence& seq) {
 		_update_lookup_table();
@@ -253,16 +241,17 @@ namespace systems {
 	void Nim_system::record(util::Time length, Nim_sequence& seq) {
 		seq.push_back(length, [&](const auto& entity_uid) {
 			auto iter = _affected_entities.find(entity_uid);
-			if(iter==_affected_entities.end())
-				return std::make_tuple(glm::vec3(0,0,0), glm::quat(1,0,0,0), util::Rgba());
+			if(iter == _affected_entities.end())
+				return std::make_tuple(glm::vec3(0, 0, 0), glm::quat(1, 0, 0, 0), util::Rgba());
 
-			ecs::Entity_facet& entity = iter->second;
-			auto& transform = entity.get<ecs::components::Transform_comp>().get_or_throw();
+			ecs::Entity_facet& entity    = iter->second;
+			auto&              transform = entity.get<ecs::components::Transform_comp>().get_or_throw();
 
-			auto color = entity.get<renderer::Directional_light_comp>().process(util::Rgba(0,0,0,0),
-			                 [&](auto& light) {
-				return util::Rgba(light.color().r, light.color().g, light.color().b, light.intensity());
-			});
+			auto color = entity.get<renderer::Directional_light_comp>().process(
+			        util::Rgba(0, 0, 0, 0), [&](auto& light) {
+				        return util::Rgba(
+				                light.color().r, light.color().g, light.color().b, light.intensity());
+				    });
 
 			return std::make_tuple(transform.position(), transform.orientation(), color);
 		});
@@ -274,6 +263,4 @@ namespace systems {
 			_affected_entities.emplace(nim_comp.uid(), nim_comp.owner());
 		}
 	}
-
-}
 }

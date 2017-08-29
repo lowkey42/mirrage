@@ -3,8 +3,7 @@
 #include <glm/gtx/norm.hpp>
 
 
-namespace mirrage {
-namespace gui {
+namespace mirrage::gui {
 
 	void begin_menu(nk_context*, int& active) {
 		// TODO
@@ -21,6 +20,4 @@ namespace gui {
 	void end_menu(nk_context*) {
 		// TODO
 	}
-
-}
 }

@@ -8,13 +8,12 @@
 #pragma once
 
 #ifdef SDL_FRAMETIME
-	#include <SDL2/SDL.h>
+#include <SDL2/SDL.h>
 #else
-	#include <chrono>
+#include <chrono>
 #endif
 
-namespace mirrage {
-namespace util {
+namespace mirrage::util {
 
 	inline double current_time_sec() {
 #ifdef SDL_FRAMETIME
@@ -22,9 +21,8 @@ namespace util {
 #else
 		using namespace std::chrono;
 		static const auto start_time = high_resolution_clock::now();
-		return duration_cast<duration<double, std::micro>>(high_resolution_clock::now()-start_time).count() / 1000.0 / 1000.0;
+		return duration_cast<duration<double, std::micro>>(high_resolution_clock::now() - start_time).count()
+		       / 1000.0 / 1000.0;
 #endif
 	}
-
-}
 }

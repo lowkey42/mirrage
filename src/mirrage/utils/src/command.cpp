@@ -3,8 +3,7 @@
 #include <mirrage/utils/log.hpp>
 
 
-namespace mirrage {
-namespace util {
+namespace mirrage::util {
 
 	void Command_manager::execute(std::unique_ptr<Command> cmd) {
 		if(redo_available())
@@ -17,7 +16,7 @@ namespace util {
 	void Command_manager::undo() {
 		INVARIANT(undo_available(), "undo() called with empty history");
 
-		auto& last_cmd = _commands.at(_history_size-1);
+		auto& last_cmd = _commands.at(_history_size - 1);
 		last_cmd->undo();
 		_history_size--;
 	}
@@ -29,36 +28,34 @@ namespace util {
 		_history_size++;
 	}
 
-	auto Command_manager::history()const -> std::vector<std::string> {
+	auto Command_manager::history() const -> std::vector<std::string> {
 		std::vector<std::string> names;
 		names.reserve(_history_size);
 
-		for(auto i=0ul; i<_history_size; i++) {
+		for(auto i = 0ul; i < _history_size; i++) {
 			names.emplace_back(_commands.at(i)->name());
 		}
 
 		return names;
 	}
-	auto Command_manager::future()const -> std::vector<std::string> {
+	auto Command_manager::future() const -> std::vector<std::string> {
 		std::vector<std::string> names;
 		names.reserve(_commands.size() - _history_size);
 
-		for(auto i=_history_size; i<_commands.size(); i++) {
+		for(auto i = _history_size; i < _commands.size(); i++) {
 			names.emplace_back(_commands.at(i)->name());
 		}
 
 		return names;
 	}
 
-	bool Command_manager::is_last(Command_marker marker)const {
-		return !_commands.empty() && !redo_available() && _commands.back().get()==marker;
+	bool Command_manager::is_last(Command_marker marker) const {
+		return !_commands.empty() && !redo_available() && _commands.back().get() == marker;
 	}
-	auto Command_manager::get_last()const -> Command_marker {
-		if(_commands.empty() || _history_size<=0)
+	auto Command_manager::get_last() const -> Command_marker {
+		if(_commands.empty() || _history_size <= 0)
 			return nullptr;
 		else
-			return _commands.at(_history_size-1).get();
+			return _commands.at(_history_size - 1).get();
 	}
-
-}
 }

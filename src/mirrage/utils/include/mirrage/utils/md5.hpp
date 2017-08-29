@@ -35,10 +35,6 @@ documentation and/or software.
 #include <cstring>
 #include <iostream>
 
-namespace mirrage {
-namespace util {
-
+namespace mirrage::util {
 	extern std::string md5(const std::string& str);
-
-}
 }

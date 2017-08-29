@@ -8,15 +8,14 @@
 #pragma once
 
 #include <string>
-#include <typeinfo>
 #include <type_traits>
+#include <typeinfo>
 
-namespace mirrage {
-namespace util {
+namespace mirrage::util {
 
 	extern std::string demangle(const char* name);
 
-	template<class T>
+	template <class T>
 	std::string typeName() {
 		return demangle(typeid(T).name());
 	}
@@ -27,29 +26,27 @@ namespace util {
 
 	namespace details {
 		struct Typeuid_gen_base {
-			protected:
-				static auto next_uid()noexcept {
-					static auto idc = Typeuid(1);
-					return idc++;
-				}
+		  protected:
+			static auto next_uid() noexcept {
+				static auto idc = Typeuid(1);
+				return idc++;
+			}
 		};
-		template<typename T>
+		template <typename T>
 		struct Typeuid_gen : Typeuid_gen_base {
-			static auto uid()noexcept {
+			static auto uid() noexcept {
 				static auto i = next_uid();
 				return i;
 			}
 		};
 	}
 
-	template<class T>
+	template <class T>
 	auto typeuid_of() {
 		return details::Typeuid_gen<std::decay_t<std::remove_pointer_t<std::decay_t<T>>>>::uid();
 	}
-	template<>
+	template <>
 	inline constexpr auto typeuid_of<void>() {
 		return notypeuid;
 	}
-
-}
 }

@@ -6,8 +6,7 @@
 #include <vulkan/vulkan.hpp>
 
 
-namespace mirrage {
-namespace graphic {
+namespace mirrage::graphic {
 
 	// https://www.khronos.org/opengles/sdk/tools/KTX/file_format_spec/
 	struct Ktx_header {
@@ -23,7 +22,5 @@ namespace graphic {
 	};
 
 	// reads the KTX header and advances the read position to the beginning of the actual data
-    extern auto parse_header(asset::istream&, const std::string& filename) -> Ktx_header;
-
-}
+	extern auto parse_header(asset::istream&, const std::string& filename) -> Ktx_header;
 }

@@ -24,3 +24,7 @@ add_subdirectory(demo)
 add_subdirectory(mesh_converter)
 add_subdirectory(mirrage)
 
+option(ENABLE_CLANG_FORMAT "Includes a clangformat target, that automatically formats the source files." OFF)
+if(ENABLE_CLANG_FORMAT)
+	include(clang-format.cmake)
+endif()

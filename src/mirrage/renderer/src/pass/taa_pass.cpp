@@ -5,103 +5,99 @@
 #include <glm/gtx/string_cast.hpp>
 
 
-namespace mirrage {
-namespace renderer {
+namespace mirrage::renderer {
 
 	using namespace util::unit_literals;
 
 	namespace {
-		auto build_render_pass(Deferred_renderer& renderer,
-		                       vk::DescriptorSetLayout desc_set_layout,
-		                       vk::Format feedback_format,
+		auto build_render_pass(Deferred_renderer&         renderer,
+		                       vk::DescriptorSetLayout    desc_set_layout,
+		                       vk::Format                 feedback_format,
 		                       graphic::Render_target_2D& write_tex,
 		                       graphic::Render_target_2D& feedback_a,
 		                       graphic::Render_target_2D& feedback_b,
-		                       graphic::Framebuffer& out_framebuffer_a,
-		                       graphic::Framebuffer& out_framebuffer_b) {
+		                       graphic::Framebuffer&      out_framebuffer_a,
+		                       graphic::Framebuffer&      out_framebuffer_b) {
 
 			auto builder = renderer.device().create_render_pass_builder();
 
-			auto screen = builder.add_attachment(vk::AttachmentDescription{
-				vk::AttachmentDescriptionFlags{},
-				renderer.gbuffer().color_format,
-				vk::SampleCountFlagBits::e1,
-				vk::AttachmentLoadOp::eDontCare,
-				vk::AttachmentStoreOp::eStore,
-				vk::AttachmentLoadOp::eDontCare,
-				vk::AttachmentStoreOp::eDontCare,
-				vk::ImageLayout::eUndefined,
-				vk::ImageLayout::eShaderReadOnlyOptimal
-			});
+			auto screen = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  renderer.gbuffer().color_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
 
-			auto feedback = builder.add_attachment(vk::AttachmentDescription{
-				vk::AttachmentDescriptionFlags{},
-				feedback_format,
-				vk::SampleCountFlagBits::e1,
-				vk::AttachmentLoadOp::eDontCare,
-				vk::AttachmentStoreOp::eStore,
-				vk::AttachmentLoadOp::eDontCare,
-				vk::AttachmentStoreOp::eDontCare,
-				vk::ImageLayout::eUndefined,
-				vk::ImageLayout::eShaderReadOnlyOptimal
-			});
+			auto feedback = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  feedback_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
 
-			auto pipeline = graphic::Pipeline_description {};
+			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{};
+			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
 
-			pipeline.add_push_constant("pcs"_strid, sizeof(Taa_constants),
-			                           vk::ShaderStageFlagBits::eFragment|vk::ShaderStageFlagBits::eVertex);
+			pipeline.add_push_constant("pcs"_strid,
+			                           sizeof(Taa_constants),
+			                           vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex);
 
-			auto& pass = builder.add_subpass(pipeline)
-			                    .color_attachment(screen)
-			                    .color_attachment(feedback);
+			auto& pass = builder.add_subpass(pipeline).color_attachment(screen).color_attachment(feedback);
 
 			pass.stage("taa"_strid)
-			    .shader("frag_shader:taa"_aid, graphic::Shader_stage::fragment)
-			    .shader("vert_shader:taa"_aid, graphic::Shader_stage::vertex);
+			        .shader("frag_shader:taa"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:taa"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(util::nothing, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			                       vk::AccessFlags{},
-			                       pass, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			                       vk::AccessFlagBits::eColorAttachmentRead|vk::AccessFlagBits::eColorAttachmentWrite);
-			
-			builder.add_dependency(pass, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			                       vk::AccessFlagBits::eColorAttachmentRead|vk::AccessFlagBits::eColorAttachmentWrite,
-			                       util::nothing, vk::PipelineStageFlagBits::eBottomOfPipe,
-			                       vk::AccessFlagBits::eMemoryRead|vk::AccessFlagBits::eShaderRead|vk::AccessFlagBits::eTransferRead);
+			builder.add_dependency(
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlags{},
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+
+			builder.add_dependency(
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eBottomOfPipe,
+			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                | vk::AccessFlagBits::eTransferRead);
 
 
 			auto render_pass = builder.build();
 
-			auto attachments = std::array<graphic::Framebuffer_attachment_desc, 2> {{
-			    {write_tex.view(0),  util::Rgba{}},
-			    {feedback_a.view(0), util::Rgba{}}
-			}};
+			auto attachments = std::array<graphic::Framebuffer_attachment_desc, 2>{
+			        {{write_tex.view(0), util::Rgba{}}, {feedback_a.view(0), util::Rgba{}}}};
 
-			out_framebuffer_a = builder.build_framebuffer(attachments,
-				                                          write_tex.width(),
-				                                          write_tex.height());
+			out_framebuffer_a = builder.build_framebuffer(attachments, write_tex.width(), write_tex.height());
 
 			attachments[1].image_view = feedback_b.view(0);
-			out_framebuffer_b = builder.build_framebuffer(attachments,
-				                                          write_tex.width(),
-				                                          write_tex.height());
+			out_framebuffer_b = builder.build_framebuffer(attachments, write_tex.width(), write_tex.height());
 
 			return render_pass;
 		}
 
 		auto get_feedback_format(graphic::Device& device) {
-			auto format = device.get_supported_format({vk::Format::eR8Unorm,
-			                                           vk::Format::eR8G8Unorm,
-			                                           vk::Format::eR8G8B8A8Unorm},
-			                                          vk::FormatFeatureFlagBits::eColorAttachmentBlend
-			                                          | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
+			auto format = device.get_supported_format(
+			        {vk::Format::eR8Unorm, vk::Format::eR8G8Unorm, vk::Format::eR8G8B8A8Unorm},
+			        vk::FormatFeatureFlagBits::eColorAttachmentBlend
+			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 
 			if(format.is_some())
 				return format.get_or_throw();
@@ -114,8 +110,8 @@ namespace renderer {
 		constexpr float halton_seq(int prime, int index = 1) {
 			float r = 0.0f;
 			float f = 1.0f;
-			int i = index;
-			while (i > 0) {
+			int   i = index;
+			while(i > 0) {
 				f /= prime;
 				r += f * (i % prime);
 				i = static_cast<int>(i / static_cast<float>(prime));
@@ -124,89 +120,95 @@ namespace renderer {
 			return r;
 		}
 
-		template<class Function, std::size_t... Indices>
+		template <class Function, std::size_t... Indices>
 		constexpr auto make_array_helper(Function f, std::index_sequence<Indices...>)
-		-> std::array<typename std::result_of<Function(std::size_t)>::type, sizeof...(Indices)>
-		{
-		    return {{ f(Indices)... }};
+		        -> std::array<typename std::result_of<Function(std::size_t)>::type, sizeof...(Indices)> {
+			return {{f(Indices)...}};
 		}
 
-		template<int N, class Function>
+		template <int  N, class Function>
 		constexpr auto make_array(Function f)
-		-> std::array<typename std::result_of<Function(std::size_t)>::type, N>
-		{
-		    return make_array_helper(f, std::make_index_sequence<N>{});
+		        -> std::array<typename std::result_of<Function(std::size_t)>::type, N> {
+			return make_array_helper(f, std::make_index_sequence<N>{});
 		}
 
-		template<std::size_t Size>
-		constexpr auto build_halton_2_3() {
-			return make_array<Size*2>([](std::size_t i) {
-				return halton_seq(i%2==0 ? 2 : 3, i+1) - 0.5f;
-			});
+		template <std::size_t Size>
+		constexpr auto        build_halton_2_3() {
+			return make_array<Size * 2>(
+			        [](std::size_t i) { return halton_seq(i % 2 == 0 ? 2 : 3, i + 1) - 0.5f; });
 		}
 
-		constexpr auto offsets = build_halton_2_3<8>();
+		constexpr auto offsets       = build_halton_2_3<8>();
 		constexpr auto offset_factor = 0.15f;
 	}
 
 
-	Taa_pass::Taa_pass(Deferred_renderer& renderer,
+	Taa_pass::Taa_pass(Deferred_renderer&         renderer,
 	                   graphic::Render_target_2D& write,
-	                   graphic::Texture_2D& read)
-	    : _renderer(renderer)
-	    , _sampler(renderer.device().create_sampler(1, vk::SamplerAddressMode::eClampToEdge,
-	                                                vk::BorderColor::eIntOpaqueBlack,
-	                                                vk::Filter::eLinear,
-	                                                vk::SamplerMipmapMode::eNearest))
-	    , _descriptor_set_layout(renderer.device(), *_sampler, 5)
+	                   graphic::Texture_2D&       read)
+	  : _renderer(renderer)
+	  , _sampler(renderer.device().create_sampler(1,
+	                                              vk::SamplerAddressMode::eClampToEdge,
+	                                              vk::BorderColor::eIntOpaqueBlack,
+	                                              vk::Filter::eLinear,
+	                                              vk::SamplerMipmapMode::eNearest))
+	  , _descriptor_set_layout(renderer.device(), *_sampler, 5)
 
-	    , _feedback_buffer_a(renderer.device(), {renderer.gbuffer().depth.width(), renderer.gbuffer().depth.height()},
-	                         1, get_feedback_format(renderer.device()),
-	                         vk::ImageUsageFlagBits::eTransferDst|vk::ImageUsageFlagBits::eSampled
-	                         | vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
-	                         vk::ImageAspectFlagBits::eColor)
-	    , _feedback_buffer_b(renderer.device(), {renderer.gbuffer().depth.width(), renderer.gbuffer().depth.height()},
-	                         1, get_feedback_format(renderer.device()),
-	                         vk::ImageUsageFlagBits::eTransferDst|vk::ImageUsageFlagBits::eSampled
-	                         | vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferSrc,
-	                         vk::ImageAspectFlagBits::eColor)
+	  , _feedback_buffer_a(renderer.device(),
+	                       {renderer.gbuffer().depth.width(), renderer.gbuffer().depth.height()},
+	                       1,
+	                       get_feedback_format(renderer.device()),
+	                       vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled
+	                               | vk::ImageUsageFlagBits::eColorAttachment
+	                               | vk::ImageUsageFlagBits::eTransferSrc,
+	                       vk::ImageAspectFlagBits::eColor)
+	  , _feedback_buffer_b(renderer.device(),
+	                       {renderer.gbuffer().depth.width(), renderer.gbuffer().depth.height()},
+	                       1,
+	                       get_feedback_format(renderer.device()),
+	                       vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled
+	                               | vk::ImageUsageFlagBits::eColorAttachment
+	                               | vk::ImageUsageFlagBits::eTransferSrc,
+	                       vk::ImageAspectFlagBits::eColor)
 
-	    , _render_pass(build_render_pass(renderer, *_descriptor_set_layout,
-	                                     get_feedback_format(renderer.device()),
-	                                     write, _feedback_buffer_a, _feedback_buffer_b,
-	                                     _framebuffer_a, _framebuffer_b))
-	    , _read_frame(read)
-	    , _write_frame(write)
-	    , _prev_frame(renderer.device(),
-	                  {read.width(), read.height()}, 1,
-	                  renderer.gbuffer().color_format,
-	                  vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
-	                  vk::ImageAspectFlagBits::eColor)
+	  , _render_pass(build_render_pass(renderer,
+	                                   *_descriptor_set_layout,
+	                                   get_feedback_format(renderer.device()),
+	                                   write,
+	                                   _feedback_buffer_a,
+	                                   _feedback_buffer_b,
+	                                   _framebuffer_a,
+	                                   _framebuffer_b))
+	  , _read_frame(read)
+	  , _write_frame(write)
+	  , _prev_frame(renderer.device(),
+	                {read.width(), read.height()},
+	                1,
+	                renderer.gbuffer().color_format,
+	                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
+	                vk::ImageAspectFlagBits::eColor)
 
-	    , _descriptor_set_a(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
-	                                                          {renderer.gbuffer().depth.view(0),
-	                                                           _read_frame.view(),
-	                                                           _prev_frame.view(),
-	                                                           renderer.gbuffer().prev_depth.view(0),
-	                                                           _feedback_buffer_b.view()}))
-	    , _descriptor_set_b(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
-	                                                          {renderer.gbuffer().depth.view(0),
-	                                                           _read_frame.view(),
-	                                                           _prev_frame.view(),
-	                                                           renderer.gbuffer().prev_depth.view(0),
-	                                                           _feedback_buffer_a.view()})) {
-	}
+	  , _descriptor_set_a(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
+	                                                        {renderer.gbuffer().depth.view(0),
+	                                                         _read_frame.view(),
+	                                                         _prev_frame.view(),
+	                                                         renderer.gbuffer().prev_depth.view(0),
+	                                                         _feedback_buffer_b.view()}))
+	  , _descriptor_set_b(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
+	                                                        {renderer.gbuffer().depth.view(0),
+	                                                         _read_frame.view(),
+	                                                         _prev_frame.view(),
+	                                                         renderer.gbuffer().prev_depth.view(0),
+	                                                         _feedback_buffer_a.view()})) {}
 
 
-	void Taa_pass::update(util::Time dt) {
-		_time_acc += dt.value();
-	}
+	void Taa_pass::update(util::Time dt) { _time_acc += dt.value(); }
 
 	void Taa_pass::draw(vk::CommandBuffer& command_buffer,
-	                     Command_buffer_source&,
-	                     vk::DescriptorSet global_uniform_set,
-	                     std::size_t) {
-		
+	                    Command_buffer_source&,
+	                    vk::DescriptorSet global_uniform_set,
+	                    std::size_t) {
+
 		if(_first_frame) {
 			_first_frame = false;
 
@@ -218,20 +220,21 @@ namespace renderer {
 			                      vk::ImageLayout::eUndefined,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal);
 
-			graphic::clear_texture(command_buffer, _feedback_buffer_b, util::Rgba{0,0,0,0},
-			                       vk::ImageLayout::eUndefined, vk::ImageLayout::eShaderReadOnlyOptimal,
-			                       0, 1);
+			graphic::clear_texture(command_buffer,
+			                       _feedback_buffer_b,
+			                       util::Rgba{0, 0, 0, 0},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal,
+			                       0,
+			                       1);
 		}
 
-		auto& fb       = _render_into_a ? _framebuffer_a    : _framebuffer_b;
+		auto& fb       = _render_into_a ? _framebuffer_a : _framebuffer_b;
 		auto& desc_set = _render_into_a ? _descriptor_set_a : _descriptor_set_b;
 		_render_into_a = !_render_into_a;
 
 		_render_pass.execute(command_buffer, fb, [&] {
-			auto descriptor_sets = std::array<vk::DescriptorSet, 2> {
-				global_uniform_set,
-				*desc_set
-			};
+			auto descriptor_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *desc_set};
 			_render_pass.bind_descriptor_sets(0, descriptor_sets);
 
 			_render_pass.push_constant("pcs"_strid, _constants);
@@ -246,7 +249,7 @@ namespace renderer {
 		                      _prev_frame,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal);
-/*
+		/*
 		graphic::blit_texture(command_buffer,
 		                      _render_into_a ? _feedback_buffer_b : _feedback_buffer_a,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -255,24 +258,24 @@ namespace renderer {
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal);
 */
-		_offset_idx = (_offset_idx+2) % (offsets.size());
+		_offset_idx = (_offset_idx + 2) % (offsets.size());
 	}
 
 	void Taa_pass::process_camera(Camera_state& cam) {
 		// update fov and push constants
 		cam.fov_vertical = cam.fov_vertical + 7.0_deg;
-		cam.fov_horizontal = util::Angle(2.f * std::atan(std::tan(cam.fov_vertical.value()/2.f)
-		                                                 * cam.aspect_ratio));
-		auto new_projection = glm::perspective(cam.fov_vertical.value(), cam.aspect_ratio,
-		                                       cam.near_plane, cam.far_plane);
+		cam.fov_horizontal =
+		        util::Angle(2.f * std::atan(std::tan(cam.fov_vertical.value() / 2.f) * cam.aspect_ratio));
+		auto new_projection =
+		        glm::perspective(cam.fov_vertical.value(), cam.aspect_ratio, cam.near_plane, cam.far_plane);
 		new_projection[1][1] *= -1;
 		_constants.fov_reprojection = new_projection * glm::inverse(cam.projection);
-		cam.projection = new_projection;
-		cam.view_projection = cam.projection * cam.view;
+		cam.projection              = new_projection;
+		cam.view_projection         = cam.projection * cam.view;
 
 		// move projection by sub pixel offset and update push constants
 		auto offset = _calc_offset(cam);
-		INVARIANT(_constants.fov_reprojection[0][3]==0 && _constants.fov_reprojection[1][3]==0,
+		INVARIANT(_constants.fov_reprojection[0][3] == 0 && _constants.fov_reprojection[1][3] == 0,
 		          "m[0][3]!=0 or m[1][3]!=0");
 		_constants.fov_reprojection[0][3] = offset.x;
 		_constants.fov_reprojection[1][3] = offset.y;
@@ -283,47 +286,42 @@ namespace renderer {
 
 		// transform current view-space point to world-space and back to prev NDC
 		_constants.reprojection = _prev_view_proj * cam.inv_view;
-		_prev_view_proj = cam.view_projection;
+		_prev_view_proj         = cam.view_projection;
 
-		cam.projection = glm::translate(glm::mat4(), glm::vec3(-offset, 0.f)) * cam.projection;
+		cam.projection      = glm::translate(glm::mat4(), glm::vec3(-offset, 0.f)) * cam.projection;
 		cam.view_projection = cam.projection * cam.view;
 	}
-	auto Taa_pass::_calc_offset(const Camera_state& cam)const -> glm::vec2 {
-		auto offset = glm::vec2{offsets[_offset_idx], offsets[_offset_idx+1]} * offset_factor;
+	auto Taa_pass::_calc_offset(const Camera_state& cam) const -> glm::vec2 {
+		auto offset = glm::vec2{offsets[_offset_idx], offsets[_offset_idx + 1]} * offset_factor;
 
-		float texelSizeX = 1.f / (0.5f * cam.viewport.z-cam.viewport.x);
-		float texelSizeY = 1.f / (0.5f * cam.viewport.w-cam.viewport.y);
+		float texelSizeX = 1.f / (0.5f * cam.viewport.z - cam.viewport.x);
+		float texelSizeY = 1.f / (0.5f * cam.viewport.w - cam.viewport.y);
 
 		return offset * glm::vec2(texelSizeX, texelSizeY);
 	}
-	
 
 
-	auto Taa_pass_factory::create_pass(Deferred_renderer& renderer,
-	                                   ecs::Entity_manager& entities,
+
+	auto Taa_pass_factory::create_pass(Deferred_renderer&        renderer,
+	                                   ecs::Entity_manager&      entities,
 	                                   util::maybe<Meta_system&> meta_system,
 	                                   bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
-		auto& write = write_first_pp_buffer ? renderer.gbuffer().colorA
-		                                    : renderer.gbuffer().colorB;
-		
-		auto& read = !write_first_pp_buffer ? renderer.gbuffer().colorA
-		                                    : renderer.gbuffer().colorB;
-		
+		auto& write = write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
+
+		auto& read = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
+
 		write_first_pp_buffer = !write_first_pp_buffer;
-		
+
 		return std::make_unique<Taa_pass>(renderer, write, read);
 	}
 
-	auto Taa_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue,
-	                                   int current_score) -> int {
+	auto Taa_pass_factory::rank_device(vk::PhysicalDevice,
+	                                   util::maybe<std::uint32_t> graphics_queue,
+	                                   int                        current_score) -> int {
 		return current_score;
 	}
 
 	void Taa_pass_factory::configure_device(vk::PhysicalDevice,
 	                                        util::maybe<std::uint32_t>,
-	                                        graphic::Device_create_info&) {
-	}
-
-
-}
+	                                        graphic::Device_create_info&) {}
 }

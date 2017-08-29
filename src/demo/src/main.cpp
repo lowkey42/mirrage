@@ -17,8 +17,8 @@
 #include <SDL2/SDL.h>
 #include <glm/vec2.hpp>
 
-#include <iostream>
 #include <exception>
+#include <iostream>
 
 using namespace mirrage; // import game namespace
 using namespace std::string_literals;
@@ -36,8 +36,8 @@ namespace {
 
 #ifdef main
 int main(int argc, char** argv) {
-	char* noEnv = nullptr;
-	char** env = &noEnv;
+	char*  noEnv = nullptr;
+	char** env   = &noEnv;
 #else
 int main(int argc, char** argv, char** env) {
 #endif
@@ -56,9 +56,9 @@ int main(int argc, char** argv, char** env) {
 
 namespace {
 	constexpr auto app_name = "BachelorProject";
-	int argc;
-	char** argv;
-	char** env;
+	int            argc;
+	char**         argv;
+	char**         env;
 
 
 	void init_env(int argc, char** argv, char** env) {
@@ -70,19 +70,29 @@ namespace {
 		::argv = argv;
 		::env  = env;
 
-		INFO("Game started from: "<<argv[0]<<"\n"
-		     <<"Working dir: "<<asset::pwd()<<"\n"
-		     <<"Version: "<<version_info::name<<"\n"
-		     <<"Version-Hash: "<<version_info::hash<<"\n"
-			 <<"Version-Date: "<<version_info::date<<"\n"
-			 <<"Version-Subject: "<<version_info::subject<<"\n");
+		INFO("Game started from: " << argv[0] << "\n"
+		                           << "Working dir: "
+		                           << asset::pwd()
+		                           << "\n"
+		                           << "Version: "
+		                           << version_info::name
+		                           << "\n"
+		                           << "Version-Hash: "
+		                           << version_info::hash
+		                           << "\n"
+		                           << "Version-Date: "
+		                           << version_info::date
+		                           << "\n"
+		                           << "Version-Subject: "
+		                           << version_info::subject
+		                           << "\n");
 
 		try {
 			util::init_stacktrace(argv[0]);
 			mirrage::asset::setup_storage();
 
-		} catch (const util::Error& ex) {
-			CRASH_REPORT("Exception in init: "<<ex.what());
+		} catch(const util::Error& ex) {
+			CRASH_REPORT("Exception in init: " << ex.what());
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in init", nullptr);
 			shutdown();
 			exit(1);
@@ -96,25 +106,25 @@ namespace {
 			debug = true;
 #endif
 
-			for(auto i=1; i<argc; i++) {
-				if(argv[i]=="--debug"s) {
+			for(auto i = 1; i < argc; i++) {
+				if(argv[i] == "--debug"s) {
 					debug = true;
 				}
-				if(argv[i]=="--no-debug"s) {
+				if(argv[i] == "--no-debug"s) {
 					debug = false;
 				}
 			}
 
 
-			engine = std::make_unique<Game_engine>(app_name, 0,1, debug, argc, argv, env);
+			engine = std::make_unique<Game_engine>(app_name, 0, 1, debug, argc, argv, env);
 
-			if(argc>1 && argv[1]=="test"s)
+			if(argc > 1 && argv[1] == "test"s)
 				engine->screens().enter<Test_screen>();
 			else
 				engine->screens().enter<Test_screen>();
 
-		} catch (const util::Error& ex) {
-			CRASH_REPORT("Exception in init: "<<ex.what());
+		} catch(const util::Error& ex) {
+			CRASH_REPORT("Exception in init: " << ex.what());
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in init", nullptr);
 			shutdown();
 			exit(1);
@@ -125,8 +135,8 @@ namespace {
 		try {
 			engine->on_frame();
 
-		} catch (const util::Error& ex) {
-			CRASH_REPORT("Exception in onFrame: "<<ex.what());
+		} catch(const util::Error& ex) {
+			CRASH_REPORT("Exception in onFrame: " << ex.what());
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in onFrame", nullptr);
 			shutdown();
 			exit(2);
@@ -137,8 +147,8 @@ namespace {
 		try {
 			engine.reset();
 
-		} catch (const util::Error& ex) {
-			CRASH_REPORT("Exception in shutdown: "<<ex.what());
+		} catch(const util::Error& ex) {
+			CRASH_REPORT("Exception in shutdown: " << ex.what());
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in shutdown", nullptr);
 			exit(3);
 		}

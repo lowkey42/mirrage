@@ -7,9 +7,9 @@
 #include <mirrage/renderer/model.hpp>
 #include <mirrage/utils/log.hpp>
 
-#include <assimp/Importer.hpp>      // C++ importer interface
-#include <assimp/scene.h>           // Output data structure
-#include <assimp/postprocess.h>     // Post processing flags
+#include <assimp/postprocess.h> // Post processing flags
+#include <assimp/scene.h>       // Output data structure
+#include <assimp/Importer.hpp>  // C++ importer interface
 
 #include <gsl/gsl>
 
@@ -26,16 +26,13 @@ namespace mirrage {
 			std::string   material_id;
 
 			Sub_mesh_data() = default;
-			Sub_mesh_data(std::uint32_t index_offset, std::uint32_t index_count,
-			              std::string   material_id)
-			    : index_offset(index_offset), index_count(index_count)
-			    , material_id(std::move(material_id)) {
-			}
+			Sub_mesh_data(std::uint32_t index_offset, std::uint32_t index_count, std::string material_id)
+			  : index_offset(index_offset), index_count(index_count), material_id(std::move(material_id)) {}
 		};
 
 		auto last_of(const std::string& str, char c) {
 			auto idx = str.find_last_of(c);
-			return idx!=std::string::npos ? util::just(idx+1) : util::nothing;
+			return idx != std::string::npos ? util::just(idx + 1) : util::nothing;
 		}
 
 		auto extract_file_name(const std::string& path) {
@@ -43,26 +40,28 @@ namespace mirrage {
 
 			auto filename_delim_end = path.find_last_of('.');
 
-			return path.substr(filename_delim_begin, filename_delim_end-filename_delim_begin);
+			return path.substr(filename_delim_begin, filename_delim_end - filename_delim_begin);
 		}
 
 		auto extract_dir(const std::string& path) {
 			auto filename_delim_end = last_of(path, '/').get_or_other(last_of(path, '\\').get_or_other(0));
 
-			return path.substr(0, filename_delim_end-1);
+			return path.substr(0, filename_delim_end - 1);
 		}
 
-		template<typename T>
+		template <typename T>
 		void write(std::ostream& out, const T& value) {
-			static_assert(!std::is_pointer<T>::value, "T is a pointer. That is DEFINITLY not what you wanted!");
+			static_assert(!std::is_pointer<T>::value,
+			              "T is a pointer. That is DEFINITLY not what you wanted!");
 			out.write(reinterpret_cast<const char*>(&value), sizeof(T));
 		}
 
-		template<typename T>
+		template <typename T>
 		void write(std::ostream& out, const std::vector<T>& value) {
-			static_assert(!std::is_pointer<T>::value, "T is a pointer. That is DEFINITLY not what you wanted!");
+			static_assert(!std::is_pointer<T>::value,
+			              "T is a pointer. That is DEFINITLY not what you wanted!");
 
-			out.write(reinterpret_cast<const char*>(value.data()), value.size()*sizeof(T));
+			out.write(reinterpret_cast<const char*>(value.data()), value.size() * sizeof(T));
 		}
 	}
 
@@ -76,18 +75,17 @@ namespace mirrage {
 		auto importer = Assimp::Importer();
 
 		auto scene = importer.ReadFile(path,
-		                               aiProcess_JoinIdenticalVertices
-		                               | aiProcess_GenSmoothNormals
-		                               | aiProcess_Triangulate
-		                               | aiProcess_PreTransformVertices
-		                               | aiProcess_ImproveCacheLocality
-		                               | aiProcess_RemoveRedundantMaterials
-		                               | aiProcess_OptimizeMeshes
-		                               | aiProcess_ValidateDataStructure
-		                               | aiProcess_FlipUVs
-		                               | aiProcess_FixInfacingNormals);
+		                               aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals
+		                                       | aiProcess_Triangulate
+		                                       | aiProcess_PreTransformVertices
+		                                       | aiProcess_ImproveCacheLocality
+		                                       | aiProcess_RemoveRedundantMaterials
+		                                       | aiProcess_OptimizeMeshes
+		                                       | aiProcess_ValidateDataStructure
+		                                       | aiProcess_FlipUVs
+		                                       | aiProcess_FixInfacingNormals);
 
-		INVARIANT(scene, "Unable to load model '"<<path<<"': "<<importer.GetErrorString());
+		INVARIANT(scene, "Unable to load model '" << path << "': " << importer.GetErrorString());
 
 		// load materials
 		auto materials = gsl::span<const aiMaterial* const>(scene->mMaterials, scene->mNumMaterials);
@@ -114,7 +112,7 @@ namespace mirrage {
 		// calc vertex/index counts
 		auto meshes = gsl::span<const aiMesh* const>(scene->mMeshes, scene->mNumMeshes);
 
-		auto index_count = std::size_t(0);
+		auto index_count  = std::size_t(0);
 		auto vertex_count = std::size_t(0);
 
 		for(auto& mesh : meshes) {
@@ -123,8 +121,8 @@ namespace mirrage {
 		}
 
 		// load meshes
-		auto indices = std::vector<std::uint32_t>();
-		auto vertices = std::vector<renderer::Model_vertex>();
+		auto indices    = std::vector<std::uint32_t>();
+		auto vertices   = std::vector<renderer::Model_vertex>();
 		auto sub_meshes = std::vector<Sub_mesh_data>();
 		sub_meshes.reserve(meshes.size());
 		indices.reserve(index_count);
@@ -133,19 +131,17 @@ namespace mirrage {
 		for(auto& mesh : meshes) {
 			const auto first_index = vertices.size();
 
-			for(auto i=std::size_t(0); i<mesh->mNumVertices; i++) {
+			for(auto i = std::size_t(0); i < mesh->mNumVertices; i++) {
 				auto& v  = mesh->mVertices[i];
 				auto& n  = mesh->mNormals[i];
 				auto& uv = mesh->mTextureCoords[0][i];
-				vertices.emplace_back(v.x, v.y, v.z,
-				                      n.x, n.y, n.z,
-				                      uv.x ,uv.y);
+				vertices.emplace_back(v.x, v.y, v.z, n.x, n.y, n.z, uv.x, uv.y);
 			}
 
-			if(mesh->mNumFaces>0) {
+			if(mesh->mNumFaces > 0) {
 				auto& mat = loaded_material_ids.at(mesh->mMaterialIndex);
 				if(mat.is_some()) {
-					sub_meshes.emplace_back(indices.size(), mesh->mNumFaces*3, mat.get_or_throw());
+					sub_meshes.emplace_back(indices.size(), mesh->mNumFaces * 3, mat.get_or_throw());
 				} else {
 					WARN("Required material is missing/defect!");
 				}
@@ -161,14 +157,13 @@ namespace mirrage {
 
 		// write file
 		auto model_out_filename = output + "/models/" + model_name + ".mmf";
-		auto model_out_file = std::ofstream(model_out_filename,
-		                                    std::ostream::binary|std::ostream::trunc);
+		auto model_out_file = std::ofstream(model_out_filename, std::ostream::binary | std::ostream::trunc);
 
 		INVARIANT(model_out_file.is_open(), "Unable to open output file \"" << model_out_filename << "\"!");
 
-		auto header = renderer::Model_file_header();
+		auto header          = renderer::Model_file_header();
 		header.vertex_count  = gsl::narrow<std::uint32_t>(vertices.size() * sizeof(renderer::Model_vertex));
-		header.index_count   = gsl::narrow<std::uint32_t>(indices.size()  * sizeof(std::uint32_t));
+		header.index_count   = gsl::narrow<std::uint32_t>(indices.size() * sizeof(std::uint32_t));
 		header.submesh_count = gsl::narrow<std::uint32_t>(sub_meshes.size());
 
 		// write header
@@ -195,5 +190,4 @@ namespace mirrage {
 
 		INFO("Done.");
 	}
-
 }

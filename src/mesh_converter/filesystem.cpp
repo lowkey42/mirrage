@@ -3,11 +3,11 @@
 #include <mirrage/utils/log.hpp>
 
 #ifdef _WIN32
-	#include <windows.h>
-	#include <direct.h>
+#include <direct.h>
+#include <windows.h>
 #else
-	#include <sys/stat.h>
-	#include <unistd.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #endif
 
 
@@ -18,8 +18,8 @@ namespace mirrage {
 		CreateDirectory(dir.c_str(), NULL);
 #else
 		auto status = mkdir(dir.c_str(), 0755);
-		INVARIANT(status==0 || errno==EEXIST, "Couldn't create directory \""<<dir<<"\": "<<int(errno));
+		INVARIANT(status == 0 || errno == EEXIST,
+		          "Couldn't create directory \"" << dir << "\": " << int(errno));
 #endif
 	}
-
 }

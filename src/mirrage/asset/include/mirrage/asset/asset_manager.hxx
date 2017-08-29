@@ -5,40 +5,38 @@
 #endif
 
 
-namespace mirrage {
-namespace asset {
+namespace mirrage::asset {
 
-	template<class T>
+	template <class T>
 	void Asset_manager::_asset_reloader_impl(void* asset, istream in) {
-		auto newAsset = Loader<T>::load(std::move(in));
+		auto newAsset           = Loader<T>::load(std::move(in));
 		*static_cast<T*>(asset) = std::move(*newAsset.get());
 	}
 
-	template<typename T>
+	template <typename T>
 	Ptr<T> Asset_manager::load(const AID& id, bool cache) {
 		auto asset = load_maybe<T>(id, cache);
 
 		if(asset.is_nothing())
-			throw Loading_failed("asset not found: "+id.str());
+			throw Loading_failed("asset not found: " + id.str());
 
 		return asset.get_or_throw();
 	}
 
-	template<typename T>
+	template <typename T>
 	auto Asset_manager::load_maybe(const AID& id, bool cache, bool warn) -> util::maybe<Ptr<T>> {
 		auto res = _assets.find(id);
-		if(res!=_assets.end())
+		if(res != _assets.end())
 			return Ptr<T>{*this, id, std::static_pointer_cast<const T>(res->second.data)};
 
 		Location_type type;
-		std::string path;
+		std::string   path;
 		std::tie(type, path) = _locate(id, warn);
 
 		auto asset = std::shared_ptr<T>{};
 
-		switch(type){
-			case Location_type::none:
-				return util::nothing;
+		switch(type) {
+			case Location_type::none: return util::nothing;
 
 			case Location_type::indirection:
 				asset = Interceptor<T>::on_intercept(*this, std::move(path), id);
@@ -60,58 +58,58 @@ namespace asset {
 		return Ptr<T>{*this, id, asset};
 	}
 
-	template<typename T>
+	template <typename T>
 	void Asset_manager::save(const AID& id, const T& asset) {
 		Loader<T>::store(_create(id), asset);
 		_force_reload(id);
 	}
 
 
-	template<class R>
+	template <class R>
 	Ptr<R>::Ptr() : _mgr(nullptr) {}
 
-	template<class R>
+	template <class R>
 	Ptr<R>::Ptr(Asset_manager& mgr, const AID& id, std::shared_ptr<const R> res)
-	    : _mgr(&mgr), _ptr(res), _aid(id) {}
+	  : _mgr(&mgr), _ptr(res), _aid(id) {}
 
-    template<class R>
-    const R& Ptr<R>::operator*(){
-        load();
-        return *_ptr.get();
-    }
-    template<class R>
-    const R& Ptr<R>::operator*()const {
-        INVARIANT(*this, "Access to unloaded resource");
-        return *_ptr.get();
-    }
+	template <class R>
+	const R& Ptr<R>::operator*() {
+		load();
+		return *_ptr.get();
+	}
+	template <class R>
+	const R& Ptr<R>::operator*() const {
+		INVARIANT(*this, "Access to unloaded resource");
+		return *_ptr.get();
+	}
 
-	template<class R>
-	const R* Ptr<R>::operator->(){
+	template <class R>
+	const R* Ptr<R>::operator->() {
 		load();
 		return _ptr.get();
 	}
-	template<class R>
-	const R* Ptr<R>::operator->()const {
+	template <class R>
+	const R* Ptr<R>::operator->() const {
 		INVARIANT(*this, "Access to unloaded resource");
 		return _ptr.get();
 	}
 
-	template<class R>
-	bool Ptr<R>::operator==(const Ptr& o)const noexcept {
+	template <class R>
+	bool Ptr<R>::operator==(const Ptr& o) const noexcept {
 		return _aid == o._aid;
 	}
-	template<class R>
-	bool Ptr<R>::operator<(const Ptr& o)const noexcept {
+	template <class R>
+	bool Ptr<R>::operator<(const Ptr& o) const noexcept {
 		return _aid < o._aid;
 	}
 
-	template<class R>
+	template <class R>
 	Ptr<R>::operator std::shared_ptr<const R>() {
 		load();
 		return _ptr;
 	}
 
-	template<class R>
+	template <class R>
 	void Ptr<R>::load() {
 		if(!_ptr) {
 			INVARIANT(_mgr, "Tried to load unintialized resource-ref");
@@ -120,7 +118,7 @@ namespace asset {
 		}
 	}
 
-	template<class R>
+	template <class R>
 	bool Ptr<R>::try_load(bool cache, bool warn) {
 		if(!_ptr) {
 			INVARIANT(_mgr, "Tried to load unintialized resource-ref");
@@ -134,10 +132,8 @@ namespace asset {
 		return !!_ptr;
 	}
 
-	template<class R>
+	template <class R>
 	void Ptr<R>::unload() {
 		_ptr.reset();
 	}
-
-}
 }

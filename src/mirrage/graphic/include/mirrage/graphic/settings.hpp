@@ -2,13 +2,12 @@
 
 #include <mirrage/utils/units.hpp>
 
-#include <unordered_map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 
-namespace mirrage {
-namespace graphic {
+namespace mirrage::graphic {
 
 	class Context;
 	class Device;
@@ -18,16 +17,12 @@ namespace graphic {
 	using Window_ptr = std::unique_ptr<Window>;
 
 
-	enum class Fullscreen {
-		no,
-		yes,
-		yes_borderless
-	};
+	enum class Fullscreen { no, yes, yes_borderless };
 
 	struct Window_settings {
-		int width;
-		int height;
-		int display;
+		int        width;
+		int        height;
+		int        display;
 		Fullscreen fullscreen;
 	};
 
@@ -36,11 +31,11 @@ namespace graphic {
 	};
 
 
-	inline auto default_window_settings(int display=0) -> Window_settings {
+	inline auto default_window_settings(int display = 0) -> Window_settings {
 		return Window_settings{1280, 720, display, Fullscreen::no};
 	}
-	inline auto default_settings(int display=0) -> Graphics_settings {
-		auto settings = Graphics_settings{};
+	inline auto default_settings(int display = 0) -> Graphics_settings {
+		auto settings            = Graphics_settings{};
 		settings.windows["Main"] = default_window_settings(display);
 
 		return settings;
@@ -53,17 +48,7 @@ namespace graphic {
 
 #ifdef sf2_structDef
 	sf2_enumDef(Fullscreen, no, yes, yes_borderless);
-	sf2_structDef(Window_settings,
-		width,
-		height,
-		display,
-		fullscreen
-	);
-	sf2_structDef(Graphics_settings,
-		windows
-	);
+	sf2_structDef(Window_settings, width, height, display, fullscreen);
+	sf2_structDef(Graphics_settings, windows);
 #endif
-
 }
-}
-

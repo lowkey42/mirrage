@@ -10,10 +10,10 @@
 namespace mirrage {
 
 	Meta_system::Meta_system(Game_engine& engine)
-	    : _entities(engine.assets(), this)
-	    , _renderer(engine.renderer_factory().create_renderer(_entities, *this))
-	    , _model_loading(std::make_unique<renderer::Loading_system>(_entities, _renderer->model_loader()))
-	    , _nims(std::make_unique<systems::Nim_system>(_entities)) {
+	  : _entities(engine.assets(), this)
+	  , _renderer(engine.renderer_factory().create_renderer(_entities, *this))
+	  , _model_loading(std::make_unique<renderer::Loading_system>(_entities, _renderer->model_loader()))
+	  , _nims(std::make_unique<systems::Nim_system>(_entities)) {
 		_entities.register_component_type<ecs::components::Transform_comp>();
 	}
 
@@ -29,12 +29,7 @@ namespace mirrage {
 		_model_loading->update(dt);
 		_renderer->update(dt);
 	}
-	void Meta_system::draw() {
-		_renderer->draw();
-	}
+	void Meta_system::draw() { _renderer->draw(); }
 
-	void Meta_system::shrink_to_fit() {
-		_renderer->shrink_to_fit();
-	}
-
+	void Meta_system::shrink_to_fit() { _renderer->shrink_to_fit(); }
 }

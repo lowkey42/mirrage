@@ -3,29 +3,26 @@
 #include <mirrage/ecs/component.hpp>
 #include <mirrage/ecs/serializer.hpp>
 
-#include <mirrage/utils/string_utils.hpp>
 #include <mirrage/utils/log.hpp>
+#include <mirrage/utils/string_utils.hpp>
 
 #include <sf2/sf2.hpp>
 
 #include <algorithm>
-#include <stdexcept>
 #include <iostream>
+#include <stdexcept>
 
 
 
-namespace mirrage {
-namespace ecs {
+namespace mirrage::ecs {
 
 	Entity_manager::Entity_manager(asset::Asset_manager& assets, util::any_ptr ud)
-		: _assets(assets), _userdata(ud) {
+	  : _assets(assets), _userdata(ud) {
 
 		init_serializer(*this);
 	}
 
-	Entity_facet Entity_manager::emplace()noexcept {
-		return {*this, _handles.get_new()};
-	}
+	Entity_facet Entity_manager::emplace() noexcept { return {*this, _handles.get_new()}; }
 	Entity_facet Entity_manager::emplace(const std::string& blueprint) {
 		auto e = emplace();
 
@@ -45,19 +42,20 @@ namespace ecs {
 		if(validate(entity)) {
 			_queue_erase.enqueue(entity);
 		} else {
-			ERROR("Double-Deletion of entity "<<entity_name(entity));
+			ERROR("Double-Deletion of entity " << entity_name(entity));
 		}
 	}
 
 	void Entity_manager::process_queued_actions() {
-		INVARIANT(_local_queue_erase.empty(), "Someone's been sleeping in my bed! (_local_queue_erase is dirty)");
+		INVARIANT(_local_queue_erase.empty(),
+		          "Someone's been sleeping in my bed! (_local_queue_erase is dirty)");
 
 		std::array<Entity_handle, 32> erase_buffer;
 		do {
 			std::size_t count = _queue_erase.try_dequeue_bulk(erase_buffer.data(), erase_buffer.size());
 
-			if(count>0) {
-				for(std::size_t i=0; i<count; i++) {
+			if(count > 0) {
+				for(std::size_t i = 0; i < count; i++) {
 					const auto h = erase_buffer[i];
 					_local_queue_erase.emplace_back(h);
 
@@ -95,7 +93,7 @@ namespace ecs {
 
 	auto Entity_manager::write_one(Entity_handle source) -> ETO {
 		std::stringstream stream;
-		auto serializer = Serializer{stream, *this, _assets, _userdata, {}};
+		auto              serializer = Serializer{stream, *this, _assets, _userdata, {}};
 		serializer.write(source);
 		stream.flush();
 
@@ -115,22 +113,18 @@ namespace ecs {
 	void Entity_manager::write(std::ostream& stream, Component_filter filter) {
 
 		auto serializer = Serializer{stream, *this, _assets, _userdata, filter};
-		auto entities = Entity_collection_facet{*this};
-		serializer.write_virtual(
-			sf2::vmember("entities", entities)
-		);
+		auto entities   = Entity_collection_facet{*this};
+		serializer.write_virtual(sf2::vmember("entities", entities));
 
 		stream.flush();
 	}
 
-	void Entity_manager::write(std::ostream& stream,
+	void Entity_manager::write(std::ostream&                     stream,
 	                           const std::vector<Entity_handle>& entities,
-	                           Component_filter filter) {
+	                           Component_filter                  filter) {
 
 		auto serializer = Serializer{stream, *this, _assets, _userdata, filter};
-		serializer.write_virtual(
-			sf2::vmember("entities", entities)
-		);
+		serializer.write_virtual(sf2::vmember("entities", entities));
 
 		stream.flush();
 	}
@@ -141,26 +135,18 @@ namespace ecs {
 		}
 
 		auto deserializer = Deserializer{"$EntityDump", stream, *this, _assets, _userdata, filter};
-		auto entities = Entity_collection_facet{*this};
-		deserializer.read_virtual(
-			sf2::vmember("entities", entities)
-		);
-	}
-	
-	
-	Entity_collection_facet::Entity_collection_facet(Entity_manager& manager)
-	    : _manager(manager) {
-	}
-	
-	Entity_iterator Entity_collection_facet::begin()const {
-		return Entity_iterator(_manager._handles, _manager._handles.next());
-	}
-	Entity_iterator Entity_collection_facet::end()const {
-		return Entity_iterator(_manager._handles, invalid_entity);
-	}
-	void Entity_collection_facet::clear() {
-		_manager.clear();
+		auto entities     = Entity_collection_facet{*this};
+		deserializer.read_virtual(sf2::vmember("entities", entities));
 	}
 
-} /* namespace ecs */
+
+	Entity_collection_facet::Entity_collection_facet(Entity_manager& manager) : _manager(manager) {}
+
+	Entity_iterator Entity_collection_facet::begin() const {
+		return Entity_iterator(_manager._handles, _manager._handles.next());
+	}
+	Entity_iterator Entity_collection_facet::end() const {
+		return Entity_iterator(_manager._handles, invalid_entity);
+	}
+	void Entity_collection_facet::clear() { _manager.clear(); }
 }
