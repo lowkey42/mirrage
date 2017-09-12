@@ -12,29 +12,14 @@ namespace mirrage::renderer {
 	namespace {
 		auto build_render_pass(Deferred_renderer&         renderer,
 		                       vk::DescriptorSetLayout    desc_set_layout,
-		                       vk::Format                 feedback_format,
 		                       graphic::Render_target_2D& write_tex,
-		                       graphic::Render_target_2D& feedback_a,
-		                       graphic::Render_target_2D& feedback_b,
-		                       graphic::Framebuffer&      out_framebuffer_a,
-		                       graphic::Framebuffer&      out_framebuffer_b) {
+		                       graphic::Framebuffer&      out_framebuffer) {
 
 			auto builder = renderer.device().create_render_pass_builder();
 
 			auto screen = builder.add_attachment(
 			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
 			                                  renderer.gbuffer().color_format,
-			                                  vk::SampleCountFlagBits::e1,
-			                                  vk::AttachmentLoadOp::eDontCare,
-			                                  vk::AttachmentStoreOp::eStore,
-			                                  vk::AttachmentLoadOp::eDontCare,
-			                                  vk::AttachmentStoreOp::eDontCare,
-			                                  vk::ImageLayout::eUndefined,
-			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
-
-			auto feedback = builder.add_attachment(
-			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
-			                                  feedback_format,
 			                                  vk::SampleCountFlagBits::e1,
 			                                  vk::AttachmentLoadOp::eDontCare,
 			                                  vk::AttachmentStoreOp::eStore,
@@ -56,7 +41,7 @@ namespace mirrage::renderer {
 			                           sizeof(Taa_constants),
 			                           vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex);
 
-			auto& pass = builder.add_subpass(pipeline).color_attachment(screen).color_attachment(feedback);
+			auto& pass = builder.add_subpass(pipeline).color_attachment(screen);
 
 			pass.stage("taa"_strid)
 			        .shader("frag_shader:taa"_aid, graphic::Shader_stage::fragment)
@@ -82,29 +67,10 @@ namespace mirrage::renderer {
 
 			auto render_pass = builder.build();
 
-			auto attachments = std::array<graphic::Framebuffer_attachment_desc, 2>{
-			        {{write_tex.view(0), util::Rgba{}}, {feedback_a.view(0), util::Rgba{}}}};
-
-			out_framebuffer_a = builder.build_framebuffer(attachments, write_tex.width(), write_tex.height());
-
-			attachments[1].image_view = feedback_b.view(0);
-			out_framebuffer_b = builder.build_framebuffer(attachments, write_tex.width(), write_tex.height());
+			out_framebuffer = builder.build_framebuffer(
+			        {write_tex.view(0), util::Rgba{}}, write_tex.width(), write_tex.height());
 
 			return render_pass;
-		}
-
-		auto get_feedback_format(graphic::Device& device) {
-			auto format = device.get_supported_format(
-			        {vk::Format::eR8Unorm, vk::Format::eR8G8Unorm, vk::Format::eR8G8B8A8Unorm},
-			        vk::FormatFeatureFlagBits::eColorAttachmentBlend
-			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
-
-			if(format.is_some())
-				return format.get_or_throw();
-
-			WARN("HDR render targets are not supported! Falling back to LDR rendering!");
-
-			return device.get_texture_rgb_format().get_or_throw("No rgb-format supported");
 		}
 
 		constexpr float halton_seq(int prime, int index = 1) {
@@ -154,31 +120,7 @@ namespace mirrage::renderer {
 	                                              vk::SamplerMipmapMode::eNearest))
 	  , _descriptor_set_layout(renderer.device(), *_sampler, 5)
 
-	  , _feedback_buffer_a(renderer.device(),
-	                       {renderer.gbuffer().depth.width(), renderer.gbuffer().depth.height()},
-	                       1,
-	                       get_feedback_format(renderer.device()),
-	                       vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled
-	                               | vk::ImageUsageFlagBits::eColorAttachment
-	                               | vk::ImageUsageFlagBits::eTransferSrc,
-	                       vk::ImageAspectFlagBits::eColor)
-	  , _feedback_buffer_b(renderer.device(),
-	                       {renderer.gbuffer().depth.width(), renderer.gbuffer().depth.height()},
-	                       1,
-	                       get_feedback_format(renderer.device()),
-	                       vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled
-	                               | vk::ImageUsageFlagBits::eColorAttachment
-	                               | vk::ImageUsageFlagBits::eTransferSrc,
-	                       vk::ImageAspectFlagBits::eColor)
-
-	  , _render_pass(build_render_pass(renderer,
-	                                   *_descriptor_set_layout,
-	                                   get_feedback_format(renderer.device()),
-	                                   write,
-	                                   _feedback_buffer_a,
-	                                   _feedback_buffer_b,
-	                                   _framebuffer_a,
-	                                   _framebuffer_b))
+	  , _render_pass(build_render_pass(renderer, *_descriptor_set_layout, write, _framebuffer))
 	  , _read_frame(read)
 	  , _write_frame(write)
 	  , _prev_frame(renderer.device(),
@@ -188,18 +130,11 @@ namespace mirrage::renderer {
 	                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst,
 	                vk::ImageAspectFlagBits::eColor)
 
-	  , _descriptor_set_a(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
-	                                                        {renderer.gbuffer().depth.view(0),
-	                                                         _read_frame.view(),
-	                                                         _prev_frame.view(),
-	                                                         renderer.gbuffer().prev_depth.view(0),
-	                                                         _feedback_buffer_b.view()}))
-	  , _descriptor_set_b(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
-	                                                        {renderer.gbuffer().depth.view(0),
-	                                                         _read_frame.view(),
-	                                                         _prev_frame.view(),
-	                                                         renderer.gbuffer().prev_depth.view(0),
-	                                                         _feedback_buffer_a.view()})) {}
+	  , _descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
+	                                                      {renderer.gbuffer().depth.view(0),
+	                                                       _read_frame.view(),
+	                                                       _prev_frame.view(),
+	                                                       renderer.gbuffer().prev_depth.view(0)})) {}
 
 
 	void Taa_pass::update(util::Time dt) { _time_acc += dt.value(); }
@@ -219,22 +154,10 @@ namespace mirrage::renderer {
 			                      _prev_frame,
 			                      vk::ImageLayout::eUndefined,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal);
-
-			graphic::clear_texture(command_buffer,
-			                       _feedback_buffer_b,
-			                       util::Rgba{0, 0, 0, 0},
-			                       vk::ImageLayout::eUndefined,
-			                       vk::ImageLayout::eShaderReadOnlyOptimal,
-			                       0,
-			                       1);
 		}
 
-		auto& fb       = _render_into_a ? _framebuffer_a : _framebuffer_b;
-		auto& desc_set = _render_into_a ? _descriptor_set_a : _descriptor_set_b;
-		_render_into_a = !_render_into_a;
-
-		_render_pass.execute(command_buffer, fb, [&] {
-			auto descriptor_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *desc_set};
+		_render_pass.execute(command_buffer, _framebuffer, [&] {
+			auto descriptor_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_descriptor_set};
 			_render_pass.bind_descriptor_sets(0, descriptor_sets);
 
 			_render_pass.push_constant("pcs"_strid, _constants);
@@ -249,15 +172,7 @@ namespace mirrage::renderer {
 		                      _prev_frame,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal);
-		/*
-		graphic::blit_texture(command_buffer,
-		                      _render_into_a ? _feedback_buffer_b : _feedback_buffer_a,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      _write_frame,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal);
-*/
+
 		_offset_idx = (_offset_idx + 2) % (offsets.size());
 	}
 

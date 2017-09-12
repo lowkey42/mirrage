@@ -86,8 +86,8 @@ float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, 
 
 	vec3 N = get_normal(ss_p, mip);
 	float occluder_angle = abs(dot(N, n_C));
-	float boost = smoothstep(0.01, 0.1, occluder_angle)*0.6+0.4;
-	boost += smoothstep(0.8, 1.0, occluder_angle)*3;
+	float boost = smoothstep(0.01, 0.1, occluder_angle)*0.4+0.6;
+	boost += smoothstep(0.8, 1.0, occluder_angle)*2;
 
 	float f = max(RADIUS*RADIUS - vv, 0.0);
 

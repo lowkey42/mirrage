@@ -14,8 +14,8 @@ layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 3) uniform sampler2D result_sampler;
 layout(set=1, binding = 4) uniform sampler2D history_weight_sampler;
-layout(set=1, binding = 5) uniform sampler2D depth_all_levels_sampler;
-layout(set=1, binding = 6) uniform sampler2D mat_data_all_levels_sampler;
+layout(set=1, binding = 5) uniform sampler2D prev_depth_sampler;
+layout(set=1, binding = 6) uniform sampler2D prev_mat_data_sampler;
 
 layout (constant_id = 0) const int LAST_SAMPLE = 0;
 layout (constant_id = 1) const float R = 40;
@@ -49,7 +49,9 @@ void main() {
 	float base_mip    = pcs.prev_projection[3][3];
 
 	if(current_mip < max_mip)
-		out_color = vec4(upsampled_result(depth_all_levels_sampler, mat_data_all_levels_sampler, result_sampler, int(current_mip), 0, vertex_out.tex_coords, 1.0).rgb, 1.0);
+		out_color = vec4(upsampled_result(depth_sampler, mat_data_sampler,
+		                                  prev_depth_sampler, prev_mat_data_sampler,
+					                      result_sampler, vertex_out.tex_coords), 1.0);
 	else
 		out_color = vec4(0,0,0, 1);
 
@@ -69,6 +71,7 @@ void main() {
 }
 
 const float PI = 3.14159265359;
+const float REC_PI = 0.3183098861837906715;
 
 vec3 saturation(vec3 c, float change) {
 	vec3 f = vec3(0.299,0.587,0.114);
@@ -95,7 +98,7 @@ vec3 gi_sample(int lod, int base_mip) {
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
 	float angle = random(vec4(vertex_out.tex_coords, 0.0, 0));
-	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 23.0;
+	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 19.0;
 
 	for(int i=0; i<SAMPLES; i++) {
 		float r = mix(LAST_SAMPLE==1 ? 2.0 : R/2.0, LAST_SAMPLE==1 ? R/2 : R, float(i)/float(SAMPLES));
@@ -105,13 +108,13 @@ vec3 gi_sample(int lod, int base_mip) {
 		float cos_angle = cos(angle);
 
 		ivec2 p = ivec2(uv + vec2(sin_angle, cos_angle) * r);
-		if(p.x>0.0 && p.x<texture_size.x && p.y>0.0 && p.y<texture_size.y) {
+//		if(p.x>0.0 && p.x<texture_size.x && p.y>0.0 && p.y<texture_size.y) {
 			float weight;
 			vec3 sc = calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
 
 			c += sc;
 			samples_used += weight;
-		}
+//		}
 	}
 
 	// could be used to blend between screen-space and static GI
@@ -130,44 +133,34 @@ vec3 gi_sample(int lod, int base_mip) {
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight) {
 	float depth  = texelFetch(depth_sampler, src_uv, 0).r;
-	vec3 P = position_from_ldepth(src_uv / tex_size, depth);// x_i
+	vec3 P = position_from_ldepth(src_uv / tex_size, depth); // x_i
 	vec3 Pn = normalize(P);
 
+	vec3 diff = shaded_point - P;
+	vec3 dir = normalize(diff);
+	float r2 = dot(diff, diff) * 1.2;
 
 	float visibility = 1.0; // TODO: raycast
 
 	vec4 mat_data = texelFetch(mat_data_sampler, src_uv, 0);
 	vec3 N = decode_normal(mat_data.rg);
 
-	vec3 diff = shaded_point - P;
-	float r = length(diff);
-	if(r<0.0001) { // ignore too close pixels
-		weight = 0.0;
-		return vec3(0,0,0);
-	}
-
-	vec3 dir = diff / r;
-
-	// reduce light from far away surfaces to compensate for missing occlusion check
-	r += smoothstep(6, 10, r)*10;
-	float r2 = r*r;
-
 	vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;
 
 	float NdotL_src = clamp(dot(N, dir), 0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
 
-	float cos_alpha = dot(Pn, vec3(0,0,1));
+	float cos_alpha = Pn.z;
 	float cos_beta  = dot(Pn, N);
 	float z = depth * global_uniforms.proj_planes.y;
 
 	float ds = pcs.prev_projection[2][3] * z*z * clamp(cos_alpha / cos_beta, 1.0, 20.0);
 
-	float R2 = 1.0 / PI * NdotL_src * ds;
+	float R2 = REC_PI * NdotL_src * ds;
 	float area = R2 / (r2 + R2); // point-to-differential area form-factor
 
-	weight = visibility * NdotL_dst * area > 0.0 ? 1.0 : 0.0;
+	weight = visibility * NdotL_dst * area;
 
-	return max(vec3(0.0), radiance * visibility * NdotL_dst * area);
+	return max(vec3(0.0), radiance * weight);
 }
 

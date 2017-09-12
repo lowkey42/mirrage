@@ -632,13 +632,16 @@ namespace mirrage::renderer {
 		auto end = _max_mip_level;
 		_sample_descriptor_sets.reserve(end - _min_mip_level);
 		for(auto i = 0; i < end - _min_mip_level; i++) {
-			auto images = {_color_diffuse_in.view(i + _min_mip_level),
-			               renderer.gbuffer().depth.view(i + _min_mip_level),
-			               renderer.gbuffer().mat_data.view(i + _min_mip_level),
+			auto curr_mip = i + _min_mip_level;
+			auto prev_mip = util::min(curr_mip + 1, renderer.gbuffer().depth.mip_levels());
+
+			auto images = {_color_diffuse_in.view(curr_mip),
+			               renderer.gbuffer().depth.view(curr_mip),
+			               renderer.gbuffer().mat_data.view(curr_mip),
 			               _gi_diffuse.view(i + 1),
 			               _history_weight.view(),
-			               renderer.gbuffer().depth.view(),
-			               renderer.gbuffer().mat_data.view()};
+			               renderer.gbuffer().depth.view(prev_mip),
+			               renderer.gbuffer().mat_data.view(prev_mip)};
 
 			_sample_descriptor_sets.emplace_back(
 			        _descriptor_set_layout.create_set(renderer.descriptor_pool(), images));

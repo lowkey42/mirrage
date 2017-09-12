@@ -40,8 +40,7 @@ void main() {
 	}
 
 	if(pcs.prev_projection[2][3]==0) {
-		out_color.rgb = upsampled_result(depth_sampler, mat_data_sampler, result_spec_sampler,
-		                                 1, 0, vertex_out.tex_coords, 1.0).rgb;
+		out_color.rgb = texture(result_spec_sampler, vertex_out.tex_coords).rgb;
 		out_color.a = 1;
 
 	} else if(pcs.prev_projection[2][3]>=1) {

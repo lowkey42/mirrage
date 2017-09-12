@@ -29,18 +29,14 @@ namespace mirrage::renderer {
 
 	  private:
 		Deferred_renderer&                   _renderer;
-		graphic::Framebuffer                 _framebuffer_a;
-		graphic::Framebuffer                 _framebuffer_b;
+		graphic::Framebuffer                 _framebuffer;
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
-		graphic::Render_target_2D            _feedback_buffer_a;
-		graphic::Render_target_2D            _feedback_buffer_b;
 		graphic::Render_pass                 _render_pass;
 		graphic::Texture_2D&                 _read_frame;
 		graphic::Render_target_2D&           _write_frame;
 		graphic::Render_target_2D            _prev_frame;
-		vk::UniqueDescriptorSet              _descriptor_set_a;
-		vk::UniqueDescriptorSet              _descriptor_set_b;
+		vk::UniqueDescriptorSet              _descriptor_set;
 
 		bool          _first_frame   = true;
 		bool          _render_into_a = true;
