@@ -5,8 +5,6 @@
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
-	vec3 view_ray;
-	flat vec3 corner_view_rays[4];
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
@@ -154,7 +152,7 @@ void main() {
 		vec3 L = raycast_hit_point - P;
 		
 		vec3 color = cone_tracing(roughness, raycast_hit_uv/depthSize + PDnrand2(vec4(vertex_out.tex_coords,0,global_uniforms.time.x))*0.01, dir, coneTheta);
-		float factor_distance = 1.0 - length(L) / 20.0;
+		float factor_distance = 1.0 - min(length(L) / 20.0, 1.0);
 
 		out_color.rgb = max(color * factor_distance, vec3(0));
 	} else {

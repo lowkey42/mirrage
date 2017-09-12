@@ -5,8 +5,6 @@
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
-	vec3 view_ray;
-	flat vec3 corner_view_rays[4];
 } vertex_out;
 
 layout(location = 0) out vec4 out_color;
@@ -84,7 +82,7 @@ vec3 gi_sample(int lod, int base_mip) {
 	vec2 texture_size = textureSize(color_sampler, 0);
 	ivec2 uv = ivec2(vertex_out.tex_coords * texture_size);
 
-	// FIXME: workaround for white bar at right/bottom border
+	// workaround for white bar at right/bottom border
 	if(uv.y >= texture_size.y-1 || uv.x >= texture_size.x-1)
 		return vec3(0, 0, 0);
 
@@ -116,12 +114,8 @@ vec3 gi_sample(int lod, int base_mip) {
 		}
 	}
 
-	// experiment to replace missing sky-light
-	// c += vec3(0.97,0.89,1)/4000 *max(0, dot(N, vec3(0,1,0)));
-
 	// could be used to blend between screen-space and static GI
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
-
 
 	if(PRIORITISE_NEAR_SAMPLES==1)
 		c = c * pow(2.0, clamp((lod-base_mip)*2, 4, 7));
@@ -130,19 +124,7 @@ vec3 gi_sample(int lod, int base_mip) {
 
 	c  *= 128.0 / SAMPLES;
 
-	// c = saturation(c, 1.1);
-
-	// fade out if too few samples hit anything on screen
-//	c *= smoothstep(0.1, 0.2, samples_used/SAMPLES);
-
 	return c;
-}
-
-vec3 to_view_space(vec2 uv, float depth) {
-	vec3 view_ray_x1 = mix(vertex_out.corner_view_rays[0], vertex_out.corner_view_rays[1], uv.x);
-	vec3 view_ray_x2 = mix(vertex_out.corner_view_rays[2], vertex_out.corner_view_rays[3], uv.x);
-
-	return mix(view_ray_x1, view_ray_x2, uv.y) * depth;
 }
 
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
@@ -153,30 +135,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 
 
 	float visibility = 1.0; // TODO: raycast
-/*
-	vec3 raycast_dir = normalize(P - shaded_point);
 
-	vec2 raycast_hit_uv;
-	vec3 raycast_hit_point;
-	if(traceScreenSpaceRay1(shaded_point+raycast_dir, raycast_dir, pcs.projection, depth_sampler,
-	                        textureSize(depth_sampler, 0), 1.0, global_uniforms.proj_planes.x,
-	                        max(1, 1), 0.01, MAX_RAYCAST_STEPS, length(P - shaded_point), 0,
-	                        raycast_hit_uv, raycast_hit_point)) {
-
-		float uv_diff = distanceSquared(src_uv, raycast_hit_uv);
-//		if(uv_diff>0.0001) {
-			if(uv_diff< 0.01) {
-				src_uv = raycast_hit_uv;
-				depth  = textureLod(depth_sampler, src_uv, lod).r;
-				P = to_view_space(src_uv, depth);
-
-			} else {
-				weight = 0.0;
-				return vec3(0,0,0);
-			}
-//		}
-	}
-*/
 	vec4 mat_data = texelFetch(mat_data_sampler, src_uv, 0);
 	vec3 N = decode_normal(mat_data.rg);
 
@@ -208,9 +167,6 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	float area = R2 / (r2 + R2); // point-to-differential area form-factor
 
 	weight = visibility * NdotL_dst * area > 0.0 ? 1.0 : 0.0;
-
-//	weight = NdotL_dst * NdotL_src > 0.0 ? 1.0 : 0.0;
-//	return radiance * NdotL_dst * weight / r2;
 
 	return max(vec3(0.0), radiance * visibility * NdotL_dst * area);
 }
