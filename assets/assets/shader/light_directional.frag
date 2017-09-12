@@ -53,7 +53,7 @@ void main() {
 
 	// material 255 (unlit)
 	if(material==255) {
-		out_color = out_color_diff = vec4(albedo*200.0, 1.0);
+		out_color = out_color_diff = vec4(albedo*30.0, 1.0);
 		return;
 	}
 
