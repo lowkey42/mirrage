@@ -55,7 +55,7 @@ float g2(float x) {
 }
 float g3(float x) {
 	float b = 0;
-	float c = 0.01f;
+	float c = 0.001f;
 	return exp(- (x-b)*(x-b) / (2*c*c));
 }
 

@@ -114,7 +114,7 @@ void main() {
 
 		out_diffuse.rgb  = radiance;
 		out_specular.rgb = specular;
-		out_weight.r     = (1.0 - smoothstep(0.08, 0.1, dot(pos_error,pos_error)))
+		out_weight.r     = (1.0 - smoothstep(0.05, 0.2, dot(pos_error,pos_error)))
 		                 * global_weight;
 		out_input *= out_weight.r;
 	}

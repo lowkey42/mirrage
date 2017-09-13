@@ -43,6 +43,11 @@ vec3 gi_sample(int lod, int base_mip);
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight);
 
+float luminance_norm(vec3 c) {
+	vec3 f = vec3(0.299,0.587,0.114);
+	return sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
+}
+
 void main() {
 	float current_mip = pcs.prev_projection[0][3];
 	float max_mip     = pcs.prev_projection[1][3];
@@ -51,7 +56,7 @@ void main() {
 	if(current_mip < max_mip)
 		out_color = vec4(upsampled_result(depth_sampler, mat_data_sampler,
 		                                  prev_depth_sampler, prev_mat_data_sampler,
-					                      result_sampler, vertex_out.tex_coords), 1.0);
+		                                  result_sampler, vertex_out.tex_coords), 1.0);
 	else
 		out_color = vec4(0,0,0, 1);
 
@@ -60,11 +65,17 @@ void main() {
 
 	// last mip level => blend with history
 	if(abs(current_mip - base_mip) < 0.00001) {
-		float history_weight = texelFetch(history_weight_sampler,
-		                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
-		                                  0).r;
+		vec2 hws_step = 1.0 / textureSize(history_weight_sampler, 0);
 
-		out_color *= 1.0 - (history_weight*0.85);
+		vec4  history_weights = textureGather(history_weight_sampler, vertex_out.tex_coords+hws_step, 0);
+		float history_weight  = min(history_weights.x, min(history_weights.y, min(history_weights.z, history_weights.w)));
+
+		history_weights = textureGather(history_weight_sampler, vertex_out.tex_coords-hws_step, 0);
+		history_weight  = min(history_weight,min(history_weights.x, min(history_weights.y, min(history_weights.z, history_weights.w))));
+
+		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
+
+		out_color *= 1.0 - mix(0.75, 0.85, history_weight);
 	}
 
 	out_color = max(out_color, vec4(0));

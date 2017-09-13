@@ -130,6 +130,7 @@ void main() {
 	vec3 V = -normalize(P);
 
 	vec3 dir = -reflect(V, N);
+	P += dir*0.1;
 
 	bool spec_visible = metallic>0.01 || (max(0, dot(normalize(V+dir), dir))<0.7);
 
@@ -148,26 +149,27 @@ void main() {
 							depthSize, 2.0, global_uniforms.proj_planes.x,
 							5, 0.5, max_distance, max_steps, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
-		
+
 		vec3 L = raycast_hit_point - P;
 		float L_len = length(L);
 		float factor_distance = 1.0 - min(L_len / 10.0, 1.0);
 		
-		vec2 jitter = PDnrand2(vec4(vertex_out.tex_coords,0,global_uniforms.time.x))* mix(0.001, 0.01, min(L_len / 10.0, 1.0));
+		vec2 jitter = PDnrand2(vec4(vertex_out.tex_coords,0,global_uniforms.time.x))* mix(0.001, 0.03, min(L_len / 10.0, 1.0));
 		vec3 color = cone_tracing(roughness, raycast_hit_uv/depthSize + jitter, dir, coneTheta);
 
 		out_color.rgb = max(color * factor_distance, vec3(0));
-	} else {
-		out_color.rgb = textureLod(result_sampler, vertex_out.tex_coords, startLod).rgb / (PI*PI*2);
-	}
 
-	out_color.rgb /= (1 + luminance_norm(out_color.rgb));
+		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
+
+	} else {
+		out_color.rgb = textureLod(result_sampler, vertex_out.tex_coords, pcs.prev_projection[0][3]).rgb / (PI*PI*2);
+	}
 
 	float history_weight = texelFetch(history_weight_sampler,
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 	                                  0).r;
 
-	out_color *= 1.0 - (history_weight*0.75);
+	out_color *= 1.0 - (history_weight*0.92);
 
 	out_color = max(out_color, vec4(0));
 }

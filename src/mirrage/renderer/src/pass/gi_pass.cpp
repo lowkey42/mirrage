@@ -863,7 +863,6 @@ namespace mirrage::renderer {
 				_sample_spec_renderpass.bind_descriptor_set(1, *_sample_spec_descriptor_set);
 
 				// Mip-level used by spec.
-				//  Always zero (for now). Skips pixels when gi_spec_mip_level>0 but reduces blocky artefacts.
 				pcs.prev_projection[0][3] = _base_mip_level;
 
 				auto screen_size = glm::vec2{_color_diffuse_in.width(pcs.prev_projection[0][3]),
