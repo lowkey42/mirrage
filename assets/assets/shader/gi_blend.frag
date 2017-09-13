@@ -31,12 +31,10 @@ void main() {
 	                              result_diff_sampler, result_spec_sampler,
 	                              albedo_sampler, mat_data_sampler, brdf_sampler, diffuse), 0.0);
 
-//	out_color = vec4(1,1,1,1);
-
 	if(pcs.prev_projection[3][3]>0.0) {
 		float ao = texture(ao_sampler, vertex_out.tex_coords).r;
 		ao = mix(1.0, ao, pcs.prev_projection[3][3]);
-		out_color.rgb *= ao*0.9 + 0.1;
+		out_color.rgb *= ao;
 	}
 
 	if(pcs.prev_projection[2][3]==0) {
@@ -46,15 +44,5 @@ void main() {
 	} else if(pcs.prev_projection[2][3]>=1) {
 		out_color.rgb = textureLod(result_diff_sampler, vertex_out.tex_coords, pcs.prev_projection[2][3]-1).rgb;
 		out_color.a = 1;
-
-/*
-		out_color.rgb = texelFetch(depth_sampler, ivec2(vertex_out.tex_coords
-		                                                * textureSize(depth_sampler, int(pcs.prev_projection[2][3]))),
-		        int(pcs.prev_projection[2][3])).rrr;
-*/
-
-	//	out_color = vec4(decode_normal(texelFetch(mat_data_sampler, ivec2(vertex_out.tex_coords*textureSize(mat_data_sampler, int(pcs.prev_projection[2][3]))), int(pcs.prev_projection[2][3])).rg), 1.0);
 	}
-
-//	out_color = vec4(texture(ao_sampler, vertex_out.tex_coords).rrr, 1.0);
 }

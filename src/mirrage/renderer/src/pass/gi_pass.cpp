@@ -669,6 +669,8 @@ namespace mirrage::renderer {
 		_prev_eye_position = eye_position;
 
 		if(_first_frame || movement > 4.f) {
+			DEBUG("Teleport detected");
+
 			graphic::clear_texture(command_buffer,
 			                       _gi_diffuse,
 			                       util::Rgba{0, 0, 0, 0},

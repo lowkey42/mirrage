@@ -24,10 +24,10 @@ vec3 upsampled_result(sampler2D highres_depth_sampler, sampler2D highres_mat_dat
 	vec2 normal = texelFetch(highres_mat_data_sampler, ivec2(textureSize(highres_mat_data_sampler, 0)*tex_coords), 0).xy;
 
 
-	const vec2 uv_00 = tex_coords - vec2(-1,-1) / tex_size;
-	const vec2 uv_10 = tex_coords - vec2( 1,-1) / tex_size;
-	const vec2 uv_11 = tex_coords - vec2( 1, 1) / tex_size;
-	const vec2 uv_01 = tex_coords - vec2(-1, 1) / tex_size;
+	const vec2 uv_00 = tex_coords + vec2(-1,-1) / tex_size;
+	const vec2 uv_10 = tex_coords + vec2( 1,-1) / tex_size;
+	const vec2 uv_11 = tex_coords + vec2( 1, 1) / tex_size;
+	const vec2 uv_01 = tex_coords + vec2(-1, 1) / tex_size;
 
 	vec4 weight_00 = vec4(0.125794409230998,
 	                      0.132980760133811,

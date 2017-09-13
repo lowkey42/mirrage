@@ -28,25 +28,22 @@ layout(push_constant) uniform Settings {
 } pcs;
 
 
-vec3 read(vec2 uv, inout float weight_sum, float static_weight) {
-	weight_sum += static_weight;
-
+vec3 read(vec2 uv, float static_weight) {
 	return textureLod(color_sampler, uv, pcs.options.y).rgb * static_weight;
 }
 
 void main() {
-	float weight_sum=0;
 	vec3 result = vec3(0,0,0);
-	result += read(vertex_out.uv_center, weight_sum, 0.1964825501511404);
-	result += read(vertex_out.uv_l1, weight_sum, 0.2969069646728344);
-	result += read(vertex_out.uv_l2, weight_sum, 0.09447039785044732);
-	result += read(vertex_out.uv_l3, weight_sum, 0.010381362401148057);
+	result += read(vertex_out.uv_center, 0.1964825501511404);
+	result += read(vertex_out.uv_l1, 0.2969069646728344);
+	result += read(vertex_out.uv_l2, 0.09447039785044732);
+	result += read(vertex_out.uv_l3, 0.010381362401148057);
 
-	result += read(vertex_out.uv_r1, weight_sum, 0.2969069646728344);
-	result += read(vertex_out.uv_r2, weight_sum, 0.09447039785044732);
-	result += read(vertex_out.uv_r3, weight_sum, 0.010381362401148057);
+	result += read(vertex_out.uv_r1, 0.2969069646728344);
+	result += read(vertex_out.uv_r2, 0.09447039785044732);
+	result += read(vertex_out.uv_r3, 0.010381362401148057);
 
-	color_out = vec4(result / weight_sum, 1.0);
+	color_out = vec4(result, 1.0);
 
 	if(COMBINE>0) {
 		for(int i=1; i<COMBINE; i++) {

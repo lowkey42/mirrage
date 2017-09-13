@@ -137,22 +137,24 @@ void main() {
 	// only want half the full cone angle since we're slicing the isosceles triangle in half to get a right triangle
 	float coneTheta = roughness_to_spec_lobe_angle(roughness) * 0.5f;
 
-	// TODO: calculate max distance based on roughness
-	float max_distance = min(128, 4 / (tan(coneTheta)*2));
-	float max_steps = max_distance*10;
+	// calculate max distance based on roughness
+	float max_distance = min(32, 4 / (tan(coneTheta)*2));
+	float max_steps = max_distance*16;
 
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
 	if(spec_visible &&
 	   traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
 							depthSize, 2.0, global_uniforms.proj_planes.x,
-							max(4, 4), 0.5, max_distance, max_steps, int(startLod + 0.5),
+							5, 0.5, max_distance, max_steps, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 		
 		vec3 L = raycast_hit_point - P;
+		float L_len = length(L);
+		float factor_distance = 1.0 - min(L_len / 10.0, 1.0);
 		
-		vec3 color = cone_tracing(roughness, raycast_hit_uv/depthSize + PDnrand2(vec4(vertex_out.tex_coords,0,global_uniforms.time.x))*0.01, dir, coneTheta);
-		float factor_distance = 1.0 - min(length(L) / 20.0, 1.0);
+		vec2 jitter = PDnrand2(vec4(vertex_out.tex_coords,0,global_uniforms.time.x))* mix(0.001, 0.01, min(L_len / 10.0, 1.0));
+		vec3 color = cone_tracing(roughness, raycast_hit_uv/depthSize + jitter, dir, coneTheta);
 
 		out_color.rgb = max(color * factor_distance, vec3(0));
 	} else {
@@ -165,7 +167,7 @@ void main() {
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 	                                  0).r;
 
-	out_color *= 1.0 - (history_weight*0.8);
+	out_color *= 1.0 - (history_weight*0.75);
 
 	out_color = max(out_color, vec4(0));
 }

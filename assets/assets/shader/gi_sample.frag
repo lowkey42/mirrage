@@ -101,7 +101,7 @@ vec3 gi_sample(int lod, int base_mip) {
 	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 19.0;
 
 	for(int i=0; i<SAMPLES; i++) {
-		float r = mix(LAST_SAMPLE==1 ? 2.0 : R/2.0, LAST_SAMPLE==1 ? R/2 : R, float(i)/float(SAMPLES));
+		float r = mix(LAST_SAMPLE==1 ? 2.0 : R/2.0, R, float(i)/float(SAMPLES));
 
 		angle += angle_step;
 		float sin_angle = sin(angle);
