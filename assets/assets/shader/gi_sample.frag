@@ -123,13 +123,11 @@ vec3 gi_sample(int lod, int base_mip) {
 		float cos_angle = cos(angle);
 
 		ivec2 p = ivec2(uv + vec2(sin_angle, cos_angle) * r);
-//		if(p.x>0.0 && p.x<texture_size.x && p.y>0.0 && p.y<texture_size.y) {
-			float weight;
-			vec3 sc = calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
+		float weight;
+		vec3 sc = calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
 
-			c += sc;
-			samples_used += weight;
-//		}
+		c += sc;
+		samples_used += weight;
 	}
 
 	// could be used to blend between screen-space and static GI
