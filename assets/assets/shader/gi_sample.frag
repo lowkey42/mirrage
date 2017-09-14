@@ -75,7 +75,11 @@ void main() {
 
 		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
 
-		out_color *= 1.0 - mix(0.8, 0.95, history_weight);
+		// calculate the min/max interpolation weights based on the delta time
+		float weight_measure = smoothstep(5.0/1000.0, 40.0/1000.0, global_uniforms.time.z);
+		float weight_min = mix(0.8, 0.1, weight_measure);
+		float weight_max = mix(0.95, 0.8, weight_measure);
+		out_color *= 1.0 - mix(weight_min, weight_max, history_weight);
 	}
 
 	out_color = max(out_color, vec4(0));

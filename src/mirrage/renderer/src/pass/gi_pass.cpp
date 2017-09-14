@@ -558,7 +558,8 @@ namespace mirrage::renderer {
 	                    {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
 	                    1,
 	                    _history_weight_format,
-	                    vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
+	                    vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+	                            | vk::ImageUsageFlagBits::eTransferDst,
 	                    vk::ImageAspectFlagBits::eColor)
 
 	  , _integrated_brdf_format(get_brdf_format(renderer.device()))
@@ -668,7 +669,9 @@ namespace mirrage::renderer {
 		auto movement      = glm::distance2(eye_position, _prev_eye_position);
 		_prev_eye_position = eye_position;
 
-		if(_first_frame || movement > 4.f) {
+		auto skip_reprojection = _first_frame || movement > 4.f;
+
+		if(skip_reprojection) {
 			DEBUG("Teleport detected");
 
 			graphic::clear_texture(command_buffer,
@@ -677,7 +680,7 @@ namespace mirrage::renderer {
 			                       vk::ImageLayout::eUndefined,
 			                       vk::ImageLayout::eShaderReadOnlyOptimal);
 
-			for(auto rt : {&_gi_specular, &_gi_diffuse_history, &_gi_specular_history}) {
+			for(auto rt : {&_gi_specular, &_gi_diffuse_history, &_gi_specular_history, &_history_weight}) {
 				graphic::clear_texture(command_buffer,
 				                       *rt,
 				                       util::Rgba{0, 0, 0, 0},
@@ -698,7 +701,12 @@ namespace mirrage::renderer {
 		}
 
 
-		_reproject_history(command_buffer, global_uniform_set);
+		_generate_first_mipmaps(command_buffer, global_uniform_set);
+
+		if(!skip_reprojection) {
+			_reproject_history(command_buffer, global_uniform_set);
+		}
+
 		_generate_mipmaps(command_buffer, global_uniform_set);
 		_generate_gi_samples(command_buffer);
 		_draw_gi(command_buffer);
@@ -728,16 +736,6 @@ namespace mirrage::renderer {
 
 	void Gi_pass::_reproject_history(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals) {
 		auto _ = _renderer.profiler().push("Reproject");
-
-		if(_min_mip_level > 0) {
-			graphic::generate_mipmaps(command_buffer,
-			                          _color_diffuse_in.image(),
-			                          vk::ImageLayout::eShaderReadOnlyOptimal,
-			                          vk::ImageLayout::eShaderReadOnlyOptimal,
-			                          _color_diffuse_in.width(),
-			                          _color_diffuse_in.height(),
-			                          _min_mip_level + 1);
-		}
 
 		_reproject_renderpass.execute(command_buffer, _reproject_framebuffer, [&] {
 			auto descriptor_sets = std::array<vk::DescriptorSet, 2>{globals, *_reproject_descriptor_set};
@@ -778,8 +776,21 @@ namespace mirrage::renderer {
 		_prev_proj = _renderer.global_uniforms().proj_mat;
 	}
 
+	void Gi_pass::_generate_first_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet) {
+		if(_min_mip_level > 0) {
+			auto _ = _renderer.profiler().push("Gen. Mipmaps A");
+
+			graphic::generate_mipmaps(command_buffer,
+			                          _color_diffuse_in.image(),
+			                          vk::ImageLayout::eShaderReadOnlyOptimal,
+			                          vk::ImageLayout::eShaderReadOnlyOptimal,
+			                          _color_diffuse_in.width(),
+			                          _color_diffuse_in.height(),
+			                          _min_mip_level + 1);
+		}
+	}
 	void Gi_pass::_generate_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet) {
-		auto _ = _renderer.profiler().push("Gen. Mipmaps");
+		auto _ = _renderer.profiler().push("Gen. Mipmaps B");
 
 		graphic::generate_mipmaps(command_buffer,
 		                          _color_diffuse_in.image(),

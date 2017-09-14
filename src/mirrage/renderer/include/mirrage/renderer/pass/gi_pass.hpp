@@ -90,6 +90,7 @@ namespace mirrage::renderer {
 		void _reproject_history(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
 
 		// generates mipmaps for _color_diffuse_in
+		void _generate_first_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
 		void _generate_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
 
 		// calculates GI samples and stores them into the levels of _gi_diffuse and _gi_specular
