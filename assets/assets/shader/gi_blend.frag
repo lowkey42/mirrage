@@ -34,7 +34,7 @@ void main() {
 	if(pcs.prev_projection[3][3]>0.0) {
 		float ao = texture(ao_sampler, vertex_out.tex_coords).r;
 		ao = mix(1.0, ao, pcs.prev_projection[3][3]);
-		out_color.rgb *= ao;
+		out_color.rgb *= ao*0.9+0.1;
 	}
 
 	if(pcs.prev_projection[2][3]==0) {

@@ -19,7 +19,7 @@ vec3 upsampled_result(sampler2D highres_depth_sampler, sampler2D highres_mat_dat
 	vec2 tex_size = textureSize(color_sampler, 0);
 
 	float depth = texelFetch(highres_depth_sampler, ivec2(textureSize(highres_depth_sampler, 0)*tex_coords), 0).r;
-	float depth_dev = mix(0.05, 1.5, depth) / global_uniforms.proj_planes.y;
+	float depth_dev = mix(0.5, 2.0, depth) / global_uniforms.proj_planes.y;
 
 	vec2 normal = texelFetch(highres_mat_data_sampler, ivec2(textureSize(highres_mat_data_sampler, 0)*tex_coords), 0).xy;
 
@@ -72,8 +72,8 @@ vec3 upsampled_result(sampler2D highres_depth_sampler, sampler2D highres_mat_dat
 	                 + dot(weight_11, vec4(1))
 	                 + dot(weight_01, vec4(1));
 
-	if(weight_sum<0.01)
-		return vec3(0,0,0);
+	if(weight_sum<0.001)
+		return textureLod(color_sampler, tex_coords, 0).rgb;
 
 
 	float color_r = dot(vec4(1),

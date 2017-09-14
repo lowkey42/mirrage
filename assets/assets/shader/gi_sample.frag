@@ -75,7 +75,7 @@ void main() {
 
 		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
 
-		out_color *= 1.0 - mix(0.75, 0.85, history_weight);
+		out_color *= 1.0 - mix(0.8, 0.95, history_weight);
 	}
 
 	out_color = max(out_color, vec4(0));

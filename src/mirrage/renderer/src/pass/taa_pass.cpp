@@ -178,7 +178,7 @@ namespace mirrage::renderer {
 
 	void Taa_pass::process_camera(Camera_state& cam) {
 		// update fov and push constants
-		cam.fov_vertical = cam.fov_vertical + 7.0_deg;
+		cam.fov_vertical = cam.fov_vertical + 5.0_deg;
 		cam.fov_horizontal =
 		        util::Angle(2.f * std::atan(std::tan(cam.fov_vertical.value() / 2.f) * cam.aspect_ratio));
 		auto new_projection =
