@@ -92,8 +92,9 @@ namespace mirrage::graphic {
 		cb.resetQueryPool(*_query_pools.head(), 0, _query_ids);
 		std::fill(_query_used.begin(), _query_used.end(), false);
 
-		cb.writeTimestamp(
-		        vk::PipelineStageFlagBits::eTopOfPipe, *_query_pools.head(), _last_results.query_id_begin());
+		cb.writeTimestamp(vk::PipelineStageFlagBits::eAllCommands,
+		                  *_query_pools.head(),
+		                  _last_results.query_id_begin());
 
 		_query_used[_last_results.query_id_begin()] = true;
 
@@ -109,7 +110,7 @@ namespace mirrage::graphic {
 		        "No active command buffer! Has Profiler::start been called?");
 
 		cb.writeTimestamp(
-		        vk::PipelineStageFlagBits::eBottomOfPipe, *_query_pools.head(), _last_results.query_id_end());
+		        vk::PipelineStageFlagBits::eAllCommands, *_query_pools.head(), _last_results.query_id_end());
 
 		_query_used[_last_results.query_id_end()] = true;
 
@@ -119,6 +120,7 @@ namespace mirrage::graphic {
 		// request timestamps for all unused queryIds
 		for(auto i = 0u; i < _next_query_id; i++) {
 			if(!_query_used[i]) {
+				WARN("Unclosed Timestamp-Query!");
 				cb.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *_query_pools.head(), i);
 			}
 		}
@@ -183,7 +185,7 @@ namespace mirrage::graphic {
 		auto& cb = _current_command_buffer.get_or_throw(
 		        "No active command buffer! Has Profiler::start been called?");
 
-		cb.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe,
+		cb.writeTimestamp(vk::PipelineStageFlagBits::eAllCommands,
 		                  *_query_pools.head(),
 		                  _current_stack.back()->query_id_end());
 

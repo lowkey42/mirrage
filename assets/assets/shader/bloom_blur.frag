@@ -46,7 +46,7 @@ void main() {
 	color_out = vec4(result, 1.0);
 
 	if(COMBINE>0) {
-		for(int i=1; i<COMBINE; i++) {
+		for(int i=0; i<COMBINE; i++) {
 			color_out.rgb += textureLod(downsampled_color_sampler, vertex_out.uv_center, i).rgb;
 		}
 	}

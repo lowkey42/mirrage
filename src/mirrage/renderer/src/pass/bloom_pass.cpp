@@ -121,7 +121,7 @@ namespace mirrage::renderer {
 			                0,
 			                0,
 			                1,
-			                MipLevels)
+			                MipLevels - 1)
 			        .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex, "main", 0, 0);
 
 			builder.add_dependency(
@@ -230,7 +230,7 @@ namespace mirrage::renderer {
 	                      std::size_t) {
 
 		auto pcs         = Push_constants{};
-		pcs.parameters.x = 10.0f; // TODO: make configurable
+		pcs.parameters.x = 8.0f; // TODO: make configurable
 
 		// filter
 		_filter_renderpass.execute(command_buffer, _filter_framebuffer, [&] {

@@ -63,7 +63,8 @@ namespace mirrage {
 	         engine.assets(),
 	         engine.input(),
 	         _meta_system.renderer().find_pass<gui::Gui_renderer>().get_or_throw(
-	                 "No renderer specified to render UI elements!")) {
+	                 "No renderer specified to render UI elements!"))
+	  , _performance_log(util::nothing) {
 
 		_camera = _meta_system.entities().emplace("camera");
 
@@ -275,6 +276,42 @@ namespace mirrage {
 		_look = {0.f, 0.f};
 
 		_meta_system.update(dt);
+
+		_performance_log.process([&](auto& log) {
+			_performance_log_delay_left -= dt;
+			if(_performance_log_delay_left.value() <= 0.f) {
+				_performance_log_delay_left += 1_s;
+
+				auto& result = _meta_system.renderer().profiler().results();
+
+				if(_preformance_log_first_row) {
+					_preformance_log_first_row = false;
+
+					// write header
+					log << result.name();
+					for(auto& first_level : result) {
+						log << ", " << first_level.name();
+
+						for(auto& second_level : first_level) {
+							log << ", " << second_level.name();
+						}
+					}
+
+					log << "\n";
+				}
+
+				log << result.time_avg_ms();
+				for(auto& first_level : result) {
+					log << ", " << first_level.time_avg_ms();
+
+					for(auto& second_level : first_level) {
+						log << ", " << second_level.time_avg_ms();
+					}
+				}
+
+				log << "\n" << std::flush;
+			}
+		});
 	}
 
 
@@ -429,7 +466,7 @@ namespace mirrage {
 		if(nk_begin_titled(ctx,
 		                   "profiler",
 		                   "Profiler",
-		                   _gui.centered_right(310, 360),
+		                   _gui.centered_right(310, 380),
 		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
 
 			// TODO: disable when window is hidden
@@ -438,6 +475,10 @@ namespace mirrage {
 			nk_layout_row_dynamic(ctx, 20, 1);
 			if(nk_button_label(ctx, "Reset")) {
 				_meta_system.renderer().profiler().reset();
+			}
+
+			if(_performance_log.is_nothing() && nk_button_label(ctx, "Record")) {
+				_performance_log = _engine.assets().save_raw("log:perf.log"_aid);
 			}
 
 			constexpr auto rows = std::array<float, 5>{{0.4f, 0.15f, 0.15f, 0.15f, 0.15f}};

@@ -117,9 +117,9 @@ namespace mirrage::graphic {
 		void reset() noexcept;
 
 		void start(vk::CommandBuffer);
-		auto push(const std::string& name, vk::PipelineStageFlagBits = vk::PipelineStageFlagBits::eTopOfPipe)
-		        -> Push_raii;
-		auto push(const char* name, vk::PipelineStageFlagBits stage = vk::PipelineStageFlagBits::eTopOfPipe)
+		auto push(const std::string& name,
+		          vk::PipelineStageFlagBits = vk::PipelineStageFlagBits::eAllCommands) -> Push_raii;
+		auto push(const char* name, vk::PipelineStageFlagBits stage = vk::PipelineStageFlagBits::eAllCommands)
 		        -> Push_raii {
 			if(_active)
 				return push(std::string(name), stage);

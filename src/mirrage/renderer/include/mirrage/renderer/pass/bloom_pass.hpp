@@ -25,7 +25,7 @@ namespace mirrage::renderer {
 
 	  private:
 		static constexpr auto blur_start_mip_level = 2;
-		static constexpr auto blur_mip_levels      = 5;
+		static constexpr auto blur_mip_levels      = 6;
 
 		using Blur_framebuffers = std::array<graphic::Framebuffer, blur_mip_levels - blur_start_mip_level>;
 

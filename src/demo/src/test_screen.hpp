@@ -44,7 +44,7 @@ namespace mirrage {
 		ecs::Entity_facet _camera;
 		ecs::Entity_facet _sun;
 
-		float _sun_elevation         = 0.92;
+		float _sun_elevation         = 0.92f;
 		float _sun_azimuth           = 1.22f;
 		float _sun_color_temperature = 5600.f;
 
@@ -62,6 +62,10 @@ namespace mirrage {
 
 		bool _show_ui       = true;
 		bool _show_profiler = false;
+
+		util::maybe<asset::ostream> _performance_log;
+		util::Time                  _performance_log_delay_left{1};
+		bool                        _preformance_log_first_row = true;
 
 		void _set_preset(int);
 		void _update_sun_position();

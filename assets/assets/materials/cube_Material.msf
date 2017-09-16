@@ -1,4 +1,4 @@
 {
     "substance_id": "emissive",
-    "albedo_aid": "default_white.ktx"
+    "albedo_aid": "cube_light.ktx"
 }
