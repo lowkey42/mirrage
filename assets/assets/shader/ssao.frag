@@ -12,7 +12,7 @@ layout(location = 0) out vec4 out_color;
 layout (constant_id = 0) const int SAMPLES = 16;
 layout (constant_id = 1) const int LOG_MAX_OFFSET = 4;
 layout (constant_id = 2) const int SPIRAL_TURNS = 7;
-layout (constant_id = 3) const float RADIUS = 1.2;
+layout (constant_id = 3) const float RADIUS = 1.8;
 layout (constant_id = 4) const float BIAS = 0.04;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
@@ -86,9 +86,8 @@ float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, 
 
 	vec3 N = get_normal(ss_p, mip);
 	float occluder_angle = abs(dot(N, n_C));
-	float boost = smoothstep(0.01, 0.2, occluder_angle)*0.4+0.6;
-	boost *= 0.5;
-	boost += smoothstep(0.95, 1.0, occluder_angle)*2;
+	float boost = smoothstep(0.01, 0.2, occluder_angle)*0.5+0.5;
+	boost += smoothstep(0.8, 1.0, occluder_angle)*2;
 
 	float f = max(RADIUS*RADIUS - vv, 0.0);
 

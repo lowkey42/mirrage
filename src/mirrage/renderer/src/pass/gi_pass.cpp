@@ -589,7 +589,6 @@ namespace mirrage::renderer {
 	            {renderer.gbuffer().depth.view(),
 	             renderer.gbuffer().mat_data.view(),
 	             renderer.gbuffer().albedo_mat_id.view(0),
-	             renderer.gbuffer().ambient_occlusion.get_or_other(_gi_diffuse_history).view(),
 	             _gi_diffuse_history.view(),
 	             _gi_specular_history.view(),
 	             renderer.gbuffer().prev_depth.view(),
@@ -633,7 +632,6 @@ namespace mirrage::renderer {
 	             _gi_diffuse.view(),
 	             _gi_specular.view(),
 	             renderer.gbuffer().albedo_mat_id.view(0),
-	             renderer.gbuffer().ambient_occlusion.get_or_other(_gi_diffuse).view(),
 	             _integrated_brdf.view()})) {
 		auto end = _max_mip_level;
 		_sample_descriptor_sets.reserve(end - _min_mip_level);
@@ -647,7 +645,8 @@ namespace mirrage::renderer {
 			               _gi_diffuse.view(i + 1),
 			               _history_weight.view(),
 			               renderer.gbuffer().depth.view(prev_mip),
-			               renderer.gbuffer().mat_data.view(prev_mip)};
+			               renderer.gbuffer().mat_data.view(prev_mip),
+			               renderer.gbuffer().ambient_occlusion.get_or_other(_gi_diffuse_history).view()};
 
 			_sample_descriptor_sets.emplace_back(
 			        _descriptor_set_layout.create_set(renderer.descriptor_pool(), images));
@@ -766,12 +765,6 @@ namespace mirrage::renderer {
 			pcs.prev_projection[0][3] = _min_mip_level;
 			pcs.prev_projection[1][3] = _max_mip_level - 1;
 
-			if(_renderer.gbuffer().ambient_occlusion.is_some()) {
-				pcs.prev_projection[3][3] = 1.0;
-			} else {
-				pcs.prev_projection[3][3] = 0.0;
-			}
-
 			_reproject_renderpass.push_constant("pcs"_strid, pcs);
 
 			command_buffer.draw(3, 1, 0, 0);
@@ -822,6 +815,12 @@ namespace mirrage::renderer {
 		auto pcs                  = Gi_constants{};
 		pcs.prev_projection[1][3] = _max_mip_level - 1;
 		pcs.prev_projection[3][3] = _min_mip_level;
+
+		if(_renderer.gbuffer().ambient_occlusion.is_some()) {
+			pcs.reprojection[3][3] = 1.0;
+		} else {
+			pcs.reprojection[3][3] = 0.0;
+		}
 
 		{
 			auto _ = _renderer.profiler().push("Sample (diffuse)");
@@ -927,12 +926,6 @@ namespace mirrage::renderer {
 			pcs.prev_projection[0][3] = _min_mip_level;
 			pcs.prev_projection[1][3] = _max_mip_level - 1;
 			pcs.prev_projection[2][3] = _renderer.settings().debug_gi_layer;
-
-			if(_renderer.gbuffer().ambient_occlusion.is_some()) {
-				pcs.prev_projection[3][3] = 1.0;
-			} else {
-				pcs.prev_projection[3][3] = 0.0;
-			}
 
 			_blend_renderpass.push_constant("pcs"_strid, pcs);
 

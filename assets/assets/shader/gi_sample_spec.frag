@@ -153,11 +153,17 @@ void main() {
 		vec3 L = raycast_hit_point - P;
 		float L_len = length(L);
 		float factor_distance = 1.0 - min(L_len / 10.0, 1.0);
-		
-		vec2 jitter = PDnrand2(vec4(vertex_out.tex_coords,0,global_uniforms.time.x))* mix(0.001, 0.03, min(L_len / 10.0, 1.0));
-		vec3 color = cone_tracing(roughness, raycast_hit_uv/depthSize + jitter, dir, coneTheta);
 
-		out_color.rgb = max(color * factor_distance, vec3(0));
+		vec2 jitter = PDnrand2(vec4(vertex_out.tex_coords,0,global_uniforms.time.x))* mix(0.001, 0.03, min(L_len / 10.0, 1.0));
+		vec2 hit_uv = raycast_hit_uv/depthSize + jitter;
+
+		vec3 hit_N = decode_normal(textureLod(mat_data_sampler, hit_uv, 0).rg);
+
+		float factor_normal = 1.0 - smoothstep(0.6, 0.9, abs(dot(N, hit_N)));
+
+		vec3 color = cone_tracing(roughness, hit_uv, dir, coneTheta);
+
+		out_color.rgb = max(color * factor_distance * factor_normal, vec3(0));
 
 		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
 

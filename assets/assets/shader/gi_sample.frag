@@ -16,6 +16,7 @@ layout(set=1, binding = 3) uniform sampler2D result_sampler;
 layout(set=1, binding = 4) uniform sampler2D history_weight_sampler;
 layout(set=1, binding = 5) uniform sampler2D prev_depth_sampler;
 layout(set=1, binding = 6) uniform sampler2D prev_mat_data_sampler;
+layout(set=1, binding = 7) uniform sampler2D ao_sampler;
 
 layout (constant_id = 0) const int LAST_SAMPLE = 0;
 layout (constant_id = 1) const float R = 40;
@@ -72,6 +73,12 @@ void main() {
 
 		history_weights = textureGather(history_weight_sampler, vertex_out.tex_coords-hws_step, 0);
 		history_weight  = min(history_weight,min(history_weights.x, min(history_weights.y, min(history_weights.z, history_weights.w))));
+
+		if(pcs.projection[3][3]>0.0) {
+			float ao = texture(ao_sampler, vertex_out.tex_coords).r;
+			ao = mix(1.0, ao, pcs.projection[3][3]);
+			out_color.rgb *= ao;
+		}
 
 		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
 

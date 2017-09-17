@@ -20,11 +20,10 @@ layout(location = 3) out vec4 out_weight;    // weight of reprojected GI
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
 layout(set=1, binding = 2) uniform sampler2D albedo_sampler;
-layout(set=1, binding = 3) uniform sampler2D ao_sampler;
-layout(set=1, binding = 4) uniform sampler2D history_diff_sampler;
-layout(set=1, binding = 5) uniform sampler2D history_spec_sampler;
-layout(set=1, binding = 6) uniform sampler2D prev_depth_sampler;
-layout(set=1, binding = 7) uniform sampler2D brdf_sampler;
+layout(set=1, binding = 3) uniform sampler2D history_diff_sampler;
+layout(set=1, binding = 4) uniform sampler2D history_spec_sampler;
+layout(set=1, binding = 5) uniform sampler2D prev_depth_sampler;
+layout(set=1, binding = 6) uniform sampler2D brdf_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
@@ -99,10 +98,7 @@ void main() {
 		vec3 gi = calculate_gi(vertex_out.tex_coords, radiance, specular,
 		                       albedo_sampler, mat_data_sampler, brdf_sampler, diffuse);
 
-		float ao = mix(1.0, texture(ao_sampler, vertex_out.tex_coords).r, ao_factor);
-		ao = ao*0.5 + 0.5;
-
-		out_input = vec4(diffuse * ao, 0.0);
+		out_input = vec4(diffuse, 0.0);
 
 		float proj_prev_depth = abs(prev_pos.z);
 		float prev_depth = textureLod(prev_depth_sampler, prev_uv.xy, 0.0).r;
