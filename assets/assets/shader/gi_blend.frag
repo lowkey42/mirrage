@@ -11,11 +11,13 @@ layout(location = 0) out vec4 out_color;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
-layout(set=1, binding = 2) uniform sampler2D result_diff_sampler;
-layout(set=1, binding = 3) uniform sampler2D result_spec_sampler;
-layout(set=1, binding = 4) uniform sampler2D albedo_sampler;
-layout(set=1, binding = 5) uniform sampler2D ao_sampler;
-layout(set=1, binding = 6) uniform sampler2D brdf_sampler;
+layout(set=1, binding = 2) uniform sampler2D lowres_depth_sampler;
+layout(set=1, binding = 3) uniform sampler2D lowres_mat_data_sampler;
+layout(set=1, binding = 4) uniform sampler2D result_diff_sampler;
+layout(set=1, binding = 5) uniform sampler2D result_spec_sampler;
+layout(set=1, binding = 6) uniform sampler2D albedo_sampler;
+layout(set=1, binding = 7) uniform sampler2D ao_sampler;
+layout(set=1, binding = 8) uniform sampler2D brdf_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;
@@ -27,9 +29,12 @@ layout(push_constant) uniform Push_constants {
 
 void main() {
 	vec3 diffuse;
-	out_color = vec4(calculate_gi(vertex_out.tex_coords, vertex_out.tex_coords, 1,
-	                              result_diff_sampler, result_spec_sampler,
-	                              albedo_sampler, mat_data_sampler, brdf_sampler, diffuse), 0.0);
+	vec3 radiance = upsampled_result(depth_sampler, mat_data_sampler,
+	                                 lowres_depth_sampler, lowres_mat_data_sampler,
+	                                 result_diff_sampler, vertex_out.tex_coords);
+	vec3 specular = textureLod(result_spec_sampler, vertex_out.tex_coords, 0).rgb;
+
+    out_color = vec4(calculate_gi(vertex_out.tex_coords, radiance, specular, albedo_sampler, mat_data_sampler, brdf_sampler, diffuse), 0);
 
 	if(pcs.prev_projection[3][3]>0.0) {
 		float ao = texture(ao_sampler, vertex_out.tex_coords).r;

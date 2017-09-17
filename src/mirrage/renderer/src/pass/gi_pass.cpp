@@ -483,10 +483,13 @@ namespace mirrage::renderer {
 			return format.get_or_throw();
 		}
 
-		auto calc_base_mip_level(std::uint32_t width, std::uint32_t height) {
-			return util::max(0,
-			                 static_cast<int>(std::round(
-			                         util::min(glm::log2(width / 960.f), glm::log2(height / 500.f)))));
+		auto calc_base_mip_level(std::uint32_t width, std::uint32_t height, bool highres) {
+			auto x_mip = glm::log2(width / 960.f);
+			auto y_mip = glm::log2(height / 500.f);
+
+			auto mip = highres ? util::min(x_mip, y_mip) : util::max(x_mip, y_mip);
+
+			return util::max(0, static_cast<int>(std::round(mip)));
 		}
 		auto calc_max_mip_level(std::uint32_t width, std::uint32_t height) {
 			auto w        = static_cast<float>(width);
@@ -502,7 +505,7 @@ namespace mirrage::renderer {
 	                 graphic::Render_target_2D& in_out,
 	                 graphic::Render_target_2D& diffuse_in)
 	  : _renderer(renderer)
-	  , _base_mip_level(calc_base_mip_level(in_out.width(), in_out.height()))
+	  , _base_mip_level(calc_base_mip_level(in_out.width(), in_out.height(), renderer.settings().gi_highres))
 	  , _max_mip_level(calc_max_mip_level(in_out.width(), in_out.height()))
 	  , _diffuse_mip_level(_base_mip_level + renderer.settings().gi_diffuse_mip_level)
 	  , _specular_mip_level(_base_mip_level + renderer.settings().gi_specular_mip_level)
@@ -514,7 +517,7 @@ namespace mirrage::renderer {
 	                                                      vk::SamplerMipmapMode::eLinear))
 	  , _descriptor_set_layout(renderer.device(),
 	                           *_gbuffer_sampler,
-	                           8,
+	                           9,
 	                           vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex)
 	  , _color_in_out(in_out)
 	  , _color_diffuse_in(diffuse_in)
@@ -623,8 +626,10 @@ namespace mirrage::renderer {
 	            build_blend_render_pass(renderer, *_descriptor_set_layout, _color_in_out, _blend_framebuffer))
 	  , _blend_descriptor_set(_descriptor_set_layout.create_set(
 	            renderer.descriptor_pool(),
-	            {renderer.gbuffer().depth.view(),
-	             renderer.gbuffer().mat_data.view(),
+	            {renderer.gbuffer().depth.view(0),
+	             renderer.gbuffer().mat_data.view(0),
+	             renderer.gbuffer().depth.view(_base_mip_level),
+	             renderer.gbuffer().mat_data.view(_base_mip_level),
 	             _gi_diffuse.view(),
 	             _gi_specular.view(),
 	             renderer.gbuffer().albedo_mat_id.view(0),

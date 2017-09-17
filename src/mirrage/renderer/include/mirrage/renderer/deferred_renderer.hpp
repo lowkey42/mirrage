@@ -33,6 +33,7 @@ namespace mirrage::renderer {
 		int gi_specular_mip_level = 0;
 
 		bool gi              = true;
+		bool gi_highres      = true;
 		bool dynamic_shadows = false;
 		bool debug_disect    = false;
 		int  debug_gi_layer  = -1;
