@@ -166,6 +166,16 @@ namespace mirrage::util {
 	template <typename T>
 	class tracking_ptr;
 
+	namespace detail {
+		struct trackable_data {
+			void*         obj_addr = nullptr;
+			std::uint32_t revision = 0;
+
+			trackable_data() = default;
+			trackable_data(void* ptr, std::uint32_t rev) : obj_addr(ptr), revision(rev) {}
+		};
+	}
+
 	template <typename T>
 	class trackable {
 	  public:
@@ -178,27 +188,25 @@ namespace mirrage::util {
 			_obj      = std::move(rhs._obj);
 			_obj_addr = std::move(rhs._obj_addr);
 		}
-		~trackable() {
-			if(_obj_addr) {
-				*_obj_addr = nullptr;
-			}
-		}
+		~trackable() { reset(); }
 
 		auto& operator=(std::unique_ptr<T> obj) {
 			_obj = std::move(obj);
 			if(_obj_addr) {
-				*_obj_addr = _obj.get();
+				_obj_addr->obj_addr = _obj.get();
+				_obj_addr->revision++;
 			}
 
 			return *this;
 		}
 
-		void reset() {
+		auto reset() {
 			if(_obj_addr) {
-				*_obj_addr = nullptr;
+				_obj_addr->obj_addr = nullptr;
+				_obj_addr->revision++;
 			}
 
-			_obj.reset();
+			return std::move(_obj);
 		}
 
 		auto create_ptr() -> tracking_ptr<T>;
@@ -235,12 +243,12 @@ namespace mirrage::util {
 		template <typename>
 		friend class tracking_ptr;
 
-		std::unique_ptr<T>     _obj;
-		std::shared_ptr<void*> _obj_addr;
+		std::unique_ptr<T>                      _obj;
+		std::shared_ptr<detail::trackable_data> _obj_addr;
 
 		auto _get_obj_addr() {
 			if(!_obj_addr) {
-				_obj_addr = std::make_shared<void*>(_obj.get());
+				_obj_addr = std::make_shared<detail::trackable_data>(_obj.get(), 0);
 			}
 
 			return _obj_addr;
@@ -256,29 +264,42 @@ namespace mirrage::util {
 	class tracking_ptr {
 	  public:
 		tracking_ptr() = default;
-		tracking_ptr(trackable<T>& t) : _trackable(t._get_obj_addr()) {}
+		tracking_ptr(trackable<T>& t)
+		  : _trackable(t._get_obj_addr()), _last_seen_revision(_trackable ? _trackable->revision : 0) {}
 
-		template <typename I>
-		explicit tracking_ptr(tracking_ptr<I> t) : _trackable(t._trackable) {
-			if
-				constexpr(!std::is_base_of_v<I, T>) {
-					static_assert(
-					        std::is_base_of_v<T, I>,
-					        "The pointer types I and T don't seem to be related! I has to be either the "
-					        "base class of T of be derived from it.");
+		tracking_ptr(const tracking_ptr<T>& t) = default;
+		tracking_ptr(tracking_ptr<T>&& t)      = default;
+		tracking_ptr& operator=(const tracking_ptr<T>& t) = default;
+		tracking_ptr& operator=(tracking_ptr<T>&& t) = default;
 
-					INVARIANT(t._caster == nullptr,
-					          "Casting tracking_ptrs can't be nested! Nice try though.");
+		template <typename I, typename = std::enable_if_t<!std::is_same_v<I, T>>>
+		explicit tracking_ptr(tracking_ptr<I> t)
+		  : _trackable(t._trackable)
+		  , _caster(+[](void* ptr) { return dynamic_cast<T*>(static_cast<I*>(ptr)); })
+		  , _last_seen_revision(_trackable ? _trackable->revision : 0) {
+			INVARIANT(t._caster == nullptr, "Casting tracking_ptrs can't be nested! Nice try though.");
+		}
 
-					_caster = +[](void* ptr) { return dynamic_cast<T*>(static_cast<I*>(ptr)); };
-				}
+		auto modified(T* last_seen) {
+			if(!_trackable) {
+				return last_seen == nullptr ? false : true;
+			}
+
+			auto current_revision = _trackable->revision;
+			if(_last_seen_revision != current_revision || last_seen == nullptr) {
+				DEBUG("Modified " << _last_seen_revision << " != " << current_revision);
+				_last_seen_revision = current_revision;
+				return true;
+			}
+
+			return false;
 		}
 
 		auto get() -> T* {
 			if(!_trackable)
 				return nullptr;
 
-			auto ptr = *_trackable;
+			auto ptr = _trackable->obj_addr;
 
 			if(_caster)
 				return _caster(ptr);
@@ -321,8 +342,9 @@ namespace mirrage::util {
 
 		using Caster = T* (*) (void*);
 
-		std::shared_ptr<void*> _trackable;
-		Caster                 _caster = nullptr;
+		std::shared_ptr<detail::trackable_data> _trackable;
+		Caster                                  _caster             = nullptr;
+		std::uint32_t                           _last_seen_revision = 0;
 	};
 
 	template <typename T>

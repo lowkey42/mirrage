@@ -436,7 +436,7 @@ namespace mirrage::gui {
 			_last_renderer->_gui = this;
 
 		} else {
-			ERROR("Gui initialized without a valid renderer. Nothing will be drawn!");
+			WARN("Gui initialized without a valid renderer. Nothing will be drawn!");
 		}
 	}
 
@@ -447,13 +447,24 @@ namespace mirrage::gui {
 	}
 
 	void Gui::draw() {
+		if(_renderer.modified(_last_renderer)) {
+			_init();
+		}
+
+		if(!_impl) {
+			INFO("no impl");
+			return;
+		}
+
 		_impl->renderer.draw(_impl->ctx.ctx, _impl->viewport, _impl->screen_size, _impl->ui_matrix);
 	}
 
 	auto Gui::ctx() -> nk_context* {
-		if(_renderer && _renderer.get() != _last_renderer) {
+		if(_renderer.modified(_last_renderer)) {
 			_init();
 		}
+
+		INVARIANT(_impl, "Not initialized when nk_context was requested!");
 
 		return &_impl->ctx.ctx;
 	}

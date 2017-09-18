@@ -67,11 +67,13 @@ namespace mirrage::renderer {
 	}
 
 	void Deferred_renderer::recreate() {
+		WARN("--recreate");
 		device().wait_idle();
 
 		for(auto& pass : _passes) {
 			pass.reset();
 		}
+
 		_gbuffer.reset();
 
 		// recreate gbuffer and renderpasses
@@ -82,6 +84,8 @@ namespace mirrage::renderer {
 			_passes[i] = _factory->_pass_factories.at(i)->create_pass(
 			        *this, *_entity_manager, _meta_system, write_first_pp_buffer);
 		}
+
+		_profiler = graphic::Profiler(device(), 64);
 
 		device().wait_idle();
 	}
@@ -256,6 +260,7 @@ namespace mirrage::renderer {
 				inst->recreate();
 			}
 		}
+		_device->wait_idle();
 	}
 	void Deferred_renderer_factory::_present() {
 		if(_aquired_swapchain_image.is_nothing())

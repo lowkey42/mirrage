@@ -111,12 +111,9 @@ namespace mirrage::graphic {
 
 	  public:
 		explicit Profiler(Device&, std::size_t max_elements = 32);
-		Profiler(Profiler&&) = default;
-		Profiler& operator   =(Profiler&&) noexcept;
-		~Profiler();
 
-		void enable() noexcept { _active = true; }
-		void disable() noexcept { _active = false; }
+		void enable() noexcept { _active_requested = true; }
+		void disable() noexcept { _active_requested = false; }
 		void reset() noexcept;
 
 		void start(vk::CommandBuffer);
@@ -136,7 +133,22 @@ namespace mirrage::graphic {
 	  private:
 		friend class Push_raii;
 
-		using Query_pools  = util::ring_buffer<vk::UniqueQueryPool>;
+		struct Query_pool_entry {
+			vk::UniqueQueryPool pool;
+			std::uint32_t       requested_queries = 0;
+
+			Query_pool_entry() = default;
+			Query_pool_entry(Device& device, std::uint32_t max_count);
+			Query_pool_entry(Query_pool_entry&& rhs) noexcept
+			  : pool(std::move(rhs.pool)), requested_queries(rhs.requested_queries) {}
+			Query_pool_entry& operator=(Query_pool_entry&& rhs) noexcept {
+				pool              = std::move(rhs.pool);
+				requested_queries = std::move(rhs.requested_queries);
+				return *this;
+			}
+		};
+
+		using Query_pools  = util::ring_buffer<Query_pool_entry>;
 		using Result_stack = std::vector<Profiler_result*>;
 
 		vk::Device      _device;
@@ -145,8 +157,9 @@ namespace mirrage::graphic {
 		std::uint32_t   _next_query_id = 0;
 		Profiler_result _last_results;
 		Query_pools     _query_pools;
-		bool            _active = false;
-		bool            _full   = false;
+		bool            _active           = false;
+		bool            _active_requested = false;
+		bool            _full             = false;
 
 		Result_stack                   _current_stack;
 		util::maybe<vk::CommandBuffer> _current_command_buffer;
@@ -159,7 +172,5 @@ namespace mirrage::graphic {
 		auto _generate_query_id() -> std::uint32_t;
 
 		void _update_result(Profiler_result&, const std::vector<std::uint32_t>& data);
-
-		void _wait_done();
 	};
 }

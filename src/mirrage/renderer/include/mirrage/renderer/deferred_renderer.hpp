@@ -210,6 +210,8 @@ namespace mirrage::renderer {
 		auto profiler() noexcept -> auto& { return _profiler; }
 
 	  private:
+		friend class Deferred_renderer_factory;
+
 		Deferred_renderer_factory* _factory;
 		ecs::Entity_manager*       _entity_manager;
 		util::maybe<Meta_system&>  _meta_system;

@@ -69,62 +69,34 @@ namespace mirrage::graphic {
 	Profiler::Push_raii::Push_raii(Profiler& profiler) : _profiler(&profiler) {}
 
 
+	Profiler::Query_pool_entry::Query_pool_entry(Device& device, std::uint32_t max_count)
+	  : pool(device.vk_device()->createQueryPoolUnique(
+	            vk::QueryPoolCreateInfo{vk::QueryPoolCreateFlags{}, vk::QueryType::eTimestamp, max_count})) {}
+
 	Profiler::Profiler(Device& device, std::size_t max_elements)
 	  : _device(*device.vk_device())
 	  , _ns_per_tick(device.physical_device_properties().limits.timestampPeriod)
 	  , _query_ids(max_elements)
 	  , _last_results("All", _generate_query_id(), _generate_query_id())
 	  , _query_pools(device.max_frames_in_flight(),
-	                 [&] {
-		                 return _device.createQueryPoolUnique(vk::QueryPoolCreateInfo{
-		                         vk::QueryPoolCreateFlags{}, vk::QueryType::eTimestamp, _query_ids});
-		             })
+	                 [&] { return Query_pool_entry(device, gsl::narrow<std::uint32_t>(_query_ids)); })
 	  , _query_used(max_elements, false) {}
-
-	Profiler& Profiler::operator=(Profiler&& rhs) noexcept {
-		_wait_done();
-
-		_device                 = std::move(rhs._device);
-		_ns_per_tick            = std::move(rhs._ns_per_tick);
-		_query_ids              = std::move(rhs._query_ids);
-		_next_query_id          = std::move(rhs._next_query_id);
-		_last_results           = std::move(rhs._last_results);
-		_query_pools            = std::move(rhs._query_pools);
-		_current_stack          = std::move(rhs._current_stack);
-		_current_command_buffer = std::move(rhs._current_command_buffer);
-		_query_result_buffer    = std::move(rhs._query_result_buffer);
-		_query_used             = std::move(rhs._query_used);
-
-		return *this;
-	}
-	Profiler::~Profiler() { _wait_done(); }
-	void Profiler::_wait_done() {
-		_query_pools.pop_while([&](auto& pool) {
-			auto status = _device.getQueryPoolResults<std::uint32_t>(*pool,
-			                                                         0,
-			                                                         _next_query_id,
-			                                                         _query_result_buffer,
-			                                                         sizeof(std::uint32_t),
-			                                                         vk::QueryResultFlagBits::eWait);
-
-			INVARIANT(status == vk::Result::eSuccess, "getQueryPoolResults failed!");
-			return true;
-		});
-	}
 
 	void Profiler::reset() noexcept { _last_results.reset(); }
 
 	void Profiler::start(vk::CommandBuffer cb) {
+		_active = _active_requested;
+
 		if(!_active || _full)
 			return;
 
 		INVARIANT(_current_stack.empty(), "Profiler::start can not be nested!");
 
-		cb.resetQueryPool(*_query_pools.head(), 0, _query_ids);
+		cb.resetQueryPool(*_query_pools.head().pool, 0, _query_ids);
 		std::fill(_query_used.begin(), _query_used.end(), false);
 
 		cb.writeTimestamp(vk::PipelineStageFlagBits::eAllCommands,
-		                  *_query_pools.head(),
+		                  *_query_pools.head().pool,
 		                  _last_results.query_id_begin());
 
 		_query_used[_last_results.query_id_begin()] = true;
@@ -139,7 +111,7 @@ namespace mirrage::graphic {
 			        "No active command buffer! Has Profiler::start been called?");
 
 			cb.writeTimestamp(vk::PipelineStageFlagBits::eAllCommands,
-			                  *_query_pools.head(),
+			                  *_query_pools.head().pool,
 			                  _last_results.query_id_end());
 
 			_query_used[_last_results.query_id_end()] = true;
@@ -150,18 +122,20 @@ namespace mirrage::graphic {
 			// request timestamps for all unused queryIds
 			for(auto i = 0u; i < _next_query_id; i++) {
 				if(!_query_used[i]) {
-					cb.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *_query_pools.head(), i);
+					cb.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe, *_query_pools.head().pool, i);
 				}
 			}
+
+			_query_pools.head().requested_queries = _next_query_id;
 		}
 
 		_query_result_buffer.resize(_next_query_id);
 
-		_query_pools.pop_while([&](auto& pool) {
+		_query_pools.pop_while([&](auto& entry) {
 			// receivce results
-			auto status = _device.getQueryPoolResults<std::uint32_t>(*pool,
+			auto status = _device.getQueryPoolResults<std::uint32_t>(*entry.pool,
 			                                                         0,
-			                                                         _next_query_id,
+			                                                         entry.requested_queries,
 			                                                         _query_result_buffer,
 			                                                         sizeof(std::uint32_t),
 			                                                         vk::QueryResultFlags{});
@@ -177,6 +151,9 @@ namespace mirrage::graphic {
 
 		if(_active || _full) {
 			_full = !_query_pools.advance_head();
+			if(_full) {
+				INFO("full");
+			}
 		}
 
 		_current_command_buffer = util::nothing;
@@ -204,7 +181,7 @@ namespace mirrage::graphic {
 		auto& result = _current_stack.back()->get_or_add(name, [&] { return _generate_query_id(); });
 		_current_stack.emplace_back(&result);
 
-		cb.writeTimestamp(stage, *_query_pools.head(), result.query_id_begin());
+		cb.writeTimestamp(stage, *_query_pools.head().pool, result.query_id_begin());
 
 		_query_used[result.query_id_begin()] = true;
 
@@ -217,7 +194,7 @@ namespace mirrage::graphic {
 		        "No active command buffer! Has Profiler::start been called?");
 
 		cb.writeTimestamp(vk::PipelineStageFlagBits::eAllCommands,
-		                  *_query_pools.head(),
+		                  *_query_pools.head().pool,
 		                  _current_stack.back()->query_id_end());
 
 		_query_used[_current_stack.back()->query_id_end()] = true;

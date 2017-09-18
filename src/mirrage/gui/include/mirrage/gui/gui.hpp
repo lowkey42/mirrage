@@ -79,7 +79,7 @@ namespace mirrage::gui {
 		virtual void finalize_draw()                    = 0;
 
 	  private:
-		Gui* _gui;
+		Gui* _gui = nullptr;
 	};
 
 	// TODO: gamepad input: https://gist.github.com/vurtun/519801825b4ccfad6767

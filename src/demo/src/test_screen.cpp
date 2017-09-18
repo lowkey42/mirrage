@@ -62,7 +62,7 @@ namespace mirrage {
 	  , _gui(engine.window().viewport(),
 	         engine.assets(),
 	         engine.input(),
-	         util::tracking_ptr<gui::Gui_renderer>(_meta_system.renderer().find_pass<renderer::Gui_pass>()))
+	         _meta_system.renderer().find_pass<gui::Gui_renderer>())
 	  , _performance_log(util::nothing) {
 
 		_camera = _meta_system.entities().emplace("camera");
