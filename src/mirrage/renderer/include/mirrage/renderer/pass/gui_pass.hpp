@@ -62,7 +62,6 @@ namespace mirrage::renderer {
 		graphic::Streamed_buffer          _mesh_buffer;
 
 		// texture cache/store
-		graphic::Texture_cache                       _texture_cache;
 		int                                          _next_texture_handle = 0;
 		std::vector<std::shared_ptr<Loaded_texture>> _loaded_textures;
 		std::unordered_map<asset::AID, std::weak_ptr<struct nk_image>> _loaded_textures_by_aid;

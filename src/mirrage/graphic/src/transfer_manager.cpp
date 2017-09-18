@@ -16,6 +16,14 @@ namespace mirrage::graphic {
 	  , _mip_count(std::move(rhs._mip_count))
 	  , _dimensions(std::move(rhs._dimensions)) {}
 
+	Static_image& Static_image::operator=(Static_image&& rhs) noexcept {
+		_image      = std::move(rhs._image);
+		_mip_count  = std::move(rhs._mip_count);
+		_dimensions = std::move(rhs._dimensions);
+
+		return *this;
+	}
+
 	void Dynamic_buffer::update(const Command_buffer& cb, vk::DeviceSize offset, gsl::span<const char> data) {
 		INVARIANT(_capacity >= gsl::narrow<std::size_t>(data.size() + offset), "Buffer overflow");
 		INVARIANT(data.size() % 4 == 0, "buffer size has to be a multiple of 4: " << data.size());
@@ -91,7 +99,7 @@ namespace mirrage::graphic {
 	  , _semaphore(device.create_semaphore())
 	  , _command_buffer_pool(device.create_command_buffer_pool(transfer_queue, true, true))
 	  , _command_buffers(device,
-	                     +[](vk::UniqueCommandBuffer& cb) { cb.reset({}); },
+	                     +[](vk::UniqueCommandBuffer& cb) { cb->reset({}); },
 	                     [&] { return std::move(_command_buffer_pool.create_primary()[0]); },
 	                     max_frames) {
 

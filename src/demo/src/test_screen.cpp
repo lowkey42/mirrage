@@ -62,8 +62,7 @@ namespace mirrage {
 	  , _gui(engine.window().viewport(),
 	         engine.assets(),
 	         engine.input(),
-	         _meta_system.renderer().find_pass<gui::Gui_renderer>().get_or_throw(
-	                 "No renderer specified to render UI elements!"))
+	         util::tracking_ptr<gui::Gui_renderer>(_meta_system.renderer().find_pass<renderer::Gui_pass>()))
 	  , _performance_log(util::nothing) {
 
 		_camera = _meta_system.entities().emplace("camera");
@@ -231,9 +230,11 @@ namespace mirrage {
 		_sun.get<renderer::Directional_light_comp>().process(
 		        [&](renderer::Directional_light_comp& light) { light.temperature(_sun_color_temperature); });
 
-		auto s         = _meta_system.renderer().settings();
+		auto s = _meta_system.renderer().settings();
+		//if(s.debug_disect != p.disect_model) {
 		s.debug_disect = p.disect_model;
 		_meta_system.renderer().settings(s);
+		//}
 
 		_update_sun_position();
 	}
@@ -362,7 +363,7 @@ namespace mirrage {
 
 			nk_label(ctx, "Indirect illumination", NK_TEXT_LEFT);
 			int gi_active = renderer_settings.gi ? 1 : 0;
-			if(nk_checkbox_label(ctx, "GI", &gi_active)) {
+			if(nk_checkbox_label(ctx, "GI", &gi_active) && renderer_settings.gi != (gi_active == 1)) {
 				auto rs_copy = renderer_settings;
 				rs_copy.gi   = gi_active == 1;
 				_meta_system.renderer().settings(rs_copy);

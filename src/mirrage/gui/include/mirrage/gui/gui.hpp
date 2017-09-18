@@ -16,6 +16,7 @@
 #include <nuklear.h>
 
 #include <mirrage/utils/maybe.hpp>
+#include <mirrage/utils/template_utils.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <glm/vec2.hpp>
@@ -87,10 +88,10 @@ namespace mirrage::gui {
 	//                      https://github.com/vurtun/nuklear/blob/master/example/skinning.c
 	class Gui {
 	  public:
-		Gui(glm::vec4             viewport,
-		    asset::Asset_manager& assets,
-		    input::Input_manager& input,
-		    Gui_renderer&         renderer);
+		Gui(glm::vec4                        viewport,
+		    asset::Asset_manager&            assets,
+		    input::Input_manager&            input,
+		    util::tracking_ptr<Gui_renderer> renderer);
 		~Gui();
 
 		void draw();
@@ -106,8 +107,14 @@ namespace mirrage::gui {
 	  private:
 		struct PImpl;
 
-		Gui_renderer&          _renderer;
-		std::unique_ptr<PImpl> _impl;
+		glm::vec4                        _viewport;
+		asset::Asset_manager&            _assets;
+		input::Input_manager&            _input;
+		util::tracking_ptr<Gui_renderer> _renderer;
+		Gui_renderer*                    _last_renderer;
+		std::unique_ptr<PImpl>           _impl;
+
+		void _init();
 	};
 
 

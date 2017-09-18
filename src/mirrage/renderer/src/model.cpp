@@ -99,9 +99,9 @@ namespace mirrage::renderer {
 	                           std::uint32_t  owner_qfamily,
 	                           Texture_cache& tex_cache,
 	                           std::size_t    max_unique_materials)
-	  : _device(device)
+	  : _device(&device)
 	  , _owner_qfamily(owner_qfamily)
-	  , _texture_cache(tex_cache)
+	  , _texture_cache(&tex_cache)
 	  , _sampler(device.create_sampler(12))
 	  , _material_descriptor_set_layout(create_material_descriptor_set_layout(device, *_sampler))
 	  , _material_descriptor_set_pool(device.create_descriptor_pool(
@@ -129,7 +129,7 @@ namespace mirrage::renderer {
 	}
 
 	auto Model_loader::_parse_obj(const asset::AID& aid) -> Model_ptr {
-		auto in_mb = _device.context().asset_manager().load_raw(aid);
+		auto in_mb = _device->context().asset_manager().load_raw(aid);
 		if(in_mb.is_nothing()) {
 			FAIL("Requested model \"" << aid.str() << "\" doesn't exist!");
 		}
@@ -169,7 +169,7 @@ namespace mirrage::renderer {
 		}
 
 		// load data
-		auto model = std::make_shared<Model>(_device,
+		auto model = std::make_shared<Model>(*_device,
 		                                     _owner_qfamily,
 		                                     header.vertex_count,
 		                                     header.index_count,
@@ -202,12 +202,12 @@ namespace mirrage::renderer {
 		auto& mat = _materials[aid];
 
 		if(!mat) {
-			auto material_data = _device.context().asset_manager().load<Material_data>(aid, false);
+			auto material_data = _device->context().asset_manager().load<Material_data>(aid, false);
 
 			auto descriptor_set =
 			        _material_descriptor_set_pool.create_descriptor(*_material_descriptor_set_layout);
 			mat = std::make_shared<Material>(
-			        _device, std::move(descriptor_set), *_sampler, _texture_cache, *material_data);
+			        *_device, std::move(descriptor_set), *_sampler, *_texture_cache, *material_data);
 		}
 
 		return mat;

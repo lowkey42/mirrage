@@ -162,6 +162,175 @@ namespace mirrage::util {
 		}
 	}
 
+
+	template <typename T>
+	class tracking_ptr;
+
+	template <typename T>
+	class trackable {
+	  public:
+		trackable() = default;
+		trackable(std::unique_ptr<T> obj) : _obj(std::move(obj)) {}
+		trackable(trackable&&) = default;
+		auto& operator         =(trackable&& rhs) noexcept {
+			reset();
+
+			_obj      = std::move(rhs._obj);
+			_obj_addr = std::move(rhs._obj_addr);
+		}
+		~trackable() {
+			if(_obj_addr) {
+				*_obj_addr = nullptr;
+			}
+		}
+
+		auto& operator=(std::unique_ptr<T> obj) {
+			_obj = std::move(obj);
+			if(_obj_addr) {
+				*_obj_addr = _obj.get();
+			}
+
+			return *this;
+		}
+
+		void reset() {
+			if(_obj_addr) {
+				*_obj_addr = nullptr;
+			}
+
+			_obj.reset();
+		}
+
+		auto create_ptr() -> tracking_ptr<T>;
+
+		auto get() -> T* { return _obj.get(); }
+		auto get() const -> T* { return _obj.get(); }
+
+		operator T*() { return get(); }
+		operator const T*() const { return get(); }
+
+		auto operator*() -> T& {
+			auto ptr = get();
+			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			return *ptr;
+		}
+		auto operator*() const -> T& {
+			auto ptr = get();
+			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			return *ptr;
+		}
+
+		auto operator-> () -> T* {
+			auto ptr = get();
+			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			return ptr;
+		}
+		auto operator-> () const -> T* {
+			auto ptr = get();
+			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			return ptr;
+		}
+
+	  private:
+		template <typename>
+		friend class tracking_ptr;
+
+		std::unique_ptr<T>     _obj;
+		std::shared_ptr<void*> _obj_addr;
+
+		auto _get_obj_addr() {
+			if(!_obj_addr) {
+				_obj_addr = std::make_shared<void*>(_obj.get());
+			}
+
+			return _obj_addr;
+		}
+	};
+
+	template <typename T, typename... Args>
+	auto make_trackable(Args&&... args) {
+		return trackable<T>(std::make_unique<T>(std::forward<Args>(args)...));
+	}
+
+	template <typename T>
+	class tracking_ptr {
+	  public:
+		tracking_ptr() = default;
+		tracking_ptr(trackable<T>& t) : _trackable(t._get_obj_addr()) {}
+
+		template <typename I>
+		explicit tracking_ptr(tracking_ptr<I> t) : _trackable(t._trackable) {
+			if
+				constexpr(!std::is_base_of_v<I, T>) {
+					static_assert(
+					        std::is_base_of_v<T, I>,
+					        "The pointer types I and T don't seem to be related! I has to be either the "
+					        "base class of T of be derived from it.");
+
+					INVARIANT(t._caster == nullptr,
+					          "Casting tracking_ptrs can't be nested! Nice try though.");
+
+					_caster = +[](void* ptr) { return dynamic_cast<T*>(static_cast<I*>(ptr)); };
+				}
+		}
+
+		auto get() -> T* {
+			if(!_trackable)
+				return nullptr;
+
+			auto ptr = *_trackable;
+
+			if(_caster)
+				return _caster(ptr);
+			else
+				return static_cast<T*>(ptr);
+		}
+		auto get() const -> const T* { return const_cast<tracking_ptr<T>*>(this)->get(); }
+
+		operator T*() { return get(); }
+		operator const T*() const { return get(); }
+
+		explicit operator bool() const { return get() != nullptr; }
+		auto operator!() const { return get() != nullptr; }
+
+		auto operator*() -> T& {
+			auto ptr = get();
+			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			return *ptr;
+		}
+		auto operator*() const -> T& {
+			auto ptr = get();
+			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			return *ptr;
+		}
+
+		auto operator-> () -> T* {
+			auto ptr = get();
+			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			return ptr;
+		}
+		auto operator-> () const -> T* {
+			auto ptr = get();
+			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			return ptr;
+		}
+
+	  private:
+		template <typename>
+		friend class tracking_ptr;
+
+		using Caster = T* (*) (void*);
+
+		std::shared_ptr<void*> _trackable;
+		Caster                 _caster = nullptr;
+	};
+
+	template <typename T>
+	auto trackable<T>::create_ptr() -> tracking_ptr<T> {
+		return tracking_ptr<T>(*this);
+	}
+
+
 	class any_ptr {
 	  public:
 		any_ptr() : _ptr(nullptr), _type_id(0) {}

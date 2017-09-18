@@ -25,6 +25,12 @@ namespace mirrage::graphic {
 			Base_texture(Base_texture&& rhs) noexcept
 			  : _image(std::move(rhs._image)), _image_view(std::move(rhs._image_view)) {}
 
+			Base_texture& operator=(Base_texture&& rhs) noexcept {
+				_image      = std::move(rhs._image);
+				_image_view = std::move(rhs._image_view);
+				return *this;
+			}
+
 			auto view() const noexcept { return *_image_view; }
 			auto image() const noexcept { return _image.image(); }
 
@@ -120,6 +126,8 @@ namespace mirrage::graphic {
 		Render_target(Render_target&& rhs) noexcept
 		  : Texture<Type>(std::move(rhs)), _single_mip_level_views(std::move(rhs._single_mip_level_views)) {}
 
+		Render_target& operator=(Render_target&&) = default;
+
 		using Texture<Type>::width;
 		using Texture<Type>::height;
 		using Texture<Type>::view;
@@ -158,7 +166,7 @@ namespace mirrage::graphic {
 		void shrink_to_fit();
 
 	  private:
-		Device&       _device;
+		Device*       _device;
 		std::uint32_t _owner_qfamily;
 		std::unordered_map<asset::AID, Texture_ptr> _textures;
 	};

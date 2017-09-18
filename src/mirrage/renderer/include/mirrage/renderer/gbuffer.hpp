@@ -9,7 +9,7 @@ namespace mirrage::renderer {
 	  public:
 		GBuffer(graphic::Device& device, std::uint32_t width, std::uint32_t height);
 
-		const std::uint32_t mip_levels;
+		std::uint32_t mip_levels;
 
 		vk::Format                depth_format;
 		graphic::Render_target_2D depth;      // depth-buffer

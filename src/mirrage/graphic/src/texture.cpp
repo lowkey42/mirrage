@@ -133,19 +133,19 @@ namespace mirrage::graphic {
 
 
 	Texture_cache::Texture_cache(Device& device, std::uint32_t owner_qfamily)
-	  : _device(device), _owner_qfamily(owner_qfamily) {}
+	  : _device(&device), _owner_qfamily(owner_qfamily) {}
 
 	auto Texture_cache::load(const asset::AID& id) -> Texture_ptr {
 		auto& cached = _textures[id];
 
 		if(!cached) {
-			auto in = _device.context().asset_manager().load_raw(id);
+			auto in = _device->context().asset_manager().load_raw(id);
 
 			auto header =
 			        parse_header(in.get_or_throw("Texture '", id.str(), "' couldn't be opened!"), id.str());
 			auto dimensions = Image_dimensions(header.width, header.height, header.depth, header.layers);
 
-			auto image = _device.transfer().upload_image(
+			auto image = _device->transfer().upload_image(
 			        vk_type(header.type),
 			        _owner_qfamily,
 			        dimensions,
@@ -155,7 +155,7 @@ namespace mirrage::graphic {
 			        [&](char* dest) { in.get_or_throw().read_direct(dest, header.size); });
 
 			// TODO: create different type based on header.type
-			cached = std::make_shared<Texture_2D>(_device, std::move(image), header.format);
+			cached = std::make_shared<Texture_2D>(*_device, std::move(image), header.format);
 		}
 
 		return cached;

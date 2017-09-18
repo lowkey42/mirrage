@@ -57,10 +57,10 @@ namespace mirrage::graphic {
 		Image_dimensions(std::uint32_t width, std::uint32_t height, std::uint32_t depth, std::uint32_t layers)
 		  : width(width), height(height), depth(depth), layers(layers) {}
 
-		const std::uint32_t width;
-		const std::uint32_t height;
-		const std::uint32_t depth;
-		const std::uint32_t layers;
+		std::uint32_t width;
+		std::uint32_t height;
+		std::uint32_t depth;
+		std::uint32_t layers;
 	};
 	template <Image_type Type>
 	struct Image_dimensions_t;
@@ -106,9 +106,12 @@ namespace mirrage::graphic {
 
 	class Descriptor_pool {
 	  public:
-		Descriptor_pool(Descriptor_pool&&) = default;
-		Descriptor_pool& operator=(Descriptor_pool&&) = default;
-		~Descriptor_pool()                            = default;
+		Descriptor_pool(Descriptor_pool&& rhs) : _device(rhs._device), _pool(std::move(rhs._pool)) {}
+		Descriptor_pool& operator=(Descriptor_pool&& rhs) {
+			_pool = std::move(rhs._pool);
+			return *this;
+		}
+		~Descriptor_pool() = default;
 
 		auto create_descriptor(vk::DescriptorSetLayout) -> vk::UniqueDescriptorSet;
 

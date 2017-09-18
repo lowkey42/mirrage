@@ -103,8 +103,7 @@ namespace mirrage::renderer {
 	  , _descriptor_set(drenderer.create_descriptor_set(*_descriptor_set_layout))
 	  , _mesh_buffer(drenderer.device(),
 	                 max_render_buffer_size,
-	                 vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer)
-	  , _texture_cache(drenderer.device(), drenderer.queue_family()) {}
+	                 vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer) {}
 
 
 	void Gui_pass::update(util::Time dt) {}
@@ -135,7 +134,6 @@ namespace mirrage::renderer {
 		util::erase_if(_loaded_textures, [](auto& t) { return !t; });
 		util::erase_if(_loaded_textures_by_aid, [](auto& t) { return t.second.expired(); });
 		util::erase_if(_loaded_textures_by_handle, [](auto& t) { return t.second.expired(); });
-		_texture_cache.shrink_to_fit();
 	}
 
 	Gui_pass::Loaded_texture::Loaded_texture(int                     handle,
@@ -193,7 +191,7 @@ namespace mirrage::renderer {
 		auto handle = _next_texture_handle++;
 
 		auto entry = std::make_shared<Loaded_texture>(
-		        handle, _texture_cache.load(aid), *_sampler, _renderer, *_descriptor_set_layout);
+		        handle, _renderer.texture_cache().load(aid), *_sampler, _renderer, *_descriptor_set_layout);
 
 		_loaded_textures_by_handle.emplace(handle, entry);
 

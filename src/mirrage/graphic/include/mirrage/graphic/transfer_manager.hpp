@@ -43,6 +43,7 @@ namespace mirrage::graphic {
 		  , _generate_mips(generate_mips)
 		  , _dimensions(dimensions) {}
 		Static_image(Static_image&&) noexcept;
+		Static_image& operator=(Static_image&&) noexcept;
 
 		auto image() const noexcept { return *_image; }
 
@@ -100,7 +101,7 @@ namespace mirrage::graphic {
 
 	  private:
 		Backed_buffer          _buffer;
-		const std::size_t      _capacity;
+		std::size_t            _capacity;
 		vk::PipelineStageFlags _earliest_usage;
 		vk::AccessFlags        _earliest_usage_access;
 		vk::PipelineStageFlags _latest_usage;

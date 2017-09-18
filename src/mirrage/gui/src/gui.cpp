@@ -411,15 +411,34 @@ namespace mirrage::gui {
 		~PImpl() {}
 	};
 
-	Gui::Gui(glm::vec4             viewport,
-	         asset::Asset_manager& assets,
-	         input::Input_manager& input,
-	         Gui_renderer&         renderer)
-	  : _renderer(renderer), _impl(std::make_unique<PImpl>(viewport, assets, input, renderer)) {
+	Gui::Gui(glm::vec4                        viewport,
+	         asset::Asset_manager&            assets,
+	         input::Input_manager&            input,
+	         util::tracking_ptr<Gui_renderer> renderer)
+	  : _viewport(viewport)
+	  , _assets(assets)
+	  , _input(input)
+	  , _renderer(renderer)
+	  , _last_renderer(_renderer.get()) {
 
-		_renderer._gui = this;
+		_init();
 	}
-	Gui::~Gui() { _renderer._gui = nullptr; }
+	Gui::~Gui() {
+		if(_renderer) {
+			_renderer->_gui = nullptr;
+		}
+	}
+
+	void Gui::_init() {
+		_last_renderer = _renderer.get();
+		if(_last_renderer) {
+			_impl                = std::make_unique<PImpl>(_viewport, _assets, _input, *_last_renderer);
+			_last_renderer->_gui = this;
+
+		} else {
+			ERROR("Gui initialized without a valid renderer. Nothing will be drawn!");
+		}
+	}
 
 	void Gui_renderer::draw_gui() {
 		if(_gui) {
@@ -431,7 +450,13 @@ namespace mirrage::gui {
 		_impl->renderer.draw(_impl->ctx.ctx, _impl->viewport, _impl->screen_size, _impl->ui_matrix);
 	}
 
-	auto Gui::ctx() -> nk_context* { return &_impl->ctx.ctx; }
+	auto Gui::ctx() -> nk_context* {
+		if(_renderer && _renderer.get() != _last_renderer) {
+			_init();
+		}
+
+		return &_impl->ctx.ctx;
+	}
 
 	auto Gui::centered(int width, int height) -> struct nk_rect {
 		return nk_rect(_impl->screen_size.x / 2.f - width / 2.f,

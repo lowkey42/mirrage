@@ -181,6 +181,8 @@ namespace mirrage::renderer {
 		             std::uint32_t    owner_qfamily,
 		             graphic::Texture_cache&,
 		             std::size_t max_unique_materials);
+		Model_loader(Model_loader&&) = default;
+		Model_loader& operator=(Model_loader&&) = default;
 		~Model_loader();
 
 		auto load(const asset::AID&) -> future<Model_ptr>;
@@ -191,9 +193,9 @@ namespace mirrage::renderer {
 
 
 	  private:
-		graphic::Device&        _device;
+		graphic::Device*        _device;
 		std::uint32_t           _owner_qfamily;
-		graphic::Texture_cache& _texture_cache;
+		graphic::Texture_cache* _texture_cache;
 
 		vk::UniqueSampler             _sampler;
 		vk::UniqueDescriptorSetLayout _material_descriptor_set_layout;
