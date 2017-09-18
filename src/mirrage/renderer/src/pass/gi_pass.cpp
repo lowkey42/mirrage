@@ -191,6 +191,8 @@ namespace mirrage::renderer {
 		                              vk::DescriptorSetLayout   desc_set_layout,
 		                              int                       min_mip_level,
 		                              int                       max_mip_level,
+		                              int                       sample_count,
+		                              bool                      prioritise_near_samples,
 		                              Render_target_2D&         gi_buffer,
 		                              std::vector<Framebuffer>& out_framebuffers) {
 
@@ -223,11 +225,25 @@ namespace mirrage::renderer {
 			        color, graphic::all_color_components, graphic::blend_premultiplied_alpha);
 
 			pass.stage("sample"_strid)
-			        .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment)
+			        .shader("frag_shader:gi_sample"_aid,
+			                graphic::Shader_stage::fragment,
+			                "main",
+			                2,
+			                sample_count,
+			                4,
+			                prioritise_near_samples ? 1 : 0)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			pass.stage("sample_last"_strid)
-			        .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 0, 1)
+			        .shader("frag_shader:gi_sample"_aid,
+			                graphic::Shader_stage::fragment,
+			                "main",
+			                0,
+			                1,
+			                2,
+			                sample_count,
+			                4,
+			                prioritise_near_samples ? 1 : 0)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			pass.stage("upsample"_strid)
@@ -508,8 +524,7 @@ namespace mirrage::renderer {
 	  , _base_mip_level(calc_base_mip_level(in_out.width(), in_out.height(), renderer.settings().gi_highres))
 	  , _max_mip_level(calc_max_mip_level(in_out.width(), in_out.height()))
 	  , _diffuse_mip_level(_base_mip_level + renderer.settings().gi_diffuse_mip_level)
-	  , _specular_mip_level(_base_mip_level + renderer.settings().gi_specular_mip_level)
-	  , _min_mip_level(std::min(_diffuse_mip_level, _specular_mip_level))
+	  , _min_mip_level(std::min(_diffuse_mip_level, _base_mip_level + renderer.settings().gi_min_mip_level))
 	  , _gbuffer_sampler(renderer.device().create_sampler(12,
 	                                                      vk::SamplerAddressMode::eClampToEdge,
 	                                                      vk::BorderColor::eIntOpaqueBlack,
@@ -584,20 +599,21 @@ namespace mirrage::renderer {
 	                                               _gi_specular,
 	                                               _history_weight,
 	                                               _reproject_framebuffer))
-	  , _reproject_descriptor_set(_descriptor_set_layout.create_set(
-	            renderer.descriptor_pool(),
-	            {renderer.gbuffer().depth.view(),
-	             renderer.gbuffer().mat_data.view(),
-	             renderer.gbuffer().albedo_mat_id.view(0),
-	             _gi_diffuse_history.view(),
-	             _gi_specular_history.view(),
-	             renderer.gbuffer().prev_depth.view(),
-	             _integrated_brdf.view()}))
+	  , _reproject_descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
+	                                                                {renderer.gbuffer().depth.view(),
+	                                                                 renderer.gbuffer().mat_data.view(),
+	                                                                 renderer.gbuffer().albedo_mat_id.view(0),
+	                                                                 _gi_diffuse_history.view(),
+	                                                                 _gi_specular_history.view(),
+	                                                                 renderer.gbuffer().prev_depth.view(),
+	                                                                 _integrated_brdf.view()}))
 
 	  , _sample_renderpass(build_sample_render_pass(renderer,
 	                                                *_descriptor_set_layout,
 	                                                _min_mip_level,
 	                                                _max_mip_level,
+	                                                renderer.settings().gi_samples,
+	                                                renderer.settings().gi_prioritise_near_samples,
 	                                                _gi_diffuse,
 	                                                _sample_framebuffers))
 
@@ -623,16 +639,16 @@ namespace mirrage::renderer {
 
 	  , _blend_renderpass(
 	            build_blend_render_pass(renderer, *_descriptor_set_layout, _color_in_out, _blend_framebuffer))
-	  , _blend_descriptor_set(_descriptor_set_layout.create_set(
-	            renderer.descriptor_pool(),
-	            {renderer.gbuffer().depth.view(0),
-	             renderer.gbuffer().mat_data.view(0),
-	             renderer.gbuffer().depth.view(_base_mip_level),
-	             renderer.gbuffer().mat_data.view(_base_mip_level),
-	             _gi_diffuse.view(),
-	             _gi_specular.view(),
-	             renderer.gbuffer().albedo_mat_id.view(0),
-	             _integrated_brdf.view()})) {
+	  , _blend_descriptor_set(
+	            _descriptor_set_layout.create_set(renderer.descriptor_pool(),
+	                                              {renderer.gbuffer().depth.view(0),
+	                                               renderer.gbuffer().mat_data.view(0),
+	                                               renderer.gbuffer().depth.view(_base_mip_level),
+	                                               renderer.gbuffer().mat_data.view(_base_mip_level),
+	                                               _gi_diffuse.view(),
+	                                               _gi_specular.view(),
+	                                               renderer.gbuffer().albedo_mat_id.view(0),
+	                                               _integrated_brdf.view()})) {
 		auto end = _max_mip_level;
 		_sample_descriptor_sets.reserve(end - _min_mip_level);
 		for(auto i = 0; i < end - _min_mip_level; i++) {

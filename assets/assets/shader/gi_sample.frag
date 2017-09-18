@@ -141,7 +141,7 @@ vec3 gi_sample(int lod, int base_mip) {
 	//   float visibility = 1.0 - (samples_used / float(SAMPLES));
 
 	if(PRIORITISE_NEAR_SAMPLES==1)
-		c = c * pow(2.0, clamp((lod-base_mip)*2, 4, 7));
+		c = c * pow(2.0, clamp((lod-base_mip)*2, 4, 8));
 	else
 		c = c * pow(2.0, (lod-base_mip)*2);
 

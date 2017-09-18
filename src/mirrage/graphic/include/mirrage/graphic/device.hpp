@@ -158,7 +158,7 @@ namespace mirrage::graphic {
 			return _memory_allocator.is_unified_memory_architecture();
 		}
 
-		auto max_frames_in_flight() const noexcept { return _delete_queue.capacity() + 1; }
+		auto max_frames_in_flight() const noexcept { return _delete_queue.capacity() + 2; }
 
 		auto vk_device() const noexcept { return &*_device; }
 

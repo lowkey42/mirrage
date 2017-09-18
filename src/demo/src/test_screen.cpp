@@ -85,7 +85,6 @@ namespace mirrage {
 						_meta_system.nims().stop();
 						_set_preset(1);
 					} else {
-						std::terminate();
 						_engine.screens().leave();
 					}
 					break;
@@ -100,7 +99,7 @@ namespace mirrage {
 				case "d_disect"_strid: {
 					auto s         = _meta_system.renderer().settings();
 					s.debug_disect = !s.debug_disect;
-					_meta_system.renderer().settings(s);
+					_meta_system.renderer().settings(s, false);
 					_set_preset(0);
 					break;
 				}
@@ -230,11 +229,9 @@ namespace mirrage {
 		_sun.get<renderer::Directional_light_comp>().process(
 		        [&](renderer::Directional_light_comp& light) { light.temperature(_sun_color_temperature); });
 
-		auto s = _meta_system.renderer().settings();
-		//if(s.debug_disect != p.disect_model) {
+		auto s         = _meta_system.renderer().settings();
 		s.debug_disect = p.disect_model;
-		_meta_system.renderer().settings(s);
-		//}
+		_meta_system.renderer().settings(s, false);
 
 		_update_sun_position();
 	}
@@ -332,18 +329,10 @@ namespace mirrage {
 		if(nk_begin_titled(ctx,
 		                   "debug_controls",
 		                   "Debug Controls",
-		                   _gui.centered_left(220, 260),
+		                   _gui.centered_left(250, 570),
 		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
 
 			nk_layout_row_dynamic(ctx, 20, 2);
-			nk_label(ctx, "Debug Layer", NK_TEXT_LEFT);
-			auto& renderer_settings = _meta_system.renderer().settings();
-			auto  dgil = nk_propertyi(ctx, "gi_layer", -1, renderer_settings.debug_gi_layer, 5, 1, 0.1);
-			if(dgil != renderer_settings.debug_gi_layer) {
-				auto rs_copy           = renderer_settings;
-				rs_copy.debug_gi_layer = dgil;
-				_meta_system.renderer().settings(rs_copy);
-			}
 
 			nk_label(ctx, "Preset", NK_TEXT_LEFT);
 			auto preset_options = std::array<const char*, 7>{{"Free Motion",
@@ -361,17 +350,9 @@ namespace mirrage {
 			                     nk_vec2(100.f, 200)));
 
 
-			nk_label(ctx, "Indirect illumination", NK_TEXT_LEFT);
-			int gi_active = renderer_settings.gi ? 1 : 0;
-			if(nk_checkbox_label(ctx, "GI", &gi_active) && renderer_settings.gi != (gi_active == 1)) {
-				auto rs_copy = renderer_settings;
-				rs_copy.gi   = gi_active == 1;
-				_meta_system.renderer().settings(rs_copy);
-			}
-
-			nk_label(ctx, "Show profiler", NK_TEXT_LEFT);
+			nk_layout_row_dynamic(ctx, 20, 1);
 			auto show_profiler = _show_profiler ? 1 : 0;
-			if(nk_checkbox_label(ctx, "Profiler", &show_profiler)) {
+			if(nk_checkbox_label(ctx, "Show profiler", &show_profiler)) {
 				_show_profiler = show_profiler == 1;
 			}
 
@@ -417,6 +398,62 @@ namespace mirrage {
 						_set_preset(0);
 					}
 				});
+			}
+
+
+			nk_layout_row_dynamic(ctx, 20, 1);
+			nk_label(ctx, "Graphic Settings", NK_TEXT_LEFT);
+			auto renderer_settings = _meta_system.renderer().settings();
+			auto bool_nk_wrapper   = 0;
+
+			nk_layout_row_dynamic(ctx, 20, 1);
+			nk_property_int(ctx, "Debug Layer", -1, &renderer_settings.debug_gi_layer, 5, 1, 1);
+
+			bool_nk_wrapper = renderer_settings.gi ? 1 : 0;
+			nk_checkbox_label(ctx, "Indirect Illumination", &bool_nk_wrapper);
+			renderer_settings.gi = bool_nk_wrapper == 1;
+
+			bool_nk_wrapper = renderer_settings.gi_highres ? 1 : 0;
+			nk_checkbox_label(ctx, "High Resolution GI", &bool_nk_wrapper);
+			renderer_settings.gi_highres = bool_nk_wrapper == 1;
+
+			nk_property_int(ctx, "Minimum GI MIP", 0, &renderer_settings.gi_min_mip_level, 4, 1, 1);
+
+			nk_property_int(ctx, "Diffuse GI MIP", 0, &renderer_settings.gi_diffuse_mip_level, 4, 1, 1);
+
+			nk_property_int(ctx, "Sample Count", 8, &renderer_settings.gi_samples, 256, 1, 1);
+
+			bool_nk_wrapper = renderer_settings.gi_prioritise_near_samples ? 1 : 0;
+			nk_checkbox_label(ctx, "Prioritise near samples", &bool_nk_wrapper);
+			renderer_settings.gi_prioritise_near_samples = bool_nk_wrapper == 1;
+
+			nk_property_int(
+			        ctx, "Low-Quality MIP-Levels", 0, &renderer_settings.gi_low_quality_mip_levels, 8, 1, 1);
+
+			nk_property_float(ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.01, 0.1);
+
+			nk_property_float(
+			        ctx, "Background brightness", 0.f, &renderer_settings.background_intensity, 10.f, 1, 0.1);
+
+			bool_nk_wrapper = renderer_settings.ssao ? 1 : 0;
+			nk_checkbox_label(ctx, "Ambient Occlusion", &bool_nk_wrapper);
+			renderer_settings.ssao = bool_nk_wrapper == 1;
+
+			bool_nk_wrapper = renderer_settings.bloom ? 1 : 0;
+			nk_checkbox_label(ctx, "Bloom", &bool_nk_wrapper);
+			renderer_settings.bloom = bool_nk_wrapper == 1;
+
+
+			nk_layout_row_dynamic(ctx, 20, 1);
+
+			if(nk_button_label(ctx, "Apply")) {
+				_meta_system.renderer().settings(renderer_settings, true);
+			} else {
+				_meta_system.renderer().settings(renderer_settings, false);
+			}
+
+			if(nk_button_label(ctx, "Reset")) {
+				_meta_system.renderer().settings(renderer::Renderer_settings{}, true);
 			}
 		}
 		nk_end(ctx);
@@ -478,9 +515,11 @@ namespace mirrage {
 				_meta_system.renderer().profiler().reset();
 			}
 
+#if 0
 			if(_performance_log.is_nothing() && nk_button_label(ctx, "Record")) {
 				_performance_log = _engine.assets().save_raw("log:perf.log"_aid);
 			}
+#endif
 
 			constexpr auto rows = std::array<float, 5>{{0.4f, 0.15f, 0.15f, 0.15f, 0.15f}};
 			nk_layout_row(ctx, NK_DYNAMIC, 25, rows.size(), rows.data());

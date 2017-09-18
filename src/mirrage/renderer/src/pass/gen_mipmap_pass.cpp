@@ -121,9 +121,7 @@ namespace mirrage::renderer {
 	                           vk::DescriptorSet global_uniform_set,
 	                           std::size_t) {
 
-		// importance-based mip-map shader produces slidely more artiacts than hardware mip-mapping (and is slower)
-		//   => disabled for now
-		const auto low_quality_levels = 2u; //_renderer.gbuffer().mip_levels;//1u;
+		const auto low_quality_levels = util::max(1, _renderer.settings().gi_low_quality_mip_levels + 1);
 
 		if(low_quality_levels > 1) {
 			// blit the first level
@@ -148,7 +146,7 @@ namespace mirrage::renderer {
 		}
 
 		// generate mipmaps for GBuffer
-		for(auto i = low_quality_levels; i < _renderer.gbuffer().mip_levels; i++) {
+		for(auto i = low_quality_levels; i < gsl::narrow<int>(_renderer.gbuffer().mip_levels); i++) {
 			auto& fb = _mipmap_gen_framebuffers.at(i - 1);
 
 			// barrier against write to previous mipmap level

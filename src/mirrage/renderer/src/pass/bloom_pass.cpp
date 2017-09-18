@@ -230,7 +230,8 @@ namespace mirrage::renderer {
 	                      std::size_t) {
 
 		auto pcs         = Push_constants{};
-		pcs.parameters.x = 8.0f; // TODO: make configurable
+		pcs.parameters.x = 8.0f; // bloom threshold
+		pcs.parameters.z = _renderer.settings().exposure_override;
 
 		// filter
 		_filter_renderpass.execute(command_buffer, _filter_framebuffer, [&] {

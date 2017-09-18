@@ -222,6 +222,16 @@ namespace mirrage::renderer {
 	                     vk::DescriptorSet global_uniform_set,
 	                     std::size_t) {
 
+		if(!_renderer.settings().ssao) {
+			graphic::clear_texture(command_buffer,
+			                       _ao_result_buffer,
+			                       util::Rgba{1, 1, 1, 1},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal);
+			return;
+		}
+
+
 		auto descriptor_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_ssao_descriptor_set};
 
 		Push_constants pcs;

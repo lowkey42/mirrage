@@ -5,8 +5,7 @@ namespace mirrage::renderer {
 
 	namespace {
 		struct Push_constants {
-			glm::vec4 parameters; // tau (controls adjustment speed), active sampler
-			                      // TODO
+			glm::vec4 parameters;
 		};
 
 		auto build_luminance_render_pass(Deferred_renderer&         renderer,
@@ -215,11 +214,13 @@ namespace mirrage::renderer {
 	                             std::size_t) {
 
 		auto pcs         = Push_constants{};
-		pcs.parameters.x = 0.08f; // TODO: make configurable
-		pcs.parameters.y = 0.8f;  // TODO: make configurable
+		pcs.parameters.x = 0.08f; // adjustment speed if current luminance > previous
+		pcs.parameters.y = 0.8f;  // adjustment speed if current luminance <= previous
 
 		if(_first_frame) {
 			_first_frame = false;
+
+			pcs.parameters.x = pcs.parameters.y = 999.f;
 
 			constexpr auto initial_lum = -40.f;
 			graphic::clear_texture(command_buffer,

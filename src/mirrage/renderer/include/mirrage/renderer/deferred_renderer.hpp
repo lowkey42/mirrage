@@ -33,13 +33,16 @@ namespace mirrage::renderer {
 		bool  gi                         = true;
 		bool  gi_highres                 = true;
 		int   gi_diffuse_mip_level       = 1;
-		int   gi_specular_mip_level      = 0;
+		int   gi_min_mip_level           = 0;
 		int   gi_samples                 = 128;
 		bool  gi_prioritise_near_samples = true;
-		bool  gi_low_quality_mip_levels  = 0;
-		float exposure_override          = -1.f;
+		int   gi_low_quality_mip_levels  = 0;
+		float exposure_override          = 0.f;
 
-		bool ssao = true;
+		bool ssao  = true;
+		bool bloom = true;
+
+		float background_intensity = 1.f;
 
 		bool dynamic_shadows = false;
 		bool debug_disect    = false;

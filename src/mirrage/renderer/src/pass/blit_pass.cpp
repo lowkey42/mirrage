@@ -103,9 +103,12 @@ namespace mirrage::renderer {
 			auto descriptor_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_descriptor_set};
 			_render_pass.bind_descriptor_sets(0, descriptor_sets);
 
-			_render_pass.push_constant(
-			        "settings"_strid,
-			        glm::vec4(_tone_mapping_enabled ? 1 : 0, _bloom_enabled ? 50 : 0, 0, 0));
+			glm::vec4 settings;
+			settings.x = _tone_mapping_enabled ? 1 : 0;
+			settings.y = _bloom_enabled && _renderer.settings().bloom ? 20 : 0;
+			settings.z = _renderer.settings().exposure_override;
+
+			_render_pass.push_constant("settings"_strid, settings);
 
 			command_buffer.draw(3, 1, 0, 0);
 		});
