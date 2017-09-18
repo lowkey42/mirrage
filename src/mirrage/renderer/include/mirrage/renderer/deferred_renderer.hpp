@@ -149,6 +149,7 @@ namespace mirrage::renderer {
 		std::vector<Deferred_renderer*> _renderer_instances;
 		bool                            _recreation_pending = false;
 
+		void _present();
 		auto _rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> gqueue) -> int;
 		auto _init_device(vk::PhysicalDevice, util::maybe<std::uint32_t> gqueue)
 		        -> graphic::Device_create_info;
@@ -234,7 +235,5 @@ namespace mirrage::renderer {
 
 		void _write_global_uniform_descriptor_set();
 		void _update_global_uniforms(vk::CommandBuffer, const Camera_state& camera);
-
-		auto operator=(Deferred_renderer &&) -> Deferred_renderer& = default;
 	};
 }

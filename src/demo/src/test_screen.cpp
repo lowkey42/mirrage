@@ -318,7 +318,10 @@ namespace mirrage {
 			_draw_settings_window();
 
 			if(_show_profiler) {
+				_meta_system.renderer().profiler().enable();
 				_draw_profiler_window();
+			} else {
+				_meta_system.renderer().profiler().disable();
 			}
 		}
 
@@ -506,9 +509,6 @@ namespace mirrage {
 		                   "Profiler",
 		                   _gui.centered_right(310, 380),
 		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
-
-			// TODO: disable when window is hidden
-			_meta_system.renderer().profiler().enable();
 
 			nk_layout_row_dynamic(ctx, 20, 1);
 			if(nk_button_label(ctx, "Reset")) {

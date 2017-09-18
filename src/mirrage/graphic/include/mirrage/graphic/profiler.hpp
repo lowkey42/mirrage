@@ -111,6 +111,9 @@ namespace mirrage::graphic {
 
 	  public:
 		explicit Profiler(Device&, std::size_t max_elements = 32);
+		Profiler(Profiler&&) = default;
+		Profiler& operator   =(Profiler&&) noexcept;
+		~Profiler();
 
 		void enable() noexcept { _active = true; }
 		void disable() noexcept { _active = false; }
@@ -143,6 +146,7 @@ namespace mirrage::graphic {
 		Profiler_result _last_results;
 		Query_pools     _query_pools;
 		bool            _active = false;
+		bool            _full   = false;
 
 		Result_stack                   _current_stack;
 		util::maybe<vk::CommandBuffer> _current_command_buffer;
@@ -155,5 +159,7 @@ namespace mirrage::graphic {
 		auto _generate_query_id() -> std::uint32_t;
 
 		void _update_result(Profiler_result&, const std::vector<std::uint32_t>& data);
+
+		void _wait_done();
 	};
 }

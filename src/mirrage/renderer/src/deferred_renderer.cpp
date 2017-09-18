@@ -83,8 +83,6 @@ namespace mirrage::renderer {
 			        *this, *_entity_manager, _meta_system, write_first_pp_buffer);
 		}
 
-		_write_global_uniform_descriptor_set();
-
 		device().wait_idle();
 	}
 
@@ -249,6 +247,17 @@ namespace mirrage::renderer {
 	}
 
 	void Deferred_renderer_factory::finish_frame() {
+		_present();
+
+		if(_recreation_pending) {
+			_recreation_pending = false;
+
+			for(auto& inst : _renderer_instances) {
+				inst->recreate();
+			}
+		}
+	}
+	void Deferred_renderer_factory::_present() {
 		if(_aquired_swapchain_image.is_nothing())
 			return; // nothing drawn, nothing to do
 
@@ -288,14 +297,6 @@ namespace mirrage::renderer {
 		_swapchain.present(_queue, _aquired_swapchain_image.get_or_throw(), *_image_presented);
 		_aquired_swapchain_image = util::nothing;
 		_window.on_present();
-
-		if(_recreation_pending) {
-			_recreation_pending = false;
-
-			for(auto& inst : _renderer_instances) {
-				inst->recreate();
-			}
-		}
 	}
 
 	auto Deferred_renderer_factory::_rank_device(vk::PhysicalDevice gpu, util::maybe<std::uint32_t> gqueue)
