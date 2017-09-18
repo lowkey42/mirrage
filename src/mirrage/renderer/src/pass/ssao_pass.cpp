@@ -174,7 +174,8 @@ namespace mirrage::renderer {
 	            {renderer.gbuffer().depth.width(ao_mip_level), renderer.gbuffer().depth.height(ao_mip_level)},
 	            1,
 	            _ao_format,
-	            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment,
+	            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment
+	                    | vk::ImageUsageFlagBits::eTransferDst,
 	            vk::ImageAspectFlagBits::eColor)
 	  , _blur_buffer(renderer.device(),
 	                 {_ao_result_buffer.width(), _ao_result_buffer.height()},
@@ -227,7 +228,9 @@ namespace mirrage::renderer {
 			                       _ao_result_buffer,
 			                       util::Rgba{1, 1, 1, 1},
 			                       vk::ImageLayout::eUndefined,
-			                       vk::ImageLayout::eShaderReadOnlyOptimal);
+			                       vk::ImageLayout::eShaderReadOnlyOptimal,
+			                       0,
+			                       1);
 			return;
 		}
 
