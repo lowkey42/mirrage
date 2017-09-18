@@ -142,20 +142,21 @@ void main() {
 	float max_distance = min(32, 4 / (tan(coneTheta)*2));
 	float max_steps = max_distance*16;
 
+	vec3 jitter = PDnrand3(vertex_out.tex_coords);
+
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
 	if(spec_visible &&
 	   traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
 							depthSize, 2.0, global_uniforms.proj_planes.x,
-							5, 0.5, max_distance, max_steps, int(startLod + 0.5),
+							10, 0.5*jitter.z, max_distance, max_steps, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 
 		vec3 L = raycast_hit_point - P;
 		float L_len = length(L);
 		float factor_distance = 1.0 - min(L_len / 10.0, 1.0);
 
-		vec2 jitter = PDnrand2(vec4(vertex_out.tex_coords,0,global_uniforms.time.x))* mix(0.001, 0.03, min(L_len / 10.0, 1.0));
-		vec2 hit_uv = raycast_hit_uv/depthSize + jitter;
+		vec2 hit_uv = raycast_hit_uv/depthSize + jitter.xy * mix(0.001, 0.03, min(L_len / 10.0, 1.0));
 
 		vec3 hit_N = decode_normal(textureLod(mat_data_sampler, hit_uv, 0).rg);
 
