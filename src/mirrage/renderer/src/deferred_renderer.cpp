@@ -20,12 +20,12 @@ namespace mirrage::renderer {
 	  , _entity_manager(&ecs)
 	  , _meta_system(userdata)
 	  , _descriptor_set_pool(
-	            device().create_descriptor_pool(256,
-	                                            {{vk::DescriptorType::eUniformBuffer, 8},
-	                                             {vk::DescriptorType::eCombinedImageSampler, 256},
-	                                             {vk::DescriptorType::eInputAttachment, 64},
-	                                             {vk::DescriptorType::eSampledImage, 256},
-	                                             {vk::DescriptorType::eSampler, 64}}))
+	            device().create_descriptor_pool(512,
+	                                            {{vk::DescriptorType::eUniformBuffer, 64},
+	                                             {vk::DescriptorType::eCombinedImageSampler, 512},
+	                                             {vk::DescriptorType::eInputAttachment, 256},
+	                                             {vk::DescriptorType::eSampledImage, 512},
+	                                             {vk::DescriptorType::eSampler, 128}}))
 	  , _gbuffer(std::make_unique<GBuffer>(device(), factory._window.width(), factory._window.height()))
 	  , _profiler(device(), 64)
 
