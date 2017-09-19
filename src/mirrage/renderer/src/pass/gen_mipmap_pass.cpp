@@ -121,7 +121,9 @@ namespace mirrage::renderer {
 	                           vk::DescriptorSet global_uniform_set,
 	                           std::size_t) {
 
-		const auto low_quality_levels = util::max(1, _renderer.settings().gi_low_quality_mip_levels + 1);
+		const auto low_quality_levels = glm::clamp(_renderer.settings().gi_low_quality_mip_levels + 1,
+		                                           1,
+		                                           gsl::narrow<int>(_renderer.gbuffer().mip_levels));
 
 		if(low_quality_levels > 1) {
 			// blit the first level
