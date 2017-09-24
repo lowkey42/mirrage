@@ -21,7 +21,11 @@ elseif(MSVC)
 endif()
 
 add_subdirectory(demo)
-add_subdirectory(mesh_converter)
+
+if(BUILD_MESH_CONVERTER)
+	add_subdirectory(mesh_converter)
+endif()
+
 add_subdirectory(mirrage)
 
 option(ENABLE_CLANG_FORMAT "Includes a clangformat target, that automatically formats the source files." OFF)

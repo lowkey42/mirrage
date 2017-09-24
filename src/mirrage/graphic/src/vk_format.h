@@ -707,9 +707,9 @@ static inline VkFormat vkGetFormatFromOpenGLInternalFormat(const GLenum internal
 		case GL_COMPRESSED_RGBA_S3TC_DXT1_EXT:
 			return VK_FORMAT_BC1_RGBA_UNORM_BLOCK; // line through 3D space plus 1-bit alpha, unsigned normalized
 		case GL_COMPRESSED_RGBA_S3TC_DXT5_EXT:
-			return VK_FORMAT_BC2_UNORM_BLOCK; // line through 3D space plus line through 1D space, unsigned normalized
+			return VK_FORMAT_BC3_UNORM_BLOCK; // line through 3D space plus line through 1D space, unsigned normalized
 		case GL_COMPRESSED_RGBA_S3TC_DXT3_EXT:
-			return VK_FORMAT_BC3_UNORM_BLOCK; // line through 3D space plus 4-bit alpha, unsigned normalized
+			return VK_FORMAT_BC2_UNORM_BLOCK; // line through 3D space plus 4-bit alpha, unsigned normalized
 
 		case GL_COMPRESSED_SRGB_S3TC_DXT1_EXT:
 			return VK_FORMAT_BC1_RGB_SRGB_BLOCK; // line through 3D space, sRGB

@@ -3,11 +3,14 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 execute_process(COMMAND git submodule update --init --recursive --remote
 	WORKING_DIRECTORY ${ROOT_DIR})
 
+if(BUILD_MESH_CONVERTER)
+	find_package(assimp 3.3.1)
+	if(NOT assimp_FOUND)
+		add_subdirectory(assimp)
+		set_property(TARGET assimp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/assimp/include")
+	endif()
 
-find_package(assimp 3.3.1)
-if(NOT assimp_FOUND)
-	add_subdirectory(assimp)
-	set_property(TARGET assimp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/assimp/include")
+	add_subdirectory(stb_image)
 endif()
 
 add_subdirectory(glm)
@@ -22,5 +25,4 @@ add_subdirectory(physfs)
 
 add_subdirectory(sdl_vulkan)
 add_subdirectory(sf2)
-add_subdirectory(stb_image)
 

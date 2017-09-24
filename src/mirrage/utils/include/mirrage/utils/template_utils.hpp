@@ -187,6 +187,8 @@ namespace mirrage::util {
 
 			_obj      = std::move(rhs._obj);
 			_obj_addr = std::move(rhs._obj_addr);
+
+			return *this;
 		}
 		~trackable() { reset(); }
 
