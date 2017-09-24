@@ -33,5 +33,5 @@ void main() {
 
 	depth_out     = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
 	albedo_mat_id = vec4(albedo.rgb, 1.0);
-	mat_data      = vec4(0,0,0,0);
+	mat_data      = vec4(encode_normal(normalize(normal)), 0.5, 0);
 }

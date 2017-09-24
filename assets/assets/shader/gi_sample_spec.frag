@@ -132,7 +132,7 @@ void main() {
 	vec3 dir = -reflect(V, N);
 	P += dir*0.1;
 
-	bool spec_visible = metallic>0.01 || (max(0, dot(normalize(V+dir), dir))<0.7);
+	bool spec_visible = metallic>0.01 || (max(0, dot(normalize(V+dir), dir))<0.6);
 
 	// convert to cone angle (maximum extent of the specular lobe aperture)
 	// only want half the full cone angle since we're slicing the isosceles triangle in half to get a right triangle
@@ -154,9 +154,9 @@ void main() {
 
 		vec3 L = raycast_hit_point - P;
 		float L_len = length(L);
-		float factor_distance = 1.0 - min(L_len / 10.0, 1.0);
+		float factor_distance = 1.0 - min(L_len / 10.0, 0.9);
 
-		vec2 hit_uv = raycast_hit_uv/depthSize + jitter.xy * mix(0.001, 0.03, min(L_len / 10.0, 1.0));
+		vec2 hit_uv = raycast_hit_uv/depthSize + jitter.xy * mix(0.001, 0.02, min(L_len / 10.0, 1.0));
 
 		vec3 hit_N = decode_normal(textureLod(mat_data_sampler, hit_uv, 0).rg);
 

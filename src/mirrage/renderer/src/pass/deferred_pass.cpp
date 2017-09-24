@@ -150,14 +150,14 @@ namespace mirrage::renderer {
 
 			auto render_pass = builder.build();
 
-			auto sky_color = util::Rgba{temperature_to_color(25000.f) * 0.1f, 1};
+			auto sky_color = util::Rgba{temperature_to_color(25000.f), 1};
 			sky_color *= renderer.settings().background_intensity;
 
 			auto attachments = std::array<Framebuffer_attachment_desc, 6>{
 			        {{depth_buffer.view(0), 1.f},
 			         {gbuffer.depth.view(0), util::Rgba(1.f)},
 			         {gbuffer.albedo_mat_id.view(0), sky_color},
-			         {gbuffer.mat_data.view(0), util::Rgba{0, 0, 0, 0}},
+			         {gbuffer.mat_data.view(0), util::Rgba{0, 0, 1, 0}},
 			         {color_target.view(0), util::Rgba{0, 0, 0, 0}},
 			         {color_target_diff.view(0), util::Rgba{0, 0, 0, 0}}}};
 			out_framebuffer =

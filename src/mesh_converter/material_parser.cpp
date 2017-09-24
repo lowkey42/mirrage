@@ -4,6 +4,7 @@
 #include "material_parser.hpp"
 
 #include <mirrage/renderer/model.hpp>
+#include <mirrage/utils/math.hpp>
 #include <mirrage/utils/str_id.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
@@ -152,17 +153,17 @@ namespace mirrage {
 			return image;
 		}
 
-		template <typename T>
-		void generate_mip_maps(Image_data<T>& image) {
+		template <typename T, typename F>
+		void generate_mip_maps(Image_data<T>& image, F&& f) {
 			for(std::uint32_t i = 1u; i < image.mip_levels.size(); i++) {
 				auto width  = std::max(1u, image.width >> i);
 				auto height = std::max(1u, image.height >> i);
 				for(std::uint32_t y = 0; y < height; y++) {
 					for(std::uint32_t x = 0; x < width; x++) {
-						auto v = image.pixel(i - 1, x * 2, y * 2) + image.pixel(i - 1, x * 2 + 1, y * 2)
-						         + image.pixel(i - 1, x * 2 + 1, y * 2 + 1)
-						         + image.pixel(i - 1, x * 2, y * 2 + 1);
-						image.pixel(i, x, y) = v / 4.f;
+						image.pixel(i, x, y) = f(image.pixel(i - 1, x * 2, y * 2),
+						                         image.pixel(i - 1, x * 2 + 1, y * 2),
+						                         image.pixel(i - 1, x * 2 + 1, y * 2 + 1),
+						                         image.pixel(i - 1, x * 2, y * 2 + 1));
 					}
 				}
 			}
@@ -248,7 +249,7 @@ namespace mirrage {
 		auto albedo_name = base_dir + "/" + albedo_name_mb.get_or_throw();
 
 		auto albedo = load_texture2d(albedo_name);
-		generate_mip_maps(albedo);
+		generate_mip_maps(albedo, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
 		albedo_name = name + "_albedo.ktx";
 		store_texture(albedo, texture_dir + albedo_name);
 
@@ -272,8 +273,10 @@ namespace mirrage {
 				        base_dir + "/" + get_texture_name(material, normal_texture_type).get_or_throw(),
 				        false);
 
-				generate_mip_maps(metallic);
-				generate_mip_maps(roughness);
+				generate_mip_maps(metallic,
+				                  [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+				generate_mip_maps(roughness,
+				                  [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
 
 				normal.foreach([&](auto& pixel, auto level, auto x, auto y) {
 					if(level > 0) {

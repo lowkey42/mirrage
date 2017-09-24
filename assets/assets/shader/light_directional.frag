@@ -51,7 +51,7 @@ void main() {
 
 	// material 255 (unlit)
 	if(material==255) {
-		out_color = out_color_diff = vec4(albedo*30.0, 1.0);
+		out_color = out_color_diff = vec4(albedo*4.0, 1.0);
 		return;
 	}
 
@@ -78,10 +78,7 @@ void main() {
 		out_color_diff = vec4(diffuse * shadow, 1.0);
 	}
 
-	// TODO: remove ambient
-//	out_color.rgb += albedo * radiance * 0.00001;
-//	out_color.rgb += albedo * radiance * 0.007 * vec3(1, 0.8, 0.8);
-//	out_color.rgb += F0 * radiance * 0.0005 * vec3(1, 0.8, 0.8);
+//	out_color.rgb += albedo * vec3(0.92, 0.95, 1) * 0.001;
 }
 
 
