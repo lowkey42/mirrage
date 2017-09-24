@@ -24,7 +24,7 @@ vec3 expose(vec3 color, float threshold) {
 	float avg_luminance = max(exp(texture(avg_log_luminance_sampler, vec2(0.5, 0.5)).r), 0.001);
 
 	float key = 1.03f - (2.0f / (2 + log(avg_luminance + 1)/log(10)));
-	float exposure = clamp(key/avg_luminance, 0.1, 20.0) + 0.5;
+	float exposure = clamp(key/avg_luminance, 0.1, 4.0) + 0.5;
 
 	if(pcs.options.z>0) {
 		exposure = pcs.options.z;

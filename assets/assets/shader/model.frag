@@ -36,7 +36,7 @@ void main() {
 	if(albedo.a < 0.1)
 		discard;
 
-	vec4 mat_data = texture(mat_data_sampler, tex_coords, 1);
+	vec4 mat_data = texture(mat_data_sampler, tex_coords);
 
 	vec3  normal    = tangent_space_to_world(decode_tangent_normal(mat_data.rg));
 
@@ -45,9 +45,9 @@ void main() {
 
 	roughness = mix(0.01, 0.99, roughness*roughness);
 
-    depth_out         = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
-        albedo_mat_id_out = vec4(albedo.rgb, 0.0);
-    mat_data_out      = vec4(encode_normal(normal), roughness, metallic);
+	depth_out         = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
+	albedo_mat_id_out = vec4(albedo.rgb, 0.0);
+	mat_data_out      = vec4(encode_normal(normal), roughness, metallic);
 
 	float disect = model_uniforms.options.x;
 	if(disect>0 && world_pos.z>=disect)

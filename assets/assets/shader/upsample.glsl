@@ -10,7 +10,7 @@ vec4 weight_depth(vec4 x, float depth_dev) {
 	return exp(- x*x / (2*c*c));
 }
 vec4 weight_mat_data(vec4 dx, vec4 dy) {
-	return max(vec4(0.005), 1 - smoothstep(0.1, 0.3, dx*dx+dy*dy));
+	return max(vec4(0.005), 1 - smoothstep(0.05, 0.2, (dx*dx+dy*dy)));
 }
 
 float calc_upsampled_weights(sampler2D highres_depth_sampler, sampler2D highres_mat_data_sampler,
@@ -21,7 +21,7 @@ float calc_upsampled_weights(sampler2D highres_depth_sampler, sampler2D highres_
     vec2 tex_size = textureSize(depth_sampler, 0);
 
 	float depth = texelFetch(highres_depth_sampler, ivec2(textureSize(highres_depth_sampler, 0)*tex_coords), 0).r;
-	float depth_dev = mix(0.5, 2.0, depth) / global_uniforms.proj_planes.y;
+	float depth_dev = mix(0.3, 1.5, depth) / global_uniforms.proj_planes.y;
 
 	vec2 normal = texelFetch(highres_mat_data_sampler, ivec2(textureSize(highres_mat_data_sampler, 0)*tex_coords), 0).xy;
 

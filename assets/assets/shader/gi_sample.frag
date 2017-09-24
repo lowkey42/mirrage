@@ -153,12 +153,16 @@ vec3 gi_sample(int lod, int base_mip) {
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight) {
 	float depth  = texelFetch(depth_sampler, src_uv, 0).r;
+	if(depth>=0.9999) {
+		depth = 0.1;
+	}
+
 	vec3 P = position_from_ldepth(src_uv / tex_size, depth); // x_i
 	vec3 Pn = normalize(P);
 
 	vec3 diff = shaded_point - P;
 	vec3 dir = normalize(diff);
-	float r2 = dot(diff, diff) * 1.2;
+	float r2 = dot(diff, diff);
 
 	float visibility = 1.0; // TODO: raycast
 
