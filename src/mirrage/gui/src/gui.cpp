@@ -59,7 +59,7 @@ namespace mirrage::gui {
 		  public:
 			Gui_event_filter(input::Input_manager& input_mgr,
 			                 nk_context*           ctx,
-			                 glm::vec4             viewport,
+			                 const glm::vec4&      viewport,
 			                 const glm::mat4&      ui_matrix)
 			  : Sdl_event_filter(input_mgr)
 			  , _input_mgr(input_mgr)
@@ -189,8 +189,8 @@ namespace mirrage::gui {
 		  private:
 			input::Input_manager& _input_mgr;
 			nk_context*           _ctx;
-			glm::vec4             _viewport;
-			glm::mat4             _ui_matrix;
+			const glm::vec4&      _viewport;
+			const glm::mat4&      _ui_matrix;
 			bool                  _grab_clicks = false;
 			bool                  _grab_inputs = false;
 		};
@@ -390,13 +390,12 @@ namespace mirrage::gui {
 		      asset::Asset_manager& assets,
 		      input::Input_manager& input,
 		      Gui_renderer&         renderer)
-		  : viewport(viewport)
-		  , screen_size(normalize_screen_size(viewport.z - viewport.x, viewport.w - viewport.y, 720))
-		  , ui_matrix(build_ui_mat(screen_size))
-		  , renderer(renderer)
+		  : renderer(renderer)
 		  , atlas(assets)
 		  , atlas_tex(renderer.load_texture(atlas.width, atlas.height, 4, atlas.data))
-		  , input_filter(input, &ctx.ctx, viewport, ui_matrix) {
+		  , input_filter(input, &ctx.ctx, this->viewport, ui_matrix) {
+
+			change_viewport(viewport);
 
 			atlas.post_init(ctx.ctx, this->renderer.null_tex, *atlas_tex);
 
@@ -409,6 +408,14 @@ namespace mirrage::gui {
 			ctx.ctx.style.window.menu_border_color = nk_rgb(0, 0, 0);
 		}
 		~PImpl() {}
+
+		void change_viewport(glm::vec4 new_viewport) {
+			viewport    = new_viewport;
+			screen_size = normalize_screen_size(static_cast<int>(viewport.z - viewport.x),
+			                                    static_cast<int>(viewport.w - viewport.y),
+			                                    720);
+			ui_matrix = build_ui_mat(screen_size);
+		}
 	};
 
 	Gui::Gui(glm::vec4                        viewport,
@@ -440,6 +447,11 @@ namespace mirrage::gui {
 		}
 	}
 
+	void Gui::viewport(glm::vec4 new_viewport) {
+		_viewport = new_viewport;
+		_impl->change_viewport(new_viewport);
+	}
+
 	void Gui_renderer::draw_gui() {
 		if(_gui) {
 			_gui->draw();
@@ -455,6 +467,8 @@ namespace mirrage::gui {
 			INFO("no impl");
 			return;
 		}
+
+		viewport(_input.viewport());
 
 		_impl->renderer.draw(_impl->ctx.ctx, _impl->viewport, _impl->screen_size, _impl->ui_matrix);
 	}

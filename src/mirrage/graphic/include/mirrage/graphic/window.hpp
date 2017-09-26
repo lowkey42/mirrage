@@ -28,7 +28,23 @@ namespace mirrage::asset {
 
 namespace mirrage::graphic {
 
-	class Window : public util::Registered<Window, Context> {
+	class Window;
+
+	class Window_modification_handler : public util::Registered<Window_modification_handler, Window> {
+	  public:
+		Window_modification_handler(Window& w) : util::Registered<Window_modification_handler, Window>(w) {}
+		Window_modification_handler(const Window_modification_handler&) = default;
+		Window_modification_handler(Window_modification_handler&&)      = default;
+		virtual ~Window_modification_handler()                          = default;
+
+		Window_modification_handler& operator=(const Window_modification_handler&) = default;
+		Window_modification_handler& operator=(Window_modification_handler&&) = default;
+
+		virtual void on_window_modified(Window&) = 0;
+	};
+
+	class Window : public util::Registered<Window, Context>,
+	               public util::Registration<Window, Window_modification_handler> {
 	  public:
 		Window(Context&    context,
 		       std::string name,
@@ -52,6 +68,7 @@ namespace mirrage::graphic {
 
 		auto width() const noexcept { return _width; }
 		auto height() const noexcept { return _height; }
+		auto fullscreen() const noexcept { return _fullscreen; }
 		auto viewport() const noexcept { return glm::vec4(0.f, 0.f, width(), height()); }
 
 	  private:

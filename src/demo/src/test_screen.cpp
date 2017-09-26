@@ -63,15 +63,16 @@ namespace mirrage {
 	         engine.assets(),
 	         engine.input(),
 	         _meta_system.renderer().find_pass<gui::Gui_renderer>())
-	  , _performance_log(util::nothing) {
+	  , _performance_log(util::nothing)
+	  , _window_width(engine.window().width())
+	  , _window_height(engine.window().height())
+	  , _window_fullscreen(engine.window().fullscreen() != graphic::Fullscreen::no) {
 
 		_camera = _meta_system.entities().emplace("camera");
 
-		// TODO: check if model is available
 		auto cornell = _meta_system.entities().emplace("cornell");
 		cornell.get<Transform_comp>().process([&](auto& transform) { transform.position({1000, 0, 0}); });
 
-		// TODO: check if model is available
 		_meta_system.entities().emplace("sponza");
 
 		_sun = _meta_system.entities().emplace("sun");
@@ -94,7 +95,7 @@ namespace mirrage {
 					        [&](auto& transform) {
 						        auto& cam = _camera.get<Transform_comp>().get_or_throw();
 						        transform.position(cam.position() + cam.direction());
-						    });
+					        });
 
 					break;
 				case "d_disect"_strid: {
@@ -109,28 +110,11 @@ namespace mirrage {
 					auto cam = _camera.get<Transform_comp>().get_or_throw().position();
 					INFO(
 					        "Setup: \n"
-					        << "  Camera position:    "
-					        << cam.x
-					        << "/"
-					        << cam.y
-					        << "/"
-					        << cam.z
-					        << "\n"
-					        << "  Camera orientation: "
-					        << _cam_yaw
-					        << "/"
-					        << _cam_pitch
-					        << "\n"
-					        << "  Sun orientation:    "
-					        << _sun_elevation
-					        << "/"
-					        << _sun_azimuth
-					        << "\n"
-					        << "  Sun color:          "
-					        << _sun_color_temperature
-					        << "\n"
-					        << "  Disected:           "
-					        << _meta_system.renderer().settings().debug_disect);
+					        << "  Camera position:    " << cam.x << "/" << cam.y << "/" << cam.z << "\n"
+					        << "  Camera orientation: " << _cam_yaw << "/" << _cam_pitch << "\n"
+					        << "  Sun orientation:    " << _sun_elevation << "/" << _sun_azimuth << "\n"
+					        << "  Sun color:          " << _sun_color_temperature << "\n"
+					        << "  Disected:           " << _meta_system.renderer().settings().debug_disect);
 					break;
 				}
 
@@ -151,7 +135,7 @@ namespace mirrage {
 					        .process([&](auto&& rec) {
 						        _selected_preset = 0;
 						        _meta_system.nims().play_looped(rec);
-						    });
+					        });
 					break;
 
 				case "toggle_ui"_strid: _show_ui = !_show_ui; break;
@@ -333,7 +317,7 @@ namespace mirrage {
 		if(nk_begin_titled(ctx,
 		                   "debug_controls",
 		                   "Debug Controls",
-		                   _gui.centered_left(250, 570),
+		                   _gui.centered_left(250, 640),
 		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
 
 			nk_layout_row_dynamic(ctx, 20, 2);
@@ -381,27 +365,27 @@ namespace mirrage {
 
 				_update_sun_position();
 
-				_sun.get<renderer::Directional_light_comp>().process([&](
-				        renderer::Directional_light_comp& light) {
-					auto new_size =
-					        nk_propertyf(ctx, "Size", 0.5f, light.source_radius() / 1_m, 20.f, 0.1f, 0.01f);
-					light.source_radius(new_size * 1_m);
+				_sun.get<renderer::Directional_light_comp>().process(
+				        [&](renderer::Directional_light_comp& light) {
+					        auto new_size = nk_propertyf(
+					                ctx, "Size", 0.5f, light.source_radius() / 1_m, 20.f, 0.1f, 0.01f);
+					        light.source_radius(new_size * 1_m);
 
-					auto new_temp =
-					        nk_propertyf(ctx, "Color", 500.f, _sun_color_temperature, 20000.f, 500.f, 50.f);
+					        auto new_temp = nk_propertyf(
+					                ctx, "Color", 500.f, _sun_color_temperature, 20000.f, 500.f, 50.f);
 
-					if(new_temp != _sun_color_temperature) {
-						light.temperature(_sun_color_temperature = new_temp);
-						_set_preset(0);
-					}
+					        if(new_temp != _sun_color_temperature) {
+						        light.temperature(_sun_color_temperature = new_temp);
+						        _set_preset(0);
+					        }
 
-					auto color = util::Rgba{light.color(), light.intensity() / 200.f};
-					if(gui::color_picker(ctx, color, 210.f)) {
-						light.color({color.r, color.g, color.b});
-						light.intensity(color.a * 200.f);
-						_set_preset(0);
-					}
-				});
+					        auto color = util::Rgba{light.color(), light.intensity() / 200.f};
+					        if(gui::color_picker(ctx, color, 210.f)) {
+						        light.color({color.r, color.g, color.b});
+						        light.intensity(color.a * 200.f);
+						        _set_preset(0);
+					        }
+				        });
 			}
 
 
@@ -409,6 +393,13 @@ namespace mirrage {
 			nk_label(ctx, "Graphic Settings", NK_TEXT_LEFT);
 			auto renderer_settings = _meta_system.renderer().settings();
 			auto bool_nk_wrapper   = 0;
+
+			nk_property_int(ctx, "Window With", 640, &_window_width, 7680, 1, 1);
+			nk_property_int(ctx, "Window Height", 360, &_window_height, 4320, 1, 1);
+
+			bool_nk_wrapper = _window_fullscreen ? 1 : 0;
+			nk_checkbox_label(ctx, "Fullscreen", &bool_nk_wrapper);
+			_window_fullscreen = bool_nk_wrapper == 1;
 
 			nk_layout_row_dynamic(ctx, 20, 1);
 			nk_property_int(ctx, "Debug Layer", -1, &renderer_settings.debug_gi_layer, 5, 1, 1);
@@ -451,6 +442,13 @@ namespace mirrage {
 			nk_layout_row_dynamic(ctx, 20, 1);
 
 			if(nk_button_label(ctx, "Apply")) {
+				if(_window_width != _engine.window().width() || _window_height != _engine.window().height()
+				   || _window_fullscreen != (_engine.window().fullscreen() != graphic::Fullscreen::no)) {
+					_engine.window().dimensions(_window_width,
+					                            _window_height,
+					                            _window_fullscreen ? graphic::Fullscreen::yes_borderless
+					                                               : graphic::Fullscreen::no);
+				}
 				_meta_system.renderer().settings(renderer_settings, true);
 			} else {
 				_meta_system.renderer().settings(renderer_settings, false);
@@ -502,7 +500,7 @@ namespace mirrage {
 
 			return gsl::narrow<int>(std::distance(container.begin(), top_entry));
 		}
-	}
+	} // namespace
 	void Test_screen::_draw_profiler_window() {
 		auto ctx = _gui.ctx();
 		if(nk_begin_titled(ctx,
@@ -533,8 +531,8 @@ namespace mirrage {
 			nk_layout_row(ctx, NK_DYNAMIC, 10, rows.size(), rows.data());
 
 
-			auto print_entry = [&](
-			        auto&& printer, const Profiler_result& result, int depth = 0, int rank = -1) -> void {
+			auto print_entry =
+			        [&](auto&& printer, const Profiler_result& result, int depth = 0, int rank = -1) -> void {
 
 				auto color = [&] {
 					switch(rank) {
@@ -574,4 +572,4 @@ namespace mirrage {
 			transform.position(transform.direction() * -60.f);
 		});
 	}
-}
+} // namespace mirrage

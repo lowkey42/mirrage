@@ -67,6 +67,10 @@ namespace mirrage {
 		util::Time                  _performance_log_delay_left{1};
 		bool                        _preformance_log_first_row = true;
 
+		int  _window_width;
+		int  _window_height;
+		bool _window_fullscreen;
+
 		void _set_preset(int);
 		void _update_sun_position();
 

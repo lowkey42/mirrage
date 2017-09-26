@@ -138,7 +138,7 @@ namespace mirrage::renderer {
 		Pass_factories                  _pass_factories;
 		graphic::Window&                _window;
 		graphic::Device_ptr             _device;
-		const graphic::Swapchain&       _swapchain;
+		graphic::Swapchain&             _swapchain;
 		std::uint32_t                   _queue_family;
 		vk::Queue                       _queue;
 		vk::UniqueSemaphore             _image_acquired;

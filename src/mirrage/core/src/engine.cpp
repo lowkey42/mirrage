@@ -140,6 +140,10 @@ namespace mirrage {
 		auto delta_time          = std::max(0.f, static_cast<float>(_current_time - _last_time));
 		auto delta_time_smoothed = smooth(std::min(delta_time, 1.f / 1));
 
+		if(_graphics_main_window) {
+			_input_manager->viewport(_graphics_main_window->viewport());
+		}
+
 		_bus.update();
 
 		_input_manager->update(delta_time * second);

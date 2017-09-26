@@ -299,9 +299,11 @@ namespace mirrage::renderer {
 		_queued_commands.clear();
 
 		// present
-		_swapchain.present(_queue, _aquired_swapchain_image.get_or_throw(), *_image_presented);
+		if(_swapchain.present(_queue, _aquired_swapchain_image.get_or_throw(), *_image_presented)) {
+			_recreation_pending = true;
+		}
+
 		_aquired_swapchain_image = util::nothing;
-		_window.on_present();
 	}
 
 	auto Deferred_renderer_factory::_rank_device(vk::PhysicalDevice gpu, util::maybe<std::uint32_t> gqueue)

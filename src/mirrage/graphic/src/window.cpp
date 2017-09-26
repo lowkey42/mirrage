@@ -137,10 +137,20 @@ namespace mirrage::graphic {
 		if(_fullscreen != fullscreen) {
 			_fullscreen = fullscreen;
 
-			auto fs_type =
-			        fullscreen == Fullscreen::yes ? SDL_WINDOW_FULLSCREEN : SDL_WINDOW_FULLSCREEN_DESKTOP;
+			const auto fs_type = [&]() -> Uint32 {
+				switch(fullscreen) {
+					case Fullscreen::no: return 0;
+					case Fullscreen::yes: return SDL_WINDOW_FULLSCREEN;
+					case Fullscreen::yes_borderless: return SDL_WINDOW_FULLSCREEN_DESKTOP;
+				}
+			}();
 			SDL_SetWindowFullscreen(_window.get(), fs_type);
-			SDL_SetWindowDisplayMode(_window.get(), &closest);
+
+			if(fullscreen != Fullscreen::no) {
+				SDL_SetWindowDisplayMode(_window.get(), &closest);
+			} else {
+				SDL_SetWindowSize(_window.get(), width, height);
+			}
 		}
 
 		SDL_GetWindowSize(_window.get(), &width, &height);
@@ -149,7 +159,10 @@ namespace mirrage::graphic {
 
 		sdl_error_check();
 
-		// TODO: report changed size to renderer => change viewport
+		// report changed size to renderer => change viewport
+		for(auto& listener : util::Registration<Window, Window_modification_handler>::children()) {
+			listener->on_window_modified(*this);
+		}
 
 		return true;
 	}

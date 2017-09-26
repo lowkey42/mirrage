@@ -61,6 +61,8 @@ namespace mirrage::input {
 		void screen_to_world_coords(std::function<glm::vec2(glm::vec2)> func) {
 			_screen_to_world_coords = func;
 		}
+
+		auto viewport() const noexcept { return _viewport; }
 		void viewport(glm::vec4 v) { _viewport = v; }
 		void window(SDL_Window* w) { _sdl_window = w; }
 

@@ -99,6 +99,8 @@ namespace mirrage::gui {
 		auto ctx() -> nk_context*;
 		auto renderer() noexcept -> auto& { return _renderer; }
 
+		void viewport(glm::vec4 new_viewport);
+
 		auto centered(int width, int height) -> struct nk_rect;
 		auto centered_left(int width, int height) -> struct nk_rect;
 		auto centered_right(int width, int height) -> struct nk_rect;
