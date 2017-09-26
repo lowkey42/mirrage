@@ -22,6 +22,7 @@ namespace mirrage::renderer {
 
 	  private:
 		Deferred_renderer&                   _renderer;
+		const int                            _highres_base_mip_level;
 		const int                            _base_mip_level;
 		const int                            _max_mip_level;
 		const int                            _diffuse_mip_level;

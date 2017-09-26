@@ -88,6 +88,7 @@ namespace mirrage {
 						_engine.screens().leave();
 					}
 					break;
+				case "fast_quit"_strid: std::terminate(); break;
 				case "create"_strid:
 					_meta_system.entities().emplace("cube").get<Transform_comp>().process(
 					        [&](auto& transform) {

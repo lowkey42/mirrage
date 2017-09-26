@@ -521,6 +521,7 @@ namespace mirrage::renderer {
 	                 graphic::Render_target_2D& in_out,
 	                 graphic::Render_target_2D& diffuse_in)
 	  : _renderer(renderer)
+	  , _highres_base_mip_level(calc_base_mip_level(in_out.width(), in_out.height(), true))
 	  , _base_mip_level(calc_base_mip_level(in_out.width(), in_out.height(), renderer.settings().gi_highres))
 	  , _max_mip_level(calc_max_mip_level(in_out.width(), in_out.height()))
 	  , _diffuse_mip_level(_base_mip_level + renderer.settings().gi_diffuse_mip_level)
@@ -829,6 +830,7 @@ namespace mirrage::renderer {
 
 
 		auto pcs                  = Gi_constants{};
+		pcs.prev_projection[0][0] = _highres_base_mip_level;
 		pcs.prev_projection[1][3] = _max_mip_level - 1;
 		pcs.prev_projection[3][3] = _min_mip_level;
 

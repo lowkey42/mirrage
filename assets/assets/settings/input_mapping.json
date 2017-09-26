@@ -5,6 +5,7 @@
         "main": {
             "keys": {
                 "Escape": {"type":"once", "action":"quit"},
+                "F1": {"type":"once", "action":"fast_quit"},
 
                 "W": {"type":"continuous", "action":"move_up"},
                 "Up": {"type":"continuous", "action":"move_up"},
