@@ -28,13 +28,13 @@ namespace mirrage::systems {
 			glm::vec4 light_color;
 		};
 		struct Frame_data {
-			float length;
+			float                                            length;
 			std::unordered_map<util::Str_id, Frame_obj_data> entities;
 		};
 
 		sf2_structDef(Frame_obj_data, position, orientation, light_color);
 		sf2_structDef(Frame_data, length, entities);
-	}
+	} // namespace
 
 	void load(sf2::JsonDeserializer& s, Nim_sequence& seq) {
 		auto frames = std::vector<Frame_data>();
@@ -115,7 +115,7 @@ namespace mirrage::systems {
 
 	namespace {
 		template <class T>
-		auto catmull_rom(float t, const std::vector<T>& points, float closed) -> T {
+		auto catmull_rom(float t, const std::vector<T>& points, bool closed) -> T {
 			INVARIANT(!points.empty(), "Can't interpolate between zero points!");
 
 			// calc points
@@ -126,10 +126,10 @@ namespace mirrage::systems {
 
 			// clamp points
 			if(closed) {
-				P0_idx = P0_idx % points.size();
 				if(P0_idx < 0) {
 					P0_idx = points.size() + P0_idx;
 				}
+				P0_idx = P0_idx % points.size();
 				P1_idx = P1_idx % points.size();
 				P2_idx = P2_idx % points.size();
 				P3_idx = P3_idx % points.size();
@@ -153,10 +153,11 @@ namespace mirrage::systems {
 			auto rt3 = rt2 * rt;
 
 			// interpolate point
-			return 0.5f * ((2.f * P1) + (-P0 + P2) * rt + (2.f * P0 + -5.f * P1 + 4.f * P2 + -P3) * rt2
-			               + (-P0 + 3.f * P1 + -3.f * P2 + P3) * rt3);
+			return 0.5f
+			       * ((2.f * P1) + (-P0 + P2) * rt + (2.f * P0 + -5.f * P1 + 4.f * P2 + -P3) * rt2
+			          + (-P0 + 3.f * P1 + -3.f * P2 + P3) * rt3);
 		}
-	}
+	} // namespace
 
 	void Nim_system::update(util::Time dt) {
 		if(!_playing)
@@ -175,8 +176,10 @@ namespace mirrage::systems {
 			_current_position = _end_position;
 		}
 
-		_playing->apply([&](
-		        const auto& entity_uid, const auto& positions, const auto& orientations, const auto& colors) {
+		_playing->apply([&](const auto& entity_uid,
+		                    const auto& positions,
+		                    const auto& orientations,
+		                    const auto& colors) {
 			auto iter = _affected_entities.find(entity_uid);
 			if(iter != _affected_entities.end()) {
 				ecs::Entity_facet& entity    = iter->second;
@@ -192,8 +195,13 @@ namespace mirrage::systems {
 
 				auto light_color = catmull_rom(_current_position, colors, _loop);
 
-				transform.orientation(orientation);
-				transform.position(position);
+				auto pos_diff         = glm::distance2(transform.position(), position);
+				auto orientation_diff = glm::abs(glm::dot(transform.orientation(), orientation) - 1);
+
+				if(pos_diff > 0.0001f || orientation_diff > 0.001f) {
+					transform.orientation(orientation);
+					transform.position(position);
+				}
 
 				entity.get<renderer::Directional_light_comp>().process([&](auto& light) {
 					light.color({light_color.r, light_color.g, light_color.b});
@@ -251,7 +259,7 @@ namespace mirrage::systems {
 			        util::Rgba(0, 0, 0, 0), [&](auto& light) {
 				        return util::Rgba(
 				                light.color().r, light.color().g, light.color().b, light.intensity());
-				    });
+			        });
 
 			return std::make_tuple(transform.position(), transform.orientation(), color);
 		});
@@ -263,4 +271,4 @@ namespace mirrage::systems {
 			_affected_entities.emplace(nim_comp.uid(), nim_comp.owner());
 		}
 	}
-}
+} // namespace mirrage::systems
