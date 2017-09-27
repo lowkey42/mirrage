@@ -317,7 +317,7 @@ namespace mirrage {
 		if(nk_begin_titled(ctx,
 		                   "debug_controls",
 		                   "Debug Controls",
-		                   _gui.centered_left(250, 640),
+		                   _gui.centered_left(250, 720),
 		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
 
 			nk_layout_row_dynamic(ctx, 20, 2);
@@ -340,7 +340,7 @@ namespace mirrage {
 
 			nk_layout_row_dynamic(ctx, 20, 1);
 			auto show_profiler = _show_profiler ? 1 : 0;
-			if(nk_checkbox_label(ctx, "Show profiler", &show_profiler)) {
+			if(nk_checkbox_label(ctx, "Show Profiler", &show_profiler)) {
 				_show_profiler = show_profiler == 1;
 			}
 
@@ -388,18 +388,36 @@ namespace mirrage {
 				        });
 			}
 
+			nk_layout_row_dynamic(ctx, 10, 1);
+			nk_label(ctx, "", NK_TEXT_LEFT);
 
 			nk_layout_row_dynamic(ctx, 20, 1);
 			nk_label(ctx, "Graphic Settings", NK_TEXT_LEFT);
 			auto renderer_settings = _meta_system.renderer().settings();
 			auto bool_nk_wrapper   = 0;
 
-			nk_property_int(ctx, "Window With", 640, &_window_width, 7680, 1, 1);
+			nk_property_int(ctx, "Window Width", 640, &_window_width, 7680, 1, 1);
 			nk_property_int(ctx, "Window Height", 360, &_window_height, 4320, 1, 1);
 
 			bool_nk_wrapper = _window_fullscreen ? 1 : 0;
 			nk_checkbox_label(ctx, "Fullscreen", &bool_nk_wrapper);
 			_window_fullscreen = bool_nk_wrapper == 1;
+
+			if(nk_button_label(ctx, "Apply")) {
+				if(_window_width != _engine.window().width() || _window_height != _engine.window().height()
+				   || _window_fullscreen != (_engine.window().fullscreen() != graphic::Fullscreen::no)) {
+					_engine.window().dimensions(_window_width,
+					                            _window_height,
+					                            _window_fullscreen ? graphic::Fullscreen::yes_borderless
+					                                               : graphic::Fullscreen::no);
+				}
+			}
+
+			nk_layout_row_dynamic(ctx, 10, 1);
+			nk_label(ctx, "", NK_TEXT_LEFT);
+			nk_layout_row_dynamic(ctx, 20, 1);
+
+			nk_label(ctx, "Renderer Settings", NK_TEXT_LEFT);
 
 			nk_layout_row_dynamic(ctx, 20, 1);
 			nk_property_int(ctx, "Debug Layer", -1, &renderer_settings.debug_gi_layer, 5, 1, 1);
@@ -409,7 +427,7 @@ namespace mirrage {
 			renderer_settings.gi = bool_nk_wrapper == 1;
 
 			bool_nk_wrapper = renderer_settings.gi_highres ? 1 : 0;
-			nk_checkbox_label(ctx, "High Resolution GI", &bool_nk_wrapper);
+			nk_checkbox_label(ctx, "High-Resolution GI", &bool_nk_wrapper);
 			renderer_settings.gi_highres = bool_nk_wrapper == 1;
 
 			nk_property_int(ctx, "Minimum GI MIP", 0, &renderer_settings.gi_min_mip_level, 4, 1, 1);
@@ -419,7 +437,7 @@ namespace mirrage {
 			nk_property_int(ctx, "Sample Count", 8, &renderer_settings.gi_samples, 256, 1, 1);
 
 			nk_property_float(ctx,
-			                  "Prioritise near samples",
+			                  "Prioritise Near Samples",
 			                  0.f,
 			                  &renderer_settings.gi_prioritise_near_samples,
 			                  1.f,
@@ -432,7 +450,7 @@ namespace mirrage {
 			nk_property_float(ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.01, 0.1);
 
 			nk_property_float(
-			        ctx, "Background brightness", 0.f, &renderer_settings.background_intensity, 10.f, 1, 0.1);
+			        ctx, "Background Brightness", 0.f, &renderer_settings.background_intensity, 10.f, 1, 0.1);
 
 			bool_nk_wrapper = renderer_settings.ssao ? 1 : 0;
 			nk_checkbox_label(ctx, "Ambient Occlusion", &bool_nk_wrapper);
@@ -443,7 +461,7 @@ namespace mirrage {
 			renderer_settings.bloom = bool_nk_wrapper == 1;
 
 
-			nk_layout_row_dynamic(ctx, 20, 1);
+			nk_layout_row_dynamic(ctx, 20, 2);
 
 			if(nk_button_label(ctx, "Apply")) {
 				if(_window_width != _engine.window().width() || _window_height != _engine.window().height()
@@ -510,7 +528,7 @@ namespace mirrage {
 		if(nk_begin_titled(ctx,
 		                   "profiler",
 		                   "Profiler",
-		                   _gui.centered_right(310, 380),
+		                   _gui.centered_right(330, 380),
 		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
 
 			nk_layout_row_dynamic(ctx, 20, 1);
