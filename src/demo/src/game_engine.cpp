@@ -42,4 +42,5 @@ namespace mirrage {
 	}
 
 	void Game_engine::_on_post_frame(util::Time) { _renderer_factory->finish_frame(); }
-}
+
+} // namespace mirrage

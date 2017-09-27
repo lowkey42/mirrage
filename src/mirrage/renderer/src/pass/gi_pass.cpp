@@ -192,7 +192,7 @@ namespace mirrage::renderer {
 		                              int                       min_mip_level,
 		                              int                       max_mip_level,
 		                              int                       sample_count,
-		                              bool                      prioritise_near_samples,
+		                              float                     prioritise_near_samples,
 		                              Render_target_2D&         gi_buffer,
 		                              std::vector<Framebuffer>& out_framebuffers) {
 
@@ -243,7 +243,7 @@ namespace mirrage::renderer {
 			                2,
 			                sample_count,
 			                4,
-			                prioritise_near_samples ? 1 : 0)
+			                prioritise_near_samples)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			pass.stage("upsample"_strid)
@@ -514,7 +514,7 @@ namespace mirrage::renderer {
 
 			return static_cast<int>(std::ceil(glm::log2(diagonal / 40.f)));
 		}
-	}
+	} // namespace
 
 
 	Gi_pass::Gi_pass(Deferred_renderer&         renderer,
@@ -543,8 +543,7 @@ namespace mirrage::renderer {
 	                0,
 	                renderer.gbuffer().color_format,
 	                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
-	                        | vk::ImageUsageFlagBits::eTransferSrc
-	                        | vk::ImageUsageFlagBits::eColorAttachment,
+	                        | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eColorAttachment,
 	                vk::ImageAspectFlagBits::eColor)
 
 	  , _gi_diffuse_history(renderer.device(),
@@ -765,8 +764,7 @@ namespace mirrage::renderer {
 			auto pcs         = Gi_constants{};
 			pcs.reprojection = _prev_view * glm::inverse(_renderer.global_uniforms().view_mat);
 			INVARIANT(pcs.reprojection[0][3] == 0 && pcs.reprojection[1][3] == 0
-			                  && pcs.reprojection[2][3] == 0
-			                  && pcs.reprojection[3][3] == 1,
+			                  && pcs.reprojection[2][3] == 0 && pcs.reprojection[3][3] == 1,
 			          "m[0][3]!=0 or m[1][3]!=0 or m[2][3]!=0 or m[3][3]!=1");
 
 			pcs.reprojection[0][3] = -2.f / _prev_proj[0][0];
@@ -823,7 +821,7 @@ namespace mirrage::renderer {
 			return (4.0f * glm::tan(fov_h / 2.f) * glm::tan(fov_v / 2.f) * dp)
 			       / (screen_width * screen_height);
 		}
-	}
+	} // namespace
 	void Gi_pass::_generate_gi_samples(vk::CommandBuffer& command_buffer) {
 		auto begin = _diffuse_mip_level;
 		auto end   = _max_mip_level;
@@ -831,6 +829,8 @@ namespace mirrage::renderer {
 
 		auto pcs                  = Gi_constants{};
 		pcs.prev_projection[0][0] = _highres_base_mip_level;
+		pcs.prev_projection[1][0] = end - 1;
+		pcs.prev_projection[2][0] = std::min(_min_mip_level, begin);
 		pcs.prev_projection[1][3] = _max_mip_level - 1;
 		pcs.prev_projection[3][3] = _min_mip_level;
 
@@ -900,7 +900,7 @@ namespace mirrage::renderer {
 
 				auto screen_size = glm::vec2{_color_diffuse_in.width(pcs.prev_projection[0][3]),
 				                             _color_diffuse_in.height(pcs.prev_projection[0][3])};
-				auto ndc_to_uv = glm::translate({}, glm::vec3(screen_size / 2.f, 0.f))
+				auto ndc_to_uv   = glm::translate({}, glm::vec3(screen_size / 2.f, 0.f))
 				                 * glm::scale({}, glm::vec3(screen_size / 2.f, 1.f));
 				pcs.reprojection = ndc_to_uv * _renderer.global_uniforms().proj_mat;
 
@@ -975,4 +975,4 @@ namespace mirrage::renderer {
 	void Gi_pass_factory::configure_device(vk::PhysicalDevice,
 	                                       util::maybe<std::uint32_t>,
 	                                       graphic::Device_create_info&) {}
-}
+} // namespace mirrage::renderer

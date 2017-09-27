@@ -28,7 +28,7 @@ namespace mirrage::renderer {
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
 		vk::Format                           _luminance_format;
-		bool                                 _first_frame = true;
+		int                                  _first_frame = 4;
 
 		// calculate scene luminance for tone mapping
 		graphic::Render_target_2D _luminance_buffer;
@@ -58,4 +58,4 @@ namespace mirrage::renderer {
 		                      util::maybe<std::uint32_t> graphics_queue,
 		                      graphic::Device_create_info&) override;
 	};
-}
+} // namespace mirrage::renderer

@@ -32,7 +32,7 @@ namespace mirrage::renderer {
 
 			return get_hdr_format(device);
 		}
-	}
+	} // namespace
 
 	GBuffer::GBuffer(graphic::Device& device, std::uint32_t width, std::uint32_t height)
 	  : mip_levels(gsl::narrow<std::uint32_t>(std::floor(std::log2(std::min(width, height))) - 2))
@@ -42,8 +42,7 @@ namespace mirrage::renderer {
 	          mip_levels,
 	          depth_format,
 	          vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-	                  | vk::ImageUsageFlagBits::eInputAttachment
-	                  | vk::ImageUsageFlagBits::eTransferSrc
+	                  | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
 	                  | vk::ImageUsageFlagBits::eTransferDst,
 	          vk::ImageAspectFlagBits::eColor)
 	  , prev_depth(device,
@@ -61,8 +60,7 @@ namespace mirrage::renderer {
 	                  albedo_mat_id_format,
 	                  vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
 	                          | vk::ImageUsageFlagBits::eInputAttachment
-	                          | vk::ImageUsageFlagBits::eTransferSrc
-	                          | vk::ImageUsageFlagBits::eTransferDst,
+	                          | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst,
 	                  vk::ImageAspectFlagBits::eColor)
 
 	  , mat_data_format(device.get_texture_rgba_format().get_or_throw("No rgba-format supported"))
@@ -71,8 +69,7 @@ namespace mirrage::renderer {
 	             mip_levels,
 	             mat_data_format,
 	             vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-	                     | vk::ImageUsageFlagBits::eInputAttachment
-	                     | vk::ImageUsageFlagBits::eTransferSrc
+	                     | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
 	                     | vk::ImageUsageFlagBits::eTransferDst,
 	             vk::ImageAspectFlagBits::eColor)
 
@@ -82,8 +79,7 @@ namespace mirrage::renderer {
 	           mip_levels,
 	           color_format,
 	           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-	                   | vk::ImageUsageFlagBits::eInputAttachment
-	                   | vk::ImageUsageFlagBits::eTransferSrc
+	                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
 	                   | vk::ImageUsageFlagBits::eTransferDst,
 	           vk::ImageAspectFlagBits::eColor)
 
@@ -92,8 +88,7 @@ namespace mirrage::renderer {
 	           mip_levels,
 	           color_format,
 	           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-	                   | vk::ImageUsageFlagBits::eInputAttachment
-	                   | vk::ImageUsageFlagBits::eTransferSrc
+	                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
 	                   | vk::ImageUsageFlagBits::eTransferDst,
 	           vk::ImageAspectFlagBits::eColor) {}
-}
+} // namespace mirrage::renderer

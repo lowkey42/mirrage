@@ -18,7 +18,7 @@ namespace mirrage {
 		class Entity_manager;
 	}
 	class Meta_system;
-}
+} // namespace mirrage
 
 namespace mirrage::renderer {
 
@@ -35,7 +35,7 @@ namespace mirrage::renderer {
 		int   gi_diffuse_mip_level       = 1;
 		int   gi_min_mip_level           = 0;
 		int   gi_samples                 = 128;
-		bool  gi_prioritise_near_samples = true;
+		float gi_prioritise_near_samples = 0.8f;
 		int   gi_low_quality_mip_levels  = 0;
 		float exposure_override          = 0.f;
 
@@ -72,7 +72,7 @@ namespace mirrage::renderer {
 	  public:
 		virtual ~Pass() = default;
 
-		virtual void update(util::Time dt) = 0;
+		virtual void update(util::Time dt)             = 0;
 		virtual void draw(vk::CommandBuffer&,
 		                  Command_buffer_source&,
 		                  vk::DescriptorSet global_uniform_set,
@@ -238,4 +238,4 @@ namespace mirrage::renderer {
 		void _write_global_uniform_descriptor_set();
 		void _update_global_uniforms(vk::CommandBuffer, const Camera_state& camera);
 	};
-}
+} // namespace mirrage::renderer

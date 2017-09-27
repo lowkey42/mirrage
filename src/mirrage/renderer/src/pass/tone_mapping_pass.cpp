@@ -144,7 +144,7 @@ namespace mirrage::renderer {
 
 			return format.get_or_throw();
 		}
-	}
+	} // namespace
 
 
 	Tone_mapping_pass::Tone_mapping_pass(Deferred_renderer& renderer,
@@ -214,11 +214,11 @@ namespace mirrage::renderer {
 	                             std::size_t) {
 
 		auto pcs         = Push_constants{};
-		pcs.parameters.x = 0.08f; // adjustment speed if current luminance > previous
-		pcs.parameters.y = 0.8f;  // adjustment speed if current luminance <= previous
+		pcs.parameters.x = 0.2f; // adjustment speed if current luminance > previous
+		pcs.parameters.y = 0.8f; // adjustment speed if current luminance <= previous
 
-		if(_first_frame) {
-			_first_frame = false;
+		if(_first_frame > 0) {
+			_first_frame--;
 
 			pcs.parameters.x = pcs.parameters.y = 999.f;
 
@@ -238,6 +238,7 @@ namespace mirrage::renderer {
 			                       vk::ImageLayout::eShaderReadOnlyOptimal,
 			                       0,
 			                       1);
+			return;
 		}
 
 		// extract luminance
@@ -298,4 +299,4 @@ namespace mirrage::renderer {
 	void Tone_mapping_pass_factory::configure_device(vk::PhysicalDevice,
 	                                                 util::maybe<std::uint32_t>,
 	                                                 graphic::Device_create_info&) {}
-}
+} // namespace mirrage::renderer

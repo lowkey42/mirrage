@@ -418,9 +418,13 @@ namespace mirrage {
 
 			nk_property_int(ctx, "Sample Count", 8, &renderer_settings.gi_samples, 256, 1, 1);
 
-			bool_nk_wrapper = renderer_settings.gi_prioritise_near_samples ? 1 : 0;
-			nk_checkbox_label(ctx, "Prioritise near samples", &bool_nk_wrapper);
-			renderer_settings.gi_prioritise_near_samples = bool_nk_wrapper == 1;
+			nk_property_float(ctx,
+			                  "Prioritise near samples",
+			                  0.f,
+			                  &renderer_settings.gi_prioritise_near_samples,
+			                  1.f,
+			                  0.1,
+			                  0.01);
 
 			nk_property_int(
 			        ctx, "Low-Quality MIP-Levels", 0, &renderer_settings.gi_low_quality_mip_levels, 8, 1, 1);

@@ -24,7 +24,7 @@ layout (constant_id = 2) const int SAMPLES = 128;
 layout (constant_id = 3) const int UPSAMPLE_ONLY = 0;
 
 // nearer samples have a higher weight. Less physically correct but results in more notacable color bleeding
-layout (constant_id = 4) const int PRIORITISE_NEAR_SAMPLES = 1;
+layout (constant_id = 4) const float PRIORITISE_NEAR_SAMPLES = 0.6;
 
 
 layout(push_constant) uniform Push_constants {
@@ -80,6 +80,7 @@ void main() {
 			out_color.rgb *= ao;
 		}
 
+
 		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
 
 		// calculate the min/max interpolation weights based on the delta time
@@ -89,7 +90,7 @@ void main() {
 		out_color *= 1.0 - mix(weight_min, weight_max, history_weight);
 	}
 
-	out_color = max(out_color, vec4(0));
+	out_color = clamp(out_color, vec4(0), vec4(20));
 }
 
 const float PI = 3.14159265359;
@@ -142,12 +143,13 @@ vec3 gi_sample(int lod, int base_mip) {
 
 	float actual_lod = lod - pcs.prev_projection[0][0];
 
-	if(PRIORITISE_NEAR_SAMPLES==1)
-		c = c * pow(2.0, clamp(actual_lod*2, 4, 8));
-	else
-		c = c * pow(2.0, actual_lod*2);
+	float scale_exponent = mix(actual_lod,
+	                           pcs.prev_projection[1][0] - pcs.prev_projection[2][0] - 0.8,
+	                           PRIORITISE_NEAR_SAMPLES);
 
-	c  *= 128.0 / SAMPLES;
+	c *= pow(2.0, scale_exponent*2);
+
+	c *= 128.0 / SAMPLES;
 
 	return c;
 }
@@ -164,7 +166,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 
 	vec3 diff = shaded_point - P;
 	vec3 dir = normalize(diff);
-	float r2 = dot(diff, diff);
+	float r2 = max(dot(diff, diff), 0.01*0.01);
 
 	float visibility = 1.0; // TODO: raycast
 
@@ -180,7 +182,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	float cos_beta  = dot(Pn, N);
 	float z = depth * global_uniforms.proj_planes.y;
 
-	float ds = pcs.prev_projection[2][3] * z*z * clamp(cos_alpha / cos_beta, 1.0, 20.0);
+	float ds = pcs.prev_projection[2][3] * z*z * clamp(cos_alpha / cos_beta, 0.001, 1000.0);
 
 	float R2 = REC_PI * NdotL_src * ds;
 	float area = R2 / (r2 + R2); // point-to-differential area form-factor
