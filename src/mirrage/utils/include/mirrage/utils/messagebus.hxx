@@ -37,7 +37,7 @@ namespace mirrage::util {
 
 	template <class T>
 	template <std::size_t Size>
-	auto                  Mailbox<T>::receive(T (&target)[Size]) -> std::size_t {
+	auto Mailbox<T>::receive(T (&target)[Size]) -> std::size_t {
 		return _queue.try_dequeue_bulk(target, Size);
 	}
 
@@ -66,7 +66,7 @@ namespace mirrage::util {
 				for_each(begin(msg), begin(msg) + count, handler);
 			} while(count > 0);
 		}
-	}
+	} // namespace details
 
 	template <class T, std::size_t bulk_size, typename Func>
 	void Mailbox_collection::subscribe(std::size_t queue_size, Func handler) {
@@ -92,7 +92,7 @@ namespace mirrage::util {
 			        using T = std::decay_t<nth_func_arg_t<std::remove_reference_t<decltype(h)>, 0>>;
 			        this->subscribe<T, bulk_size>(queue_size, std::forward<decltype(h)>(h));
 
-			    },
+		        },
 		        std::forward<Func>(handler)...);
 	}
 
@@ -156,13 +156,11 @@ namespace mirrage::util {
 
 	template <typename T>
 	void Message_bus::register_mailbox(Mailbox<T>& mailbox, Typeuid self) {
-		// TODO: mutex
 		_add_queue.emplace_back(mailbox, self);
 	}
 
 	template <typename T>
 	void Message_bus::unregister_mailbox(Mailbox<T>& mailbox) {
-		// TODO: mutex
 		_remove_queue.emplace_back(mailbox);
 
 		// required to avoid segfaults, caused by events during shutdown
@@ -170,8 +168,6 @@ namespace mirrage::util {
 		auto  mb     = std::find(groups.begin(), groups.end(), Mailbox_ref{mailbox});
 		if(mb != groups.end()) {
 			mb->_deleted = true;
-		} else {
-			//ERROR("Tried to unregister nonexistent mailbox for "<<typeName<T>());
 		}
 	}
 
@@ -227,4 +223,4 @@ namespace mirrage::util {
 	}
 
 	inline auto Message_bus::create_child() -> Message_bus { return Message_bus(this); }
-}
+} // namespace mirrage::util

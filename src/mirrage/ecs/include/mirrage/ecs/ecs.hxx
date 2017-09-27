@@ -4,7 +4,6 @@
 #include "ecs.hpp"
 #endif
 
-// TODO/FIXME: remove/replace or move into utils
 #define unlikely(X) (__builtin_expect(X, false))
 
 namespace mirrage::ecs {
@@ -97,7 +96,7 @@ namespace mirrage::ecs {
 		bool ppack_and(FirstArg&& first, Args&&... args) {
 			return first && ppack_and(std::forward<Args>(args)...);
 		}
-	}
+	} // namespace detail
 	template <typename... T>
 	void Entity_facet::erase_other() {
 		INVARIANT(_manager && _manager->validate(_owner),
@@ -109,4 +108,4 @@ namespace mirrage::ecs {
 			}
 		}
 	}
-}
+} // namespace mirrage::ecs

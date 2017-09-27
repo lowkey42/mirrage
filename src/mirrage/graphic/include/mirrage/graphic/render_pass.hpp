@@ -20,11 +20,6 @@ namespace mirrage::graphic {
 	using Attachment_ref = struct Attachment_t*;
 
 	using Stage_id = util::Str_id;
-	/* TODO: fix hashing
-	struct Stage_id : public util::Str_id {
-		using util::Str_id::Str_id;
-	};
-	*/
 
 
 	enum class Shader_stage { vertex, tessellation_control, tessellation_eval, geometry, fragment };
@@ -83,7 +78,7 @@ namespace mirrage::graphic {
 			        [&](auto location, auto& member) {
 				        add_vertex_attributes<decltype(util::get_member_type(member))>(
 				                binding, location, util::get_member_offset(member));
-				    },
+			        },
 			        members...);
 		}
 
@@ -112,7 +107,7 @@ namespace mirrage::graphic {
 		std::vector<vk::VertexInputBindingDescription>     vertex_bindings;
 		std::vector<vk::VertexInputAttributeDescription>   vertex_attributes;
 
-		std::vector<vk::PushConstantRange> push_constants;
+		std::vector<vk::PushConstantRange>                      push_constants;
 		std::unordered_map<util::Str_id, vk::PushConstantRange> push_constant_table;
 
 		std::vector<vk::DescriptorSetLayout> descriptor_set_layouts;
@@ -142,7 +137,7 @@ namespace mirrage::graphic {
 			        [&](auto&& id, auto&& value) {
 				        pipeline().stages.back().add_constant(std::forward<decltype(id)>(id),
 				                                              std::forward<decltype(value)>(value));
-				    },
+			        },
 			        std::forward<T>(constants)...);
 
 			return *this;
@@ -329,20 +324,20 @@ namespace mirrage::graphic {
 		using Push_constant_map = std::unordered_map<util::Str_id, vk::PushConstantRange>;
 
 
-		vk::UniqueRenderPass                  _render_pass;
-		std::vector<vk::UniquePipeline>       _pipelines;
-		std::vector<vk::UniquePipelineLayout> _pipeline_layouts;
+		vk::UniqueRenderPass                      _render_pass;
+		std::vector<vk::UniquePipeline>           _pipelines;
+		std::vector<vk::UniquePipelineLayout>     _pipeline_layouts;
 		std::unordered_map<Stage_id, std::size_t> _stages;
-		std::vector<Push_constant_map> _push_constants;
+		std::vector<Push_constant_map>            _push_constants;
 
 		std::size_t                        _bound_pipeline = 0;
 		util::maybe<const Command_buffer&> _current_command_buffer;
 
-		Render_pass(vk::UniqueRenderPass                  render_pass,
-		            std::vector<vk::UniquePipeline>       pipelines,
-		            std::vector<vk::UniquePipelineLayout> pipeline_layouts,
+		Render_pass(vk::UniqueRenderPass                      render_pass,
+		            std::vector<vk::UniquePipeline>           pipelines,
+		            std::vector<vk::UniquePipelineLayout>     pipeline_layouts,
 		            std::unordered_map<Stage_id, std::size_t> stages,
-		            std::vector<Push_constant_map> push_constants);
+		            std::vector<Push_constant_map>            push_constants);
 
 		void _pre(const Command_buffer& buffer, const Framebuffer& fb);
 		void _post();
@@ -430,4 +425,4 @@ namespace mirrage::graphic {
 	                                                                             std::size_t offset) {
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR8G8B8A8Unorm, offset);
 	}
-}
+} // namespace mirrage::graphic

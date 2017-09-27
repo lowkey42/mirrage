@@ -28,7 +28,7 @@ namespace mirrage::util {
 					f();
 			}
 		};
-	}
+	} // namespace details
 
 	template <typename T>
 	class maybe {
@@ -132,9 +132,9 @@ namespace mirrage::util {
 			return _data;
 		}
 
-		T& get_ref_or_other(T& other) noexcept { return is_some() ? _data : other; }
+		T&       get_ref_or_other(T& other) noexcept { return is_some() ? _data : other; }
 		const T& get_ref_or_other(const T& other) const noexcept { return is_some() ? _data : other; }
-		T get_or_other(T other) const noexcept { return is_some() ? _data : other; }
+		T        get_or_other(T other) const noexcept { return is_some() ? _data : other; }
 
 		template <typename Func,
 		          class = std::enable_if_t<std::is_same<std::result_of_t<Func(T&)>, void>::value>>
@@ -189,7 +189,6 @@ namespace mirrage::util {
 		};
 	};
 
-	// TODO: change to nothing_t
 	struct nothing_t {
 		template <typename T>
 		operator maybe<T>() const noexcept {
@@ -375,7 +374,7 @@ namespace mirrage::util {
 				f(m.get_or_throw()...);
 			}
 		};
-	}
+	} // namespace details
 
 	/*
 	 * Usage:
@@ -444,7 +443,7 @@ namespace mirrage::util {
 			}
 		});
 	}
-}
+} // namespace mirrage::util
 
 #ifdef LUX_DEFINE_MAYBE_MACROS
 #define LUX_NARGS_SEQ(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, N, ...) N

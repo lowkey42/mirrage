@@ -19,8 +19,6 @@ namespace mirrage::graphic {
 	class Device;
 
 
-	// TODO: wrapper classes (Static_buffer/Static_image) are not realy required anymore and we
-	//        'could' just return Backed_buffer/Backed_image
 	class Static_buffer {
 	  public:
 		Static_buffer(Backed_buffer buffer) : _buffer(std::move(buffer)) {}
@@ -182,7 +180,7 @@ namespace mirrage::graphic {
 					                     std::memcpy(dest + offset, subdata.data(), subdata_size);
 					                     offset += subdata_size;
 				                     }
-				                 },
+			                     },
 			                     dedicated);
 		}
 
@@ -269,4 +267,4 @@ namespace mirrage::graphic {
 		                            std::function<void(char*)> write_data) -> Backed_buffer;
 		void _transfer_image(vk::CommandBuffer cb, const Transfer_image_req&);
 	};
-}
+} // namespace mirrage::graphic

@@ -27,7 +27,7 @@ namespace mirrage::graphic {
 
 			FAIL("Unreachable");
 		}
-	}
+	} // namespace
 
 	namespace detail {
 
@@ -108,7 +108,7 @@ namespace mirrage::graphic {
 			                                                  data.size_bytes();
 			                                          dest += 4;
 			                                          std::memcpy(dest, data.data(), data.size_bytes());
-			                                      }))
+		                                          }))
 		  , _image_view(device.create_image_view(image(), format, 0, _image.mip_level_count())) {}
 
 		Base_texture::Base_texture(Device& device, Static_image image, vk::Format format)
@@ -129,7 +129,7 @@ namespace mirrage::graphic {
 
 			return views;
 		}
-	}
+	} // namespace detail
 
 
 	Texture_cache::Texture_cache(Device& device, std::uint32_t owner_qfamily)
@@ -154,7 +154,6 @@ namespace mirrage::graphic {
 			        header.size,
 			        [&](char* dest) { in.get_or_throw().read_direct(dest, header.size); });
 
-			// TODO: create different type based on header.type
 			cached = std::make_shared<Texture_2D>(*_device, std::move(image), header.format);
 		}
 
@@ -164,4 +163,4 @@ namespace mirrage::graphic {
 	void Texture_cache::shrink_to_fit() {
 		util::erase_if(_textures, [](const auto& v) { return v.second.use_count() <= 1; });
 	}
-}
+} // namespace mirrage::graphic

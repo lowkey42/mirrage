@@ -42,7 +42,7 @@ namespace mirrage::graphic {
 					        if(!assets.try_delete(aid)) {
 						        WARN("Unable to delete outdated pipeline cache: " + aid.str());
 					        }
-					    });
+				        });
 			}
 
 			return asset::AID{"pl_cache"_strid, "dev_" + dev_str};
@@ -72,7 +72,7 @@ namespace mirrage::graphic {
 
 			out.write(reinterpret_cast<const char*>(data.data()), data.size());
 		}
-	}
+	} // namespace
 
 	Swapchain::Swapchain(const vk::Device&          dev,
 	                     vk::PhysicalDevice         gpu,
@@ -306,14 +306,14 @@ namespace mirrage::graphic {
 
 		auto buffer = _device->createBufferUnique(info);
 		auto mem    = [&] {
-			if(dedicated) {
-				return _memory_allocator.alloc_dedicated(*buffer, host_visible).get_or_throw();
-			}
+            if(dedicated) {
+                return _memory_allocator.alloc_dedicated(*buffer, host_visible).get_or_throw();
+            }
 
-			auto mem_req = _device->getBufferMemoryRequirements(*buffer);
-			return _memory_allocator
-			        .alloc(mem_req.size, mem_req.alignment, mem_req.memoryTypeBits, host_visible, lifetime)
-			        .get_or_throw();
+            auto mem_req = _device->getBufferMemoryRequirements(*buffer);
+            return _memory_allocator
+                    .alloc(mem_req.size, mem_req.alignment, mem_req.memoryTypeBits, host_visible, lifetime)
+                    .get_or_throw();
 		}();
 
 		_device->bindBufferMemory(*buffer, mem.memory(), mem.offset());
@@ -334,14 +334,14 @@ namespace mirrage::graphic {
 
 		auto image = _device->createImageUnique(info);
 		auto mem   = [&] {
-			if(dedicated) {
-				return _memory_allocator.alloc_dedicated(*image, host_visible).get_or_throw();
-			}
+            if(dedicated) {
+                return _memory_allocator.alloc_dedicated(*image, host_visible).get_or_throw();
+            }
 
-			auto mem_req = _device->getImageMemoryRequirements(*image);
-			return _memory_allocator
-			        .alloc(mem_req.size, mem_req.alignment, mem_req.memoryTypeBits, host_visible, lifetime)
-			        .get_or_throw();
+            auto mem_req = _device->getImageMemoryRequirements(*image);
+            return _memory_allocator
+                    .alloc(mem_req.size, mem_req.alignment, mem_req.memoryTypeBits, host_visible, lifetime)
+                    .get_or_throw();
 		}();
 
 		_device->bindImageMemory(*image, mem.memory(), mem.offset());
@@ -449,57 +449,10 @@ namespace mirrage::graphic {
 			}();
 
 			if((features & flags) == flags) {
-				if(usage == Format_usage::buffer)
-					return format;
-				/*
-				// TODO: getImageFormatProperties always fails
-				auto img_usage = vk::ImageUsageFlags{};
-				
-				if(flags | vk::FormatFeatureFlagBits::eSampledImage ||
-				   flags | vk::FormatFeatureFlagBits::eSampledImageFilterLinear)
-					img_usage |= vk::ImageUsageFlagBits::eSampled;
-				
-				if(flags | vk::FormatFeatureFlagBits::eColorAttachment ||
-				   flags | vk::FormatFeatureFlagBits::eColorAttachment) {
-					img_usage |= vk::ImageUsageFlagBits::eColorAttachment;
-					if(img_usage | vk::ImageUsageFlagBits::eSampled)
-						img_usage |= vk::ImageUsageFlagBits::eInputAttachment;
-				}
-				
-				if(flags | vk::FormatFeatureFlagBits::eDepthStencilAttachment) {
-					img_usage |= vk::ImageUsageFlagBits::eDepthStencilAttachment;
-					if(img_usage | vk::ImageUsageFlagBits::eSampled)
-						img_usage |= vk::ImageUsageFlagBits::eInputAttachment;
-				}
-				
-				auto tiling = usage==Format_usage::image_linear ? vk::ImageTiling::eLinear
-				                                                : vk::ImageTiling::eOptimal;
-				auto img_props = vk::ImageFormatProperties{};
-				auto ret_val = _gpu.getImageFormatProperties(format,
-				                                             vk::ImageType::e2D,
-				                                             tiling,
-				                                             img_usage,
-				                                             vk::ImageCreateFlags{},
-				                                             &img_props);
-				
-				if(ret_val==vk::Result::eErrorFormatNotSupported)
-					continue;
-				
-				if(img_props.maxArrayLayers<=0)
-					continue;
-				
-				if(img_props.maxMipLevels<=0)
-					continue;
-				
-				if(img_props.maxExtent.depth<=0 ||
-				   img_props.maxExtent.height<=0 ||
-				   img_props.maxExtent.width<=0)
-					continue;
-				*/
 				return format;
 			}
 		}
 
 		return util::nothing;
 	}
-}
+} // namespace mirrage::graphic
