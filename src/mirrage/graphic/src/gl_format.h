@@ -1222,9 +1222,9 @@ static inline GLenum glGetFormatFromInternalFormat(const GLenum internalFormat) 
 		case GL_RGB9_E5:
 			return GL_RGB; // 3-component/exp 9:9:9/5, floating-point
 
-		//
-		// S3TC/DXT/BC
-		//
+			//
+			// S3TC/DXT/BC
+			//
 
 		case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
 			return GL_RGB; // line through 3D space, unsigned normalized
@@ -1646,9 +1646,9 @@ static inline GLenum glGetTypeFromInternalFormat(const GLenum internalFormat) {
 		case GL_RGB9_E5:
 			return GL_UNSIGNED_INT_5_9_9_9_REV; // 3-component/exp 9:9:9/5, floating-point
 
-		//
-		// S3TC/DXT/BC
-		//
+			//
+			// S3TC/DXT/BC
+			//
 
 		case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
 			return GL_UNSIGNED_BYTE; // line through 3D space, unsigned normalized

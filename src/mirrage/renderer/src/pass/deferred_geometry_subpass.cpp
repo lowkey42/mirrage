@@ -59,4 +59,4 @@ namespace mirrage::renderer {
 			});
 		}
 	}
-}
+} // namespace mirrage::renderer

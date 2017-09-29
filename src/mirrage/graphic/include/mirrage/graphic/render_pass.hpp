@@ -117,7 +117,7 @@ namespace mirrage::graphic {
 		template <class Member>
 		void add_vertex_attributes(int binding, int location, std::size_t offset) {
 			static_assert(util::dependent_false<Member>, "Unknown type");
-			FAIL("Unknown type passed to add_vertex_attributes(...)");
+			MIRRAGE_FAIL("Unknown type passed to add_vertex_attributes(...)");
 		}
 
 		void build_create_info(const vk::Device&, vk::GraphicsPipelineCreateInfo&, vk::UniquePipelineLayout&);

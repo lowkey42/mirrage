@@ -35,7 +35,7 @@ namespace mirrage::util {
 
 		template <typename... Ts>
 		using min_max_result_t = typename min_max_result<Ts...>::type;
-	}
+	} // namespace details
 
 	// min
 	template <typename FirstT>
@@ -156,7 +156,7 @@ namespace mirrage::util {
 	auto operator/(Interpolation<T> i, float f) -> Interpolation<T> {
 		return i * (1 / f);
 	}
-}
+} // namespace mirrage::util
 
 #define UTIL_MATH_INCLUDED
 #include "math.hxx"

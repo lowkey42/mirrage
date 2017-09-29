@@ -32,15 +32,15 @@ namespace mirrage::input {
 	};
 
 	struct Context {
-		Context_id id;
+		Context_id                                id;
 		std::unordered_map<Key, Reaction>         keys;
 		std::unordered_map<Pad_button, Reaction>  pad_buttons;
 		std::unordered_map<Pad_stick, Reaction>   pad_sticks;
 		std::unordered_map<Mouse_click, Reaction> mouse_buttons;
-		Reaction mouse_movement;
-		Reaction mouse_wheel_up;
-		Reaction mouse_wheel_down;
-		Reaction mouse_drag;
+		Reaction                                  mouse_movement;
+		Reaction                                  mouse_wheel_up;
+		Reaction                                  mouse_wheel_down;
+		Reaction                                  mouse_drag;
 	};
 
 
@@ -70,9 +70,9 @@ namespace mirrage::input {
 		util::Message_bus& _bus;
 
 		std::unordered_map<Context_id, Context> _context;
-		Context_id _default_context_id;
-		Context_id _active_context_id;
-		Context*   _active_context;
+		Context_id                              _default_context_id;
+		Context_id                              _active_context_id;
+		Context*                                _active_context;
 
 		bool _primary_mouse_button_down = false;
 		bool _is_mouse_drag             = false;
@@ -120,8 +120,8 @@ namespace mirrage::input {
 		std::unordered_map<Context_id, Context>      _context;
 		std::unordered_map<Action_id, Mapped_inputs> _cached_actions;
 		std::unordered_map<Action_id, Reaction_type> _cached_reaction_types;
-		Context_id _default_context_id;
-		Context_id _active_context_id;
-		Context*   _active_context;
+		Context_id                                   _default_context_id;
+		Context_id                                   _active_context_id;
+		Context*                                     _active_context;
 	};
-}
+} // namespace mirrage::input

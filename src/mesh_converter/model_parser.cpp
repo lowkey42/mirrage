@@ -63,29 +63,25 @@ namespace mirrage {
 
 			out.write(reinterpret_cast<const char*>(value.data()), value.size() * sizeof(T));
 		}
-	}
+	} // namespace
 
 
 	void convert_model(const std::string& path, const std::string& output) {
-		INFO("Convert model \"" << path << "\" with output directory \"" << output << "\"");
+		MIRRAGE_INFO("Convert model \"" << path << "\" with output directory \"" << output << "\"");
 
 		auto base_dir   = extract_dir(path);
 		auto model_name = extract_file_name(path);
 
 		auto importer = Assimp::Importer();
 
-		auto scene = importer.ReadFile(path,
-		                               aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals
-		                                       | aiProcess_Triangulate
-		                                       | aiProcess_PreTransformVertices
-		                                       | aiProcess_ImproveCacheLocality
-		                                       | aiProcess_RemoveRedundantMaterials
-		                                       | aiProcess_OptimizeMeshes
-		                                       | aiProcess_ValidateDataStructure
-		                                       | aiProcess_FlipUVs
-		                                       | aiProcess_FixInfacingNormals);
+		auto scene = importer.ReadFile(
+		        path,
+		        aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals | aiProcess_Triangulate
+		                | aiProcess_PreTransformVertices | aiProcess_ImproveCacheLocality
+		                | aiProcess_RemoveRedundantMaterials | aiProcess_OptimizeMeshes
+		                | aiProcess_ValidateDataStructure | aiProcess_FlipUVs | aiProcess_FixInfacingNormals);
 
-		INVARIANT(scene, "Unable to load model '" << path << "': " << importer.GetErrorString());
+		MIRRAGE_INVARIANT(scene, "Unable to load model '" << path << "': " << importer.GetErrorString());
 
 		// load materials
 		auto materials = gsl::span<const aiMaterial* const>(scene->mMaterials, scene->mNumMaterials);
@@ -94,14 +90,14 @@ namespace mirrage {
 		for(auto& mat : materials) {
 			aiString name;
 			if(mat->Get(AI_MATKEY_NAME, name) != aiReturn_SUCCESS) {
-				WARN("material number " << loaded_material_ids.size() << " has no name!");
+				MIRRAGE_WARN("material number " << loaded_material_ids.size() << " has no name!");
 				loaded_material_ids.emplace_back(util::nothing);
 				continue;
 			}
 
 			auto mat_id = model_name + "_" + name.C_Str();
 			if(!convert_material(mat_id, *mat, base_dir, output)) {
-				WARN("Unable to parse material \"" << name.C_Str() << "\"!");
+				MIRRAGE_WARN("Unable to parse material \"" << name.C_Str() << "\"!");
 				loaded_material_ids.emplace_back(util::nothing);
 				continue;
 			}
@@ -143,7 +139,7 @@ namespace mirrage {
 				if(mat.is_some()) {
 					sub_meshes.emplace_back(indices.size(), mesh->mNumFaces * 3, mat.get_or_throw());
 				} else {
-					WARN("Required material is missing/defect!");
+					MIRRAGE_WARN("Required material is missing/defect!");
 				}
 			}
 
@@ -159,7 +155,8 @@ namespace mirrage {
 		auto model_out_filename = output + "/models/" + model_name + ".mmf";
 		auto model_out_file = std::ofstream(model_out_filename, std::ostream::binary | std::ostream::trunc);
 
-		INVARIANT(model_out_file.is_open(), "Unable to open output file \"" << model_out_filename << "\"!");
+		MIRRAGE_INVARIANT(model_out_file.is_open(),
+		                  "Unable to open output file \"" << model_out_filename << "\"!");
 
 		auto header          = renderer::Model_file_header();
 		header.vertex_count  = gsl::narrow<std::uint32_t>(vertices.size() * sizeof(renderer::Model_vertex));
@@ -188,6 +185,6 @@ namespace mirrage {
 		// write footer
 		write(model_out_file, renderer::Model_file_header::type_tag_value);
 
-		INFO("Done.");
+		MIRRAGE_INFO("Done.");
 	}
-}
+} // namespace mirrage

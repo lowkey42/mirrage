@@ -38,9 +38,9 @@ namespace mirrage::util {
 		~Mailbox();
 
 		void send(const T& v);
-		auto                  receive() -> maybe<T>;
+		auto receive() -> maybe<T>;
 		template <std::size_t Size>
-		auto                  receive(T (&target)[Size]) -> std::size_t;
+		auto receive(T (&target)[Size]) -> std::size_t;
 
 		auto empty() const noexcept -> bool;
 
@@ -92,12 +92,12 @@ namespace mirrage::util {
 
 	  private:
 		struct Sub {
-			std::shared_ptr<void>     box;
-			std::function<void(Sub&)> handler;
+			std::shared_ptr<void>           box;
+			std::function<void(Sub&)>       handler;
 			std::function<void(Sub&, bool)> activator;
 		};
 
-		Message_bus& _bus;
+		Message_bus&                     _bus;
 		std::unordered_map<Typeuid, Sub> _boxes;
 	};
 
@@ -142,11 +142,11 @@ namespace mirrage::util {
 				return _type == rhs._type && _mailbox == rhs._mailbox;
 			}
 
-			Typeuid _self;
-			Typeuid _type;
-			void*   _mailbox;
+			Typeuid                                 _self;
+			Typeuid                                 _type;
+			void*                                   _mailbox;
 			std::function<void(void*, const void*)> _send;
-			bool _deleted = false;
+			bool                                    _deleted = false;
 		};
 
 		auto& group(Typeuid id) {
@@ -165,7 +165,7 @@ namespace mirrage::util {
 		std::vector<Mailbox_ref> _add_queue;
 		std::vector<Mailbox_ref> _remove_queue;
 	};
-}
+} // namespace mirrage::util
 
 #define MESSAGEBUS_HPP_INCLUDED
 #include "messagebus.hxx"

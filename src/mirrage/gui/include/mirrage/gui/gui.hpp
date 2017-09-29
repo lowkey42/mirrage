@@ -39,7 +39,7 @@ namespace mirrage {
 	namespace input {
 		class Input_manager;
 	}
-}
+} // namespace mirrage
 namespace mirrage::gui {
 
 	class Gui;
@@ -71,7 +71,7 @@ namespace mirrage::gui {
 
 		virtual void prepare_draw(gsl::span<const std::uint16_t> indices,
 		                          gsl::span<const Gui_vertex>    vertices,
-		                          glm::mat4                      view_proj) = 0;
+		                          glm::mat4                      view_proj)  = 0;
 		virtual void draw_elements(int           texture_handle,
 		                           glm::vec4     clip_rect,
 		                           std::uint32_t offset,
@@ -147,4 +147,4 @@ namespace mirrage::gui {
 		util::maybe<nk_text_edit> _data;
 		bool                      _active = false;
 	};
-}
+} // namespace mirrage::gui

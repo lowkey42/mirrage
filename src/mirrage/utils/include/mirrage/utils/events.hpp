@@ -77,4 +77,4 @@ namespace mirrage::util {
 	signal_source<ET...>::signal_source(slot<ET...>& s) {
 		s.connect(*this);
 	}
-}
+} // namespace mirrage::util

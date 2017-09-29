@@ -9,7 +9,6 @@
 #include <gsl/gsl>
 
 #include <cstdint>
-#include <future>
 #include <memory>
 
 
@@ -208,4 +207,4 @@ namespace mirrage::renderer {
 
 		auto _load_material(const asset::AID&) -> Material_ptr;
 	};
-}
+} // namespace mirrage::renderer

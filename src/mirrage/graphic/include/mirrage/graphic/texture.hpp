@@ -75,7 +75,7 @@ namespace mirrage::graphic {
 		                            vk::Image            image,
 		                            vk::Format           format,
 		                            vk::ImageAspectFlags aspects) -> std::vector<vk::UniqueImageView>;
-	}
+	} // namespace detail
 
 	template <Image_type Type>
 	class Texture : public detail::Base_texture {
@@ -166,8 +166,8 @@ namespace mirrage::graphic {
 		void shrink_to_fit();
 
 	  private:
-		Device*       _device;
-		std::uint32_t _owner_qfamily;
+		Device*                                     _device;
+		std::uint32_t                               _owner_qfamily;
 		std::unordered_map<asset::AID, Texture_ptr> _textures;
 	};
-}
+} // namespace mirrage::graphic

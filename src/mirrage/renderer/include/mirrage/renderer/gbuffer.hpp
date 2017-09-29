@@ -35,4 +35,4 @@ namespace mirrage::renderer {
 		util::maybe<graphic::Texture_2D&> avg_log_luminance;
 		util::maybe<graphic::Texture_2D&> bloom;
 	};
-}
+} // namespace mirrage::renderer

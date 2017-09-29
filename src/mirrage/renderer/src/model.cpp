@@ -16,7 +16,7 @@ namespace mirrage::renderer {
 		auto load_or_placeholder(Texture_cache& tex_cache, const std::string& aid) {
 			return tex_cache.load(aid.empty() ? "tex:placeholder"_aid : asset::AID("tex"_strid, aid));
 		}
-	}
+	} // namespace
 
 	auto create_material_descriptor_set_layout(Device& device, vk::Sampler sampler)
 	        -> vk::UniqueDescriptorSetLayout {
@@ -58,12 +58,12 @@ namespace mirrage::renderer {
 
 		auto desc_writes = std::array<vk::WriteDescriptorSet, 1>();
 		desc_writes[0]   = vk::WriteDescriptorSet{*_descriptor_set,
-		                                        0,
-		                                        0,
-		                                        material_textures,
-		                                        vk::DescriptorType::eCombinedImageSampler,
-		                                        desc_images.data(),
-		                                        nullptr};
+                                                0,
+                                                0,
+                                                material_textures,
+                                                vk::DescriptorType::eCombinedImageSampler,
+                                                desc_images.data(),
+                                                nullptr};
 
 		device.vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
@@ -126,12 +126,12 @@ namespace mirrage::renderer {
 
 			in.read(reinterpret_cast<char*>(value.data()), value.size() * sizeof(T));
 		}
-	}
+	} // namespace
 
 	auto Model_loader::_parse_obj(const asset::AID& aid) -> Model_ptr {
 		auto in_mb = _device->context().asset_manager().load_raw(aid);
 		if(in_mb.is_nothing()) {
-			FAIL("Requested model \"" << aid.str() << "\" doesn't exist!");
+			MIRRAGE_FAIL("Requested model \"" << aid.str() << "\" doesn't exist!");
 		}
 		auto& in = in_mb.get_or_throw();
 
@@ -139,12 +139,12 @@ namespace mirrage::renderer {
 		read(in, header);
 
 		if(header.type_tag != Model_file_header::type_tag_value) {
-			FAIL("The loaded file \"" << aid.str() << "\" is not a valid model file!");
+			MIRRAGE_FAIL("The loaded file \"" << aid.str() << "\" is not a valid model file!");
 		}
 
 		if(header.version != Model_file_header::version_value) {
-			FAIL("The loaded model file \"" << aid.str()
-			                                << "\" is not compatible with this version of the application!");
+			MIRRAGE_FAIL("The loaded model file \""
+			             << aid.str() << "\" is not compatible with this version of the application!");
 		}
 
 		// load sub meshes
@@ -182,7 +182,8 @@ namespace mirrage::renderer {
 		read(in, footer);
 
 		if(footer != Model_file_header::type_tag_value) {
-			WARN("Invalid footer in model file \"" << aid.str() << "\"! The file is probably corrupted!");
+			MIRRAGE_WARN("Invalid footer in model file \"" << aid.str()
+			                                               << "\"! The file is probably corrupted!");
 		}
 
 		return model;
@@ -217,4 +218,4 @@ namespace mirrage::renderer {
 		util::erase_if(_models, [](const auto& v) { return v.second.use_count() <= 1; });
 		util::erase_if(_materials, [](const auto& v) { return v.second.use_count() <= 1; });
 	}
-}
+} // namespace mirrage::renderer

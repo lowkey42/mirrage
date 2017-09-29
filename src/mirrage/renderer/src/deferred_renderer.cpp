@@ -67,7 +67,7 @@ namespace mirrage::renderer {
 	}
 
 	void Deferred_renderer::recreate() {
-		WARN("--recreate");
+		MIRRAGE_WARN("--recreate");
 		device().wait_idle();
 
 		for(auto& pass : _passes) {
@@ -96,12 +96,12 @@ namespace mirrage::renderer {
 
 		auto desc_writes = std::array<vk::WriteDescriptorSet, 1>();
 		desc_writes[0]   = vk::WriteDescriptorSet{*_global_uniform_descriptor_set,
-		                                        0,
-		                                        0,
-		                                        1,
-		                                        vk::DescriptorType::eUniformBuffer,
-		                                        nullptr,
-		                                        &buffer_info};
+                                                0,
+                                                0,
+                                                1,
+                                                vk::DescriptorType::eUniformBuffer,
+                                                nullptr,
+                                                &buffer_info};
 
 		device().vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
@@ -171,9 +171,9 @@ namespace mirrage::renderer {
 		_global_uniforms.proj_planes.w = camera.fov_vertical;
 		_global_uniforms.time          = glm::vec4(_time_acc, glm::sin(_time_acc), _delta_time, 0);
 		_global_uniforms.proj_info     = glm::vec4(-2.f / camera.projection[0][0],
-		                                       -2.f / camera.projection[1][1],
-		                                       (1.f - camera.projection[0][2]) / camera.projection[0][0],
-		                                       (1.f + camera.projection[1][2]) / camera.projection[1][1]);
+                                               -2.f / camera.projection[1][1],
+                                               (1.f - camera.projection[0][2]) / camera.projection[0][0],
+                                               (1.f + camera.projection[1][2]) / camera.projection[1][1]);
 		_global_uniform_buffer.update_obj(cb, _global_uniforms);
 	}
 
@@ -338,11 +338,12 @@ namespace mirrage::renderer {
 	        -> graphic::Device_create_info {
 		auto ret_val = Device_create_info{};
 
-		INVARIANT(gqueue.is_some(), "No useable queue family");
+		MIRRAGE_INVARIANT(gqueue.is_some(), "No useable queue family");
 		ret_val.queue_families.emplace("draw"_strid, Queue_create_info{gqueue.get_or_throw()});
 
 		auto supported_features = gpu.getFeatures();
-		INVARIANT(supported_features.samplerAnisotropy, "Anisotropic filtering is not supported by device!");
+		MIRRAGE_INVARIANT(supported_features.samplerAnisotropy,
+		                  "Anisotropic filtering is not supported by device!");
 		ret_val.features.samplerAnisotropy = true;
 
 		for(auto& pass : _pass_factories) {
@@ -370,4 +371,4 @@ namespace mirrage::renderer {
 
 		return cb;
 	}
-}
+} // namespace mirrage::renderer

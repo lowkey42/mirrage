@@ -33,7 +33,7 @@ namespace mirrage::util {
 
 		template <typename Consumer>
 		void pop(Consumer&& c) noexcept {
-			INVARIANT(_tail != _head, "ring_buffer underflow: " << _tail << " == " << _head);
+			MIRRAGE_INVARIANT(_tail != _head, "ring_buffer underflow: " << _tail << " == " << _head);
 			c(_data.at(_tail));
 			_tail = (_tail + 1) % _data.size();
 		}
@@ -70,4 +70,4 @@ namespace mirrage::util {
 		std::size_t    _head = 0;
 		std::size_t    _tail = 0;
 	};
-}
+} // namespace mirrage::util

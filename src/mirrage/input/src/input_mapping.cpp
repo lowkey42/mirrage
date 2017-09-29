@@ -27,7 +27,7 @@ namespace mirrage::input {
 		constexpr float min_mouse_drag_movement = 1.f;
 
 		struct Context_map {
-			Context_id initial;
+			Context_id                                       initial;
 			std::unordered_map<Context_id, Context>          contexts;
 			mutable std::unordered_map<Context_id, Context>* live_contexts;
 
@@ -52,9 +52,9 @@ namespace mirrage::input {
 			return std::make_tuple(cm->contexts, cm->initial);
 		}
 
-		void save_context_map(asset::Asset_manager& assets,
+		void save_context_map(asset::Asset_manager&                          assets,
 		                      const std::unordered_map<Context_id, Context>& map,
-		                      Context_id def) {
+		                      Context_id                                     def) {
 
 			assets.save(mapping_aid, Context_map{def, map, nullptr});
 		}
@@ -64,7 +64,7 @@ namespace mirrage::input {
 			auto iter = c.find(k);
 			return iter != c.end() ? util::justPtr(&iter->second) : util::nothing;
 		}
-	}
+	} // namespace
 
 	Input_mapper::Input_mapper(util::Message_bus& bus, asset::Asset_manager& assets) : _bus(bus) {
 
@@ -76,7 +76,7 @@ namespace mirrage::input {
 		_active_context_id = id;
 
 		auto def_ctx = _context.find(_active_context_id);
-		INVARIANT(def_ctx != _context.end(), "Enabled undefined input context");
+		MIRRAGE_INVARIANT(def_ctx != _context.end(), "Enabled undefined input context");
 		_active_context = &def_ctx->second;
 	}
 
@@ -129,7 +129,7 @@ namespace mirrage::input {
 				default: break;
 			}
 		}
-	}
+	} // namespace
 
 	void Input_mapper::on_key_pressed(Key k) {
 		find_maybe(_active_context->keys, k).process([&](auto& action) { process_pressed(_bus, action); });
@@ -235,7 +235,7 @@ namespace mirrage::input {
 		_active_context_id = id;
 
 		auto def_ctx = _context.find(_active_context_id);
-		INVARIANT(def_ctx != _context.end(), "Enabled undefined input context");
+		MIRRAGE_INVARIANT(def_ctx != _context.end(), "Enabled undefined input context");
 		_active_context = &def_ctx->second;
 
 		_cached_reaction_types.clear();
@@ -279,7 +279,7 @@ namespace mirrage::input {
 
 	auto Input_mapping_updater::reaction_type_for(Action_id a) const -> Reaction_type {
 		auto type = _cached_reaction_types.find(a);
-		INVARIANT(type != _cached_reaction_types.end(), "Unknown action");
+		MIRRAGE_INVARIANT(type != _cached_reaction_types.end(), "Unknown action");
 
 		return type->second;
 	}
@@ -402,4 +402,4 @@ namespace mirrage::input {
 	}
 
 	void Input_mapping_updater::save() { save_context_map(_assets, _context, _default_context_id); }
-}
+} // namespace mirrage::input

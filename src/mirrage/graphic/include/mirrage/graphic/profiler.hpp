@@ -173,4 +173,4 @@ namespace mirrage::graphic {
 
 		void _update_result(Profiler_result&, const std::vector<std::uint32_t>& data);
 	};
-}
+} // namespace mirrage::graphic

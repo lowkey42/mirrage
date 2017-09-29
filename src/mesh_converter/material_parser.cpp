@@ -125,7 +125,7 @@ namespace mirrage {
 			int  width  = 0;
 			int  height = 0;
 			auto data   = stbi_load(path.c_str(), &width, &height, nullptr, 4);
-			INVARIANT(data, "Texture '" << path << "' couldn't be loaded!");
+			MIRRAGE_INVARIANT(data, "Texture '" << path << "' couldn't be loaded!");
 
 			ON_EXIT { stbi_image_free(data); };
 
@@ -229,7 +229,7 @@ namespace mirrage {
 				out.write(reinterpret_cast<char*>(rgb8_image.mip_levels[i].data()), size);
 			}
 		}
-	}
+	} // namespace
 
 	bool convert_material(const std::string& name,
 	                      const aiMaterial&  material,
@@ -316,4 +316,4 @@ namespace mirrage {
 
 		return true;
 	}
-}
+} // namespace mirrage

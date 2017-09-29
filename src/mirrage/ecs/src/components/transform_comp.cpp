@@ -45,4 +45,4 @@ namespace mirrage::ecs::components {
 		model[3]   = glm::vec4(_position, 1.f);
 		return model;
 	}
-}
+} // namespace mirrage::ecs::components

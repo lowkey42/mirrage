@@ -27,8 +27,8 @@ int main(int argc, char** argv) {
 		return 1;
 	}
 
-	auto args = std::vector<std::string>{const_cast<const char**>(argv + 1),
-	                                     const_cast<const char**>(argv + argc)};
+	auto args   = std::vector<std::string>{const_cast<const char**>(argv + 1),
+                                         const_cast<const char**>(argv + argc)};
 	auto output = extract_arg(args, "--output").get_or_other("output");
 
 	create_directory(output);

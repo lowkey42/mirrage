@@ -87,18 +87,16 @@ namespace mirrage::util {
 
 	template <typename O, typename F>
 	auto member_fptr(O* self, F&& f) -> decltype(auto) {
-		if
-			constexpr(std::is_same<void, typename func_trait<F>::return_t>::value) {
-				return [self, &f](auto&&... args) -> decltype(auto) {
-					std::invoke(f, self, std::forward<decltype(args)>(args)...);
-				};
-			}
-		else {
+		if constexpr(std::is_same<void, typename func_trait<F>::return_t>::value) {
+			return [self, &f](auto&&... args) -> decltype(auto) {
+				std::invoke(f, self, std::forward<decltype(args)>(args)...);
+			};
+		} else {
 			return [self, &f](auto&&... args) -> decltype(auto) {
 				return std::invoke(f, self, std::forward<decltype(args)>(args)...);
 			};
 		}
 	}
-}
+} // namespace mirrage::util
 
 #define FOE_SELF(MEMBER_NAME) ::mirrage::util::member_fptr(this, &std::decay_t<decltype(*this)>::MEMBER_NAME)

@@ -15,4 +15,4 @@ namespace mirrage::version_info {
 	extern const std::string hash;
 	extern const std::string date;
 	extern const std::string subject;
-}
+} // namespace mirrage::version_info

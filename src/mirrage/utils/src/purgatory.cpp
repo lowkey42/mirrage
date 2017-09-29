@@ -65,4 +65,4 @@ namespace mirrage::util {
 		_entries.clear();
 		_blocks.resize(1); // delete all but the last first block
 	}
-}
+} // namespace mirrage::util

@@ -110,7 +110,7 @@ namespace mirrage::asset {
 
 	stream::stream(AID aid, Asset_manager& manager, File_handle* file, const std::string& path)
 	  : _file(file), _aid(aid), _manager(manager) {
-		INVARIANT(file, "Error opening file \"" << path << "\": " << PHYSFS_getLastError());
+		MIRRAGE_INVARIANT(file, "Error opening file \"" << path << "\": " << PHYSFS_getLastError());
 
 		_fbuf.reset(new fbuf(file));
 	}
@@ -128,7 +128,7 @@ namespace mirrage::asset {
 	}
 
 	stream& stream::operator=(stream&& rhs) noexcept {
-		INVARIANT(&_manager == &rhs._manager, "cross-manager move");
+		MIRRAGE_INVARIANT(&_manager == &rhs._manager, "cross-manager move");
 		_file = std::move(rhs._file);
 		_aid  = std::move(rhs._aid);
 		_fbuf = std::move(rhs._fbuf);
@@ -205,4 +205,4 @@ namespace mirrage::asset {
 		init(_fbuf.get());
 		return *this;
 	}
-}
+} // namespace mirrage::asset

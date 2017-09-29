@@ -108,13 +108,13 @@ namespace mirrage {
 
 				case "print"_strid: {
 					auto cam = _camera.get<Transform_comp>().get_or_throw().position();
-					INFO(
-					        "Setup: \n"
-					        << "  Camera position:    " << cam.x << "/" << cam.y << "/" << cam.z << "\n"
-					        << "  Camera orientation: " << _cam_yaw << "/" << _cam_pitch << "\n"
-					        << "  Sun orientation:    " << _sun_elevation << "/" << _sun_azimuth << "\n"
-					        << "  Sun color:          " << _sun_color_temperature << "\n"
-					        << "  Disected:           " << _meta_system.renderer().settings().debug_disect);
+					MIRRAGE_INFO("Setup: \n"
+					             << "  Camera position:    " << cam.x << "/" << cam.y << "/" << cam.z << "\n"
+					             << "  Camera orientation: " << _cam_yaw << "/" << _cam_pitch << "\n"
+					             << "  Sun orientation:    " << _sun_elevation << "/" << _sun_azimuth << "\n"
+					             << "  Sun color:          " << _sun_color_temperature << "\n"
+					             << "  Disected:           "
+					             << _meta_system.renderer().settings().debug_disect);
 					break;
 				}
 

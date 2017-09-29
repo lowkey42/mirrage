@@ -68,4 +68,4 @@ namespace mirrage {
 		void _load(const Language_id& lang);
 		void _print_missing() const;
 	};
-}
+} // namespace mirrage

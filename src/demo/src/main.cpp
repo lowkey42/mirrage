@@ -31,7 +31,7 @@ namespace {
 	void init_engine();
 	void onFrame();
 	void shutdown();
-}
+} // namespace
 
 
 #ifdef main
@@ -64,35 +64,25 @@ namespace {
 	void init_env(int argc, char** argv, char** env) {
 
 		//auto testC = glm::vec2{1,2} - glm::vec2{1,1}; (void)testC;
-		//INVARIANT(testC.y==(testA.y - testB.y), "XXX: "<<testC.y<<" != "<<(testA.y - testB.y));
+		//MIRRAGE_INVARIANT(testC.y==(testA.y - testB.y), "XXX: "<<testC.y<<" != "<<(testA.y - testB.y));
 
 		::argc = argc;
 		::argv = argv;
 		::env  = env;
 
-		INFO("Game started from: " << argv[0] << "\n"
-		                           << "Working dir: "
-		                           << asset::pwd()
-		                           << "\n"
-		                           << "Version: "
-		                           << version_info::name
-		                           << "\n"
-		                           << "Version-Hash: "
-		                           << version_info::hash
-		                           << "\n"
-		                           << "Version-Date: "
-		                           << version_info::date
-		                           << "\n"
-		                           << "Version-Subject: "
-		                           << version_info::subject
-		                           << "\n");
+		MIRRAGE_INFO("Game started from: " << argv[0] << "\n"
+		                                   << "Working dir: " << asset::pwd() << "\n"
+		                                   << "Version: " << version_info::name << "\n"
+		                                   << "Version-Hash: " << version_info::hash << "\n"
+		                                   << "Version-Date: " << version_info::date << "\n"
+		                                   << "Version-Subject: " << version_info::subject << "\n");
 
 		try {
 			util::init_stacktrace(argv[0]);
 			mirrage::asset::setup_storage();
 
 		} catch(const util::Error& ex) {
-			CRASH_REPORT("Exception in init: " << ex.what());
+			MIRRAGE_CRASH_REPORT("Exception in init: " << ex.what());
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in init", nullptr);
 			shutdown();
 			exit(1);
@@ -124,7 +114,7 @@ namespace {
 				engine->screens().enter<Test_screen>();
 
 		} catch(const util::Error& ex) {
-			CRASH_REPORT("Exception in init: " << ex.what());
+			MIRRAGE_CRASH_REPORT("Exception in init: " << ex.what());
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in init", nullptr);
 			shutdown();
 			exit(1);
@@ -136,7 +126,7 @@ namespace {
 			engine->on_frame();
 
 		} catch(const util::Error& ex) {
-			CRASH_REPORT("Exception in onFrame: " << ex.what());
+			MIRRAGE_CRASH_REPORT("Exception in onFrame: " << ex.what());
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in onFrame", nullptr);
 			shutdown();
 			exit(2);
@@ -148,9 +138,9 @@ namespace {
 			engine.reset();
 
 		} catch(const util::Error& ex) {
-			CRASH_REPORT("Exception in shutdown: " << ex.what());
+			MIRRAGE_CRASH_REPORT("Exception in shutdown: " << ex.what());
 			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in shutdown", nullptr);
 			exit(3);
 		}
 	}
-}
+} // namespace

@@ -7,7 +7,7 @@
 namespace mirrage::graphic {
 	struct Pipeline_description;
 	class Subpass_builder;
-}
+} // namespace mirrage::graphic
 
 namespace mirrage::renderer {
 
@@ -29,4 +29,4 @@ namespace mirrage::renderer {
 		vk::UniqueDescriptorSetLayout _input_attachment_descriptor_set_layout;
 		vk::UniqueDescriptorSet       _input_attachment_descriptor_set;
 	};
-}
+} // namespace mirrage::renderer

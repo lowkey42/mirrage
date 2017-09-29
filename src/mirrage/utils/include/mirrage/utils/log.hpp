@@ -51,49 +51,57 @@ namespace mirrage::util {
 	extern log_target& error(const char* func = "", const char* file = "", int32_t line = -1) noexcept;
 	extern log_target& fail(const char* func = "", const char* file = "", int32_t line = -1) noexcept;
 	extern log_target& crash_report() noexcept;
-}
+} // namespace mirrage::util
 
-#define DEBUG(M)                                                                \
+#define MIRRAGE_DEBUG(M)                                                        \
 	do {                                                                        \
 		::mirrage::util::debug(__func__, __FILE__, __LINE__) << M << std::endl; \
 	} while(false)
-#define INFO(M)                                                                \
+#define MIRRAGE_INFO(M)                                                        \
 	do {                                                                       \
 		::mirrage::util::info(__func__, __FILE__, __LINE__) << M << std::endl; \
 	} while(false)
-#define WARN(M)                                                                \
+#define MIRRAGE_WARN(M)                                                        \
 	do {                                                                       \
 		::mirrage::util::warn(__func__, __FILE__, __LINE__) << M << std::endl; \
 	} while(false)
-#define ERROR(M)                                                                \
+#define MIRRAGE_ERROR(M)                                                        \
 	do {                                                                        \
 		::mirrage::util::error(__func__, __FILE__, __LINE__) << M << std::endl; \
 	} while(false)
-#define CRASH_REPORT(M)                                    \
+#define MIRRAGE_CRASH_REPORT(M)                            \
 	do {                                                   \
 		::mirrage::util::crash_report() << M << std::endl; \
 	} while(false)
 
 #ifndef _MSC_VER
-#define FAIL(M)                                                                \
-	do {                                                                       \
-		::mirrage::util::fail(__func__, __FILE__, __LINE__) << M << std::endl; \
-		__builtin_unreachable();                                               \
+#define MIRRAGE_LIKELY(c) __builtin_expect((c), 1)
+#define MIRRAGE_UNLIKELY(c) __builtin_expect((c), 0)
+#else
+#define MIRRAGE_LIKELY(c) c
+#define MIRRAGE_UNLIKELY(c) c
+#endif
+
+#ifndef _MSC_VER
+#define MIRRAGE_FAIL(M)                                                          \
+	do {                                                                         \
+		(::mirrage::util::fail(__func__, __FILE__, __LINE__) << M) << std::endl; \
+		__builtin_unreachable();                                                 \
 	} while(false)
-#define INVARIANT(C, M)                   \
-	do {                                  \
-		if(__builtin_expect(!(C), false)) \
-			FAIL(M);                      \
+#define MIRRAGE_INVARIANT(C, M)    \
+	do {                           \
+		if(MIRRAGE_UNLIKELY(!(C))) \
+			MIRRAGE_FAIL(M);       \
 	} while(false)
 
 #else
-#define FAIL(M)                                                                \
+#define MIRRAGE_FAIL(M)                                                        \
 	do {                                                                       \
 		::mirrage::util::fail(__func__, __FILE__, __LINE__) << M << std::endl; \
 	} while(false)
-#define INVARIANT(C, M) \
-	do {                \
-		if(!C)          \
-			FAIL(M);    \
+#define MIRRAGE_INVARIANT(C, M) \
+	do {                        \
+		if(!C)                  \
+			MIRRAGE_FAIL(M);    \
 	} while(false)
 #endif

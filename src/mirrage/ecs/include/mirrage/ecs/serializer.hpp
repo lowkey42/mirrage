@@ -19,7 +19,7 @@
 namespace mirrage::asset {
 	class AID;
 	class Asset_manager;
-}
+} // namespace mirrage::asset
 
 namespace mirrage::ecs {
 
@@ -70,4 +70,4 @@ namespace mirrage::ecs {
 	void save_component(ecs::Serializer& state, const T&) {
 		state.write_virtual();
 	}
-}
+} // namespace mirrage::ecs

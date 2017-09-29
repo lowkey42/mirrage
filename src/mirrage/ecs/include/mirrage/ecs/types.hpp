@@ -82,7 +82,7 @@ namespace mirrage::ecs {
 		auto valid() const noexcept -> bool;
 
 		explicit operator bool() const noexcept { return valid(); }
-		operator Entity_handle() const noexcept { return handle(); }
+		         operator Entity_handle() const noexcept { return handle(); }
 
 		void reset() { _owner = invalid_entity; }
 
@@ -90,4 +90,4 @@ namespace mirrage::ecs {
 		Entity_manager* _manager;
 		Entity_handle   _owner;
 	};
-}
+} // namespace mirrage::ecs

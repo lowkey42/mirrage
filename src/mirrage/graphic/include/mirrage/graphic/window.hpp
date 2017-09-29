@@ -79,7 +79,7 @@ namespace mirrage::graphic {
 		Fullscreen  _fullscreen;
 
 		std::unique_ptr<SDL_Window, void (*)(SDL_Window*)> _window;
-		vk::UniqueSurfaceKHR _surface;
+		vk::UniqueSurfaceKHR                               _surface;
 
 		double _frame_start_time           = 0;
 		float  _delta_time_smoothed        = 0;
@@ -88,4 +88,4 @@ namespace mirrage::graphic {
 
 		void _update_fps_timer(double present_started);
 	};
-}
+} // namespace mirrage::graphic

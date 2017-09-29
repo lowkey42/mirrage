@@ -79,7 +79,7 @@ namespace mirrage::asset {
 	}
 	template <class R>
 	const R& Ptr<R>::operator*() const {
-		INVARIANT(*this, "Access to unloaded resource");
+		MIRRAGE_INVARIANT(*this, "Access to unloaded resource");
 		return *_ptr.get();
 	}
 
@@ -90,7 +90,7 @@ namespace mirrage::asset {
 	}
 	template <class R>
 	const R* Ptr<R>::operator->() const {
-		INVARIANT(*this, "Access to unloaded resource");
+		MIRRAGE_INVARIANT(*this, "Access to unloaded resource");
 		return _ptr.get();
 	}
 
@@ -112,8 +112,8 @@ namespace mirrage::asset {
 	template <class R>
 	void Ptr<R>::load() {
 		if(!_ptr) {
-			INVARIANT(_mgr, "Tried to load unintialized resource-ref");
-			INVARIANT(_aid, "Tried to load unnamed resource");
+			MIRRAGE_INVARIANT(_mgr, "Tried to load unintialized resource-ref");
+			MIRRAGE_INVARIANT(_aid, "Tried to load unnamed resource");
 			*this = _mgr->load<R>(_aid);
 		}
 	}
@@ -121,8 +121,8 @@ namespace mirrage::asset {
 	template <class R>
 	bool Ptr<R>::try_load(bool cache, bool warn) {
 		if(!_ptr) {
-			INVARIANT(_mgr, "Tried to load unintialized resource-ref");
-			INVARIANT(_aid, "Tried to load unnamed resource");
+			MIRRAGE_INVARIANT(_mgr, "Tried to load unintialized resource-ref");
+			MIRRAGE_INVARIANT(_aid, "Tried to load unnamed resource");
 			auto loaded = _mgr->load_maybe<R>(_aid, cache, warn);
 			if(loaded.is_some()) {
 				*this = loaded.get_or_throw();
@@ -136,4 +136,4 @@ namespace mirrage::asset {
 	void Ptr<R>::unload() {
 		_ptr.reset();
 	}
-}
+} // namespace mirrage::asset

@@ -48,7 +48,7 @@ namespace mirrage::util {
 				sp += (gen() - Generator::min()) * base;
 			return static_cast<T>(sp / base);
 		}
-	}
+	} // namespace details
 
 	using random_generator = std::mt19937_64;
 
@@ -75,4 +75,4 @@ namespace mirrage::util {
 		auto v = random_real(gen, 0.f, 1.f);
 		return v < prop;
 	}
-}
+} // namespace mirrage::util

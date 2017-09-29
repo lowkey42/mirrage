@@ -15,10 +15,10 @@ namespace mirrage::util {
 
 		return status == 0 ? res.get() : name;
 	}
-}
+} // namespace mirrage::util
 
 #else
 namespace mirrage::util {
 	std::string demangle(const char* name) { return name; }
-}
+} // namespace mirrage::util
 #endif

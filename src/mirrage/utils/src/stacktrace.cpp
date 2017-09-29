@@ -53,7 +53,7 @@ namespace mirrage::util {
 
 			return buffer.str();
 		}
-	}
+	} // namespace
 
 	bool is_stacktrace_available() { return !EXE_NAME.empty(); }
 
@@ -63,7 +63,7 @@ namespace mirrage::util {
 	namespace {
 		typedef void (*RtlCaptureContextFunc)(CONTEXT* ContextRecord);
 		RtlCaptureContextFunc rtlCaptureContext;
-	}
+	} // namespace
 
 	void init_stacktrace(std::string exeName) {
 		EXE_NAME = exeName;
@@ -73,7 +73,7 @@ namespace mirrage::util {
 		rtlCaptureContext = (RtlCaptureContextFunc) GetProcAddress(kernel32, "RtlCaptureContext");
 
 		set_signal_handler();
-		INFO("Startet from " << exeName);
+		MIRRAGE_INFO("Startet from " << exeName);
 	}
 
 	namespace {
@@ -224,7 +224,7 @@ namespace mirrage::util {
 		}
 
 		void set_signal_handler() { SetUnhandledExceptionFilter(windows_exception_handler); }
-	}
+	} // namespace
 
 	std::string gen_stacktrace(int framesToSkip) {
 		if(!is_stacktrace_available())
@@ -252,7 +252,7 @@ namespace mirrage::util {
 	}
 
 	namespace {
-		void printStackTrace(std::string error) { CRASH_REPORT("\n" << error); }
+		void printStackTrace(std::string error) { MIRRAGE_CRASH_REPORT("\n" << error); }
 
 		void posix_signal_handler(int sig, siginfo_t* siginfo, void*) {
 			switch(sig) {
@@ -317,8 +317,8 @@ namespace mirrage::util {
 				stack_t ss;
 				/* malloc is usually used here, I'm not 100% sure my static allocation
 				   is valid but it seems to work just fine. */
-				ss.ss_sp    = (void*) alternate_stack;
-				ss.ss_size  = sizeof(alternate_stack);
+				ss.ss_sp = (void*) alternate_stack;
+				ss.ss_size = sizeof(alternate_stack);
 				ss.ss_flags = 0;
 
 				if(sigaltstack(&ss, NULL) != 0)
@@ -340,30 +340,30 @@ namespace mirrage::util {
 #endif
 
 				if(sigaction(SIGSEGV, &sig_action, NULL) != 0)
-					ERROR("failed to register handler for SIGSEGV!");
+					MIRRAGE_ERROR("failed to register handler for SIGSEGV!");
 				if(sigaction(SIGFPE, &sig_action, NULL) != 0)
-					ERROR("failed to register handler for SIGFPE!");
+					MIRRAGE_ERROR("failed to register handler for SIGFPE!");
 				if(sigaction(SIGINT, &sig_action, NULL) != 0)
-					ERROR("failed to register handler for SIGINT!");
+					MIRRAGE_ERROR("failed to register handler for SIGINT!");
 				if(sigaction(SIGILL, &sig_action, NULL) != 0)
-					ERROR("failed to register handler for SIGILL!");
+					MIRRAGE_ERROR("failed to register handler for SIGILL!");
 				if(sigaction(SIGTERM, &sig_action, NULL) != 0)
-					ERROR("failed to register handler for SIGTERM!");
+					MIRRAGE_ERROR("failed to register handler for SIGTERM!");
 				if(sigaction(SIGABRT, &sig_action, NULL) != 0)
-					ERROR("failed to register handler for SIGABRT!");
+					MIRRAGE_ERROR("failed to register handler for SIGABRT!");
 			}
 		}
-	}
+	} // namespace
 
 	std::string gen_stacktrace(int framesToSkip) {
 		if(!is_stacktrace_available())
 			return {};
 
 		std::stringstream ret;
-		void*             trace[32];
+		void* trace[32];
 
-		auto   trace_size = backtrace(trace, 32);
-		char** messages   = backtrace_symbols(trace, trace_size);
+		auto trace_size = backtrace(trace, 32);
+		char** messages = backtrace_symbols(trace, trace_size);
 
 		/* skip first stack frame (points here) */
 
@@ -380,7 +380,7 @@ namespace mirrage::util {
 		return ret.str();
 	}
 #endif
-}
+} // namespace mirrage::util
 
 #else
 namespace mirrage::util {
@@ -389,5 +389,5 @@ namespace mirrage::util {
 	std::string gen_stacktrace(int stacksToSkip) { return ""; }
 
 	bool is_stacktrace_available() { return false; }
-}
+} // namespace mirrage::util
 #endif

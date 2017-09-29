@@ -49,4 +49,4 @@ namespace mirrage::graphic {
 		std::size_t                 _current_buffer_idx = 0;
 		util::maybe<Backed_buffer&> _read_buffer;
 	};
-}
+} // namespace mirrage::graphic

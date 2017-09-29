@@ -157,13 +157,13 @@ namespace mirrage::renderer {
 			        vk::FormatFeatureFlagBits::eColorAttachment
 			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 
-			INVARIANT(format.is_some(), "AO render targets are not supported!");
+			MIRRAGE_INVARIANT(format.is_some(), "AO render targets are not supported!");
 
 			return format.get_or_throw();
 		}
 
 		constexpr auto ao_mip_level = 1;
-	}
+	} // namespace
 
 
 	Ssao_pass::Ssao_pass(Deferred_renderer& renderer)
@@ -210,8 +210,8 @@ namespace mirrage::renderer {
 	  , _blur_descriptor_set_vertical(_descriptor_set_layout.create_set(
 	            renderer.descriptor_pool(), {renderer.gbuffer().depth.view(), _blur_buffer.view(0)})) {
 
-		INVARIANT(!renderer.gbuffer().ambient_occlusion,
-		          "More than one ambient occlusion implementation activ!");
+		MIRRAGE_INVARIANT(!renderer.gbuffer().ambient_occlusion,
+		                  "More than one ambient occlusion implementation activ!");
 		renderer.gbuffer().ambient_occlusion = _ao_result_buffer;
 	}
 
@@ -288,4 +288,4 @@ namespace mirrage::renderer {
 	void Ssao_pass_factory::configure_device(vk::PhysicalDevice,
 	                                         util::maybe<std::uint32_t>,
 	                                         graphic::Device_create_info&) {}
-}
+} // namespace mirrage::renderer

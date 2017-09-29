@@ -59,7 +59,7 @@ namespace mirrage::util {
 		auto operator+(cleanup_scope_guard, Func&& f) {
 			return cleanup<Func>{std::forward<Func>(f)};
 		}
-	}
+	} // namespace detail
 
 #define CLEANUP_CONCATENATE_DIRECT(s1, s2) s1##s2
 #define CLEANUP_CONCATENATE(s1, s2) CLEANUP_CONCATENATE_DIRECT(s1, s2)
@@ -141,7 +141,7 @@ namespace mirrage::util {
 		auto build_array_impl(F&& factory, std::index_sequence<I...>) {
 			return std::array<std::common_type_t<decltype(factory(I))...>, N>{{factory(I)...}};
 		}
-	}
+	} // namespace detail
 
 	template <std::size_t N, class F>
 	auto build_array(F&& factory) {
@@ -160,7 +160,7 @@ namespace mirrage::util {
 		type_id_t type_id() {
 			return reinterpret_cast<type_id_t>(&type<T>::id);
 		}
-	}
+	} // namespace detail
 
 
 	template <typename T>
@@ -174,7 +174,7 @@ namespace mirrage::util {
 			trackable_data() = default;
 			trackable_data(void* ptr, std::uint32_t rev) : obj_addr(ptr), revision(rev) {}
 		};
-	}
+	} // namespace detail
 
 	template <typename T>
 	class trackable {
@@ -183,12 +183,12 @@ namespace mirrage::util {
 		trackable(std::unique_ptr<T> obj) : _obj(std::move(obj)) {}
 		trackable(trackable&&) = default;
 		auto& operator         =(trackable&& rhs) noexcept {
-			reset();
+            reset();
 
-			_obj      = std::move(rhs._obj);
-			_obj_addr = std::move(rhs._obj_addr);
+            _obj      = std::move(rhs._obj);
+            _obj_addr = std::move(rhs._obj_addr);
 
-			return *this;
+            return *this;
 		}
 		~trackable() { reset(); }
 
@@ -221,23 +221,23 @@ namespace mirrage::util {
 
 		auto operator*() -> T& {
 			auto ptr = get();
-			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return *ptr;
 		}
 		auto operator*() const -> T& {
 			auto ptr = get();
-			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return *ptr;
 		}
 
 		auto operator-> () -> T* {
 			auto ptr = get();
-			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return ptr;
 		}
 		auto operator-> () const -> T* {
 			auto ptr = get();
-			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return ptr;
 		}
 
@@ -279,7 +279,8 @@ namespace mirrage::util {
 		  : _trackable(t._trackable)
 		  , _caster(+[](void* ptr) { return dynamic_cast<T*>(static_cast<I*>(ptr)); })
 		  , _last_seen_revision(_trackable ? _trackable->revision : 0) {
-			INVARIANT(t._caster == nullptr, "Casting tracking_ptrs can't be nested! Nice try though.");
+			MIRRAGE_INVARIANT(t._caster == nullptr,
+			                  "Casting tracking_ptrs can't be nested! Nice try though.");
 		}
 
 		auto modified(T* last_seen) {
@@ -289,7 +290,7 @@ namespace mirrage::util {
 
 			auto current_revision = _trackable->revision;
 			if(_last_seen_revision != current_revision || last_seen == nullptr) {
-				DEBUG("Modified " << _last_seen_revision << " != " << current_revision);
+				MIRRAGE_DEBUG("Modified " << _last_seen_revision << " != " << current_revision);
 				_last_seen_revision = current_revision;
 				return true;
 			}
@@ -314,27 +315,27 @@ namespace mirrage::util {
 		operator const T*() const { return get(); }
 
 		explicit operator bool() const { return get() != nullptr; }
-		auto operator!() const { return get() != nullptr; }
+		auto     operator!() const { return get() != nullptr; }
 
 		auto operator*() -> T& {
 			auto ptr = get();
-			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return *ptr;
 		}
 		auto operator*() const -> T& {
 			auto ptr = get();
-			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return *ptr;
 		}
 
 		auto operator-> () -> T* {
 			auto ptr = get();
-			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return ptr;
 		}
 		auto operator-> () const -> T* {
 			auto ptr = get();
-			INVARIANT(ptr, "Null-Pointer dereferenced!");
+			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return ptr;
 		}
 
@@ -435,8 +436,8 @@ namespace mirrage::util {
 				*this --;
 				return t;
 			}
-			bool operator==(const iterator& rhs) const noexcept { return p == rhs.p; }
-			bool operator!=(const iterator& rhs) const noexcept { return p != rhs.p; }
+			bool     operator==(const iterator& rhs) const noexcept { return p == rhs.p; }
+			bool     operator!=(const iterator& rhs) const noexcept { return p != rhs.p; }
 			const T& operator*() const noexcept { return p; }
 		};
 		using const_iterator = iterator;
@@ -449,7 +450,7 @@ namespace mirrage::util {
 
 		numeric_range& operator=(const numeric_range&) noexcept = default;
 		numeric_range& operator=(numeric_range&&) noexcept = default;
-		bool operator==(const numeric_range& o) noexcept { return b == o.b && e == o.e; }
+		bool           operator==(const numeric_range& o) noexcept { return b == o.b && e == o.e; }
 
 		constexpr iterator begin() const noexcept { return b; }
 		constexpr iterator end() const noexcept { return e; }
@@ -506,7 +507,7 @@ namespace mirrage::util {
 		cast_iterator(Iter iter) : iter(iter){};
 
 		reference operator*() { return *reinterpret_cast<pointer>(*iter); }
-		pointer operator->() { return reinterpret_cast<pointer>(*iter); }
+		pointer   operator->() { return reinterpret_cast<pointer>(*iter); }
 
 		cast_iterator& operator++() {
 			++iter;
@@ -649,7 +650,7 @@ namespace mirrage::util {
 
 	  protected:
 		auto parent() noexcept -> auto& {
-			INVARIANT(_parent, "Deref nullptr");
+			MIRRAGE_INVARIANT(_parent, "Deref nullptr");
 			return *_parent;
 		}
 
@@ -661,7 +662,7 @@ namespace mirrage::util {
 
 		static Registered* asRegistered(CCTP* self) { return static_cast<Registered*>(self); }
 	};
-}
+} // namespace mirrage::util
 
 #define M_REPEAT_1(X) X(0)
 #define M_REPEAT_2(X) M_REPEAT_1(X) X(1)

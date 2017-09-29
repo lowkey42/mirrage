@@ -76,58 +76,37 @@ namespace mirrage::util {
 		bool is_nothing() const noexcept { return !is_some(); }
 
 		T get_or_throw() && {
-			INVARIANT(is_some(), "Called getOrThrow on nothing.");
+			MIRRAGE_INVARIANT(is_some(), "Called getOrThrow on nothing.");
 
 			return std::move(_data);
 		}
-		template <typename M1, typename... Ms>
-		T get_or_throw(M1&& m1, Ms&&... ms) && {
-			if(__builtin_expect(!is_some(), false)) {
-				auto& log = util::fail(__func__, __FILE__, __LINE__);
-
-				util::apply([&](auto&& x) { log << x; }, std::forward<M1>(m1), std::forward<Ms>(ms)...);
-
-				log << std::endl;
-				__builtin_unreachable();
-			}
+		template <typename... Ms, typename = std::enable_if_t<sizeof...(Ms) >= 1>>
+		T get_or_throw(Ms&&... ms) && {
+			MIRRAGE_INVARIANT(is_some(), ... << std::forward<Ms>(ms));
 
 			return std::move(_data);
 		}
 
 		T& get_or_throw() & {
-			INVARIANT(is_some(), "Called getOrThrow on nothing.");
+			MIRRAGE_INVARIANT(is_some(), "Called getOrThrow on nothing.");
 
 			return _data;
 		}
-		template <typename M1, typename... Ms>
-		T& get_or_throw(M1&& m1, Ms&&... ms) & {
-			if(__builtin_expect(!is_some(), false)) {
-				auto& log = util::fail(__func__, __FILE__, __LINE__);
-
-				util::apply([&](auto&& x) { log << x; }, std::forward<M1>(m1), std::forward<Ms>(ms)...);
-
-				log << std::endl;
-				__builtin_unreachable();
-			}
+		template <typename... Ms, typename = std::enable_if_t<sizeof...(Ms) >= 1>>
+		T& get_or_throw(Ms&&... ms) & {
+			MIRRAGE_INVARIANT(is_some(), ... << std::forward<Ms>(ms));
 
 			return _data;
 		}
 
 		const T& get_or_throw() const & {
-			INVARIANT(is_some(), "Called getOrThrow on nothing.");
+			MIRRAGE_INVARIANT(is_some(), "Called getOrThrow on nothing.");
 
 			return _data;
 		}
-		template <typename M1, typename... Ms>
-		const T& get_or_throw(M1&& m1, Ms&&... ms) const & {
-			if(__builtin_expect(!is_some(), false)) {
-				auto& log = util::fail(__func__, __FILE__, __LINE__);
-
-				util::apply([&](auto&& x) { log << x; }, std::forward<M1>(m1), std::forward<Ms>(ms)...);
-
-				log << std::endl;
-				__builtin_unreachable();
-			}
+		template <typename... Ms, typename = std::enable_if_t<sizeof...(Ms) >= 1>>
+		const T& get_or_throw(Ms&&... ms) const & {
+			MIRRAGE_INVARIANT(is_some(), ... << std::forward<Ms>(ms));
 
 			return _data;
 		}
@@ -268,20 +247,13 @@ namespace mirrage::util {
 		bool is_nothing() const noexcept { return !is_some(); }
 
 		T& get_or_throw() const {
-			INVARIANT(is_some(), "Called getOrThrow on nothing.");
+			MIRRAGE_INVARIANT(is_some(), "Called getOrThrow on nothing.");
 
 			return *_ref;
 		}
-		template <typename M1, typename... Ms>
-		T& get_or_throw(M1&& m1, Ms&&... ms) const {
-			if(__builtin_expect(!is_some(), false)) {
-				auto& log = util::fail(__func__, __FILE__, __LINE__);
-
-				util::apply([&](auto&& x) { log << x; }, std::forward<M1>(m1), std::forward<Ms>(ms)...);
-
-				log << std::endl;
-				__builtin_unreachable();
-			}
+		template <typename... Ms, typename = std::enable_if_t<sizeof...(Ms) >= 1>>
+		T& get_or_throw(Ms&&... ms) const {
+			MIRRAGE_INVARIANT(is_some(), ... << std::forward<Ms>(ms));
 
 			return *_ref;
 		}

@@ -14,14 +14,14 @@ namespace mirrage::util {
 		_history_size = _commands.size();
 	}
 	void Command_manager::undo() {
-		INVARIANT(undo_available(), "undo() called with empty history");
+		MIRRAGE_INVARIANT(undo_available(), "undo() called with empty history");
 
 		auto& last_cmd = _commands.at(_history_size - 1);
 		last_cmd->undo();
 		_history_size--;
 	}
 	void Command_manager::redo() {
-		INVARIANT(redo_available(), "redo() called with empty future");
+		MIRRAGE_INVARIANT(redo_available(), "redo() called with empty future");
 
 		auto& next_cmd = _commands.at(_history_size);
 		next_cmd->execute();
@@ -58,4 +58,4 @@ namespace mirrage::util {
 		else
 			return _commands.at(_history_size - 1).get();
 	}
-}
+} // namespace mirrage::util

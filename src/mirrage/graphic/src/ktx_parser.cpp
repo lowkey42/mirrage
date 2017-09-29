@@ -27,14 +27,14 @@ namespace mirrage::graphic {
 			std::uint32_t NumberOfMipmapLevels;
 			std::uint32_t BytesOfKeyValueData;
 		};
-	}
+	} // namespace
 
 	auto parse_header(asset::istream& in, const std::string& filename) -> Ktx_header {
 		auto type_tag_data = std::array<unsigned char, sizeof(type_tag)>();
 
 		in.read(reinterpret_cast<char*>(type_tag_data.data()), type_tag_data.size());
 		if(memcmp(type_tag_data.data(), type_tag, type_tag_data.size()) != 0) {
-			FAIL("Invalid KTX file: " << filename);
+			MIRRAGE_FAIL("Invalid KTX file: " << filename);
 		}
 
 		auto header = ktx_header10();
@@ -46,7 +46,7 @@ namespace mirrage::graphic {
 		auto bytes_left =
 		        in.length() - type_tag_data.size() - sizeof(ktx_header10) - header.BytesOfKeyValueData;
 
-		INVARIANT(bytes_left > 0, "Can't load empty image \"" << filename << "\" ");
+		MIRRAGE_INVARIANT(bytes_left > 0, "Can't load empty image \"" << filename << "\" ");
 
 
 		auto our_header       = Ktx_header();
@@ -74,9 +74,9 @@ namespace mirrage::graphic {
 			our_header.type = our_header.layers == 0 ? Image_type::single_1d : Image_type::array_1d;
 
 		} else {
-			FAIL("Zero dimensional image (width, height and depth are all zero): " << filename);
+			MIRRAGE_FAIL("Zero dimensional image (width, height and depth are all zero): " << filename);
 		}
 
 		return our_header;
 	}
-}
+} // namespace mirrage::graphic

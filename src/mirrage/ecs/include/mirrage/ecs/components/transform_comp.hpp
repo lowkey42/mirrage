@@ -12,8 +12,8 @@ namespace mirrage::ecs::components {
 	class Transform_comp : public ecs::Component<Transform_comp> {
 	  public:
 		static constexpr const char* name() { return "Transform"; }
-		friend void load_component(ecs::Deserializer& state, Transform_comp&);
-		friend void save_component(ecs::Serializer& state, const Transform_comp&);
+		friend void                  load_component(ecs::Deserializer& state, Transform_comp&);
+		friend void                  save_component(ecs::Serializer& state, const Transform_comp&);
 
 		Transform_comp() = default;
 		Transform_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner) : Component(manager, owner) {}
@@ -42,4 +42,4 @@ namespace mirrage::ecs::components {
 		glm::quat _orientation{1, 0, 0, 0};
 		glm::vec3 _scale{1.f, 1.f, 1.f};
 	};
-}
+} // namespace mirrage::ecs::components

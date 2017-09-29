@@ -14,7 +14,7 @@ namespace mirrage::renderer {
 			if(format.is_some())
 				return format.get_or_throw();
 
-			WARN("HDR render targets are not supported! Falling back to LDR rendering!");
+			MIRRAGE_WARN("HDR render targets are not supported! Falling back to LDR rendering!");
 
 			return device.get_texture_rgb_format().get_or_throw("No rgb-format supported");
 		}
@@ -28,7 +28,8 @@ namespace mirrage::renderer {
 			if(format.is_some())
 				return format.get_or_throw();
 
-			WARN("Depth (R16 / R32) render targets are not supported! Falling back to LDR rendering!");
+			MIRRAGE_WARN(
+			        "Depth (R16 / R32) render targets are not supported! Falling back to LDR rendering!");
 
 			return get_hdr_format(device);
 		}

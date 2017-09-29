@@ -83,7 +83,7 @@ namespace mirrage::graphic {
 	  , descriptor_set_layouts(rhs.descriptor_set_layouts)
 	  , pipeline_layout(rhs.pipeline_layout) {
 
-		INVARIANT(stages.empty(), "Copied already used Pipeline_description");
+		MIRRAGE_INVARIANT(stages.empty(), "Copied already used Pipeline_description");
 	}
 
 	Pipeline_description& Pipeline_description::operator=(const Pipeline_description& rhs) {
@@ -118,9 +118,9 @@ namespace mirrage::graphic {
 		        vk::PipelineViewportStateCreateFlags{}, 1, nullptr, 1, nullptr};
 		const vk::DynamicState default_dynamic_states[]{vk::DynamicState::eScissor,
 		                                                vk::DynamicState::eViewport};
-		const auto default_dynamic_state = vk::PipelineDynamicStateCreateInfo{
-		        vk::PipelineDynamicStateCreateFlags{}, 2, default_dynamic_states};
-	}
+		const auto             default_dynamic_state = vk::PipelineDynamicStateCreateInfo{
+                vk::PipelineDynamicStateCreateFlags{}, 2, default_dynamic_states};
+	} // namespace
 	void Pipeline_description::build_create_info(const vk::Device&               device,
 	                                             vk::GraphicsPipelineCreateInfo& cinfo,
 	                                             vk::UniquePipelineLayout&       layout) {
@@ -144,7 +144,7 @@ namespace mirrage::graphic {
 					case Shader_stage::geometry: return vk::ShaderStageFlagBits::eGeometry;
 					case Shader_stage::fragment: return vk::ShaderStageFlagBits::eFragment;
 				}
-				FAIL("Unecpected Shader_stage " << ((int) s.stage));
+				MIRRAGE_FAIL("Unecpected Shader_stage " << ((int) s.stage));
 			}();
 
 			s.constants_info = vk::SpecializationInfo{gsl::narrow<std::uint32_t>(s.constants.size()),
@@ -200,7 +200,7 @@ namespace mirrage::graphic {
 	        -> Stage_builder& {
 		auto in = _builder._assets.load_raw(id);
 		if(in.is_nothing()) {
-			FAIL("Unable to load shader \"" << id.str() << "\" file not found");
+			MIRRAGE_FAIL("Unable to load shader \"" << id.str() << "\" file not found");
 		}
 
 		auto code = in.get_or_throw().bytes();
@@ -305,7 +305,7 @@ namespace mirrage::graphic {
 	}
 	auto Subpass_builder::preserve_attachment(Attachment_ref) -> Subpass_builder& {
 		// TODO
-		FAIL("TODO");
+		MIRRAGE_FAIL("TODO");
 		return *this;
 	}
 
@@ -373,7 +373,7 @@ namespace mirrage::graphic {
 	}
 
 	auto Render_pass_builder::build() -> Render_pass {
-		INVARIANT(!_created_render_pass, "Multiple calls to Render_pass_builder::build()");
+		MIRRAGE_INVARIANT(!_created_render_pass, "Multiple calls to Render_pass_builder::build()");
 
 		auto stages = std::unordered_map<Stage_id, std::size_t>();
 
@@ -427,14 +427,12 @@ namespace mirrage::graphic {
 	                                            int                                    width,
 	                                            int                                    height,
 	                                            int layers) -> Framebuffer {
-		INVARIANT(_created_render_pass, "build_framebuffer() must be called after build().");
+		MIRRAGE_INVARIANT(_created_render_pass, "build_framebuffer() must be called after build().");
 
-		INVARIANT(gsl::narrow<std::size_t>(attachments.size()) == _attachments.size(),
-		          "Given number of attachments doesn't match configured one. "
-		          "Found: "
-		                  << attachments.size()
-		                  << ", expected: "
-		                  << _attachments.size());
+		MIRRAGE_INVARIANT(gsl::narrow<std::size_t>(attachments.size()) == _attachments.size(),
+		                  "Given number of attachments doesn't match configured one. "
+		                  "Found: "
+		                          << attachments.size() << ", expected: " << _attachments.size());
 
 		auto attachment_images = std::vector<vk::ImageView>();
 		auto clear_values      = std::vector<vk::ClearValue>();
@@ -476,11 +474,11 @@ namespace mirrage::graphic {
 	Render_pass& Render_pass::operator=(Render_pass&&) = default;
 	Render_pass::~Render_pass()                        = default;
 
-	Render_pass::Render_pass(vk::UniqueRenderPass                  render_pass,
-	                         std::vector<vk::UniquePipeline>       pipelines,
-	                         std::vector<vk::UniquePipelineLayout> pipeline_layouts,
+	Render_pass::Render_pass(vk::UniqueRenderPass                      render_pass,
+	                         std::vector<vk::UniquePipeline>           pipelines,
+	                         std::vector<vk::UniquePipelineLayout>     pipeline_layouts,
 	                         std::unordered_map<Stage_id, std::size_t> stages,
-	                         std::vector<Push_constant_map> push_constants)
+	                         std::vector<Push_constant_map>            push_constants)
 	  : _render_pass(std::move(render_pass))
 	  , _pipelines(std::move(pipelines))
 	  , _pipeline_layouts(std::move(pipeline_layouts))
@@ -501,7 +499,7 @@ namespace mirrage::graphic {
 		        _current_command_buffer.get_or_throw("set_stage can only be called inside an execute block!");
 
 		auto pipeline_idx = _stages.find(stage_id);
-		INVARIANT(pipeline_idx != _stages.end(), "Unknown render stage '" << stage_id.str() << "'!");
+		MIRRAGE_INVARIANT(pipeline_idx != _stages.end(), "Unknown render stage '" << stage_id.str() << "'!");
 
 		_bound_pipeline = pipeline_idx->second;
 		cmb.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipelines.at(pipeline_idx->second));
@@ -514,12 +512,10 @@ namespace mirrage::graphic {
 		auto info = util::find_maybe(_push_constants[_bound_pipeline], id)
 		                    .get_or_throw("No push constant with name '", id.str(), "' found");
 
-		INVARIANT(data.size() == info.size,
-		          "Data passed to push_constant doesn't equal configured range. "
-		          "Found: "
-		                  << data.size()
-		                  << ", Expected: "
-		                  << info.size);
+		MIRRAGE_INVARIANT(data.size() == info.size,
+		                  "Data passed to push_constant doesn't equal configured range. "
+		                  "Found: "
+		                          << data.size() << ", Expected: " << info.size);
 
 		cmb.pushConstants(*_pipeline_layouts[_bound_pipeline],
 		                  info.stageFlags,
@@ -541,7 +537,7 @@ namespace mirrage::graphic {
 	}
 
 	void Render_pass::_pre(const Command_buffer& cb, const Framebuffer& fb) {
-		INVARIANT(_current_command_buffer.is_nothing(), "execute blocks can not be nested!");
+		MIRRAGE_INVARIANT(_current_command_buffer.is_nothing(), "execute blocks can not be nested!");
 		_current_command_buffer = cb;
 		_bound_pipeline         = 0;
 
@@ -556,9 +552,9 @@ namespace mirrage::graphic {
 	}
 
 	void Render_pass::_post() {
-		INVARIANT(_current_command_buffer.is_some(), "execute block closed without being opened!");
+		MIRRAGE_INVARIANT(_current_command_buffer.is_some(), "execute block closed without being opened!");
 		_current_command_buffer.get_or_throw().endRenderPass();
 
 		_current_command_buffer = util::nothing;
 	}
-}
+} // namespace mirrage::graphic

@@ -71,10 +71,10 @@ namespace mirrage::renderer {
 		}
 
 		template <std::size_t MipLevels>
-		auto build_blur_render_pass(Deferred_renderer&         renderer,
-		                            vk::DescriptorSetLayout    desc_set_layout,
-		                            graphic::Render_target_2D& target_horizontal,
-		                            graphic::Render_target_2D& target_vertical,
+		auto build_blur_render_pass(Deferred_renderer&                           renderer,
+		                            vk::DescriptorSetLayout                      desc_set_layout,
+		                            graphic::Render_target_2D&                   target_horizontal,
+		                            graphic::Render_target_2D&                   target_vertical,
 		                            std::array<graphic::Framebuffer, MipLevels>& out_framebuffer_horizontal,
 		                            std::array<graphic::Framebuffer, MipLevels>& out_framebuffer_vertical) {
 
@@ -158,7 +158,7 @@ namespace mirrage::renderer {
 
 			return render_pass;
 		}
-	}
+	} // namespace
 
 
 	Bloom_pass::Bloom_pass(Deferred_renderer& renderer,
@@ -181,8 +181,7 @@ namespace mirrage::renderer {
 	                  blur_mip_levels,
 	                  renderer.gbuffer().color_format,
 	                  vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst
-	                          | vk::ImageUsageFlagBits::eColorAttachment
-	                          | vk::ImageUsageFlagBits::eSampled,
+	                          | vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
 	                  vk::ImageAspectFlagBits::eColor)
 	  , _filter_renderpass(build_filter_render_pass(
 	            renderer, *_descriptor_set_layout, _bloom_buffer, _filter_framebuffer))
@@ -198,8 +197,7 @@ namespace mirrage::renderer {
 	                 blur_mip_levels,
 	                 renderer.gbuffer().color_format,
 	                 vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst
-	                         | vk::ImageUsageFlagBits::eColorAttachment
-	                         | vk::ImageUsageFlagBits::eSampled,
+	                         | vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
 	                 vk::ImageAspectFlagBits::eColor)
 	  , _downsampled_blur_view(renderer.device().create_image_view(
 	            _blur_buffer.image(), renderer.gbuffer().color_format, 1, blur_mip_levels - 1))
@@ -301,4 +299,4 @@ namespace mirrage::renderer {
 	void Bloom_pass_factory::configure_device(vk::PhysicalDevice,
 	                                          util::maybe<std::uint32_t>,
 	                                          graphic::Device_create_info&) {}
-}
+} // namespace mirrage::renderer

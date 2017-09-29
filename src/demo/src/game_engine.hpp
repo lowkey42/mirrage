@@ -38,4 +38,4 @@ namespace mirrage {
 	  private:
 		std::unique_ptr<renderer::Deferred_renderer_factory> _renderer_factory;
 	};
-}
+} // namespace mirrage

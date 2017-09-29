@@ -39,7 +39,7 @@ namespace mirrage::util {
 				return i;
 			}
 		};
-	}
+	} // namespace details
 
 	template <class T>
 	auto typeuid_of() {
@@ -49,4 +49,4 @@ namespace mirrage::util {
 	inline constexpr auto typeuid_of<void>() {
 		return notypeuid;
 	}
-}
+} // namespace mirrage::util

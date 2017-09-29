@@ -69,4 +69,4 @@ namespace mirrage::ecs {
 		return util::nothing;
 	}
 	void Compact_index_policy::clear() { _table.clear(); }
-}
+} // namespace mirrage::ecs

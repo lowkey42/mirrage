@@ -116,7 +116,7 @@ namespace mirrage::util {
 
 	struct Angle : Value_type<Angle> {
 		constexpr explicit Angle(float radians = 0) noexcept : Value_type(radians) {}
-		constexpr operator float() const noexcept { return val; }
+		constexpr             operator float() const noexcept { return val; }
 		constexpr float       in_degrees() const noexcept { return val * (180.f / PI); }
 		constexpr static auto from_degrees(float d) { return Angle(d / (180.f / PI)); }
 	};
@@ -174,13 +174,13 @@ namespace mirrage::util {
 	using Velocity     = glm::tvec3<Speed, glm::highp>;
 	using Acceleration = glm::tvec3<Speed_per_time, glm::highp>;
 
-	inline Position operator/(Position a, float b) noexcept { return Position(a.x / b, a.y / b, a.z / b); }
-	inline Position operator*(Position a, float b) noexcept { return Position(a.x * b, a.y * b, a.z * b); }
-	inline Position operator*(float b, Position a) noexcept { return Position(a.x * b, a.y * b, a.z * b); }
+	inline Position  operator/(Position a, float b) noexcept { return Position(a.x / b, a.y / b, a.z / b); }
+	inline Position  operator*(Position a, float b) noexcept { return Position(a.x * b, a.y * b, a.z * b); }
+	inline Position  operator*(float b, Position a) noexcept { return Position(a.x * b, a.y * b, a.z * b); }
 	inline Dir_force operator*(Dir_force a, float b) noexcept { return Dir_force(a.x * b, a.y * b, a.z * b); }
 	inline Dir_force operator*(float b, Dir_force a) noexcept { return Dir_force(a.x * b, a.y * b, a.z * b); }
-	inline Velocity operator*(Velocity a, float b) noexcept { return Velocity(a.x * b, a.y * b, a.z * b); }
-	inline Velocity operator*(float b, Velocity a) noexcept { return Velocity(a.x * b, a.y * b, a.z * b); }
+	inline Velocity  operator*(Velocity a, float b) noexcept { return Velocity(a.x * b, a.y * b, a.z * b); }
+	inline Velocity  operator*(float b, Velocity a) noexcept { return Velocity(a.x * b, a.y * b, a.z * b); }
 	inline Acceleration operator*(Acceleration a, float b) noexcept {
 		return Acceleration(a.x * b, a.y * b, a.z * b);
 	}
@@ -214,8 +214,8 @@ namespace mirrage::util {
 	}
 
 	constexpr Time_squared operator*(Time a, Time b) noexcept { return Time_squared(a.value() * b.value()); }
-	constexpr Speed operator/(Distance s, Time t) noexcept { return Speed(s.value() / t.value()); }
-	constexpr Distance operator*(Speed s, Time t) noexcept { return Distance(s.value() * t.value()); }
+	constexpr Speed        operator/(Distance s, Time t) noexcept { return Speed(s.value() / t.value()); }
+	constexpr Distance     operator*(Speed s, Time t) noexcept { return Distance(s.value() * t.value()); }
 	constexpr Speed_per_time operator/(Speed v, Time t) noexcept {
 		return Speed_per_time(v.value() / t.value());
 	}
@@ -248,10 +248,10 @@ namespace mirrage::util {
 	inline Position operator*(Velocity v, Time t) noexcept { return Position(v.x * t, v.y * t, v.z * t); }
 	inline Position operator*(Time t, Velocity v) noexcept { return Position(v.x * t, v.y * t, v.z * t); }
 
-	constexpr Inv_mass operator/(float a, Mass b) noexcept { return Inv_mass(a / b.value()); }
-	constexpr Mass operator/(float a, Inv_mass b) noexcept { return Mass(a / b.value()); }
-	constexpr Speed operator*(Inv_mass a, Force b) noexcept { return Speed(a.value() * b.value()); }
-	constexpr Speed operator*(Force b, Inv_mass a) noexcept { return Speed(a.value() * b.value()); }
+	constexpr Inv_mass  operator/(float a, Mass b) noexcept { return Inv_mass(a / b.value()); }
+	constexpr Mass      operator/(float a, Inv_mass b) noexcept { return Mass(a / b.value()); }
+	constexpr Speed     operator*(Inv_mass a, Force b) noexcept { return Speed(a.value() * b.value()); }
+	constexpr Speed     operator*(Force b, Inv_mass a) noexcept { return Speed(a.value() * b.value()); }
 	inline Acceleration operator*(Inv_mass a, Dir_force b) noexcept {
 		return {a.value() * b.x.value(), a.value() * b.y.value(), a.value() * b.z.value()};
 	}
@@ -262,8 +262,8 @@ namespace mirrage::util {
 		return {b.x.value() / a.value(), b.y.value() / a.value(), a.value() / b.z.value()};
 	}
 
-	inline Force operator*(Speed_per_time a, Mass b) noexcept { return Force(a.value() * b.value()); }
-	inline Force operator/(Speed_per_time a, Inv_mass b) noexcept { return Force(a.value() / b.value()); }
+	inline Force     operator*(Speed_per_time a, Mass b) noexcept { return Force(a.value() * b.value()); }
+	inline Force     operator/(Speed_per_time a, Inv_mass b) noexcept { return Force(a.value() / b.value()); }
 	inline Dir_force operator/(Velocity a, Inv_mass b) noexcept {
 		return {Force(a.x.value() / b.value()),
 		        Force(a.y.value() / b.value()),
@@ -374,7 +374,7 @@ namespace mirrage::util {
 		constexpr Time_squared minute_2 = 1_min * 1_min;
 		constexpr Time         hour     = 1_h;
 		constexpr Time_squared hour_2   = 1_h * 1_h;
-	}
+	} // namespace unit_literals
 
 	inline Angle normalize_to_half_rot(Angle a) noexcept {
 		using namespace unit_literals;
@@ -384,4 +384,4 @@ namespace mirrage::util {
 			a -= 360_deg;
 		return a;
 	}
-}
+} // namespace mirrage::util

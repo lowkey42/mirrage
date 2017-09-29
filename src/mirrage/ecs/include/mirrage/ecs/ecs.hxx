@@ -4,25 +4,23 @@
 #include "ecs.hpp"
 #endif
 
-#define unlikely(X) (__builtin_expect(X, false))
-
 namespace mirrage::ecs {
 
 	template <typename T>
 	void Entity_manager::register_component_type() {
 		auto type = component_type_id<T>();
 
-		if(unlikely(static_cast<Component_type>(_components.size()) <= type)) {
+		if(MIRRAGE_UNLIKELY(static_cast<Component_type>(_components.size()) <= type)) {
 			_components.resize(type + 1);
 		}
 
 		auto& container_ptr = _components[type];
 
-		if(unlikely(!container_ptr)) {
+		if(MIRRAGE_UNLIKELY(!container_ptr)) {
 			container_ptr = std::make_unique<Component_container<T>>(*this);
 
 			auto it = _components_by_name.emplace(T::name(), type);
-			INVARIANT(it.first->second == type, "Multiple components with same name: " << T::name());
+			MIRRAGE_INVARIANT(it.first->second == type, "Multiple components with same name: " << T::name());
 		}
 	}
 	inline auto Entity_manager::component_type_by_name(const std::string& name)
@@ -35,7 +33,7 @@ namespace mirrage::ecs {
 	auto Entity_manager::list() -> Component_container<C>& {
 		auto type = component_type_id<C>();
 
-		if(unlikely(static_cast<Component_type>(_components.size()) <= type || !_components[type])) {
+		if(MIRRAGE_UNLIKELY(static_cast<Component_type>(_components.size()) <= type || !_components[type])) {
 			register_component_type<C>();
 		}
 
@@ -43,8 +41,8 @@ namespace mirrage::ecs {
 	}
 	inline auto Entity_manager::list(Component_type type) -> Component_container_base& {
 		auto idx = static_cast<std::size_t>(type);
-		INVARIANT(static_cast<Component_type>(_components.size()) > type && _components[idx],
-		          "Invalid/unregistered component type: " << int(type));
+		MIRRAGE_INVARIANT(static_cast<Component_type>(_components.size()) > type && _components[idx],
+		                  "Invalid/unregistered component type: " << int(type));
 		return *_components[idx];
 	}
 
@@ -60,8 +58,8 @@ namespace mirrage::ecs {
 
 	template <typename T>
 	util::maybe<T&> Entity_facet::get() {
-		INVARIANT(_manager && _manager->validate(_owner),
-		          "Access to invalid Entity_facet for " << entity_name(_owner));
+		MIRRAGE_INVARIANT(_manager && _manager->validate(_owner),
+		                  "Access to invalid Entity_facet for " << entity_name(_owner));
 		return _manager->list<T>().find(_owner);
 	}
 
@@ -77,15 +75,15 @@ namespace mirrage::ecs {
 
 	template <typename T, typename F, typename... Args>
 	void Entity_facet::emplace_init(F&& init, Args&&... args) {
-		INVARIANT(_manager && _manager->validate(_owner),
-		          "Access to invalid Entity_facet for " << entity_name(_owner));
+		MIRRAGE_INVARIANT(_manager && _manager->validate(_owner),
+		                  "Access to invalid Entity_facet for " << entity_name(_owner));
 		_manager->list<T>().emplace(std::forward<F>(init), _owner, std::forward<Args>(args)...);
 	}
 
 	template <typename T>
 	void Entity_facet::erase() {
-		INVARIANT(_manager && _manager->validate(_owner),
-		          "Access to invalid Entity_facet for " << entity_name(_owner));
+		MIRRAGE_INVARIANT(_manager && _manager->validate(_owner),
+		                  "Access to invalid Entity_facet for " << entity_name(_owner));
 		return _manager->list<T>().erase(_owner);
 	}
 
@@ -99,8 +97,8 @@ namespace mirrage::ecs {
 	} // namespace detail
 	template <typename... T>
 	void Entity_facet::erase_other() {
-		INVARIANT(_manager && _manager->validate(_owner),
-		          "Access to invalid Entity_facet for " << entity_name(_owner));
+		MIRRAGE_INVARIANT(_manager && _manager->validate(_owner),
+		                  "Access to invalid Entity_facet for " << entity_name(_owner));
 
 		for(auto& pool : _manager->_components) {
 			if(pool && detail::ppack_and(pool->value_type() != component_type_id<T>()...)) {

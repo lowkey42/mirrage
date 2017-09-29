@@ -32,4 +32,4 @@ namespace mirrage {
 	void Meta_system::draw() { _renderer->draw(); }
 
 	void Meta_system::shrink_to_fit() { _renderer->shrink_to_fit(); }
-}
+} // namespace mirrage

@@ -117,4 +117,4 @@ namespace mirrage::renderer {
 		                      util::maybe<std::uint32_t> graphics_queue,
 		                      graphic::Device_create_info&) override;
 	};
-}
+} // namespace mirrage::renderer

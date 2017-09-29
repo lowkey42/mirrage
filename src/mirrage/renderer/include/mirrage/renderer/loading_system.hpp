@@ -40,4 +40,4 @@ namespace mirrage::renderer {
 
 		void _finish_loading();
 	};
-}
+} // namespace mirrage::renderer

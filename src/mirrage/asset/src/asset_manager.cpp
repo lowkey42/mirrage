@@ -77,7 +77,7 @@ namespace {
 
 		auto wildcard = last_of(file, '*').get_or_other(file.length());
 		if(wildcard != (file.find_first_of('*') + 1)) {
-			WARN("More than one wildcard ist currently not supported. Found in: " << wildcard_path);
+			MIRRAGE_WARN("More than one wildcard ist currently not supported. Found in: " << wildcard_path);
 		}
 
 		auto prefix = file.substr(0, wildcard - 1);
@@ -115,7 +115,7 @@ namespace {
 	}
 
 	constexpr auto default_source = {std::make_tuple("assets", false), std::make_tuple("assets.zip", true)};
-}
+} // namespace
 
 namespace mirrage::asset {
 
@@ -153,7 +153,7 @@ namespace mirrage::asset {
 			       Module.print("end file sync..");
 			       Module.syncdone = 1;
 			       ccall('post_sync_handler', 'v');
-			   }););
+		       }););
 	}
 
 	bool storage_ready() { return initial_sync_done; }
@@ -165,13 +165,13 @@ namespace mirrage::asset {
 
 	static Asset_manager* current_instance = nullptr;
 	auto                  get_asset_manager() -> Asset_manager& {
-		INVARIANT(current_instance != nullptr, "Asset_manager has not been initialized!");
-		return *current_instance;
+        MIRRAGE_INVARIANT(current_instance != nullptr, "Asset_manager has not been initialized!");
+        return *current_instance;
 	}
 
 	Asset_manager::Asset_manager(const std::string& exe_name, const std::string& app_name) {
 		if(!PHYSFS_init(exe_name.empty() ? nullptr : exe_name.c_str()))
-			FAIL("PhysFS-Init failed for \"" << exe_name << "\": " << PHYSFS_getLastError());
+			MIRRAGE_FAIL("PhysFS-Init failed for \"" << exe_name << "\": " << PHYSFS_getLastError());
 
 		// TODO: Windows savegames should be stored in FOLDERID_SavedGames, but the API and conventions are a pain in the ass
 		std::string write_dir_parent = append_file(PHYSFS_getUserDir(),
@@ -180,17 +180,17 @@ namespace mirrage::asset {
 #else
 		                                           ".config"
 #endif
-		                                           );
+		);
 
 #ifdef EMSCRIPTEN
-		INVARIANT(storage_ready(), "Storage is not ready");
+		MIRRAGE_INVARIANT(storage_ready(), "Storage is not ready");
 		write_dir_parent = "/persistent_data";
 #endif
 
 		if(!PHYSFS_addToSearchPath(PHYSFS_getBaseDir(), 1)
 		   || !PHYSFS_addToSearchPath(append_file(PHYSFS_getBaseDir(), "..").c_str(), 1)
 		   || !PHYSFS_addToSearchPath(pwd().c_str(), 1))
-			FAIL("Unable to construct search path: " << PHYSFS_getLastError());
+			MIRRAGE_FAIL("Unable to construct search path: " << PHYSFS_getLastError());
 
 		// add optional search path
 		PHYSFS_addToSearchPath(
@@ -207,18 +207,18 @@ namespace mirrage::asset {
 		std::string write_dir = append_file(write_dir_parent, app_name);
 		create_dir(write_dir);
 
-		INFO("Write dir: " << write_dir);
+		MIRRAGE_INFO("Write dir: " << write_dir);
 
 		if(!PHYSFS_addToSearchPath(write_dir.c_str(), 0))
-			FAIL("Unable to construct search path: " << PHYSFS_getLastError());
+			MIRRAGE_FAIL("Unable to construct search path: " << PHYSFS_getLastError());
 
 		if(!PHYSFS_setWriteDir(write_dir.c_str()))
-			FAIL("Unable to set write-dir to \"" << write_dir << "\": " << PHYSFS_getLastError());
+			MIRRAGE_FAIL("Unable to set write-dir to \"" << write_dir << "\": " << PHYSFS_getLastError());
 
 
 		auto add_source = [](const char* path) {
 			if(!PHYSFS_addToSearchPath(path, 1))
-				WARN("Error adding custom archive \"" << path << "\": " << PHYSFS_getLastError());
+				MIRRAGE_WARN("Error adding custom archive \"" << path << "\": " << PHYSFS_getLastError());
 		};
 
 		auto archive_file = _open("archives.lst");
@@ -244,7 +244,7 @@ namespace mirrage::asset {
 				log << std::endl; // crash with error
 
 			} else {
-				INFO("No archives.lst found. Using defaults.");
+				MIRRAGE_INFO("No archives.lst found. Using defaults.");
 			}
 
 		} else {
@@ -355,7 +355,7 @@ namespace mirrage::asset {
 			else if(util::contains(res->second, ":"))
 				return std::make_tuple(Location_type::indirection, res->second);
 			else if(warn)
-				INFO("Asset not found in configured place: " << res->second);
+				MIRRAGE_INFO("Asset not found in configured place: " << res->second);
 		}
 
 		if(exists_file(id.name()))
@@ -368,7 +368,7 @@ namespace mirrage::asset {
 			if(exists_file(path))
 				return std::make_tuple(Location_type::file, std::move(path));
 			else if(warn)
-				DEBUG("asset " << id.str() << " not found in " << path);
+				MIRRAGE_DEBUG("asset " << id.str() << " not found in " << path);
 		}
 
 		return std::make_tuple(Location_type::none, std::string());
@@ -454,7 +454,7 @@ namespace mirrage::asset {
 				auto last_mod = PHYSFS_getLastModTime(location.c_str());
 				if(last_mod != -1 && last_mod > a.second.last_modified) {
 					_open(location, a.first).process([&](istream& in) {
-						DEBUG("Reload: " << a.first.str());
+						MIRRAGE_DEBUG("Reload: " << a.first.str());
 						try {
 							a.second.reloader(a.second.data.get(), std::move(in));
 
@@ -512,7 +512,7 @@ namespace mirrage::asset {
 			case Location_type::indirection: return true;
 		}
 
-		FAIL("Unexpected Location_type: " << static_cast<int>(type));
+		MIRRAGE_FAIL("Unexpected Location_type: " << static_cast<int>(type));
 	}
 
 	auto Asset_manager::load_raw(const AID& id) -> util::maybe<istream> {
@@ -543,7 +543,7 @@ namespace mirrage::asset {
 			}
 		}
 
-		DEBUG("Couldn't finde asset for '" << path_cleared << "'");
+		MIRRAGE_DEBUG("Couldn't finde asset for '" << path_cleared << "'");
 
 		return util::nothing;
 	}
@@ -579,4 +579,4 @@ namespace mirrage::asset {
 			}
 		}
 	}
-}
+} // namespace mirrage::asset

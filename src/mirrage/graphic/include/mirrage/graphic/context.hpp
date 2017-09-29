@@ -18,7 +18,7 @@ namespace mirrage {
 	namespace asset {
 		class Asset_manager;
 		class AID;
-	}
+	} // namespace asset
 
 	namespace graphic {
 
@@ -29,12 +29,12 @@ namespace mirrage {
 
 		struct Device_create_info {
 			std::unordered_map<util::Str_id, Queue_create_info> queue_families;
-			vk::PhysicalDeviceFeatures features;
+			vk::PhysicalDeviceFeatures                          features;
 		};
 
 		using Device_selector = std::function<int(vk::PhysicalDevice, util::maybe<std::uint32_t>)>;
 		using Device_factory  = std::function<Device_create_info(
-		        vk::PhysicalDevice, util::maybe<std::uint32_t> graphic_queue_family)>;
+                vk::PhysicalDevice, util::maybe<std::uint32_t> graphic_queue_family)>;
 
 
 		class Context : public util::Registration<Context, Device>,
@@ -77,5 +77,5 @@ namespace mirrage {
 
 			auto _find_window_settings(const std::string& name, int width, int height) -> Window_settings;
 		};
-	}
-}
+	} // namespace graphic
+} // namespace mirrage

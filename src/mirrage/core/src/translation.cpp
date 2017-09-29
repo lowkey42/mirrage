@@ -31,7 +31,7 @@ namespace mirrage {
 		auto contains(const C& container, const T& v) {
 			return std::find(begin(container), end(container), v) != container.end();
 		}
-	}
+	} // namespace
 
 	Translator::Translator(asset::Asset_manager& assets) : _assets(assets) {
 
@@ -57,10 +57,10 @@ namespace mirrage {
 		auto info = _assets.load<Language_info>("cfg:languages_info"_aid);
 
 		if(!contains(info->supported_languages, _language)) {
-			INFO("Unsupported language: " << _language);
+			MIRRAGE_INFO("Unsupported language: " << _language);
 			_language = Language_id{info->default_language};
 		}
-		INFO("Using text language: " << _language);
+		MIRRAGE_INFO("Using text language: " << _language);
 
 		_categories.clear();
 		_missing_categories.clear();
@@ -71,8 +71,8 @@ namespace mirrage {
 		for(auto& cat : _categories) {
 			count += cat.second.size();
 		}
-		DEBUG("Loaded " << count << " translations in " << _categories.size() << " categories for "
-		                << _language);
+		MIRRAGE_DEBUG("Loaded " << count << " translations in " << _categories.size() << " categories for "
+		                        << _language);
 
 
 		for(auto& wid : util::range_reverse(_loc_files_watchids)) {
@@ -81,7 +81,7 @@ namespace mirrage {
 		_loc_files_watchids.clear();
 		for(auto& loc : _assets.list("loc"_strid)) {
 			_loc_files_watchids.emplace_back(_assets.watch(loc, [&](auto&) {
-				DEBUG("Reload translations");
+				MIRRAGE_DEBUG("Reload translations");
 				this->_reload();
 			}));
 		}
@@ -92,8 +92,8 @@ namespace mirrage {
 		for(auto& loc : _assets.list("loc"_strid)) {
 			if(util::ends_with(loc.name(), loc_extension)) {
 				auto on_error = [&](auto& msg, uint32_t row, uint32_t column) {
-					ERROR("Error parsing JSON from " << loc.str() << " at " << row << ":" << column << ": "
-					                                 << msg);
+					MIRRAGE_ERROR("Error parsing JSON from " << loc.str() << " at " << row << ":" << column
+					                                         << ": " << msg);
 				};
 
 				_assets.load_raw(loc).process([&](auto& in) {
@@ -116,7 +116,7 @@ namespace mirrage {
 		auto cat_iter = _categories.find(category);
 		if(cat_iter == _categories.end()) {
 			if(_missing_categories.emplace(category).second) {
-				WARN("Missing translation category for language '" << _language << "': " << category);
+				MIRRAGE_WARN("Missing translation category for language '" << _language << "': " << category);
 			}
 			return str;
 		}
@@ -124,7 +124,8 @@ namespace mirrage {
 		auto iter = cat_iter->second.find(str);
 		if(iter == cat_iter->second.end()) {
 			if(_missing_translations.emplace(category, str).second) {
-				WARN("Missing translation for language '" << _language << "' " << category << ": " << str);
+				MIRRAGE_WARN("Missing translation for language '" << _language << "' " << category << ": "
+				                                                  << str);
 			}
 			return str;
 		}
@@ -133,13 +134,14 @@ namespace mirrage {
 
 	void Translator::_print_missing() const {
 		for(auto& category : _missing_categories) {
-			WARN("Missing translation category for language '" << _language << "': " << category);
+			MIRRAGE_WARN("Missing translation category for language '" << _language << "': " << category);
 		}
 		for(auto& e : _missing_translations) {
 			auto&& category = e.first;
 			auto&& str      = e.second;
 
-			WARN("Missing translation for language '" << _language << "' " << category << ": " << str);
+			MIRRAGE_WARN("Missing translation for language '" << _language << "' " << category << ": "
+			                                                  << str);
 		}
 	}
-}
+} // namespace mirrage

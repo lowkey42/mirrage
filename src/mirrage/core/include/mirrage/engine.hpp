@@ -29,7 +29,7 @@ namespace mirrage {
 		class Context;
 		class Device;
 		class Window;
-	}
+	} // namespace graphic
 	namespace audio {
 		class Audio_ctx;
 	}
@@ -93,4 +93,4 @@ namespace mirrage {
 		double _current_time = 0;
 		double _last_time    = 0;
 	};
-}
+} // namespace mirrage

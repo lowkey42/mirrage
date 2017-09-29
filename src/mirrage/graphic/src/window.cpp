@@ -28,7 +28,7 @@ namespace mirrage::graphic {
 			if(*err != '\0') {
 				std::string errorStr(err);
 				SDL_ClearError();
-				FAIL("SDL: " << errorStr);
+				MIRRAGE_FAIL("SDL: " << errorStr);
 			}
 		}
 
@@ -39,7 +39,7 @@ namespace mirrage::graphic {
 
 			return f == Fullscreen::yes ? SDL_WINDOW_FULLSCREEN : SDL_WINDOW_FULLSCREEN_DESKTOP;
 		}
-	}
+	} // namespace
 
 	Window::Window(Context&    context,
 	               std::string name,
@@ -70,7 +70,7 @@ namespace mirrage::graphic {
 		                               win_flags));
 
 		if(!_window)
-			FAIL("Unable to create window");
+			MIRRAGE_FAIL("Unable to create window");
 
 		sdl_error_check();
 
@@ -143,6 +143,7 @@ namespace mirrage::graphic {
 					case Fullscreen::yes: return SDL_WINDOW_FULLSCREEN;
 					case Fullscreen::yes_borderless: return SDL_WINDOW_FULLSCREEN_DESKTOP;
 				}
+				MIRRAGE_FAIL("Unexpected fullscreen enum value: " << (int) fullscreen);
 			}();
 			SDL_SetWindowFullscreen(_window.get(), fs_type);
 
@@ -166,4 +167,4 @@ namespace mirrage::graphic {
 
 		return true;
 	}
-}
+} // namespace mirrage::graphic

@@ -9,8 +9,8 @@ namespace mirrage::renderer {
 	class Directional_light_comp : public ecs::Component<Directional_light_comp> {
 	  public:
 		static constexpr const char* name() { return "Directional_light"; }
-		friend void load_component(ecs::Deserializer& state, Directional_light_comp&);
-		friend void save_component(ecs::Serializer& state, const Directional_light_comp&);
+		friend void                  load_component(ecs::Deserializer& state, Directional_light_comp&);
+		friend void                  save_component(ecs::Serializer& state, const Directional_light_comp&);
 
 		Directional_light_comp() = default;
 		Directional_light_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner)
@@ -55,4 +55,4 @@ namespace mirrage::renderer {
 		Shadowcaster_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner)
 		  : Component(manager, owner) {}
 	};
-}
+} // namespace mirrage::renderer

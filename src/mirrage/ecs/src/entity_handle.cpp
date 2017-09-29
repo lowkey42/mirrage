@@ -20,4 +20,4 @@ namespace mirrage::ecs {
 	auto entity_name(Entity_handle h) -> std::string {
 		return util::to_string(h.id()) + ":" + util::to_string<int>(h.revision());
 	}
-}
+} // namespace mirrage::ecs

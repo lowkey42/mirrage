@@ -63,7 +63,7 @@ namespace mirrage::util {
 		constexpr bool operator==(const Str_id& rhs) const noexcept { return _id == rhs._id; }
 		constexpr bool operator!=(const Str_id& rhs) const noexcept { return _id != rhs._id; }
 		constexpr bool operator<(const Str_id& rhs) const noexcept { return _id < rhs._id; }
-		constexpr operator uint64_t() const noexcept { return _id; }
+		constexpr      operator uint64_t() const noexcept { return _id; }
 
 	  private:
 		uint64_t _id;
@@ -83,7 +83,7 @@ namespace mirrage::util {
 
 	inline void save(sf2::JsonSerializer& s, const Str_id& v) { s.write_value(v.str()); }
 #endif
-}
+} // namespace mirrage::util
 
 inline constexpr mirrage::util::Str_id operator"" _strid(const char* str, std::size_t) {
 	return mirrage::util::Str_id(str);
@@ -94,4 +94,4 @@ namespace std {
 	struct hash<mirrage::util::Str_id> {
 		constexpr size_t operator()(mirrage::util::Str_id id) const noexcept { return id; }
 	};
-}
+} // namespace std

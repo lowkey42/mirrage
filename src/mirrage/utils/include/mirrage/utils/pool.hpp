@@ -78,7 +78,7 @@ namespace mirrage::util {
 			 * O(1)
 			 */
 		void pop_back() {
-			INVARIANT(_used_elements > 0, "pop_back on empty pool");
+			MIRRAGE_INVARIANT(_used_elements > 0, "pop_back on empty pool");
 #ifdef _NDEBUG
 			std::memset(get(_usedElements - 1), 0xdead, element_size);
 #endif
@@ -96,7 +96,7 @@ namespace mirrage::util {
 		}
 		template <typename F>
 		void erase(IndexType i, F&& relocation) {
-			INVARIANT(i < _used_elements, "erase is out of range: " << i << ">=" << _used_elements);
+			MIRRAGE_INVARIANT(i < _used_elements, "erase is out of range: " << i << ">=" << _used_elements);
 
 			if(i < (_used_elements - 1)) {
 				auto& pivot = back();
@@ -158,7 +158,7 @@ namespace mirrage::util {
 		/**
 			 * @return The specified element
 			 */
-		T& get(IndexType i) { return *reinterpret_cast<T*>(get_raw(i)); }
+		T&       get(IndexType i) { return *reinterpret_cast<T*>(get_raw(i)); }
 		const T& get(IndexType i) const { return *reinterpret_cast<const T*>(get_raw(i)); }
 
 		/**
@@ -166,7 +166,7 @@ namespace mirrage::util {
 			 */
 		T&       back() { return const_cast<T&>(static_cast<const pool*>(this)->back()); }
 		const T& back() const {
-			INVARIANT(_used_elements > 0, "back on empty pool");
+			MIRRAGE_INVARIANT(_used_elements > 0, "back on empty pool");
 			auto i = _used_elements - 1;
 			return reinterpret_cast<const T&>(_chunks.back()[(i % chunk_len) * element_size]);
 		}
@@ -181,8 +181,8 @@ namespace mirrage::util {
 			return const_cast<unsigned char*>(static_cast<const pool*>(this)->get_raw(i));
 		}
 		const unsigned char* get_raw(IndexType i) const {
-			INVARIANT(i < _used_elements,
-			          "Pool-Index out of bounds " + to_string(i) + ">=" + to_string(_used_elements));
+			MIRRAGE_INVARIANT(i < _used_elements,
+			                  "Pool-Index out of bounds " + to_string(i) + ">=" + to_string(_used_elements));
 
 			return _chunks[i / chunk_len].get() + (i % chunk_len) * element_size;
 		}
@@ -205,7 +205,7 @@ namespace mirrage::util {
 
 	template <class T, std::size_t ElementsPerChunk, class IndexType, class ValueTraits>
 	class pool<T, ElementsPerChunk, IndexType, ValueTraits, true>
-	        : public pool<T, ElementsPerChunk, IndexType, ValueTraits, false> {
+	  : public pool<T, ElementsPerChunk, IndexType, ValueTraits, false> {
 
 		using base_t = pool<T, ElementsPerChunk, IndexType, ValueTraits, false>;
 
@@ -238,7 +238,7 @@ namespace mirrage::util {
 		auto erase(IndexType i, F&&) {
 			T&   instance      = this->get(i);
 			auto instance_addr = &instance;
-			INVARIANT(_valid(instance_addr), "double free");
+			MIRRAGE_INVARIANT(_valid(instance_addr), "double free");
 
 			if(i >= (this->_used_elements - 1)) {
 				this->pop_back();
@@ -258,7 +258,7 @@ namespace mirrage::util {
 				_freelist.pop_back();
 
 				auto instance_addr = reinterpret_cast<T*>(this->get_raw(i));
-				INVARIANT(!_valid(instance_addr), "Freed object is not marked as free");
+				MIRRAGE_INVARIANT(!_valid(instance_addr), "Freed object is not marked as free");
 				auto instance = (new(instance_addr) T(std::forward<Args>(args)...));
 				return {*instance, i};
 			}
@@ -287,9 +287,9 @@ namespace mirrage::util {
 		std::vector<IndexType> _freelist;
 
 		static auto& get_marker(const T* obj) noexcept { return *ValueTraits::marker_addr(obj); }
-		static void set_free(const T* obj) noexcept {
-			const_cast<typename ValueTraits::Marker_type&>(get_marker(obj)) = ValueTraits::free_mark;
-			INVARIANT(!_valid(obj), "set_free failed");
+		static void  set_free(const T* obj) noexcept {
+            const_cast<typename ValueTraits::Marker_type&>(get_marker(obj)) = ValueTraits::free_mark;
+            MIRRAGE_INVARIANT(!_valid(obj), "set_free failed");
 		}
 		static bool _valid(const T* obj) noexcept {
 			if(obj == nullptr)
@@ -332,16 +332,16 @@ namespace mirrage::util {
 		}
 
 		value_type& operator*() noexcept {
-			INVARIANT(Pool::_valid(_element_iter), "access to invalid pool_iterator");
+			MIRRAGE_INVARIANT(Pool::_valid(_element_iter), "access to invalid pool_iterator");
 			return *_element_iter;
 		}
 		value_type* operator->() noexcept {
-			INVARIANT(Pool::_valid(_element_iter), "access to invalid pool_iterator");
+			MIRRAGE_INVARIANT(Pool::_valid(_element_iter), "access to invalid pool_iterator");
 			return _element_iter;
 		}
 
 		pool_iterator& operator++() {
-			INVARIANT(_element_iter != nullptr, "iterator overflow");
+			MIRRAGE_INVARIANT(_element_iter != nullptr, "iterator overflow");
 			do {
 				++_element_iter;
 				if(_element_iter == _element_iter_end) {
@@ -363,7 +363,7 @@ namespace mirrage::util {
 		pool_iterator& operator--() {
 			do {
 				if(_element_iter == _element_iter_begin) {
-					INVARIANT(_chunk_index > 0, "iterator underflow");
+					MIRRAGE_INVARIANT(_chunk_index > 0, "iterator underflow");
 					--_chunk_index;
 					_element_iter_begin = _pool->_chunk(_chunk_index);
 					_element_iter_end   = _pool->_chunk_end(_element_iter_begin, _chunk_index);
@@ -420,4 +420,4 @@ namespace mirrage::util {
 	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, true>::end() noexcept -> iterator {
 		return iterator{*this};
 	}
-}
+} // namespace mirrage::util

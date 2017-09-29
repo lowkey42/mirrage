@@ -25,7 +25,7 @@ namespace mirrage::graphic {
 				case Image_type::single_3d: return vk::ImageType::e3D;
 			}
 
-			FAIL("Unreachable");
+			MIRRAGE_FAIL("Unreachable");
 		}
 	} // namespace
 

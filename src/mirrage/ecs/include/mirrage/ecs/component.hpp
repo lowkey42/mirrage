@@ -107,11 +107,11 @@ namespace mirrage::ecs {
 		Component& operator=(Component&&) = default;
 
 		auto owner_handle() const noexcept -> Entity_handle {
-			INVARIANT(_owner, "invalid component");
+			MIRRAGE_INVARIANT(_owner, "invalid component");
 			return _owner;
 		}
 		auto manager() const noexcept -> Entity_manager& {
-			INVARIANT(_manager, "invalid component");
+			MIRRAGE_INVARIANT(_manager, "invalid component");
 			return *_manager;
 		}
 		auto owner() const -> Entity_facet { return {manager(), owner_handle()}; }
@@ -176,6 +176,6 @@ namespace mirrage::ecs {
 		// size()
 		// empty()
 	};
-}
+} // namespace mirrage::ecs
 
 #include "component.hxx"

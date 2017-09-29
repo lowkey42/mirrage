@@ -119,9 +119,9 @@ namespace mirrage::graphic {
 
 	  private:
 		vk::UniqueHandle<T, Deleter> _instance;
-		Device_memory _memory;
+		Device_memory                _memory;
 	};
 
 	using Backed_buffer = Memory_backed<vk::Buffer, vk::BufferDeleter>;
 	using Backed_image  = Memory_backed<vk::Image, vk::ImageDeleter>;
-}
+} // namespace mirrage::graphic

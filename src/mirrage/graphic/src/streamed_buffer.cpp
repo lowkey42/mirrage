@@ -23,7 +23,7 @@ namespace mirrage::graphic {
 	}
 
 	void Streamed_buffer::update(vk::DeviceSize dest_offset, gsl::span<const char> data) {
-		INVARIANT(data.size_bytes() + dest_offset <= _capacity, "Buffer overflow!");
+		MIRRAGE_INVARIANT(data.size_bytes() + dest_offset <= _capacity, "Buffer overflow!");
 
 		auto& buffer = _buffers[_current_buffer_idx];
 
@@ -50,4 +50,4 @@ namespace mirrage::graphic {
 
 	Streamed_buffer::Buffer_entry::Buffer_entry(Backed_buffer buffer, char* data)
 	  : buffer(std::move(buffer)), data(data) {}
-}
+} // namespace mirrage::graphic

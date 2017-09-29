@@ -67,7 +67,7 @@ namespace mirrage::renderer {
 
 			return render_pass;
 		}
-	}
+	} // namespace
 
 
 	Blit_pass::Blit_pass(Deferred_renderer& renderer,
@@ -133,4 +133,4 @@ namespace mirrage::renderer {
 	void Blit_pass_factory::configure_device(vk::PhysicalDevice,
 	                                         util::maybe<std::uint32_t>,
 	                                         graphic::Device_create_info&) {}
-}
+} // namespace mirrage::renderer

@@ -34,11 +34,11 @@ namespace mirrage::ecs {
 		constexpr explicit operator bool() const noexcept { return _id != 0; }
 
 		constexpr Entity_id id() const noexcept { return _id; }
-		constexpr void id(Entity_id id) noexcept { _id = id; }
+		constexpr void      id(Entity_id id) noexcept { _id = id; }
 
 		constexpr uint8_t revision() const noexcept { return _revision; }
-		constexpr void revision(uint8_t revision) noexcept { _revision = revision; }
-		void                            increment_revision() noexcept { _revision++; }
+		constexpr void    revision(uint8_t revision) noexcept { _revision = revision; }
+		void              increment_revision() noexcept { _revision++; }
 
 		constexpr packed_t pack() const noexcept {
 			return static_cast<packed_t>(_id) << 4 | static_cast<packed_t>(_revision);
@@ -95,7 +95,7 @@ namespace mirrage::ecs {
 				h.revision(static_cast<uint8_t>(rev & ~Entity_handle::free_rev)); // mark as used
 
 				bool success = rev.compare_exchange_strong(expected_rev, h.revision());
-				INVARIANT(success, "My handle got stolen :(");
+				MIRRAGE_INVARIANT(success, "My handle got stolen :(");
 
 				return h;
 			}
@@ -107,8 +107,9 @@ namespace mirrage::ecs {
 
 		// thread-safe
 		auto valid(Entity_handle h) const noexcept -> bool {
-			return h && (static_cast<Entity_id>(_slots.size()) <= h.id() - 1
-			             || util::at(_slots, static_cast<std::size_t>(h.id() - 1)) == h.revision());
+			return h
+			       && (static_cast<Entity_id>(_slots.size()) <= h.id() - 1
+			           || util::at(_slots, static_cast<std::size_t>(h.id() - 1)) == h.revision());
 		}
 
 		// NOT thread-safe
@@ -162,4 +163,4 @@ namespace mirrage::ecs {
 		std::atomic<Entity_id>       _next_free_slot{0};
 		Freelist                     _free;
 	};
-}
+} // namespace mirrage::ecs

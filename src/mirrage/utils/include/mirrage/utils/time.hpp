@@ -25,4 +25,4 @@ namespace mirrage::util {
 		       / 1000.0 / 1000.0;
 #endif
 	}
-}
+} // namespace mirrage::util

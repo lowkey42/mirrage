@@ -20,4 +20,4 @@ namespace mirrage::gui {
 	void end_menu(nk_context*) {
 		// TODO
 	}
-}
+} // namespace mirrage::gui

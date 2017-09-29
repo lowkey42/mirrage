@@ -67,7 +67,7 @@ namespace mirrage::util {
 
 	// trim from both ends
 	inline std::string& trim(std::string& s) { return ltrim(rtrim(s)); }
-	inline std::string trim_copy(std::string s) { return trim(s); }
+	inline std::string  trim_copy(std::string s) { return trim(s); }
 
 	inline std::pair<std::string, std::string> split(const std::string& line, const std::string& delim) {
 		auto delIter = line.find(delim);
@@ -124,4 +124,4 @@ namespace mirrage::util {
 
 		return true;
 	}
-}
+} // namespace mirrage::util

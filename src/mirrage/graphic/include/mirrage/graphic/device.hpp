@@ -76,12 +76,13 @@ namespace mirrage::graphic {
 		auto get_queue_family(Queue_tag) -> std::uint32_t;
 
 		auto get_single_swapchain() -> auto& {
-			INVARIANT(_swapchains.size() == 1, "Wrong number of swapchains found: " << _swapchains.size());
+			MIRRAGE_INVARIANT(_swapchains.size() == 1,
+			                  "Wrong number of swapchains found: " << _swapchains.size());
 			return _swapchains.begin()->second;
 		}
 		auto get_swapchain(const std::string& id) -> auto& {
 			auto it = _swapchains.find(id);
-			INVARIANT(it != _swapchains.end(), "Unknown spawchain: " + id);
+			MIRRAGE_INVARIANT(it != _swapchains.end(), "Unknown spawchain: " + id);
 			return it->second;
 		}
 
@@ -179,17 +180,17 @@ namespace mirrage::graphic {
 		// has to be const, because moving/destroing the vk::Device breaks the deleters
 		//   of all object (Swapchain, Sampler, RenderPass, ...) created through it
 		//   (the deleters store a Device const* that is not updated => segfault)
-		const vk::UniqueDevice       _device;
-		vk::PhysicalDevice           _gpu;
-		asset::Asset_manager&        _assets;
-		vk::PhysicalDeviceProperties _gpu_properties;
+		const vk::UniqueDevice                     _device;
+		vk::PhysicalDevice                         _gpu;
+		asset::Asset_manager&                      _assets;
+		vk::PhysicalDeviceProperties               _gpu_properties;
 		std::unordered_map<std::string, Swapchain> _swapchains;
-		asset::AID              _pipeline_cache_id;
-		vk::UniquePipelineCache _pipeline_cache;
-		Queue_family_mapping    _queue_family_mappings;
-		Device_memory_allocator _memory_allocator;
-		Transfer_manager        _transfer_manager;
-		Delete_queue            _delete_queue;
+		asset::AID                                 _pipeline_cache_id;
+		vk::UniquePipelineCache                    _pipeline_cache;
+		Queue_family_mapping                       _queue_family_mappings;
+		Device_memory_allocator                    _memory_allocator;
+		Transfer_manager                           _transfer_manager;
+		Delete_queue                               _delete_queue;
 
 		vk::Format              _depth_format;
 		vk::Format              _depth_stencil_format;
@@ -202,4 +203,4 @@ namespace mirrage::graphic {
 		util::maybe<vk::Format> _srgb_format;
 		util::maybe<vk::Format> _srgba_format;
 	};
-}
+} // namespace mirrage::graphic

@@ -140,7 +140,7 @@ namespace mirrage::renderer {
 			        vk::FormatFeatureFlagBits::eColorAttachment
 			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 
-			INVARIANT(format.is_some(), "No Float R16 format supported (required for tone mapping)!");
+			MIRRAGE_INVARIANT(format.is_some(), "No Float R16 format supported (required for tone mapping)!");
 
 			return format.get_or_throw();
 		}

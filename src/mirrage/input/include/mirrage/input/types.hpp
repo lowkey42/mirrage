@@ -332,7 +332,7 @@ namespace mirrage::input {
 
 	sf2_enumDef(Reaction_type, none, once, continuous, range);
 #endif
-}
+} // namespace mirrage::input
 
 namespace std {
 	template <>
@@ -353,4 +353,4 @@ namespace std {
 			return static_cast<size_t>(b.button) + 101 * static_cast<std::size_t>(b.clicks + 128);
 		}
 	};
-}
+} // namespace std

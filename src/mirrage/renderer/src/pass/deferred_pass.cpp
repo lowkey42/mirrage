@@ -165,7 +165,7 @@ namespace mirrage::renderer {
 
 			return render_pass;
 		}
-	}
+	} // namespace
 
 	Deferred_pass::Deferred_pass(Deferred_renderer&   renderer,
 	                             ecs::Entity_manager& entities,
@@ -259,4 +259,4 @@ namespace mirrage::renderer {
 	void Deferred_pass_factory::configure_device(vk::PhysicalDevice,
 	                                             util::maybe<std::uint32_t>,
 	                                             graphic::Device_create_info&) {}
-}
+} // namespace mirrage::renderer

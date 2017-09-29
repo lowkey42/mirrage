@@ -47,7 +47,7 @@ namespace mirrage::graphic {
 
 			return device.create_descriptor_set_layout(bindings);
 		}
-	}
+	} // namespace
 	Image_descriptor_set_layout::Image_descriptor_set_layout(graphic::Device&     device,
 	                                                         vk::Sampler          sampler,
 	                                                         std::uint32_t        image_number,
@@ -60,10 +60,9 @@ namespace mirrage::graphic {
 	void Image_descriptor_set_layout::update_set(vk::DescriptorSet                    set,
 	                                             std::initializer_list<vk::ImageView> images) {
 
-		INVARIANT(images.size() <= _image_number,
-		          "Number of images (" << images.size() << ") doesn't match size of descriptor set ("
-		                               << _image_number
-		                               << ")");
+		MIRRAGE_INVARIANT(images.size() <= _image_number,
+		                  "Number of images (" << images.size() << ") doesn't match size of descriptor set ("
+		                                       << _image_number << ")");
 
 		auto desc_images = std::vector<vk::DescriptorImageInfo>();
 		desc_images.reserve(images.size());
@@ -88,7 +87,7 @@ namespace mirrage::graphic {
 
 
 	Fence::operator bool() const { return _device.getFenceStatus(*_fence) == vk::Result::eSuccess; }
-	void Fence::reset() { _device.resetFences({*_fence}); }
+	void   Fence::reset() { _device.resetFences({*_fence}); }
 	void Fence::wait() { _device.waitForFences({*_fence}, true, std::numeric_limits<std::uint64_t>::max()); }
 
 	Fence::Fence(const vk::Device& device) : _device(device), _fence(_device.createFenceUnique({})) {}
@@ -146,9 +145,9 @@ namespace mirrage::graphic {
 				case vk::ImageLayout::eSharedPresentKHR:
 				case vk::ImageLayout::ePresentSrcKHR: return vk::AccessFlagBits::eColorAttachmentWrite;
 			}
-			FAIL("Unreachable");
+			MIRRAGE_FAIL("Unreachable");
 		}
-	}
+	} // namespace
 
 	void image_layout_transition(vk::CommandBuffer    cb,
 	                             vk::Image            image,
@@ -355,4 +354,4 @@ namespace mirrage::graphic {
 		                                 initial_mip_level,
 		                                 mip_levels);
 	}
-}
+} // namespace mirrage::graphic

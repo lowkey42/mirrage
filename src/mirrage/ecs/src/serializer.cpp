@@ -19,7 +19,7 @@ namespace mirrage::ecs {
 		class Blueprint;
 
 		const std::string import_key = "$import";
-		void apply(const Blueprint& b, Entity_facet e);
+		void              apply(const Blueprint& b, Entity_facet e);
 
 
 		class Blueprint {
@@ -64,7 +64,7 @@ namespace mirrage::ecs {
 			if(parent) {
 				util::erase_fast(parent->children, this);
 			}
-			INVARIANT(children.empty(), "Blueprint children not deregistered");
+			MIRRAGE_INVARIANT(children.empty(), "Blueprint children not deregistered");
 		}
 
 		Blueprint& Blueprint::operator=(Blueprint&& o) noexcept {
@@ -93,14 +93,14 @@ namespace mirrage::ecs {
 
 			for(auto&& u : users) {
 				auto entity = entity_manager->get(u);
-				INVARIANT(entity.is_some(), "dead entity in blueprint.users");
+				MIRRAGE_INVARIANT(entity.is_some(), "dead entity in blueprint.users");
 				apply(*this, entity.get_or_throw());
 			}
 		}
 
 		void Blueprint::detach(Entity_handle target) const { util::erase_fast(users, target); }
-	}
-}
+	} // namespace
+} // namespace mirrage::ecs
 
 namespace mirrage::asset {
 	template <>
@@ -109,9 +109,9 @@ namespace mirrage::asset {
 			return std::make_shared<ecs::Blueprint>(in.aid().str(), in.content(), &in.manager());
 		}
 
-		static void store(ostream, ecs::Blueprint&) { FAIL("NOT IMPLEMENTED, YET!"); }
+		static void store(ostream, ecs::Blueprint&) { MIRRAGE_FAIL("NOT IMPLEMENTED, YET!"); }
 	};
-}
+} // namespace mirrage::asset
 
 namespace mirrage::ecs {
 	namespace {
@@ -182,11 +182,11 @@ namespace mirrage::ecs {
 		sf2::format::Error_handler create_error_handler(std::string source_name) {
 			return [source_name =
 			                std::move(source_name)](const std::string& msg, uint32_t row, uint32_t column) {
-				ERROR("Error parsing JSON from " << source_name << " at " << row << ":" << column << ": "
-				                                 << msg);
+				MIRRAGE_ERROR("Error parsing JSON from " << source_name << " at " << row << ":" << column
+				                                         << ": " << msg);
 			};
 		}
-	}
+	} // namespace
 
 
 	Deserializer::Deserializer(const std::string&    source_name,
@@ -210,7 +210,7 @@ namespace mirrage::ecs {
 	void apply_blueprint(asset::Asset_manager& asset_mgr, Entity_facet e, const std::string& blueprint) {
 		auto mb = asset_mgr.load_maybe<ecs::Blueprint>(asset::AID{"blueprint"_strid, blueprint});
 		if(mb.is_nothing()) {
-			ERROR("Failed to load blueprint \"" << blueprint << "\"");
+			MIRRAGE_ERROR("Failed to load blueprint \"" << blueprint << "\"");
 			return;
 		}
 		auto b = mb.get_or_throw();
@@ -244,7 +244,7 @@ namespace mirrage::ecs {
 			auto comp_type_mb = ecs_deserializer.manager.component_type_by_name(key);
 
 			if(comp_type_mb.is_nothing()) {
-				DEBUG("Skipped unknown component " << key);
+				MIRRAGE_DEBUG("Skipped unknown component " << key);
 				s.skip_obj();
 				return true;
 			}
@@ -252,7 +252,7 @@ namespace mirrage::ecs {
 			auto comp_type = comp_type_mb.get_or_throw();
 
 			if(ecs_deserializer.filter && !ecs_deserializer.filter(comp_type)) {
-				DEBUG("Skipped filtered component " << key);
+				MIRRAGE_DEBUG("Skipped filtered component " << key);
 				s.skip_obj();
 				return true;
 			}
@@ -274,4 +274,4 @@ namespace mirrage::ecs {
 			});
 		});
 	}
-}
+} // namespace mirrage::ecs

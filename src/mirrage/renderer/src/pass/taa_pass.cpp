@@ -92,21 +92,21 @@ namespace mirrage::renderer {
 			return {{f(Indices)...}};
 		}
 
-		template <int  N, class Function>
+		template <int N, class Function>
 		constexpr auto make_array(Function f)
 		        -> std::array<typename std::result_of<Function(std::size_t)>::type, N> {
 			return make_array_helper(f, std::make_index_sequence<N>{});
 		}
 
 		template <std::size_t Size>
-		constexpr auto        build_halton_2_3() {
+		constexpr auto build_halton_2_3() {
 			return make_array<Size * 2>(
 			        [](std::size_t i) { return halton_seq(i % 2 == 0 ? 2 : 3, i + 1) - 0.5f; });
 		}
 
 		constexpr auto offsets       = build_halton_2_3<8>();
 		constexpr auto offset_factor = 0.15f;
-	}
+	} // namespace
 
 
 	Taa_pass::Taa_pass(Deferred_renderer&         renderer,
@@ -190,8 +190,8 @@ namespace mirrage::renderer {
 
 		// move projection by sub pixel offset and update push constants
 		auto offset = _calc_offset(cam);
-		INVARIANT(_constants.fov_reprojection[0][3] == 0 && _constants.fov_reprojection[1][3] == 0,
-		          "m[0][3]!=0 or m[1][3]!=0");
+		MIRRAGE_INVARIANT(_constants.fov_reprojection[0][3] == 0 && _constants.fov_reprojection[1][3] == 0,
+		                  "m[0][3]!=0 or m[1][3]!=0");
 		_constants.fov_reprojection[0][3] = offset.x;
 		_constants.fov_reprojection[1][3] = offset.y;
 
@@ -239,4 +239,4 @@ namespace mirrage::renderer {
 	void Taa_pass_factory::configure_device(vk::PhysicalDevice,
 	                                        util::maybe<std::uint32_t>,
 	                                        graphic::Device_create_info&) {}
-}
+} // namespace mirrage::renderer

@@ -11,7 +11,7 @@ namespace mirrage::renderer {
 		auto aspect_radio(const glm::vec4& viewport) {
 			return (viewport.z - viewport.x) / (viewport.w - viewport.y);
 		}
-	}
+	} // namespace
 
 	void load_component(ecs::Deserializer& state, Camera_comp& comp) {
 		auto fov = comp._fov / 1_deg;
@@ -40,7 +40,7 @@ namespace mirrage::renderer {
 			model[3]   = glm::vec4(position, 1.f);
 			return model;
 		}
-	}
+	} // namespace
 
 	Camera_state::Camera_state(const Camera_comp& cam, glm::vec4 viewport)
 	  : Camera_state(cam, cam.owner().get<ecs::components::Transform_comp>().get_or_throw(), viewport) {}
@@ -80,4 +80,4 @@ namespace mirrage::renderer {
 		sp.y    = viewport.w - sp.y;
 		return {sp.x, sp.y};
 	}
-}
+} // namespace mirrage::renderer

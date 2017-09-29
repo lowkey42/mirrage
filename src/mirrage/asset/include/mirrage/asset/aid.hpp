@@ -28,7 +28,7 @@ namespace mirrage::asset {
 		bool operator==(const AID& o) const noexcept;
 		bool operator!=(const AID& o) const noexcept;
 		bool operator<(const AID& o) const noexcept;
-		operator bool() const noexcept;
+		     operator bool() const noexcept;
 
 		auto str() const noexcept -> std::string;
 		auto type() const noexcept { return _type; }
@@ -38,7 +38,7 @@ namespace mirrage::asset {
 		Asset_type  _type;
 		std::string _name;
 	};
-}
+} // namespace mirrage::asset
 
 inline mirrage::asset::AID operator"" _aid(const char* str, std::size_t) {
 	return mirrage::asset::AID(str);
@@ -51,4 +51,4 @@ namespace std {
 			return 71 * hash<mirrage::asset::Asset_type>()(aid.type()) + hash<string>()(aid.name());
 		}
 	};
-}
+} // namespace std

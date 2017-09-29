@@ -55,8 +55,8 @@ namespace mirrage::util {
 
 		MD5();
 		MD5(const std::string& text);
-		void update(const unsigned char* buf, size_type length);
-		void update(const char* buf, size_type length);
+		void                 update(const unsigned char* buf, size_type length);
+		void                 update(const char* buf, size_type length);
 		MD5&                 finalize();
 		std::string          hexdigest() const;
 		friend std::ostream& operator<<(std::ostream&, MD5 md5);
@@ -67,7 +67,7 @@ namespace mirrage::util {
 		typedef unsigned int  uint4; // 32bit
 		enum { blocksize = 64 };     // VC6 won't eat a const static int here
 
-		void transform(const uint1 block[blocksize]);
+		void        transform(const uint1 block[blocksize]);
 		static void decode(uint4 output[], const uint1 input[], size_type len);
 		static void encode(uint1 output[], const uint4 input[], size_type len);
 
@@ -83,10 +83,10 @@ namespace mirrage::util {
 		static uint4 H(uint4 x, uint4 y, uint4 z);
 		static uint4 I(uint4 x, uint4 y, uint4 z);
 		static uint4 rotate_left(uint4 x, int n);
-		static void FF(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac);
-		static void GG(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac);
-		static void HH(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac);
-		static void II(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac);
+		static void  FF(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac);
+		static void  GG(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac);
+		static void  HH(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac);
+		static void  II(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac);
 	};
 
 	namespace {
@@ -106,7 +106,7 @@ namespace mirrage::util {
 		constexpr auto S42 = 10;
 		constexpr auto S43 = 15;
 		constexpr auto S44 = 21;
-	}
+	} // namespace
 
 	// F, G, H and I are basic MD5 functions.
 	inline MD5::uint4 MD5::F(uint4 x, uint4 y, uint4 z) { return (x & y) | (~x & z); }
@@ -380,4 +380,4 @@ namespace mirrage::util {
 
 		return md5.hexdigest();
 	}
-}
+} // namespace mirrage::util

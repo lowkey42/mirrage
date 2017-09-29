@@ -88,7 +88,7 @@ namespace mirrage::renderer {
 		}
 
 		constexpr auto max_render_buffer_size = vk::DeviceSize(1024) * 1024;
-	}
+	} // namespace
 
 
 	Gui_pass::Gui_pass(Deferred_renderer& drenderer, ecs::Entity_manager&, util::maybe<Meta_system&>)
@@ -113,7 +113,7 @@ namespace mirrage::renderer {
 	                    vk::DescriptorSet,
 	                    std::size_t swapchain_image) {
 
-		INVARIANT(_current_command_buffer.is_nothing(), "Gui_pass::draw calls cannot be nested!");
+		MIRRAGE_INVARIANT(_current_command_buffer.is_nothing(), "Gui_pass::draw calls cannot be nested!");
 
 		_current_command_buffer = command_buffer;
 		_current_framebuffer    = _framebuffers.at(swapchain_image);
@@ -242,7 +242,7 @@ namespace mirrage::renderer {
 
 		if(texture_handle != _bound_texture_handle) {
 			auto texture = _loaded_textures_by_handle[texture_handle].lock();
-			INVARIANT(texture, "The requested texture has not been loaded or already been freed!");
+			MIRRAGE_INVARIANT(texture, "The requested texture has not been loaded or already been freed!");
 
 			_render_pass.bind_descriptor_sets(0, {&*texture->descriptor_set, 1});
 			_bound_texture_handle = texture_handle;
@@ -274,4 +274,4 @@ namespace mirrage::renderer {
 	void Gui_pass_factory::configure_device(vk::PhysicalDevice,
 	                                        util::maybe<std::uint32_t>,
 	                                        graphic::Device_create_info&) {}
-}
+} // namespace mirrage::renderer

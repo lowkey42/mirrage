@@ -698,9 +698,9 @@ static inline VkFormat vkGetFormatFromOpenGLInternalFormat(const GLenum internal
 		case GL_RGB9_E5:
 			return VK_FORMAT_E5B9G9R9_UFLOAT_PACK32; // 3-component/exp 9:9:9/5, floating-point
 
-		//
-		// S3TC/DXT/BC
-		//
+			//
+			// S3TC/DXT/BC
+			//
 
 		case GL_COMPRESSED_RGB_S3TC_DXT1_EXT:
 			return VK_FORMAT_BC1_RGB_UNORM_BLOCK; // line through 3D space, unsigned normalized

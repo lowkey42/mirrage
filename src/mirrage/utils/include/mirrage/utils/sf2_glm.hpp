@@ -56,17 +56,19 @@ namespace glm {
 
 
 	inline void load(sf2::JsonDeserializer& s, quat& v) {
-		float r, p, y;
+		auto r = 0.f;
+		auto p = 0.f;
+		auto y = 0.f;
 
 		s.read_virtual(sf2::vmember("roll", r), sf2::vmember("pitch", p), sf2::vmember("yaw", y));
 
 		v = quat(glm::vec3(r, p, y));
 	}
 	inline void save(sf2::JsonSerializer& s, const quat& v) {
-		float r = roll(v);
-		float p = pitch(v);
-		float y = yaw(v);
+		auto r = roll(v);
+		auto p = pitch(v);
+		auto y = yaw(v);
 
 		s.write_virtual(sf2::vmember("roll", r), sf2::vmember("pitch", p), sf2::vmember("yaw", y));
 	}
-}
+} // namespace glm

@@ -51,4 +51,4 @@ namespace mirrage::graphic {
 	sf2_structDef(Window_settings, width, height, display, fullscreen);
 	sf2_structDef(Graphics_settings, windows);
 #endif
-}
+} // namespace mirrage::graphic

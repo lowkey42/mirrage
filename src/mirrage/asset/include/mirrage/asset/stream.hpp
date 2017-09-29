@@ -79,7 +79,7 @@ namespace mirrage::asset {
 
 		auto operator=(ostream &&) -> ostream&;
 	};
-}
+} // namespace mirrage::asset
 
 #ifdef ENABLE_SF2_ASSETS
 #include <sf2/sf2.hpp>
@@ -98,14 +98,13 @@ namespace mirrage::asset {
 		static auto load(istream in) -> std::shared_ptr<T> {
 			auto r = std::make_shared<T>();
 
-			sf2::deserialize_json(
-			        in,
-			        [&](auto& msg, uint32_t row, uint32_t column) {
-				        ERROR("Error parsing JSON from " << in.aid().str() << " at " << row << ":" << column
-				                                         << ": "
-				                                         << msg);
-				    },
-			        *r);
+			sf2::deserialize_json(in,
+			                      [&](auto& msg, uint32_t row, uint32_t column) {
+				                      MIRRAGE_ERROR("Error parsing JSON from " << in.aid().str() << " at "
+				                                                               << row << ":" << column << ": "
+				                                                               << msg);
+			                      },
+			                      *r);
 
 			return r;
 		}
@@ -116,12 +115,11 @@ namespace mirrage::asset {
 	struct Interceptor {
 		static auto on_intercept(Asset_manager&, const AID& interceptor_aid, const AID& org_aid)
 		        -> std::shared_ptr<T> {
-			FAIL("Required Interceptor specialization not found loading '" << org_aid.str() << "' via '"
-			                                                               << interceptor_aid.str()
-			                                                               << "'");
+			MIRRAGE_FAIL("Required Interceptor specialization not found loading '"
+			             << org_aid.str() << "' via '" << interceptor_aid.str() << "'");
 		}
 	};
-}
+} // namespace mirrage::asset
 #else
 
 namespace mirrage::asset {
@@ -137,5 +135,5 @@ namespace mirrage::asset {
 		static auto load(istream in) throw(Loading_failed) -> std::shared_ptr<T>;
 		static void store(ostream out, const T& asset) throw(Loading_failed);
 	};
-}
+} // namespace mirrage::asset
 #endif

@@ -65,4 +65,4 @@ namespace mirrage {
 		int32_t                              _leave = 0;
 		std::vector<std::shared_ptr<Screen>> _next_screens;
 	};
-}
+} // namespace mirrage

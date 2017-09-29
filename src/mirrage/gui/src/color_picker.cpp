@@ -25,7 +25,7 @@ namespace mirrage::gui {
 			}
 			return false;
 		}
-	}
+	} // namespace
 
 	bool color_picker(nk_context* ctx, util::Rgb& color, int width, float factor) {
 		nk_color c = nk_rgb(color.r * 255 / factor, color.g * 255 / factor, color.b * 255 / factor);
@@ -58,4 +58,4 @@ namespace mirrage::gui {
 		}
 		return false;
 	}
-}
+} // namespace mirrage::gui

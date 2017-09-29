@@ -13,18 +13,18 @@ namespace mirrage::renderer {
 	class Camera_comp : public ecs::Component<Camera_comp> {
 	  public:
 		static constexpr const char* name() { return "Camera"; }
-		friend void load_component(ecs::Deserializer& state, Camera_comp&);
-		friend void save_component(ecs::Serializer& state, const Camera_comp&);
+		friend void                  load_component(ecs::Deserializer& state, Camera_comp&);
+		friend void                  save_component(ecs::Serializer& state, const Camera_comp&);
 
 		Camera_comp() = default;
 		Camera_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner) : Component(manager, owner) {}
 
 		auto calc_projection(glm::vec4 viewport) const -> glm::mat4;
 		void priority(float p) { _priority = p; }
-		auto                priority() const noexcept { return _priority; }
-		auto                near_plane() const noexcept { return _near; }
-		auto                far_plane() const noexcept { return _far; }
-		auto                fov() const noexcept { return _fov; }
+		auto priority() const noexcept { return _priority; }
+		auto near_plane() const noexcept { return _near; }
+		auto far_plane() const noexcept { return _far; }
+		auto fov() const noexcept { return _fov; }
 
 	  private:
 		util::Angle _fov;
@@ -56,4 +56,4 @@ namespace mirrage::renderer {
 		util::Angle fov_vertical;
 		util::Angle fov_horizontal;
 	};
-}
+} // namespace mirrage::renderer

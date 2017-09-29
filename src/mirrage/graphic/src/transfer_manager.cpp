@@ -25,9 +25,9 @@ namespace mirrage::graphic {
 	}
 
 	void Dynamic_buffer::update(const Command_buffer& cb, vk::DeviceSize offset, gsl::span<const char> data) {
-		INVARIANT(_capacity >= gsl::narrow<std::size_t>(data.size() + offset), "Buffer overflow");
-		INVARIANT(data.size() % 4 == 0, "buffer size has to be a multiple of 4: " << data.size());
-		INVARIANT(offset % 4 == 0, "buffer offset has to be a multiple of 4: " << offset);
+		MIRRAGE_INVARIANT(_capacity >= gsl::narrow<std::size_t>(data.size() + offset), "Buffer overflow");
+		MIRRAGE_INVARIANT(data.size() % 4 == 0, "buffer size has to be a multiple of 4: " << data.size());
+		MIRRAGE_INVARIANT(offset % 4 == 0, "buffer offset has to be a multiple of 4: " << offset);
 
 		auto buffer_barrier_pre = vk::BufferMemoryBarrier{_latest_usage_access,
 		                                                  vk::AccessFlagBits::eTransferWrite,
@@ -73,9 +73,9 @@ namespace mirrage::graphic {
 	void Dynamic_buffer::_do_update(const Command_buffer& cb,
 	                                vk::DeviceSize        offset,
 	                                gsl::span<const char> data) {
-		INVARIANT(_capacity >= gsl::narrow<std::size_t>(data.size() + offset), "Buffer overflow");
-		INVARIANT(data.size() % 4 == 0, "buffer size has to be a multiple of 4: " << data.size());
-		INVARIANT(offset % 4 == 0, "buffer offset has to be a multiple of 4: " << offset);
+		MIRRAGE_INVARIANT(_capacity >= gsl::narrow<std::size_t>(data.size() + offset), "Buffer overflow");
+		MIRRAGE_INVARIANT(data.size() % 4 == 0, "buffer size has to be a multiple of 4: " << data.size());
+		MIRRAGE_INVARIANT(offset % 4 == 0, "buffer offset has to be a multiple of 4: " << offset);
 
 		cb.updateBuffer(*_buffer, offset, data.size(), data.data());
 	}
@@ -404,7 +404,7 @@ namespace mirrage::graphic {
 			auto size = t.mip_image_sizes[i];
 			offset += sizeof(std::uint32_t); // imageSize
 
-			INVARIANT(offset + size <= t.size, "Overflow in _transfer_image");
+			MIRRAGE_INVARIANT(offset + size <= t.size, "Overflow in _transfer_image");
 
 			auto subresource =
 			        vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, i, 0, t.dimensions.layers};
@@ -417,4 +417,4 @@ namespace mirrage::graphic {
 
 		cb.copyBufferToImage(*t.src, t.dst, vk::ImageLayout::eTransferDstOptimal, regions);
 	}
-}
+} // namespace mirrage::graphic

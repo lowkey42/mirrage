@@ -123,7 +123,7 @@ namespace mirrage::renderer {
 			        vk::FormatFeatureFlagBits::eColorAttachment
 			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 
-			INVARIANT(format.is_some(), "Shadowmap (R32 / R16) render targets are not supported!");
+			MIRRAGE_INVARIANT(format.is_some(), "Shadowmap (R32 / R16) render targets are not supported!");
 
 			return format.get_or_throw();
 		}
@@ -135,7 +135,7 @@ namespace mirrage::renderer {
 			                                           vk::Format::eD32SfloatS8Uint},
 			                                          vk::FormatFeatureFlagBits::eDepthStencilAttachment);
 
-			INVARIANT(format.is_some(), "Depth render targets are not supported!");
+			MIRRAGE_INVARIANT(format.is_some(), "Depth render targets are not supported!");
 
 			return format.get_or_throw();
 		}
@@ -201,8 +201,8 @@ namespace mirrage::renderer {
                 1, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment};
 		shadowmap_bindings[2] = vk::DescriptorSetLayoutBinding{
 		        2, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment};
-		INVARIANT(!renderer.gbuffer().shadowmaps_layout,
-		          "More than one shadowmapping implementation active!");
+		MIRRAGE_INVARIANT(!renderer.gbuffer().shadowmaps_layout,
+		                  "More than one shadowmapping implementation active!");
 		renderer.gbuffer().shadowmaps_layout =
 		        renderer.device().create_descriptor_set_layout(shadowmap_bindings);
 		renderer.gbuffer().shadowmaps = renderer.create_descriptor_set(*renderer.gbuffer().shadowmaps_layout);

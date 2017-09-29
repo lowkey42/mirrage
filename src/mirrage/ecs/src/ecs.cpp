@@ -42,13 +42,13 @@ namespace mirrage::ecs {
 		if(validate(entity)) {
 			_queue_erase.enqueue(entity);
 		} else {
-			ERROR("Double-Deletion of entity " << entity_name(entity));
+			MIRRAGE_ERROR("Double-Deletion of entity " << entity_name(entity));
 		}
 	}
 
 	void Entity_manager::process_queued_actions() {
-		INVARIANT(_local_queue_erase.empty(),
-		          "Someone's been sleeping in my bed! (_local_queue_erase is dirty)");
+		MIRRAGE_INVARIANT(_local_queue_erase.empty(),
+		                  "Someone's been sleeping in my bed! (_local_queue_erase is dirty)");
 
 		std::array<Entity_handle, 32> erase_buffer;
 		do {
@@ -149,4 +149,4 @@ namespace mirrage::ecs {
 		return Entity_iterator(_manager._handles, invalid_entity);
 	}
 	void Entity_collection_facet::clear() { _manager.clear(); }
-}
+} // namespace mirrage::ecs

@@ -57,4 +57,4 @@ namespace mirrage::input {
 		Input_source src;
 		float        force; //< 0-1
 	};
-}
+} // namespace mirrage::input

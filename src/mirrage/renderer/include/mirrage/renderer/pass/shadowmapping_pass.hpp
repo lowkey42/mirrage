@@ -11,7 +11,7 @@
 namespace mirrage::graphic {
 	struct Pipeline_description;
 	class Subpass_builder;
-}
+} // namespace mirrage::graphic
 
 namespace mirrage::renderer {
 
@@ -70,4 +70,4 @@ namespace mirrage::renderer {
 		                      util::maybe<std::uint32_t> graphics_queue,
 		                      graphic::Device_create_info&) override;
 	};
-}
+} // namespace mirrage::renderer

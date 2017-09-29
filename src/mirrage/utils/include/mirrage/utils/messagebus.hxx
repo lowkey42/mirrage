@@ -54,7 +54,7 @@ namespace mirrage::util {
 		void receive_bulk(void* box, Func& handler) {
 			using namespace std;
 
-			INVARIANT(box, "No subscription for given type");
+			MIRRAGE_INVARIANT(box, "No subscription for given type");
 
 			T     msg[size];
 			auto& cbox = *static_cast<Mailbox<T>*>(box);
@@ -72,7 +72,7 @@ namespace mirrage::util {
 	void Mailbox_collection::subscribe(std::size_t queue_size, Func handler) {
 		using namespace std;
 
-		INVARIANT(_boxes.find(typeuid_of<T>()) == _boxes.end(), "Listener already registered!");
+		MIRRAGE_INVARIANT(_boxes.find(typeuid_of<T>()) == _boxes.end(), "Listener already registered!");
 
 		auto& box     = _boxes[typeuid_of<T>()];
 		box.box       = make_shared<Mailbox<T>>(_bus, queue_size);
@@ -216,8 +216,8 @@ namespace mirrage::util {
 
 		int i = 0;
 		for(auto& group : _mb_groups) {
-			INVARIANT(group.empty(),
-			          "Mailboxes leaked for " << group.at(i)._type << ", " << group.size() << "left");
+			MIRRAGE_INVARIANT(group.empty(),
+			                  "Mailboxes leaked for " << group.at(i)._type << ", " << group.size() << "left");
 			i++;
 		}
 	}

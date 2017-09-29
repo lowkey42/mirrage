@@ -135,8 +135,8 @@ namespace mirrage::asset {
 
 		std::unordered_map<AID, Asset>       _assets;
 		std::unordered_map<AID, std::string> _dispatcher;
-		std::vector<Watch_entry> _watchlist;
-		uint32_t                 _next_watch_id = 0;
+		std::vector<Watch_entry>             _watchlist;
+		uint32_t                             _next_watch_id = 0;
 
 		void _add_asset(const AID&            id,
 		                const std::string&    path,
@@ -159,7 +159,7 @@ namespace mirrage::asset {
 	util::maybe<const T&> unpack(util::maybe<Ptr<T>> m) {
 		return m.process(util::maybe<const T&>{}, [](Ptr<T>& p) { return util::maybe<const T&>{*p}; });
 	}
-}
+} // namespace mirrage::asset
 
 #define ASSETMANAGER_INCLUDED
 #include "asset_manager.hxx"

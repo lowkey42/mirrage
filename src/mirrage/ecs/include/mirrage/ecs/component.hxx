@@ -110,7 +110,7 @@ namespace mirrage::ecs {
 		void restore(Entity_handle owner, Deserializer& deserializer) override {
 			auto entity_id = get_entity_id(owner, _manager);
 			if(entity_id == invalid_entity_id) {
-				FAIL("emplace_or_find_now of component from invalid/deleted entity");
+				MIRRAGE_FAIL("emplace_or_find_now of component from invalid/deleted entity");
 			}
 
 			auto& comp = [&]() -> T& {
@@ -170,9 +170,9 @@ namespace mirrage::ecs {
 					for(auto i = 0ull; i < deletions; i++) {
 						auto entity_id = get_entity_id(deletions_buffer[i], _manager);
 						if(entity_id == invalid_entity_id) {
-							WARN("Discard delete of component " << T::name()
-							                                    << " from invalid/deleted entity: "
-							                                    << entity_name(deletions_buffer[i]));
+							MIRRAGE_WARN("Discard delete of component " << T::name()
+							                                            << " from invalid/deleted entity: "
+							                                            << entity_name(deletions_buffer[i]));
 							continue;
 						}
 
@@ -219,8 +219,8 @@ namespace mirrage::ecs {
 					for(auto i = 0ull; i < insertions; i++) {
 						auto entity_id = get_entity_id(std::get<1>(insertions_buffer[i]), _manager);
 						if(entity_id == invalid_entity_id) {
-							WARN("Discard insertion of component from invalid/deleted entity: "
-							     << entity_name(std::get<1>(insertions_buffer[i])));
+							MIRRAGE_WARN("Discard insertion of component from invalid/deleted entity: "
+							             << entity_name(std::get<1>(insertions_buffer[i])));
 							continue;
 						}
 
@@ -236,7 +236,7 @@ namespace mirrage::ecs {
 	  public:
 		template <typename F, typename... Args>
 		void emplace(F&& init, Entity_handle owner, Args&&... args) {
-			INVARIANT(owner != invalid_entity, "emplace on invalid entity");
+			MIRRAGE_INVARIANT(owner != invalid_entity, "emplace on invalid entity");
 
 			// construct T inplace inside the pair to avoid additional move
 			auto inst = Insertion(std::piecewise_construct,
@@ -247,7 +247,7 @@ namespace mirrage::ecs {
 		}
 
 		void erase(Entity_handle owner) override {
-			INVARIANT(owner, "erase on invalid entity");
+			MIRRAGE_INVARIANT(owner, "erase on invalid entity");
 			_queued_deletions.enqueue(owner);
 		}
 
@@ -284,4 +284,4 @@ namespace mirrage::ecs {
 		Queue<Insertion>     _queued_insertions;
 		int                  _unoptimized_deletes = 0;
 	};
-}
+} // namespace mirrage::ecs

@@ -23,4 +23,4 @@ namespace mirrage::graphic {
 
 	// reads the KTX header and advances the read position to the beginning of the actual data
 	extern auto parse_header(asset::istream&, const std::string& filename) -> Ktx_header;
-}
+} // namespace mirrage::graphic

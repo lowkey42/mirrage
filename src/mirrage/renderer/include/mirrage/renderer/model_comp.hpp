@@ -4,8 +4,6 @@
 
 #include <mirrage/ecs/component.hpp>
 
-#include <future>
-
 
 namespace mirrage::renderer {
 
@@ -18,8 +16,8 @@ namespace mirrage::renderer {
 	  public:
 		static constexpr const char* name() { return "Model_loaded"; }
 		static constexpr const char* name_save_as() { return "Model"; }
-		friend void load_component(ecs::Deserializer& state, Model_comp&);
-		friend void save_component(ecs::Serializer& state, const Model_comp&);
+		friend void                  load_component(ecs::Deserializer& state, Model_comp&);
+		friend void                  save_component(ecs::Serializer& state, const Model_comp&);
 
 		Model_comp() = default;
 		Model_comp(ecs::Entity_manager& manager,
@@ -40,8 +38,8 @@ namespace mirrage::renderer {
 	class Model_unloaded_comp : public ecs::Component<Model_unloaded_comp> {
 	  public:
 		static constexpr const char* name() { return "Model"; }
-		friend void load_component(ecs::Deserializer& state, Model_unloaded_comp&);
-		friend void save_component(ecs::Serializer& state, const Model_unloaded_comp&);
+		friend void                  load_component(ecs::Deserializer& state, Model_unloaded_comp&);
+		friend void                  save_component(ecs::Serializer& state, const Model_unloaded_comp&);
 
 		Model_unloaded_comp() = default;
 		Model_unloaded_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner, asset::AID model_aid = {})
@@ -57,8 +55,8 @@ namespace mirrage::renderer {
 	  public:
 		static constexpr const char* name() { return "Model_loading"; }
 		static constexpr const char* name_save_as() { return "Model"; }
-		friend void load_component(ecs::Deserializer& state, Model_loading_comp&);
-		friend void save_component(ecs::Serializer& state, const Model_loading_comp&);
+		friend void                  load_component(ecs::Deserializer& state, Model_loading_comp&);
+		friend void                  save_component(ecs::Serializer& state, const Model_loading_comp&);
 
 		Model_loading_comp() = default;
 		Model_loading_comp(ecs::Entity_manager& manager,
@@ -75,4 +73,4 @@ namespace mirrage::renderer {
 		asset::AID        _model_aid;
 		future<Model_ptr> _model;
 	};
-}
+} // namespace mirrage::renderer

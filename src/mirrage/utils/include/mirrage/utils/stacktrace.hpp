@@ -21,4 +21,4 @@ namespace mirrage::util {
 	struct Error : public std::runtime_error {
 		explicit Error(const std::string& msg) : std::runtime_error(msg + "\n At " + gen_stacktrace(1)) {}
 	};
-}
+} // namespace mirrage::util

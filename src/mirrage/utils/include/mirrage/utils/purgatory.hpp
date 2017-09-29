@@ -66,4 +66,4 @@ namespace mirrage::util {
 
 		auto _reserve(std::size_t size, std::size_t alignment) -> void*;
 	};
-}
+} // namespace mirrage::util

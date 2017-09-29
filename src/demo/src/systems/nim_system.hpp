@@ -20,8 +20,8 @@ namespace mirrage::systems {
 	class Nim_comp : public ecs::Component<Nim_comp> {
 	  public:
 		static constexpr const char* name() { return "NIM"; }
-		friend void load_component(ecs::Deserializer& state, Nim_comp&);
-		friend void save_component(ecs::Serializer& state, const Nim_comp&);
+		friend void                  load_component(ecs::Deserializer& state, Nim_comp&);
+		friend void                  save_component(ecs::Serializer& state, const Nim_comp&);
 
 		Nim_comp() = default;
 		Nim_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner) : Component(manager, owner) {}
@@ -121,4 +121,4 @@ namespace mirrage::systems {
 
 		void _update_lookup_table();
 	};
-}
+} // namespace mirrage::systems

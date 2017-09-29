@@ -77,4 +77,4 @@ namespace mirrage {
 		void _draw_settings_window();
 		void _draw_profiler_window();
 	};
-}
+} // namespace mirrage

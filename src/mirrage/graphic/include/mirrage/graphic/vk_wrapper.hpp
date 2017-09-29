@@ -18,7 +18,7 @@
 namespace mirrage::asset {
 	class Asset_manager;
 	class AID;
-}
+} // namespace mirrage::asset
 
 namespace mirrage::graphic {
 
@@ -156,10 +156,10 @@ namespace mirrage::graphic {
 		Fence& operator=(Fence&&) = default;
 		~Fence()                  = default;
 
-		auto vk_fence() const { return *_fence; }
+		auto     vk_fence() const { return *_fence; }
 		explicit operator bool() const;
-		void reset();
-		void wait();
+		void     reset();
+		void     wait();
 
 	  private:
 		friend class Device;
@@ -194,7 +194,7 @@ namespace mirrage::graphic {
 		  , _queues(max_frames,
 		            [&] {
 			            return Entry{create_fence(_device), factory()};
-			        })
+		            })
 		  , _callback(callback) {}
 		~Per_frame_queue() { clear(); }
 
@@ -223,8 +223,9 @@ namespace mirrage::graphic {
 
 			while(!_queues.advance_head()) { // no free slot
 				if(_warn_on_full)
-					DEBUG("Delete_queue is full. Increase max_frames or "
-					      "reduce amount of frames in flight.");
+					MIRRAGE_DEBUG(
+					        "Delete_queue is full. Increase max_frames or "
+					        "reduce amount of frames in flight.");
 
 				_queues.pop([&](auto& e) {
 					e.fence.wait();
@@ -328,4 +329,4 @@ namespace mirrage::graphic {
 	                          vk::ImageLayout             final_layout,
 	                          std::uint32_t               initial_mip_level = 0,
 	                          std::uint32_t               mip_levels        = 0);
-}
+} // namespace mirrage::graphic

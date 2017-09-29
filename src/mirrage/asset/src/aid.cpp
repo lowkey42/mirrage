@@ -20,5 +20,5 @@ namespace mirrage::asset {
 	bool AID::operator==(const AID& o) const noexcept { return _type == o._type && _name == o._name; }
 	bool AID::operator!=(const AID& o) const noexcept { return !(*this == o); }
 	bool AID::operator<(const AID& o) const noexcept { return _type < o._type || _name < o._name; }
-	AID::operator bool() const noexcept { return !_name.empty(); }
-}
+	AID::     operator bool() const noexcept { return !_name.empty(); }
+} // namespace mirrage::asset

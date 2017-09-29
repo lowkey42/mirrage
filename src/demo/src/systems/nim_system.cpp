@@ -116,7 +116,7 @@ namespace mirrage::systems {
 	namespace {
 		template <class T>
 		auto catmull_rom(float t, const std::vector<T>& points, bool closed) -> T {
-			INVARIANT(!points.empty(), "Can't interpolate between zero points!");
+			MIRRAGE_INVARIANT(!points.empty(), "Can't interpolate between zero points!");
 
 			// calc points
 			auto P1_idx = static_cast<int>(std::floor(t));

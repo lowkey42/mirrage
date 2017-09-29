@@ -90,4 +90,4 @@ namespace mirrage::renderer {
 
 		return color;
 	}
-}
+} // namespace mirrage::renderer

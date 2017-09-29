@@ -18,7 +18,7 @@ namespace mirrage::graphic {
 	            [&](char* dest) {
 		            write_vertices(dest);
 		            write_indices(dest + vertex_count);
-		        }))
+	            }))
 	  , _index_offset(vertex_count)
 	  , _indices(index_count / sizeof(std::uint32_t)) {}
 
@@ -26,4 +26,4 @@ namespace mirrage::graphic {
 		cb.bindVertexBuffers(vertex_binding, {_buffer.buffer()}, {0});
 		cb.bindIndexBuffer(_buffer.buffer(), _index_offset, vk::IndexType::eUint32);
 	}
-}
+} // namespace mirrage::graphic

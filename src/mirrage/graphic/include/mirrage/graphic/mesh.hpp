@@ -60,4 +60,4 @@ namespace mirrage::graphic {
 		vk::DeviceSize _index_offset;
 		std::size_t    _indices = 0;
 	};
-}
+} // namespace mirrage::graphic

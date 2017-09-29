@@ -87,7 +87,7 @@ namespace mirrage::ecs {
 		std::vector<Entity_handle> _local_queue_erase;
 
 		std::vector<std::unique_ptr<Component_container_base>> _components;
-		std::unordered_map<std::string, Component_type> _components_by_name;
+		std::unordered_map<std::string, Component_type>        _components_by_name;
 	};
 
 
@@ -112,9 +112,9 @@ namespace mirrage::ecs {
 			return i;
 		}
 		reference operator*() noexcept { return _handle; }
-		pointer operator->() noexcept { return &_handle; }
-		bool operator==(const Entity_iterator& rhs) const noexcept { return _handle == rhs._handle; }
-		bool operator!=(const Entity_iterator& rhs) noexcept { return !(*this == rhs); }
+		pointer   operator->() noexcept { return &_handle; }
+		bool      operator==(const Entity_iterator& rhs) const noexcept { return _handle == rhs._handle; }
+		bool      operator!=(const Entity_iterator& rhs) noexcept { return !(*this == rhs); }
 
 	  private:
 		const Entity_handle_generator& _gen;
@@ -131,13 +131,14 @@ namespace mirrage::ecs {
 		Entity_iterator end() const;
 
 		void emplace_back(Entity_handle h) {
-			INVARIANT(_manager.validate(h), "invalid entity in Entity_collection_facet.emplace_back()");
+			MIRRAGE_INVARIANT(_manager.validate(h),
+			                  "invalid entity in Entity_collection_facet.emplace_back()");
 		}
 		void clear();
 
 	  private:
 		Entity_manager& _manager;
 	};
-}
+} // namespace mirrage::ecs
 
 #include "ecs.hxx"

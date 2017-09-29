@@ -483,8 +483,8 @@ namespace mirrage::renderer {
 			        vk::FormatFeatureFlagBits::eColorAttachment
 			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 
-			INVARIANT(format.is_some(),
-			          "No Float R16G16 format supported (required for BRDF preintegration)!");
+			MIRRAGE_INVARIANT(format.is_some(),
+			                  "No Float R16G16 format supported (required for BRDF preintegration)!");
 
 			return format.get_or_throw();
 		}
@@ -494,7 +494,7 @@ namespace mirrage::renderer {
 			        vk::FormatFeatureFlagBits::eColorAttachment
 			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 
-			INVARIANT(format.is_some(), "No Float R8 format supported!");
+			MIRRAGE_INVARIANT(format.is_some(), "No Float R8 format supported!");
 
 			return format.get_or_throw();
 		}
@@ -692,7 +692,7 @@ namespace mirrage::renderer {
 		auto skip_reprojection = _first_frame || movement > 4.f;
 
 		if(skip_reprojection) {
-			DEBUG("Teleport detected");
+			MIRRAGE_DEBUG("Teleport detected");
 
 			graphic::clear_texture(command_buffer,
 			                       _gi_diffuse,
@@ -763,9 +763,9 @@ namespace mirrage::renderer {
 
 			auto pcs         = Gi_constants{};
 			pcs.reprojection = _prev_view * glm::inverse(_renderer.global_uniforms().view_mat);
-			INVARIANT(pcs.reprojection[0][3] == 0 && pcs.reprojection[1][3] == 0
-			                  && pcs.reprojection[2][3] == 0 && pcs.reprojection[3][3] == 1,
-			          "m[0][3]!=0 or m[1][3]!=0 or m[2][3]!=0 or m[3][3]!=1");
+			MIRRAGE_INVARIANT(pcs.reprojection[0][3] == 0 && pcs.reprojection[1][3] == 0
+			                          && pcs.reprojection[2][3] == 0 && pcs.reprojection[3][3] == 1,
+			                  "m[0][3]!=0 or m[1][3]!=0 or m[2][3]!=0 or m[3][3]!=1");
 
 			pcs.reprojection[0][3] = -2.f / _prev_proj[0][0];
 			pcs.reprojection[1][3] = -2.f / _prev_proj[1][1];
@@ -773,9 +773,9 @@ namespace mirrage::renderer {
 			pcs.reprojection[3][3] = (1.f + _prev_proj[1][2]) / _prev_proj[1][1];
 
 			pcs.prev_projection = _prev_proj;
-			INVARIANT(pcs.prev_projection[0][3] == 0 && pcs.prev_projection[1][3] == 0
-			                  && pcs.prev_projection[3][3] == 0,
-			          "m[0][3]!=0 or m[1][3]!=0 or m[3][3]!=0");
+			MIRRAGE_INVARIANT(pcs.prev_projection[0][3] == 0 && pcs.prev_projection[1][3] == 0
+			                          && pcs.prev_projection[3][3] == 0,
+			                  "m[0][3]!=0 or m[1][3]!=0 or m[3][3]!=0");
 
 			pcs.prev_projection[0][3] = _min_mip_level;
 			pcs.prev_projection[1][3] = _max_mip_level - 1;

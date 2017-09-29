@@ -20,12 +20,12 @@ namespace mirrage {
 				auto m = "Could not initialize " + name + ": " + get_sdl_error();
 
 				if(required)
-					FAIL(m);
+					MIRRAGE_FAIL(m);
 				else
-					WARN(m);
+					MIRRAGE_WARN(m);
 			}
 		}
-	}
+	} // namespace
 
 	using namespace util::unit_literals;
 
@@ -55,7 +55,7 @@ namespace mirrage {
 	}
 
 	Engine::Sdl_wrapper::Sdl_wrapper() {
-		INVARIANT(SDL_Init(0) == 0, "Could not initialize SDL: " << get_sdl_error());
+		MIRRAGE_INVARIANT(SDL_Init(0) == 0, "Could not initialize SDL: " << get_sdl_error());
 
 		init_sub_system(SDL_INIT_VIDEO, "SDL_Video");
 		init_sub_system(SDL_INIT_JOYSTICK, "SDL_Joystick");
@@ -132,7 +132,7 @@ namespace mirrage {
 			history[i] = curr;
 			return curr;
 		}
-	}
+	} // namespace
 
 	void Engine::on_frame() {
 		_last_time               = _current_time;
@@ -156,4 +156,4 @@ namespace mirrage {
 
 		_screens.do_queued_actions();
 	}
-}
+} // namespace mirrage

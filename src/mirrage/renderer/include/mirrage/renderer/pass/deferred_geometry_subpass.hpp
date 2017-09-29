@@ -7,7 +7,7 @@
 namespace mirrage::graphic {
 	struct Pipeline_description;
 	class Subpass_builder;
-}
+} // namespace mirrage::graphic
 
 namespace mirrage::renderer {
 
@@ -26,4 +26,4 @@ namespace mirrage::renderer {
 		Deferred_renderer& _renderer;
 		Model_comp::Pool&  _models;
 	};
-}
+} // namespace mirrage::renderer

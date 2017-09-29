@@ -40,4 +40,4 @@ namespace mirrage::renderer {
 			_load(model);
 		}
 	}
-}
+} // namespace mirrage::renderer

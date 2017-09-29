@@ -30,7 +30,7 @@ namespace mirrage::renderer {
 
 			return device.create_descriptor_set_layout(bindings);
 		}
-	}
+	} // namespace
 
 	Deferred_lighting_subpass::Deferred_lighting_subpass(Deferred_renderer&   renderer,
 	                                                     ecs::Entity_manager& entities,
@@ -45,7 +45,7 @@ namespace mirrage::renderer {
 
 		auto& gbuffer    = renderer.gbuffer();
 		auto  depth_info = vk::DescriptorImageInfo(
-		        vk::Sampler{}, gbuffer.depth.view(0), vk::ImageLayout::eShaderReadOnlyOptimal);
+                vk::Sampler{}, gbuffer.depth.view(0), vk::ImageLayout::eShaderReadOnlyOptimal);
 		auto albedo_mat_id_info = vk::DescriptorImageInfo(
 		        vk::Sampler{}, gbuffer.albedo_mat_id.view(0), vk::ImageLayout::eShaderReadOnlyOptimal);
 		auto mat_data_info = vk::DescriptorImageInfo(
@@ -53,7 +53,7 @@ namespace mirrage::renderer {
 
 		auto desc_writes = std::array<vk::WriteDescriptorSet, num_input_attachments>();
 		desc_writes[0]   = vk::WriteDescriptorSet{
-		        *_input_attachment_descriptor_set, 0, 0, 1, vk::DescriptorType::eInputAttachment, &depth_info};
+                *_input_attachment_descriptor_set, 0, 0, 1, vk::DescriptorType::eInputAttachment, &depth_info};
 		desc_writes[1] = vk::WriteDescriptorSet{*_input_attachment_descriptor_set,
 		                                        1,
 		                                        0,
@@ -126,4 +126,4 @@ namespace mirrage::renderer {
 			command_buffer.draw(3, 1, 0, 0);
 		}
 	}
-}
+} // namespace mirrage::renderer

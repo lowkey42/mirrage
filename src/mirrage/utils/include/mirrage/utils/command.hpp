@@ -61,4 +61,4 @@ namespace mirrage::util {
 		std::vector<std::unique_ptr<Command>> _commands;
 		std::size_t                           _history_size = 0;
 	};
-}
+} // namespace mirrage::util

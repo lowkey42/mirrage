@@ -30,7 +30,7 @@ namespace mirrage::util {
 		  private:
 			std::atomic<T> _val;
 		};
-	}
+	} // namespace detail
 
 
 	/**
@@ -48,4 +48,4 @@ namespace mirrage::util {
 	const std::atomic<T>& at(const vector_atomic<T>& v, std::size_t i) {
 		return v.at(i).get();
 	}
-}
+} // namespace mirrage::util

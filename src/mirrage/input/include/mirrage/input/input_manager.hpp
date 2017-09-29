@@ -120,4 +120,4 @@ namespace mirrage::input {
 
 		std::unique_ptr<Input_mapper> _mapper;
 	};
-}
+} // namespace mirrage::input

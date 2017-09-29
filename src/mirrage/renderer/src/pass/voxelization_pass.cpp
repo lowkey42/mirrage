@@ -41,7 +41,7 @@ namespace mirrage::renderer {
 			pipeline.rasterization.depthClampEnable = true;
 			pipeline.multisample                    = vk::PipelineMultisampleStateCreateInfo{};
 			pipeline.color_blending                 = vk::PipelineColorBlendStateCreateInfo{
-			        vk::PipelineColorBlendStateCreateFlags{}, true, vk::LogicOp::eXor};
+                    vk::PipelineColorBlendStateCreateFlags{}, true, vk::LogicOp::eXor};
 			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
@@ -99,7 +99,7 @@ namespace mirrage::renderer {
 
 			return format.get_or_throw("No RGB32UInt format support on the device!");
 		}
-	}
+	} // namespace
 
 
 	Voxelization_pass::Voxelization_pass(Deferred_renderer& renderer, ecs::Entity_manager& entities)
@@ -119,8 +119,8 @@ namespace mirrage::renderer {
 	  , _render_pass(build_render_pass(renderer, _data_format, _voxel_data, _framebuffer))
 	  , _shadowcasters(entities.list<Shadowcaster_comp>()) {
 
-		INVARIANT(renderer.gbuffer().voxels.is_nothing(),
-		          "More than one voxelization implementation active!");
+		MIRRAGE_INVARIANT(renderer.gbuffer().voxels.is_nothing(),
+		                  "More than one voxelization implementation active!");
 		renderer.gbuffer().voxels = _voxel_data;
 	}
 
@@ -170,4 +170,4 @@ namespace mirrage::renderer {
 	void Voxelization_pass_factory::configure_device(vk::PhysicalDevice,
 	                                                 util::maybe<std::uint32_t>,
 	                                                 graphic::Device_create_info&) {}
-}
+} // namespace mirrage::renderer

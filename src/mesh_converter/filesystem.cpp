@@ -18,8 +18,8 @@ namespace mirrage {
 		CreateDirectory(dir.c_str(), NULL);
 #else
 		auto status = mkdir(dir.c_str(), 0755);
-		INVARIANT(status == 0 || errno == EEXIST,
-		          "Couldn't create directory \"" << dir << "\": " << int(errno));
+		MIRRAGE_INVARIANT(status == 0 || errno == EEXIST,
+		                  "Couldn't create directory \"" << dir << "\": " << int(errno));
 #endif
 	}
-}
+} // namespace mirrage

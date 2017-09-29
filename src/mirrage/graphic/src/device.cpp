@@ -26,11 +26,11 @@ namespace mirrage::graphic {
 				}
 			}
 
-			DEBUG("No pipeline cache found for device, creating new one: dev_" + dev_str);
+			MIRRAGE_DEBUG("No pipeline cache found for device, creating new one: dev_" + dev_str);
 
 			if(caches.size() >= max_pipeline_cache_count) {
-				DEBUG("More than " << max_pipeline_cache_count
-				                   << " pipeline cahces. Deleting oldest caches.");
+				MIRRAGE_DEBUG("More than " << max_pipeline_cache_count
+				                           << " pipeline cahces. Deleting oldest caches.");
 
 				std::sort(std::begin(caches), std::end(caches), [&](auto& lhs, auto& rhs) {
 					return assets.last_modified(lhs).get_or_other(-1)
@@ -40,7 +40,7 @@ namespace mirrage::graphic {
 				std::for_each(
 				        std::begin(caches) + max_pipeline_cache_count - 1, std::end(caches), [&](auto& aid) {
 					        if(!assets.try_delete(aid)) {
-						        WARN("Unable to delete outdated pipeline cache: " + aid.str());
+						        MIRRAGE_WARN("Unable to delete outdated pipeline cache: " + aid.str());
 					        }
 				        });
 			}
@@ -93,7 +93,8 @@ namespace mirrage::graphic {
 	}
 
 	void Swapchain::_create_image_views() {
-		DEBUG("Created swapchain with " << _images.size() << " images (min=" << _info.minImageCount << ")");
+		MIRRAGE_DEBUG("Created swapchain with " << _images.size() << " images (min=" << _info.minImageCount
+		                                        << ")");
 
 		_image_views.clear();
 		_image_views.reserve(_images.size());
@@ -123,8 +124,8 @@ namespace mirrage::graphic {
 			_device.waitIdle();
 
 			auto capabilities = _gpu.getSurfaceCapabilitiesKHR(_window.surface());
-			DEBUG("Extends: " << capabilities.currentExtent.width << ", "
-			                  << capabilities.currentExtent.height);
+			MIRRAGE_DEBUG("Extends: " << capabilities.currentExtent.width << ", "
+			                          << capabilities.currentExtent.height);
 
 			_image_width  = _window.width();
 			_image_height = _window.height();
@@ -138,7 +139,7 @@ namespace mirrage::graphic {
 
 			_create_image_views();
 
-			INFO("Swapchain recreated");
+			MIRRAGE_INFO("Swapchain recreated");
 
 			return true;
 		}
@@ -276,13 +277,15 @@ namespace mirrage::graphic {
 
 	auto Device::get_queue(Queue_tag tag) -> vk::Queue {
 		auto real_familiy = _queue_family_mappings.find(tag);
-		INVARIANT(real_familiy != _queue_family_mappings.end(), "Unknown queue family tag: " << tag.str());
+		MIRRAGE_INVARIANT(real_familiy != _queue_family_mappings.end(),
+		                  "Unknown queue family tag: " << tag.str());
 
 		return _device->getQueue(std::get<0>(real_familiy->second), std::get<1>(real_familiy->second));
 	}
 	auto Device::get_queue_family(Queue_tag tag) -> std::uint32_t {
 		auto real_familiy = _queue_family_mappings.find(tag);
-		INVARIANT(real_familiy != _queue_family_mappings.end(), "Unknown queue family tag: " << tag.str());
+		MIRRAGE_INVARIANT(real_familiy != _queue_family_mappings.end(),
+		                  "Unknown queue family tag: " << tag.str());
 
 		return std::get<0>(real_familiy->second);
 	}
@@ -393,8 +396,8 @@ namespace mirrage::graphic {
 	auto Device::create_command_buffer_pool(Queue_tag queue_family, bool resetable, bool short_lived)
 	        -> Command_buffer_pool {
 		auto real_familiy = _queue_family_mappings.find(queue_family);
-		INVARIANT(real_familiy != _queue_family_mappings.end(),
-		          "Unknown queue family tag: " << queue_family.str());
+		MIRRAGE_INVARIANT(real_familiy != _queue_family_mappings.end(),
+		                  "Unknown queue family tag: " << queue_family.str());
 
 		auto flags = vk::CommandPoolCreateFlags{};
 		if(resetable)
@@ -445,7 +448,7 @@ namespace mirrage::graphic {
 					case Format_usage::image_linear: return props.linearTilingFeatures;
 					case Format_usage::image_optimal: return props.optimalTilingFeatures;
 				}
-				FAIL("Unreachable");
+				MIRRAGE_FAIL("Unreachable");
 			}();
 
 			if((features & flags) == flags) {

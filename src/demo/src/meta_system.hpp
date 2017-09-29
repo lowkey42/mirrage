@@ -37,4 +37,4 @@ namespace mirrage {
 		std::unique_ptr<renderer::Loading_system>    _model_loading;
 		std::unique_ptr<systems::Nim_system>         _nims;
 	};
-}
+} // namespace mirrage

@@ -41,7 +41,7 @@ namespace mirrage::util {
 
 			return file;
 		}
-	}
+	} // namespace
 
 	struct fail_exception {};
 
@@ -109,4 +109,4 @@ namespace mirrage::util {
 		}
 	}
 	void log_target::on_end() {}
-}
+} // namespace mirrage::util

@@ -90,7 +90,7 @@ namespace mirrage::graphic {
 		if(!_active || _full)
 			return;
 
-		INVARIANT(_current_stack.empty(), "Profiler::start can not be nested!");
+		MIRRAGE_INVARIANT(_current_stack.empty(), "Profiler::start can not be nested!");
 
 		cb.resetQueryPool(*_query_pools.head().pool, 0, _query_ids);
 		std::fill(_query_used.begin(), _query_used.end(), false);
@@ -106,7 +106,7 @@ namespace mirrage::graphic {
 	}
 	void Profiler::end() {
 		if(_active && !_full) {
-			INVARIANT(_current_stack.size() == 1, "Unbalanced profiler stack!");
+			MIRRAGE_INVARIANT(_current_stack.size() == 1, "Unbalanced profiler stack!");
 			auto& cb = _current_command_buffer.get_or_throw(
 			        "No active command buffer! Has Profiler::start been called?");
 
@@ -117,7 +117,7 @@ namespace mirrage::graphic {
 			_query_used[_last_results.query_id_end()] = true;
 
 			_current_stack.pop_back();
-			INVARIANT(_current_stack.empty(), "Unbalanced calls to Profiler::push!");
+			MIRRAGE_INVARIANT(_current_stack.empty(), "Unbalanced calls to Profiler::push!");
 
 			// request timestamps for all unused queryIds
 			for(auto i = 0u; i < _next_query_id; i++) {
@@ -152,7 +152,7 @@ namespace mirrage::graphic {
 		if(_active || _full) {
 			_full = !_query_pools.advance_head();
 			if(_full) {
-				INFO("full");
+				MIRRAGE_INFO("full");
 			}
 		}
 
@@ -174,7 +174,7 @@ namespace mirrage::graphic {
 		if(!_active || _full)
 			return {};
 
-		INVARIANT(!_current_stack.empty(), "Profiler::push called without calling start first!");
+		MIRRAGE_INVARIANT(!_current_stack.empty(), "Profiler::push called without calling start first!");
 		auto& cb = _current_command_buffer.get_or_throw(
 		        "No active command buffer! Has Profiler::start been called?");
 
@@ -189,7 +189,7 @@ namespace mirrage::graphic {
 	}
 
 	void Profiler::_pop() {
-		INVARIANT(_current_stack.size() > 1, "Profiler::_pop called without calling push first!");
+		MIRRAGE_INVARIANT(_current_stack.size() > 1, "Profiler::_pop called without calling push first!");
 		auto& cb = _current_command_buffer.get_or_throw(
 		        "No active command buffer! Has Profiler::start been called?");
 
@@ -203,13 +203,11 @@ namespace mirrage::graphic {
 	}
 
 	auto Profiler::_generate_query_id() -> std::uint32_t {
-		INVARIANT(_next_query_id < _query_ids,
-		          "More Profiler::push calls than supported!"
-		          "Requested "
-		                  << (_next_query_id + 1)
-		                  << ", supported "
-		                  << _query_ids);
+		MIRRAGE_INVARIANT(_next_query_id < _query_ids,
+		                  "More Profiler::push calls than supported!"
+		                  "Requested "
+		                          << (_next_query_id + 1) << ", supported " << _query_ids);
 
 		return _next_query_id++;
 	}
-}
+} // namespace mirrage::graphic

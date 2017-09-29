@@ -11,7 +11,7 @@ namespace mirrage::gui {
 	}
 
 	void Text_edit::reset(const std::string& str) {
-		INVARIANT(_data.is_some(), "Text_edit is in moved-from state!");
+		MIRRAGE_INVARIANT(_data.is_some(), "Text_edit is in moved-from state!");
 
 		nk_textedit_free(&_data.get_or_throw());
 		nk_textedit_init_default(&_data.get_or_throw());
@@ -19,7 +19,7 @@ namespace mirrage::gui {
 	}
 
 	void Text_edit::get(std::string& str) const {
-		INVARIANT(_data.is_some(), "Text_edit is in moved-from state!");
+		MIRRAGE_INVARIANT(_data.is_some(), "Text_edit is in moved-from state!");
 
 		auto& cstr = _data.get_or_throw().string;
 
@@ -33,10 +33,10 @@ namespace mirrage::gui {
 	}
 
 	void Text_edit::update_and_draw(nk_context* ctx, nk_flags type) {
-		INVARIANT(_data.is_some(), "Text_edit is in moved-from state!");
+		MIRRAGE_INVARIANT(_data.is_some(), "Text_edit is in moved-from state!");
 
 		auto ev = nk_edit_buffer(ctx, type, &_data.get_or_throw(), nk_filter_default);
 
 		_active = (ev & NK_EDIT_INACTIVE) != NK_EDIT_INACTIVE;
 	}
-}
+} // namespace mirrage::gui

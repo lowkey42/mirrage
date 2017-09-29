@@ -223,8 +223,8 @@ namespace mirrage::gui {
 			auto size = info.allocated;
 			if(size % 4 != 0) {
 				auto align_diff = (4 - size % 4);
-				INVARIANT(align_diff + info.allocated <= info.size,
-				          "Can't align buffer: " << info.allocated << " / " << info.size);
+				MIRRAGE_INVARIANT(align_diff + info.allocated <= info.size,
+				                  "Can't align buffer: " << info.allocated << " / " << info.size);
 
 				size += align_diff;
 			}
@@ -232,7 +232,7 @@ namespace mirrage::gui {
 			return gsl::span<const T>(reinterpret_cast<const T*>(nk_buffer_memory_const(&src)),
 			                          size / sizeof(T));
 		}
-	}
+	} // namespace
 
 	namespace detail {
 		struct Nk_renderer {
@@ -305,7 +305,7 @@ namespace mirrage::gui {
 				nk_clear(&ctx);
 			}
 		};
-	}
+	} // namespace detail
 
 	namespace {
 		struct Wnk_font_atlas {
@@ -324,11 +324,11 @@ namespace mirrage::gui {
 						if(stream.is_some()) {
 							auto data = stream.get_or_throw().bytes();
 							auto f    = nk_font_atlas_add_from_memory(
-							        &atlas, data.data(), data.size(), font.size, nullptr);
+                                    &atlas, data.data(), data.size(), font.size, nullptr);
 							if(font.default_font) {
 								atlas.default_font = f;
 							}
-							DEBUG("Loaded font \"" << font.aid << "\" in fontsize " << font.size);
+							MIRRAGE_DEBUG("Loaded font \"" << font.aid << "\" in fontsize " << font.size);
 						}
 					}
 				});
@@ -373,7 +373,7 @@ namespace mirrage::gui {
 
 			return m * glm::translate(glm::mat4(1.f), glm::vec3(-size.x / 2, -size.y / 2, 0));
 		}
-	}
+	} // namespace
 
 	struct Gui::PImpl {
 		glm::vec4                        viewport;
@@ -414,7 +414,7 @@ namespace mirrage::gui {
 			screen_size = normalize_screen_size(static_cast<int>(viewport.z - viewport.x),
 			                                    static_cast<int>(viewport.w - viewport.y),
 			                                    720);
-			ui_matrix = build_ui_mat(screen_size);
+			ui_matrix   = build_ui_mat(screen_size);
 		}
 	};
 
@@ -443,7 +443,7 @@ namespace mirrage::gui {
 			_last_renderer->_gui = this;
 
 		} else {
-			WARN("Gui initialized without a valid renderer. Nothing will be drawn!");
+			MIRRAGE_WARN("Gui initialized without a valid renderer. Nothing will be drawn!");
 		}
 	}
 
@@ -464,7 +464,7 @@ namespace mirrage::gui {
 		}
 
 		if(!_impl) {
-			INFO("no impl");
+			MIRRAGE_INFO("no impl");
 			return;
 		}
 
@@ -478,7 +478,7 @@ namespace mirrage::gui {
 			_init();
 		}
 
-		INVARIANT(_impl, "Not initialized when nk_context was requested!");
+		MIRRAGE_INVARIANT(_impl, "Not initialized when nk_context was requested!");
 
 		return &_impl->ctx.ctx;
 	}
@@ -494,4 +494,4 @@ namespace mirrage::gui {
 		return nk_rect(
 		        _impl->screen_size.x - width, _impl->screen_size.y / 2.f - height / 2.f, width, height);
 	}
-}
+} // namespace mirrage::gui

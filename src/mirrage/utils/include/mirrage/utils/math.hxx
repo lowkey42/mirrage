@@ -10,7 +10,7 @@ namespace mirrage::util {
 		constexpr int32_t magic_prime       = 1'299'827;
 		constexpr auto    max_seed          = 1024;
 		constexpr auto    max_seed_real     = 1024.f;
-	}
+	} // namespace
 
 	template <typename T>
 	Interpolation<T>::Interpolation(
@@ -66,4 +66,4 @@ namespace mirrage::util {
 	auto scerp(T value, T max_deviation) -> Interpolation<T> {
 		return {value, value, Interpolation_type::linear, max_deviation, {}};
 	}
-}
+} // namespace mirrage::util
