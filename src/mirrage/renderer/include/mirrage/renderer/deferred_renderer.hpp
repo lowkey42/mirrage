@@ -27,7 +27,7 @@ namespace mirrage::renderer {
 
 
 	struct Renderer_settings {
-		int shadowmap_resolution = 4096;
+		int shadowmap_resolution = 2048;
 		int shadow_quality       = 99; // 0 = lowest
 
 		bool  gi                         = true;

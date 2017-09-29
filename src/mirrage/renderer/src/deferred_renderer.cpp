@@ -227,7 +227,9 @@ namespace mirrage::renderer {
 
 		auto maybe_settings = context.asset_manager().load_maybe<Renderer_settings>("cfg:renderer"_aid);
 		if(maybe_settings.is_nothing()) {
-			settings({});
+			_settings = std::make_shared<Renderer_settings>();
+			save_settings();
+
 		} else {
 			_settings = maybe_settings.get_or_throw();
 		}
