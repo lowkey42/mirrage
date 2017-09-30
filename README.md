@@ -38,13 +38,13 @@ Included in this repository:
 
 
 ### Build from Source
-- git clone FOO
-- mkdir FOO_build
-- cd FOO_build
-- cmake ../FOO
+- git clone https://github.com/lowkey42/mirrage.git
+- mkdir mirrage_build
+- cd mirrage_build
+- cmake ../mirrage
 - cmake --build .
 
-The active features of the project can be modified by setting the following CMake-Properties (-DPROP=ON/OFF):
+The project can be further configured by setting the following CMake-Properties (-DPROP=ON/OFF):
 - MIRRAGE_BUILD_MESH_CONVERTER: Also build the mesh converter that can be used to converter models into the engine specific data format (Default: OFF)
 - MIRRAGE_ENABLE_CLANG_FORMAT: Includes an additional clangformat target, that can be used to automatically format all source files in the project
 - MIRRAGE_ENABLE_LTO: Activates link time optimizations on gcc/clang (Default: OFF)
