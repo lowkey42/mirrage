@@ -24,8 +24,8 @@ target_link_libraries(demo
 		mirrage::renderer
 )
 
-option(CompileShaders "Compile demo shaders" ON)
-if(CompileShaders)
+option(MIRRAGE_COMPILE_SHADERS "Compile demo shaders" OFF)
+if(MIRRAGE_COMPILE_SHADERS)
 	include(shaders.cmake)
 	add_dependencies(demo demo_shaders)
 endif()
