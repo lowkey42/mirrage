@@ -44,6 +44,8 @@ Included in this repository:
 - cmake ../mirrage
 - cmake --build .
 
+In order to execute the compiled demo application, the src/demo/demo binary has be be executed from the working directory assets (the folder containing the archives.lst) and this folder has to contain the required models (Sponza and Conrnell-Box) in its extensions sub-directory. This assets can be downloaded from the latetest release.
+
 The project can be further configured by setting the following CMake-Properties (-DPROP=ON/OFF):
 - MIRRAGE_BUILD_MESH_CONVERTER: Also build the mesh converter that can be used to converter models into the engine specific data format (Default: OFF)
 - MIRRAGE_ENABLE_CLANG_FORMAT: Includes an additional clangformat target, that can be used to automatically format all source files in the project
