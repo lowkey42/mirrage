@@ -3,7 +3,7 @@ set_target_properties(SDL_vulkan PROPERTIES
   VERSION ${VERSION_MAJOR})
 target_link_libraries(SDL_vulkan
   ${SDL2_LIBRARIES}
-  ${VULKAN_LIBRARY}
+  Vulkan::Vulkan
   ${X11_XCB_LIBRARIES})
 
 target_include_directories(SDL_vulkan INTERFACE
