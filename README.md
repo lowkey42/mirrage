@@ -6,7 +6,7 @@ Mirrage (Mirrage Indirect Radiance Renderer And Game Engine) is a Vulkan based d
 
 
 ### Demo
-<a href="http://www.youtube.com/watch?feature=player_embedded&v=e1NXM5U4Rig" target="_blank"><img src="screenshots/video_thumbnail.jpeg" alt="Demo Video" width="240" height="180" border="10" /></a>
+<a href="http://www.youtube.com/watch?feature=player_embedded&v=e1NXM5U4Rig" target="_blank"><img src="screenshots/video_thumbnail.jpeg" alt="Demo Video" height="180" border="10" /></a>
 
 |------------------|------------------|
 | ![](screenshots/top_down.jpeg) | ![](screenshots/hallway_1.jpeg) |
