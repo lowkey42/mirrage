@@ -76,7 +76,7 @@ namespace sf2 {
 				enum { value = sizeof(test<T>(0)) == sizeof(char) };
 		};
 		template<class T>
-		void call_post_load(T& inst, typename std::enable_if_t<!has_post_load<T>::value>* = nullptr) {
+		void call_post_load(T&, typename std::enable_if_t<!has_post_load<T>::value>* = nullptr) {
 		}
 		template<class T>
 		void call_post_load(T& inst, typename std::enable_if_t<has_post_load<T>::value>* = nullptr) {

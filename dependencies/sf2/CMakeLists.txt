@@ -31,13 +31,13 @@ if(SF2_BUILD_TESTS)
 	endif()
 
 
-	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -Wextra -Wall -pedantic -Werror")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wextra -Wall -pedantic")
 
 	add_executable(sf2_test_simple "tests/test_simple.cpp")
-	target_link_library(sf2_test_simple sf2)
+	target_link_libraries(sf2_test_simple PRIVATE sf2)
 	add_executable(sf2_test_advanced "tests/test_advanced.cpp")
-	target_link_library(sf2_test_advanced sf2)
+	target_link_libraries(sf2_test_advanced PRIVATE sf2)
 
-	add_test(NAME simple_usage   COMMAND test_simple)
-	add_test(NAME advanced_usage COMMAND test_advanced)
+	add_test(NAME simple_usage   COMMAND sf2_test_simple)
+	add_test(NAME advanced_usage COMMAND sf2_test_advanced)
 endif()
