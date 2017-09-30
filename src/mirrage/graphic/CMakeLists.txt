@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
 project(mirrage_graphic LANGUAGES CXX)
 
+find_package(Vulkan REQUIRED)
+
 find_package(SDL2 REQUIRED)
 add_library(sdl2::sdl2 INTERFACE IMPORTED)
 set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_LINK_LIBRARIES ${SDL2_LIBRARY})
@@ -49,7 +51,7 @@ target_link_libraries(mirrage_graphic
 		sf2
 		sdl2::sdl2
 		SDL_vulkan
-		vulkan
+		Vulkan::Vulkan
 )
 
 

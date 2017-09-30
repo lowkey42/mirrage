@@ -21,7 +21,7 @@ target_compile_options(demo PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_link_libraries(demo
 	PRIVATE
 		mirrage::mirrage
-                mirrage::renderer
+		mirrage::renderer
 )
 
 option(CompileShaders "Compile demo shaders" ON)

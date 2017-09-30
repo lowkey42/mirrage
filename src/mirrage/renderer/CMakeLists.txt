@@ -53,7 +53,6 @@ target_link_libraries(mirrage_renderer
 		glm
 		gsl
 		sf2
-		vulkan
 )
 
 
