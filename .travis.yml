@@ -1,0 +1,19 @@
+sudo: required
+language: cpp
+compiler:
+  - gcc
+  - clang
+
+env:
+  - ANALYZE=false
+  - ANALYZE=true
+
+services:
+  - docker
+  
+before_install:
+  - docker pull lowkey42/build-env:latest
+  - docker run -e "CXX=$CXX" -e "CC=$CC" -v $TRAVIS_BUILD_DIR:/repo -itd --name build lowkey42/build-env
+
+script:
+  - source $TRAVIS_BUILD_DIR/.travis.sh
