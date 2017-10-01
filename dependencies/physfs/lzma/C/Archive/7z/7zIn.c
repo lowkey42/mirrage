@@ -1123,7 +1123,7 @@ SZ_RESULT SzReadAndDecodePackedStreams2(
 {
 
   UInt32 numUnPackStreams = 0;
-  CFileSize dataStartPos;
+  CFileSize dataStartPos = 0;
   CFolder *folder;
   #ifndef _LZMA_IN_CB
   CFileSize packSize = 0;

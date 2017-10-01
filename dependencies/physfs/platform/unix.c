@@ -171,17 +171,19 @@ static char *findBinaryInPath(const char *bin, char *envr)
             exe = x;
         } /* if */
 
-        /* build full binary path... */
-        strcpy(exe, start);
-        if ((exe[0] == '\0') || (exe[strlen(exe) - 1] != '/'))
-            strcat(exe, "/");
-        strcat(exe, bin);
+		if(exe) {
+		    /* build full binary path... */
+			strcpy(exe, start);
+			if ((exe[0] == '\0') || (exe[strlen(exe) - 1] != '/'))
+				strcat(exe, "/");
+			strcat(exe, bin);
 
-        if (access(exe, X_OK) == 0)  /* Exists as executable? We're done. */
-        {
-            strcpy(exe, start);  /* i'm lazy. piss off. */
-            return(exe);
-        } /* if */
+			if (access(exe, X_OK) == 0)  /* Exists as executable? We're done. */
+			{
+				strcpy(exe, start);  /* i'm lazy. piss off. */
+				return(exe);
+			} /* if */
+		}
 
         start = ptr + 1;  /* start points to beginning of next element. */
     } while (ptr != NULL);

@@ -350,6 +350,7 @@ int ZEXPORT deflateSetDictionary (strm, dictionary, dictLength)
         INSERT_STRING(s, n, hash_head);
     }
     if (hash_head) hash_head = 0;  /* to make compiler happy */
+	(void) hash_head;
     return Z_OK;
 }
 
