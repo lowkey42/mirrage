@@ -7,10 +7,11 @@ compiler:
 env:
   - ANALYZE=false
   - ANALYZE=true
+
 matrix:
   exclude:
-    - compiler: gcc
-      ANALYZE=true
+  - compiler: gcc
+    env: ANALYZE=true
 
 services:
   - docker
