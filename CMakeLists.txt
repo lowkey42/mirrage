@@ -20,9 +20,10 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL
 	endif()
 endif()
 
-if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang")
+option(MIRRAGE_FORCE_LIBCPP "Force usage of libc++ instead of libstdc++ intependent of the used compiler. " OFF)
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR MIRRAGE_FORCE_LIBCPP)
 	option(MIRRAGE_USE_LIBCPP "Uses libc++ instead of libstdc++. " ON)
-	if(MIRRAGE_USE_LIBCPP)
+	if(MIRRAGE_USE_LIBCPP OR MIRRAGE_FORCE_LIBCPP)
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++")
 		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -stdlib=libc++ -lc++abi")
 	endif()
