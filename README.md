@@ -1,6 +1,6 @@
 [![Mirrage logo](/logo.svg)]()
 
-[![Build Status](https://travis-ci.org/lowkey42/bachelor_project.svg?branch=develop)](https://travis-ci.org/lowkey42/bachelor_project)
+[![Build Status](https://travis-ci.org/lowkey42/mirrage.svg?branch=develop)](https://travis-ci.org/lowkey42/mirrage)
 
 ## Mirrage
 
