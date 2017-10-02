@@ -20,7 +20,9 @@ elseif(MSVC)
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS /Za)
 endif()
 
-add_subdirectory(demo)
+if(MIRRAGE_BUILD_DEMO)
+	add_subdirectory(demo)
+endif()
 
 if(MIRRAGE_BUILD_MESH_CONVERTER)
 	add_subdirectory(mesh_converter)

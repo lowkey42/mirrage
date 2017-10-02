@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 # required at top-level
-set(ROOT_DIR ${CMAKE_SOURCE_DIR})
+set(ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${ROOT_DIR}/modules")
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -32,15 +32,21 @@ endif()
 
 option(MIRRAGE_BUILD_MESH_CONVERTER "Build the mesh converter (requires assimp)" OFF)
 
+get_directory_property(hasParent PARENT_DIRECTORY)
+if(!hasParent)
+	option(MIRRAGE_BUILD_DEMO "Build the demo application" ON)
+
+	# custom target that does nothing but references all files so they show up in QtCreator
+	file(GLOB_RECURSE ALL_FILES
+			 RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
+			 ${CMAKE_CURRENT_SOURCE_DIR}/*.*)
+
+	add_custom_target(zz_all_project_files SOURCES ${ALL_FILES})
+	
+else()
+	option(MIRRAGE_BUILD_DEMO "Build the demo application" OFF)
+endif()
+
 add_subdirectory(dependencies)
 add_subdirectory(src)
-
-
-
-# custom target that does nothing but references all files so they show up in QtCreator
-file(GLOB_RECURSE ALL_FILES
-		 RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-		 ${CMAKE_CURRENT_SOURCE_DIR}/*.*)
-
-add_custom_target(zz_all_project_files SOURCES ${ALL_FILES})
 
