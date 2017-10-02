@@ -1,8 +1,5 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-execute_process(COMMAND git submodule update --init --recursive --remote
-	WORKING_DIRECTORY ${ROOT_DIR})
-
 if(MIRRAGE_BUILD_MESH_CONVERTER)
 	find_package(assimp 3.3.1)
 	if(NOT assimp_FOUND)

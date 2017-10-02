@@ -33,7 +33,7 @@ endif()
 option(MIRRAGE_BUILD_MESH_CONVERTER "Build the mesh converter (requires assimp)" OFF)
 
 get_directory_property(hasParent PARENT_DIRECTORY)
-if(!hasParent)
+if(NOT hasParent)
 	option(MIRRAGE_BUILD_DEMO "Build the demo application" ON)
 
 	# custom target that does nothing but references all files so they show up in QtCreator
@@ -42,7 +42,7 @@ if(!hasParent)
 			 ${CMAKE_CURRENT_SOURCE_DIR}/*.*)
 
 	add_custom_target(zz_all_project_files SOURCES ${ALL_FILES})
-	
+
 else()
 	option(MIRRAGE_BUILD_DEMO "Build the demo application" OFF)
 endif()

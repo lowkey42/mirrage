@@ -201,7 +201,7 @@ namespace mirrage::systems {
 				auto pos_diff         = glm::distance2(transform.position(), position);
 				auto orientation_diff = glm::abs(glm::dot(transform.orientation(), orientation) - 1);
 
-				if(pos_diff > 0.0001f || orientation_diff > 0.001f) {
+				if(pos_diff > 0.00001f || orientation_diff > 0.0001f) {
 					transform.orientation(orientation);
 					transform.position(position);
 				}
