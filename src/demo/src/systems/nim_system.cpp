@@ -8,6 +8,7 @@
 #include <mirrage/utils/math.hpp>
 #include <mirrage/utils/sf2_glm.hpp>
 
+#include <gsl/gsl>
 
 namespace mirrage::systems {
 
@@ -119,33 +120,35 @@ namespace mirrage::systems {
 			MIRRAGE_INVARIANT(!points.empty(), "Can't interpolate between zero points!");
 
 			// calc points
-			auto P1_idx = static_cast<int>(std::floor(t));
-			auto P0_idx = static_cast<int>(P1_idx - 1);
-			auto P2_idx = static_cast<int>(std::ceil(t));
-			auto P3_idx = static_cast<int>(P2_idx + 1);
+			auto P1_idx = gsl::narrow<int>(std::floor(t));
+			auto P0_idx = gsl::narrow<int>(P1_idx - 1);
+			auto P2_idx = gsl::narrow<int>(std::ceil(t));
+			auto P3_idx = gsl::narrow<int>(P2_idx + 1);
+
+			auto point_count = gsl::narrow<int>(points.size());
 
 			// clamp points
 			if(closed) {
 				if(P0_idx < 0) {
-					P0_idx = points.size() + P0_idx;
+					P0_idx = point_count + P0_idx;
 				}
-				P0_idx = P0_idx % points.size();
-				P1_idx = P1_idx % points.size();
-				P2_idx = P2_idx % points.size();
-				P3_idx = P3_idx % points.size();
+				P0_idx = P0_idx % point_count;
+				P1_idx = P1_idx % point_count;
+				P2_idx = P2_idx % point_count;
+				P3_idx = P3_idx % point_count;
 
 			} else {
-				P0_idx = util::min(P0_idx, points.size());
+				P0_idx = util::min(P0_idx, point_count);
 				P1_idx = P0_idx > 0 ? P0_idx - 1 : P0_idx;
-				P2_idx = util::min(P2_idx, points.size());
-				P3_idx = util::min(P3_idx, points.size());
+				P2_idx = util::min(P2_idx, point_count);
+				P3_idx = util::min(P3_idx, point_count);
 			}
 
 			// load points
-			auto P0 = points.at(P0_idx);
-			auto P1 = points.at(P1_idx);
-			auto P2 = points.at(P2_idx);
-			auto P3 = points.at(P3_idx);
+			auto P0 = points.at(gsl::narrow<std::size_t>(P0_idx));
+			auto P1 = points.at(gsl::narrow<std::size_t>(P1_idx));
+			auto P2 = points.at(gsl::narrow<std::size_t>(P2_idx));
+			auto P3 = points.at(gsl::narrow<std::size_t>(P3_idx));
 
 			// calc relativ t
 			auto rt  = std::fmod(t, 1.f);
@@ -167,7 +170,7 @@ namespace mirrage::systems {
 		        dt / _playing->frame_length(static_cast<int>(_current_position)) * _playback_speed;
 
 		if(_loop) {
-			_current_position = std::fmod(_current_position, _playing->frames());
+			_current_position = static_cast<float>(std::fmod(_current_position, _playing->frames()));
 		}
 
 		auto reached_end = _current_position >= _end_position && !_loop;
@@ -185,9 +188,9 @@ namespace mirrage::systems {
 				ecs::Entity_facet& entity    = iter->second;
 				auto&              transform = entity.get<ecs::components::Transform_comp>().get_or_throw();
 
-				auto idx_0 = static_cast<int>(std::floor(_current_position));
-				auto idx_1 =
-				        _loop ? (idx_0 + 1) % orientations.size() : util::min(idx_0 + 1, orientations.size());
+				auto idx_0 = static_cast<std::size_t>(std::floor(_current_position)) % orientations.size();
+				auto idx_1 = _loop ? gsl::narrow<std::size_t>(idx_0 + 1) % orientations.size()
+				                   : util::min(gsl::narrow<std::size_t>(idx_0 + 1), orientations.size());
 				auto t           = std::fmod(_current_position, 1.f);
 				auto orientation = glm::slerp(orientations[idx_0], orientations[idx_1], t);
 
