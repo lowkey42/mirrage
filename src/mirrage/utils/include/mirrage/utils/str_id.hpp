@@ -15,44 +15,55 @@
 
 namespace mirrage::util {
 
-	class Str_id {
-		static constexpr char step = 28;
+	namespace detail {
+		constexpr char str_id_step = 28;
 
-	  public:
-		static constexpr std::size_t max_length = 13;
+		constexpr std::size_t str_id_max_length = 13;
 
-	  public:
-		explicit Str_id(const std::string& str) : Str_id(str.c_str()) {}
-		explicit constexpr Str_id(const char* str = "") : _id(0) {
+		constexpr auto str_id_hash(const char* str) {
 			using namespace std::string_literals;
+
+			auto id = uint64_t(0);
 
 			for(std::size_t i = 0; str[i] != 0; ++i) {
 				if(str[i] == '_')
-					_id = (_id * step) + 1;
+					id = (id * str_id_step) + 1;
 				else if(str[i] >= 'a' && str[i] <= 'z')
-					_id = (_id * step) + (str[i] - 'a' + 2);
+					id = (id * str_id_step) + static_cast<uint64_t>(str[i] - 'a' + 2);
 				else
-					throw std::invalid_argument("Unexpected character '"s + str[i] + "' in string: " + str);
+					throw std::invalid_argument("Unexpected character '"s + str[i]
+					                            + "' in string: " + str);
 
-				if(i >= max_length) {
+				if(i >= str_id_max_length) {
 					throw std::invalid_argument("String is too long: "s + str);
 				}
 			}
+
+			return id;
 		}
+	} // namespace detail
+
+	class Str_id {
+	  public:
+		using int_type = uint64_t;
+
+		explicit Str_id(const std::string& str) : Str_id(str.c_str()) {}
+		explicit constexpr Str_id(const char* str = "") : _id(detail::str_id_hash(str)) {}
+		explicit constexpr Str_id(int_type id) : _id(id) {}
 
 		auto str() const -> std::string {
 			std::string r;
 
 			auto id = _id;
 			while(id) {
-				auto nid = id / step;
-				auto c   = id - (nid * step);
+				auto nid = id / detail::str_id_step;
+				auto c   = id - (nid * detail::str_id_step);
 				id       = nid;
 
 				if(c == 1) {
 					r += '_';
 				} else {
-					r += c + 'a' - 2;
+					r += static_cast<char>(c + 'a' - 2);
 				}
 			}
 
@@ -63,10 +74,10 @@ namespace mirrage::util {
 		constexpr bool operator==(const Str_id& rhs) const noexcept { return _id == rhs._id; }
 		constexpr bool operator!=(const Str_id& rhs) const noexcept { return _id != rhs._id; }
 		constexpr bool operator<(const Str_id& rhs) const noexcept { return _id < rhs._id; }
-		constexpr      operator uint64_t() const noexcept { return _id; }
+		constexpr      operator int_type() const noexcept { return _id; }
 
 	  private:
-		uint64_t _id;
+		int_type _id;
 	};
 
 	inline std::ostream& operator<<(std::ostream& s, const Str_id& id) {
