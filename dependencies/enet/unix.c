@@ -55,7 +55,9 @@
 #endif
 
 #ifndef HAS_SOCKLEN_T
+#ifndef __clang_analyzer__
 typedef int socklen_t;
+#endif
 #endif
 
 #ifndef MSG_NOSIGNAL
