@@ -12,11 +12,12 @@
 #include <boost/pfr/detail/sequence_tuple.hpp>
 #include <iosfwd>       // stream operators
 #include <iomanip>
+#include <string_view>
 
 // Forward declaration
-namespace std {
-    template <class CharT, class Traits> class basic_string_view;
-}
+// namespace std {
+//      template <class CharT, class Traits> class basic_string_view;
+// }
 
 namespace boost { namespace pfr { namespace detail {
 
