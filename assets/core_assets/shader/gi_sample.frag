@@ -178,6 +178,8 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	float NdotL_src = clamp(dot(N, dir), 0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
 
+	NdotL_src = mix(max(clamp(dot(-N, dir), 0.0, 1.0), NdotL_src), NdotL_src, step(0.0001, mat_data.b));
+
 	float cos_alpha = Pn.z;
 	float cos_beta  = dot(Pn, N);
 	float z = depth * global_uniforms.proj_planes.y;
