@@ -158,9 +158,10 @@ void main() {
 
 		vec2 hit_uv = raycast_hit_uv/depthSize + jitter.xy * mix(0.001, 0.02, min(L_len / 10.0, 1.0));
 
-		vec3 hit_N = decode_normal(textureLod(mat_data_sampler, hit_uv, 0).rg);
+		vec4 hit_mat_data = textureLod(mat_data_sampler, hit_uv, 0);
+		vec3 hit_N = decode_normal(hit_mat_data.rg);
 
-		float factor_normal = 1.0 - smoothstep(0.6, 0.9, abs(dot(N, hit_N)));
+		float factor_normal = mix(1, 1.0 - smoothstep(0.6, 0.9, abs(dot(N, hit_N))), step(0.0001, hit_mat_data.b));
 
 		vec3 color = cone_tracing(roughness, hit_uv, dir, coneTheta);
 

@@ -43,7 +43,7 @@ vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
 	vec3 diff = albedo * radiance*(1.0 - F0*brdf.x) / PI;
 	vec3 spec = specular.rgb * (F0*brdf.x + brdf.y);
 
-	diffuse = albedo * radiance/PI + F0*radiance / (2*PI*PI);
+	diffuse = albedo * radiance/PI + F0*radiance/(2.0*PI);
 
 	return clamp(diff + spec, vec3(0,0,0), vec3(10,10,10));
 }
