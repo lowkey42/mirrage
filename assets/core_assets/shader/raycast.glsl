@@ -1,3 +1,8 @@
+// By Morgan McGuire and Michael Mara at Williams College 2014
+// Released as open source under the BSD 2-Clause License
+// http://opensource.org/licenses/BSD-2-Clause
+// see also: http://casual-effects.blogspot.de/2014/08/screen-space-ray-tracing.html
+
 #ifndef RAYCAST_INCLUDED
 #define RAYCAST_INCLUDED
 
