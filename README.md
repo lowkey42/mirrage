@@ -1,6 +1,7 @@
 [![Mirrage logo](/logo.svg)]()
 
 [![Build Status](https://travis-ci.org/lowkey42/mirrage.svg?branch=develop)](https://travis-ci.org/lowkey42/mirrage)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](/LICENSE)
 
 ## Mirrage
 
