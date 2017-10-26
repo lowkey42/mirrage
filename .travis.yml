@@ -9,11 +9,12 @@ cache:
   - $CACHE_DIR
 
 env:
-  - ANALYZE=false
-  - ANALYZE=true
-  - global:
+  global:
     - CACHE_DIR=$HOME/.cache/docker
     - CACHE_FILE_DI=$CACHE_DIR/docker_image.tar.gz
+  matrix:
+    - ANALYZE=false
+    - ANALYZE=true
 
 matrix:
   exclude:
