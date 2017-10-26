@@ -11,8 +11,9 @@ cache:
 env:
   - ANALYZE=false
   - ANALYZE=true
-  - CACHE_DIR=$HOME/.cache/docker
-  - CACHE_FILE_DI=$CACHE_DIR/docker_image.tar.gz
+  - global:
+    - CACHE_DIR=$HOME/.cache/docker
+    - CACHE_FILE_DI=$CACHE_DIR/docker_image.tar.gz
 
 matrix:
   exclude:
