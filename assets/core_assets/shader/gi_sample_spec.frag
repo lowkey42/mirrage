@@ -2,6 +2,9 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+// losely based on https://www.gamedev.net/topic/658702-help-with-gpu-pro-5-hi-z-screen-space-reflections/?view=findpost&p=5173175
+//   and http://roar11.com/2015/07/screen-space-glossy-reflections/
+
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
@@ -36,13 +39,9 @@ float luminance_norm(vec3 c) {
 	return sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
 }
 
-// losely based on https://www.gamedev.net/topic/658702-help-with-gpu-pro-5-hi-z-screen-space-reflections/?view=findpost&p=5173175
-//   and http://roar11.com/2015/07/screen-space-glossy-reflections/
-
-
 float roughness_to_spec_lobe_angle(float roughness) {
 	// see: http://graphicrants.blogspot.de/2013/08/specular-brdf-reference.html
-	float power = clamp(2/max(0.0001, roughness*roughness) - 2, 32.0, 1024*20);
+	float power = clamp(2/max(0.0001, roughness*roughness) - 2, 4.0, 1024*16);
 
 	return acos(pow(0.244, 1.0/(power + 1.0)));
 }
@@ -76,7 +75,7 @@ vec3 sample_color_lod(float roughness, vec2 hit_uv, vec3 L, float coneTheta) {
 
 	float opposite_length = isosceles_triangle_opposite(adjacent_length, coneTheta);
 	float incircle_size   = isosceles_triangle_inradius(adjacent_length, opposite_length);
-	float lod = incircle_size<0.00001 ? min_lod : clamp(log2(incircle_size * screen_size)-1, min_lod, max_lod);
+	float lod = incircle_size<0.00001 ? min_lod : max(log2(incircle_size * screen_size), min_lod);
 	return textureLod(color_sampler, hit_uv, lod).rgb;
 }
 
