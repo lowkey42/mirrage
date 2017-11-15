@@ -14,6 +14,8 @@ namespace mirrage {
 
 	enum class Error_type {
 		asset_not_found = 1,
+		asset_io_error,
+		asset_usage_error,
 		network_invalid_host,
 		network_usage_error,
 		network_unkown_error

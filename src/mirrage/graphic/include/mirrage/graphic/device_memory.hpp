@@ -26,7 +26,8 @@ namespace mirrage::graphic {
 		              std::uint32_t index,
 		              std::uint32_t layer,
 		              vk::DeviceMemory,
-		              vk::DeviceSize);
+		              vk::DeviceSize,
+		              void* mapped_addr);
 
 		Device_memory(Device_memory&&) noexcept;
 		Device_memory& operator=(Device_memory&&) noexcept;
@@ -35,6 +36,10 @@ namespace mirrage::graphic {
 		auto memory() const noexcept { return _memory; }
 		auto offset() const noexcept { return _offset; }
 
+		auto mapped_addr() const noexcept -> util::maybe<void*> {
+			return _mapped_addr ? _mapped_addr : util::maybe<void*>::nothing();
+		}
+
 	  private:
 		void*            _owner;
 		Deleter*         _deleter;
@@ -42,6 +47,7 @@ namespace mirrage::graphic {
 		std::uint32_t    _layer;
 		vk::DeviceMemory _memory;
 		vk::DeviceSize   _offset;
+		void*            _mapped_addr;
 	};
 
 	class Device_heap;

@@ -118,10 +118,16 @@ namespace mirrage::graphic {
 	  private:
 		friend class Device;
 
-		const vk::Device&        _device;
-		vk::UniqueDescriptorPool _pool;
+		const vk::Device&                     _device;
+		std::uint32_t                         _maxSets;
+		std::vector<vk::DescriptorPoolSize>   _pool_sizes;
+		std::vector<vk::UniqueDescriptorPool> _pools;
 
-		Descriptor_pool(const vk::Device& device, vk::UniqueDescriptorPool pool);
+		Descriptor_pool(const vk::Device&                   device,
+		                std::uint32_t                       maxSets,
+		                std::vector<vk::DescriptorPoolSize> pool_sizes);
+
+		auto create_descriptor_pool() -> vk::DescriptorPool;
 	};
 
 	class Image_descriptor_set_layout {

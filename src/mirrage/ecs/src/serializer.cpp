@@ -51,7 +51,8 @@ namespace mirrage::ecs {
 				if(key == import_key) {
 					auto value = std::string{};
 					deserializer.read_value(value);
-					parent = asset_mgr->load<Blueprint>(AID{"blueprint"_strid, value});
+					parent = asset_mgr->load<Blueprint>(AID{"blueprint"_strid, value})
+					                 .get(); // TODO: could/should be async
 					parent->children.push_back(this);
 
 				} else {
@@ -109,7 +110,7 @@ namespace mirrage::asset {
 			return std::make_shared<ecs::Blueprint>(in.aid().str(), in.content(), &in.manager());
 		}
 
-		static void store(ostream, ecs::Blueprint&) { MIRRAGE_FAIL("NOT IMPLEMENTED, YET!"); }
+		static void save(ostream, ecs::Blueprint&) { MIRRAGE_FAIL("NOT IMPLEMENTED, YET!"); }
 	};
 } // namespace mirrage::asset
 
@@ -153,7 +154,8 @@ namespace mirrage::ecs {
 			std::string blueprintName;
 			state.read_virtual(sf2::vmember("name", blueprintName));
 
-			auto blueprint = state.assets.load<Blueprint>(AID{"blueprint"_strid, blueprintName});
+			auto blueprint = state.assets.load<Blueprint>(AID{"blueprint"_strid, blueprintName})
+			                         .get(); // TODO: could/should be async
 			comp.set(blueprint);
 			blueprint->users.push_back(comp.owner_handle());
 			blueprint->entity_manager = &comp.manager();
@@ -172,7 +174,8 @@ namespace mirrage::ecs {
 			}
 
 			std::istringstream stream{b.content};
-			auto deserializer = Deserializer{b.id, stream, e.manager(), *b.asset_mgr, e.manager().userdata()};
+			auto               deserializer =
+			        Deserializer{b.id, stream, e.manager(), *b.asset_mgr, e.manager().userdata()};
 
 			auto handle = e.handle();
 			deserializer.read_value(handle);
@@ -180,10 +183,10 @@ namespace mirrage::ecs {
 
 
 		sf2::format::Error_handler create_error_handler(std::string source_name) {
-			return [source_name =
-			                std::move(source_name)](const std::string& msg, uint32_t row, uint32_t column) {
-				MIRRAGE_ERROR("Error parsing JSON from " << source_name << " at " << row << ":" << column
-				                                         << ": " << msg);
+			return [source_name = std::move(source_name)](
+			        const std::string& msg, uint32_t row, uint32_t column) {
+				MIRRAGE_ERROR("Error parsing JSON from " << source_name << " at " << row << ":"
+				                                         << column << ": " << msg);
 			};
 		}
 	} // namespace
@@ -202,18 +205,22 @@ namespace mirrage::ecs {
 	  , userdata(userdata)
 	  , filter(filter) {}
 
-	void init_serializer(Entity_manager& ecs) { ecs.register_component_type<Blueprint_component>(); }
+	void init_serializer(Entity_manager& ecs) {
+		ecs.register_component_type<Blueprint_component>();
+	}
 
 	Component_type blueprint_comp_id = component_type_id<Blueprint_component>();
 
 
-	void apply_blueprint(asset::Asset_manager& asset_mgr, Entity_facet e, const std::string& blueprint) {
+	void apply_blueprint(asset::Asset_manager& asset_mgr,
+	                     Entity_facet          e,
+	                     const std::string&    blueprint) {
 		auto mb = asset_mgr.load_maybe<ecs::Blueprint>(asset::AID{"blueprint"_strid, blueprint});
 		if(mb.is_nothing()) {
 			MIRRAGE_ERROR("Failed to load blueprint \"" << blueprint << "\"");
 			return;
 		}
-		auto b = mb.get_or_throw();
+		auto b = mb.get_or_throw().get(); // TODO: could/should be async
 
 		if(!e.has<Blueprint_component>())
 			e.emplace<Blueprint_component>(b);

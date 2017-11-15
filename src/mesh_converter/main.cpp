@@ -14,7 +14,8 @@
 
 using namespace mirrage;
 
-auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string>;
+auto extract_arg(std::vector<std::string>& args, const std::string& key)
+        -> util::maybe<std::string>;
 
 // ./mesh_converter sponza.obj
 // ./mesh_converter --output=/foo/bar sponza.obj
@@ -29,7 +30,7 @@ int main(int argc, char** argv) {
 
 	auto args   = std::vector<std::string>{const_cast<const char**>(argv + 1),
                                          const_cast<const char**>(argv + argc)};
-	auto output = extract_arg(args, "--output").get_or_other("output");
+	auto output = extract_arg(args, "--output").get_or("output");
 
 	create_directory(output);
 	create_directory(output + "/models");
@@ -41,9 +42,10 @@ int main(int argc, char** argv) {
 	}
 }
 
-auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string> {
-	auto found =
-	        std::find_if(args.begin(), args.end(), [&](auto& str) { return util::starts_with(str, key); });
+auto extract_arg(std::vector<std::string>& args, const std::string& key)
+        -> util::maybe<std::string> {
+	auto found = std::find_if(
+	        args.begin(), args.end(), [&](auto& str) { return util::starts_with(str, key); });
 
 	if(found == args.end())
 		return mirrage::util::nothing;

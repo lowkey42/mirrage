@@ -22,12 +22,44 @@ namespace mirrage::graphic {
 
 
 	auto Descriptor_pool::create_descriptor(vk::DescriptorSetLayout layout) -> vk::UniqueDescriptorSet {
-		return std::move(
-		        _device.allocateDescriptorSetsUnique(vk::DescriptorSetAllocateInfo{*_pool, 1, &layout})[0]);
+		auto alloc_info = vk::DescriptorSetAllocateInfo{*_pools.back(), 1, &layout};
+		auto desc_set   = VkDescriptorSet{};
+		auto ret        = vkAllocateDescriptorSets(
+                _device, reinterpret_cast<VkDescriptorSetAllocateInfo*>(&alloc_info), &desc_set);
+
+		if(ret == VK_SUCCESS)
+			return vk::UniqueDescriptorSet(desc_set);
+
+		alloc_info.descriptorPool = create_descriptor_pool();
+		ret                       = vkAllocateDescriptorSets(
+                _device, reinterpret_cast<VkDescriptorSetAllocateInfo*>(&alloc_info), &desc_set);
+
+		if(ret == VK_SUCCESS) {
+			MIRRAGE_INFO("Allocated a new descriptorSetPool (shouldn't happen too often!).");
+			return vk::UniqueDescriptorSet(desc_set);
+		}
+
+		MIRRAGE_FAIL("Unable to allocate descriptor set!");
 	}
 
-	Descriptor_pool::Descriptor_pool(const vk::Device& device, vk::UniqueDescriptorPool pool)
-	  : _device(device), _pool(std::move(pool)) {}
+	Descriptor_pool::Descriptor_pool(const vk::Device&                   device,
+	                                 std::uint32_t                       maxSets,
+	                                 std::vector<vk::DescriptorPoolSize> pool_sizes)
+	  : _device(device), _maxSets(maxSets), _pool_sizes(pool_sizes) {
+		create_descriptor_pool();
+	}
+
+	auto Descriptor_pool::create_descriptor_pool() -> vk::DescriptorPool {
+		auto pool = _device.createDescriptorPoolUnique(
+		        vk::DescriptorPoolCreateInfo{vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+		                                     _maxSets,
+		                                     gsl::narrow<std::uint32_t>(_pool_sizes.size()),
+		                                     _pool_sizes.data()});
+
+		auto pool_ref = *pool;
+		_pools.emplace_back(std::move(pool));
+		return pool_ref;
+	}
 
 
 	namespace {

@@ -7,7 +7,7 @@
  *   ./physfshttpd archive1.zip archive2.zip /path/to/a/real/dir etc...
  *
  * The files are appended in order to the PhysicsFS search path, and when
- *  a client request comes it, it looks for the file in said search path.
+ *  a client request comes in, it looks for the file in said search path.
  *
  * My goal was to make this work in less than 300 lines of C, so again, it's
  *  not to be used for any serious purpose. Patches to make this application
@@ -34,6 +34,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
@@ -54,7 +55,7 @@
 #include "physfs.h"
 
 
-#define DEFAULT_PORTNUM  6667
+#define DEFAULT_PORTNUM 8080
 
 typedef struct
 {
@@ -64,43 +65,151 @@ typedef struct
 } http_args;
 
 
-static char *txt404 =
-"HTTP/1.0 404 Not Found\n"
-"Connection: close\n"
-"Content-Type: text/html; charset=utf-8\n"
-"\n"
-"<html><head><title>404 Not Found</title></head>\n"
-"<body>Can't find that.</body></html>\n\n";
+#define txt404 \
+    "HTTP/1.0 404 Not Found\n" \
+    "Connection: close\n" \
+    "Content-Type: text/html; charset=utf-8\n" \
+    "\n" \
+    "<html><head><title>404 Not Found</title></head>\n" \
+    "<body>Can't find '%s'.</body></html>\n\n" \
+
+#define txt200 \
+    "HTTP/1.0 200 OK\n" \
+    "Connection: close\n" \
+    "Content-Type: %s\n" \
+    "\n"
+
+static const char *lastError(void)
+{
+    return PHYSFS_getErrorByCode(PHYSFS_getLastErrorCode());
+} /* lastError */
+
+static int writeAll(const char *ipstr, const int sock, void *buf, const size_t len)
+{
+    if (write(sock, buf, len) != len)
+    {
+        printf("%s: Write error to socket.\n", ipstr);
+        return 0;
+    } /* if */
+
+    return 1;
+} /* writeAll */
+
+static int writeString(const char *ipstr, const int sock, const char *fmt, ...)
+{
+    /* none of this is robust against large strings or HTML escaping. */
+    char buffer[1024];
+    int len;
+    va_list ap;
+    va_start(ap, fmt);
+    len = vsnprintf(buffer, sizeof (buffer), fmt, ap);
+    va_end(ap);
+    if (len < 0)
+    {
+        printf("uhoh, vsnprintf() failed!\n");
+        return 0;
+    } /* if */
+
+    return writeAll(ipstr, sock, buffer, len);
+} /* writeString */
 
 
 static void feed_file_http(const char *ipstr, int sock, const char *fname)
 {
     PHYSFS_File *in = PHYSFS_openRead(fname);
-    char buffer[1024];
-    printf("%s: requested [%s].\n", ipstr, fname);
+
     if (in == NULL)
     {
-        printf("%s: Can't open [%s]: %s.\n",
-               ipstr, fname, PHYSFS_getLastError());
-        write(sock, txt404, strlen(txt404));  /* !!! FIXME: Check retval */
+        printf("%s: Can't open [%s]: %s.\n", ipstr, fname, lastError());
+        writeString(ipstr, sock, txt404, fname);
+        return;
     } /* if */
-    else
+
+    /* !!! FIXME: mimetype */
+    if (writeString(ipstr, sock, txt200, "text/plain; charset=utf-8"))
     {
         do
         {
-            PHYSFS_sint64 br = PHYSFS_read(in, buffer, 1, sizeof (buffer));
+            char buffer[1024];
+            PHYSFS_sint64 br = PHYSFS_readBytes(in, buffer, sizeof (buffer));
             if (br == -1)
             {
-                printf("%s: Read error: %s.\n", ipstr, PHYSFS_getLastError());
+                printf("%s: Read error: %s.\n", ipstr, lastError());
                 break;
             } /* if */
 
-            write(sock, buffer, (int) br);   /* !!! FIXME: CHECK THIS RETVAL! */
+            else if (!writeAll(ipstr, sock, buffer, (size_t) br))
+            {
+                break;
+            } /* else if */
         } while (!PHYSFS_eof(in));
+    } /* if */
 
-        PHYSFS_close(in);
-    } /* else */
+    PHYSFS_close(in);
 } /* feed_file_http */
+
+
+static void feed_dirlist_http(const char *ipstr, int sock,
+                              const char *dname, char **list)
+{
+    int i;
+
+    if (!writeString(ipstr, sock, txt200, "text/html; charset=utf-8"))
+        return;
+
+    else if (!writeString(ipstr, sock,
+                    "<html><head><title>Directory %s</title></head>"
+                    "<body><p><h1>Directory %s</h1></p><p><ul>\n",
+                    dname, dname))
+        return;
+
+    if (strcmp(dname, "/") == 0)
+        dname = "";
+
+    for (i = 0; list[i]; i++)
+    {
+        const char *fname = list[i];
+        if (!writeString(ipstr, sock,
+            "<li><a href='%s/%s'>%s</a></li>\n", dname, fname, fname))
+            break;
+    } /* for */
+
+    writeString(ipstr, sock, "</ul></body></html>\n");
+} /* feed_dirlist_http */
+
+static void feed_dir_http(const char *ipstr, int sock, const char *dname)
+{
+    char **list = PHYSFS_enumerateFiles(dname);
+    if (list == NULL)
+    {
+        printf("%s: Can't enumerate directory [%s]: %s.\n",
+               ipstr, dname, lastError());
+        writeString(ipstr, sock, txt404, dname);
+        return;
+    } /* if */
+
+    feed_dirlist_http(ipstr, sock, dname, list);
+    PHYSFS_freeList(list);
+} /* feed_dir_http */
+
+static void feed_http_request(const char *ipstr, int sock, const char *fname)
+{
+    PHYSFS_Stat statbuf;
+
+    printf("%s: requested [%s].\n", ipstr, fname);
+
+    if (!PHYSFS_stat(fname, &statbuf))
+    {
+        printf("%s: Can't stat [%s]: %s.\n", ipstr, fname, lastError());
+        writeString(ipstr, sock, txt404, fname);
+        return;
+    } /* if */
+
+    if (statbuf.filetype == PHYSFS_FILETYPE_DIRECTORY)
+        feed_dir_http(ipstr, sock, fname);
+    else
+        feed_file_http(ipstr, sock, fname);
+} /* feed_http_request */
 
 
 static void *do_http(void *_args)
@@ -135,7 +244,7 @@ static void *do_http(void *_args)
             ptr = strchr(buffer + 5, ' ');
             if (ptr != NULL)
                 *ptr = '\0';
-            feed_file_http(ipstr, args->sock, buffer + 4);
+            feed_http_request(ipstr, args->sock, buffer + 4);
         } /* if */
     } /* else */
 
@@ -144,7 +253,7 @@ static void *do_http(void *_args)
     close(args->sock);
     free(args->addr);
     free(args);
-    return(NULL);
+    return NULL;
 } /* do_http */
 
 
@@ -194,7 +303,7 @@ static int create_listen_socket(short portnum)
         addr.sin_family = AF_INET;
         addr.sin_port = htons(portnum);
         addr.sin_addr.s_addr = INADDR_ANY;
-        if ((bind(retval, &addr, (socklen_t) sizeof (addr)) == -1) ||
+        if ((bind(retval, (struct sockaddr *) &addr, (socklen_t) sizeof (addr)) == -1) ||
             (listen(retval, 5) == -1))
         {
             close(retval);
@@ -202,7 +311,7 @@ static int create_listen_socket(short portnum)
         } /* if */
     } /* if */
 
-    return(retval);
+    return retval;
 } /* create_listen_socket */
 
 
@@ -219,7 +328,7 @@ void at_exit_cleanup(void)
         close(listensocket);
 
     if (!PHYSFS_deinit())
-        printf("PHYSFS_deinit() failed: %s\n", PHYSFS_getLastError());
+        printf("PHYSFS_deinit() failed: %s\n", lastError());
 } /* at_exit_cleanup */
 
 
@@ -244,13 +353,13 @@ int main(int argc, char **argv)
     if (argc == 1)
     {
         printf("USAGE: %s <archive1> [archive2 [... archiveN]]\n", argv[0]);
-        return(42);
+        return 42;
     } /* if */
 
     if (!PHYSFS_init(argv[0]))
     {
-        printf("PHYSFS_init() failed: %s\n", PHYSFS_getLastError());
-        return(42);
+        printf("PHYSFS_init() failed: %s\n", lastError());
+        return 42;
     } /* if */
 
     /* normally, this is bad practice, but oh well. */
@@ -258,7 +367,7 @@ int main(int argc, char **argv)
 
     for (i = 1; i < argc; i++)
     {
-        if (!PHYSFS_addToSearchPath(argv[i], 1))
+        if (!PHYSFS_mount(argv[i], NULL, 1))
             printf(" WARNING: failed to add [%s] to search path.\n", argv[i]);
     } /* else */
 
@@ -266,7 +375,7 @@ int main(int argc, char **argv)
     if (listensocket < 0)
     {
         printf("listen socket failed to create.\n");
-        return(42);
+        return 42;
     } /* if */
 
     while (1)  /* infinite loop for now. */
@@ -278,13 +387,13 @@ int main(int argc, char **argv)
         {
             printf("accept() failed: %s\n", strerror(errno));
             close(listensocket);
-            return(42);
+            return 42;
         } /* if */
 
         serve_http_request(s, &addr, len);
     } /* while */
 
-    return(0);
+    return 0;
 } /* main */
 
 /* end of physfshttpd.c ... */

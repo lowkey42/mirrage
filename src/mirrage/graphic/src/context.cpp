@@ -188,7 +188,7 @@ namespace mirrage::graphic {
 				MIRRAGE_FAIL("Invalid graphics settings");
 			}
 		} else {
-			_settings = maybe_settings.get_or_throw();
+			_settings = maybe_settings.get_or_throw().get();
 		}
 
 		if(!settings(*_settings)) { //< apply actual size/settings
@@ -244,17 +244,8 @@ namespace mirrage::graphic {
 	Context::~Context() = default;
 
 	bool Context::settings(Graphics_settings new_settings) {
-		// TODO: update windows
-		/*
-		for(auto device : children()) {
-			if(!device->settings_changed(new_settings)) {
-				MIRRAGE_WARN("New graphics settings are not supported");
-				return false;
-			}
-		}*/
-
 		_assets.save<Graphics_settings>("cfg:graphics"_aid, new_settings);
-		_settings = _assets.load<Graphics_settings>("cfg:graphics"_aid);
+		_settings = _assets.load<Graphics_settings>("cfg:graphics"_aid).get();
 
 		return true;
 	}
@@ -394,7 +385,8 @@ namespace mirrage::graphic {
 
 			if(!formats.empty()) {
 				MIRRAGE_WARN(
-				        "Requested format is not supported by the device, fallback to first reported "
+				        "Requested format is not supported by the device, fallback to first "
+				        "reported "
 				        "format");
 				return formats.front();
 			} else {
@@ -532,12 +524,20 @@ namespace mirrage::graphic {
 		create_info.queue_families.emplace(transfer_queue_tag,
 		                                   Queue_create_info{find_transfer_queue(top_gpu), 0.2f});
 
+		auto draw_queue_tag = util::maybe<util::Str_id>(util::nothing);
+
 		for(auto& qf : create_info.queue_families) {
 			auto tag      = qf.first;
 			auto family   = qf.second.family_id;
 			auto priority = qf.second.priority;
 
 			auto& entry = queue_families[family];
+
+			if(available_families[family].queueFlags & vk::QueueFlagBits::eGraphics) {
+				draw_queue_tag = qf.first;
+			} else if(draw_queue_tag.is_nothing()
+			          && (available_families[family].queueFlags & vk::QueueFlagBits::eCompute))
+				draw_queue_tag = qf.first;
 
 			if(available_families[family].queueCount > 0) {
 				available_families[family].queueCount--;
@@ -567,13 +567,15 @@ namespace mirrage::graphic {
 
 		auto swapchains = create_swapchain_create_info(top_gpu, srgb, can_present_to);
 
-		return std::make_unique<Device>(*this,
-		                                _assets,
-		                                top_gpu.createDeviceUnique(cfg),
-		                                top_gpu,
-		                                transfer_queue_tag,
-		                                std::move(queue_mapping),
-		                                std::move(swapchains),
-		                                dedicated_alloc_supported);
+		return std::make_unique<Device>(
+		        *this,
+		        _assets,
+		        top_gpu.createDeviceUnique(cfg),
+		        top_gpu,
+		        transfer_queue_tag,
+		        draw_queue_tag.get_or_throw("No draw or compute queue! That doesn't seem right."),
+		        std::move(queue_mapping),
+		        std::move(swapchains),
+		        dedicated_alloc_supported);
 	}
 } // namespace mirrage::graphic

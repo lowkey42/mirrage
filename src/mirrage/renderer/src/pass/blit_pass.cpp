@@ -10,16 +10,16 @@ namespace mirrage::renderer {
 
 			auto builder = renderer.device().create_render_pass_builder();
 
-			auto screen =
-			        builder.add_attachment(vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
-			                                                         renderer.swapchain().image_format(),
-			                                                         vk::SampleCountFlagBits::e1,
-			                                                         vk::AttachmentLoadOp::eDontCare,
-			                                                         vk::AttachmentStoreOp::eStore,
-			                                                         vk::AttachmentLoadOp::eDontCare,
-			                                                         vk::AttachmentStoreOp::eDontCare,
-			                                                         vk::ImageLayout::eUndefined,
-			                                                         vk::ImageLayout::ePresentSrcKHR});
+			auto screen = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  renderer.swapchain().image_format(),
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::ePresentSrcKHR});
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
@@ -39,30 +39,31 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:blit"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:blit"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+			builder.add_dependency(util::nothing,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlags{},
+			                       pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite);
 
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
+			builder.add_dependency(pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite,
+			                       util::nothing,
+			                       vk::PipelineStageFlagBits::eBottomOfPipe,
+			                       vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                               | vk::AccessFlagBits::eTransferRead);
 
 
 			auto render_pass = builder.build();
 
 			for(auto& sc_image : renderer.swapchain().get_images()) {
-				out_framebuffers.emplace_back(builder.build_framebuffer({*sc_image, util::Rgba{}},
-				                                                        renderer.swapchain().image_width(),
-				                                                        renderer.swapchain().image_height()));
+				out_framebuffers.emplace_back(
+				        builder.build_framebuffer({*sc_image, util::Rgba{}},
+				                                  renderer.swapchain().image_width(),
+				                                  renderer.swapchain().image_height()));
 			}
 
 			return render_pass;
@@ -85,8 +86,8 @@ namespace mirrage::renderer {
 	  , _descriptor_set(_descriptor_set_layout.create_set(
 	            renderer.descriptor_pool(),
 	            {src.view(),
-	             renderer.gbuffer().avg_log_luminance.get_or_other(src).view(),
-	             renderer.gbuffer().bloom.get_or_other(src).view()}))
+	             renderer.gbuffer().avg_log_luminance.get_or(src).view(),
+	             renderer.gbuffer().bloom.get_or(src).view()}))
 	  , _render_pass(build_render_pass(renderer, *_descriptor_set_layout, _framebuffers))
 	  , _tone_mapping_enabled(renderer.gbuffer().avg_log_luminance.is_some())
 	  , _bloom_enabled(renderer.gbuffer().bloom.is_some()) {}
@@ -100,7 +101,8 @@ namespace mirrage::renderer {
 	                     std::size_t       swapchain_image) {
 
 		_render_pass.execute(command_buffer, _framebuffers.at(swapchain_image), [&] {
-			auto descriptor_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_descriptor_set};
+			auto descriptor_sets =
+			        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_descriptor_set};
 			_render_pass.bind_descriptor_sets(0, descriptor_sets);
 
 			glm::vec4 settings;
@@ -119,7 +121,8 @@ namespace mirrage::renderer {
 	                                    ecs::Entity_manager&      entities,
 	                                    util::maybe<Meta_system&> meta_system,
 	                                    bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
-		auto& color_src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
+		auto& color_src =
+		        !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		return std::make_unique<Blit_pass>(renderer, entities, meta_system, color_src);
 	}

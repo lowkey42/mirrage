@@ -43,12 +43,13 @@ namespace mirrage::renderer {
 	Material::Material(Device&                 device,
 	                   vk::UniqueDescriptorSet descriptor_set,
 	                   vk::Sampler             sampler,
-	                   Texture_cache&          tex_cache,
-	                   const Material_data&    data)
+	                   graphic::Texture_ptr    albedo,
+	                   graphic::Texture_ptr    mat_data,
+	                   util::Str_id            substance_id)
 	  : _descriptor_set(std::move(descriptor_set))
-	  , _albedo(load_or_placeholder(tex_cache, data.albedo_aid))
-	  , _mat_data(load_or_placeholder(tex_cache, data.mat_data_aid))
-	  , _material_id(data.substance_id) {
+	  , _albedo(std::move(albedo))
+	  , _mat_data(std::move(mat_data))
+	  , _material_id(substance_id) {
 
 		auto desc_images = std::array<vk::DescriptorImageInfo, material_textures>();
 		desc_images[0] =
@@ -219,3 +220,49 @@ namespace mirrage::renderer {
 		util::erase_if(_materials, [](const auto& v) { return v.second.use_count() <= 1; });
 	}
 } // namespace mirrage::renderer
+
+
+namespace mirrage::asset {
+
+	Loader<renderer::Material>::Loader(graphic::Device&      device,
+	                                   asset::Asset_manager& assets,
+	                                   std::uint32_t         max_unique_materials)
+	  : _device(device)
+	  , _assets(assets)
+	  , _sampler(device.create_sampler(12))
+	  , _descriptor_set_layout(renderer::create_material_descriptor_set_layout(device, *_sampler))
+	  , _descriptor_set_pool(device.create_descriptor_pool(
+	            max_unique_materials,
+	            {{vk::DescriptorType::eCombinedImageSampler,
+	              gsl::narrow<std::uint32_t>(max_unique_materials * renderer::material_textures)}})) {}
+
+	auto Loader<renderer::Material>::load(istream in) -> std::shared_ptr<renderer::Material> {
+		auto data = Loader<renderer::Material_data>::load(std::move(in));
+
+		auto load_tex = [&](auto&& id) {
+			return _assets.load<graphic::Texture_2D>(id.empty() ? "tex:placeholder"_aid
+			                                                    : asset::AID("tex"_strid, id));
+		};
+
+		auto sub_id = data->substance_id;
+		// TODO: lock mutex for create_descriptor AND its destruction!
+		// TODO: add event_task dependency to texture/buffer transfer (only ready after transfer on GPU finished)
+		auto desc_set = _descriptor_set_pool.create_descriptor(*_descriptor_set_layout);
+
+		return async::when_all(load_tex(data->albedo_aid), load_tex(data->mat_data_aid))
+		        .then([=, desc_set = std::move(desc_set)](auto& textures) {
+			        // TODO
+			        return std::make_shared<renderer::Material>(_device,
+			                                                    std::move(desc_set),
+			                                                    _sampler,
+			                                                    std::get<0>(textures),
+			                                                    std::get<1>(textures),
+			                                                    sub_id);
+		        });
+	}
+
+	auto Loader<renderer::Model>::load(istream in) -> std::shared_ptr<renderer::Model> {
+		// TODO
+	}
+
+} // namespace mirrage::asset

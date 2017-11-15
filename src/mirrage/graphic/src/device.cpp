@@ -2,6 +2,7 @@
 
 #include <mirrage/graphic/context.hpp>
 #include <mirrage/graphic/render_pass.hpp>
+#include <mirrage/graphic/texture.hpp>
 #include <mirrage/graphic/window.hpp>
 
 #include <mirrage/asset/asset_manager.hpp>
@@ -11,151 +12,44 @@
 
 namespace mirrage::graphic {
 
-	namespace {
-		constexpr auto max_pipeline_cache_count = 3;
+	struct Device::Asset_loaders {
+		asset::Asset_manager& assets;
 
-		auto locate_matching_pipeline_cache(vk::PhysicalDevice gpu, asset::Asset_manager& assets) {
-			auto properties = gpu.getProperties();
+		Asset_loaders(asset::Asset_manager& assets, Device& device, Queue_tag default_draw_queue)
+		  : assets(assets) {
+			auto draw_queue = device.get_queue_family(default_draw_queue);
 
-			auto dev_str = std::to_string(properties.vendorID) + "_" + std::to_string(properties.deviceID);
-
-			auto caches = assets.list("pl_cache"_strid);
-			for(auto& cache : caches) {
-				if(util::ends_with(cache.name(), dev_str)) {
-					return cache;
-				}
-			}
-
-			MIRRAGE_DEBUG("No pipeline cache found for device, creating new one: dev_" + dev_str);
-
-			if(caches.size() >= max_pipeline_cache_count) {
-				MIRRAGE_DEBUG("More than " << max_pipeline_cache_count
-				                           << " pipeline cahces. Deleting oldest caches.");
-
-				std::sort(std::begin(caches), std::end(caches), [&](auto& lhs, auto& rhs) {
-					return assets.last_modified(lhs).get_or_other(-1)
-					       > assets.last_modified(rhs).get_or_other(-1);
-				});
-
-				std::for_each(
-				        std::begin(caches) + max_pipeline_cache_count - 1, std::end(caches), [&](auto& aid) {
-					        if(!assets.try_delete(aid)) {
-						        MIRRAGE_WARN("Unable to delete outdated pipeline cache: " + aid.str());
-					        }
-				        });
-			}
-
-			return asset::AID{"pl_cache"_strid, "dev_" + dev_str};
+			assets.create_stateful_loader<Pipeline_cache>(*device.vk_device());
+			assets.create_stateful_loader<Texture<Image_type::single_1d>>(device, draw_queue);
+			assets.create_stateful_loader<Texture<Image_type::single_2d>>(device, draw_queue);
+			assets.create_stateful_loader<Texture<Image_type::single_3d>>(device, draw_queue);
+			assets.create_stateful_loader<Texture<Image_type::array_1d>>(device, draw_queue);
+			assets.create_stateful_loader<Texture<Image_type::array_2d>>(device, draw_queue);
+			assets.create_stateful_loader<Texture<Image_type::array_3d>>(device, draw_queue);
+			assets.create_stateful_loader<Texture<Image_type::cubemap>>(device, draw_queue);
+			assets.create_stateful_loader<Texture<Image_type::array_cubemap>>(device, draw_queue);
+			assets.create_stateful_loader<Shader_module>(device);
 		}
-
-		auto load_pipeline_cache(const vk::Device&     device,
-		                         asset::Asset_manager& assets,
-		                         const asset::AID&     id) {
-			auto in = assets.load_raw(id);
-			if(in.is_nothing()) {
-				return device.createPipelineCacheUnique(vk::PipelineCacheCreateInfo{});
-
-			} else {
-				auto data = in.get_or_throw().bytes();
-				return device.createPipelineCacheUnique(vk::PipelineCacheCreateInfo{
-				        vk::PipelineCacheCreateFlags{}, data.size(), data.data()});
-			}
+		~Asset_loaders() {
+			assets.remove_stateful_loader<graphic::Pipeline_cache>();
+			assets.remove_stateful_loader<graphic::Texture<Image_type::single_1d>>();
+			assets.remove_stateful_loader<graphic::Texture<Image_type::single_2d>>();
+			assets.remove_stateful_loader<graphic::Texture<Image_type::single_3d>>();
+			assets.remove_stateful_loader<graphic::Texture<Image_type::array_1d>>();
+			assets.remove_stateful_loader<graphic::Texture<Image_type::array_2d>>();
+			assets.remove_stateful_loader<graphic::Texture<Image_type::array_3d>>();
+			assets.remove_stateful_loader<graphic::Texture<Image_type::cubemap>>();
+			assets.remove_stateful_loader<graphic::Texture<Image_type::array_cubemap>>();
+			assets.remove_stateful_loader<graphic::Shader_module>();
 		}
-
-		void store_pipeline_cache(const vk::Device&     device,
-		                          asset::Asset_manager& assets,
-		                          const asset::AID&     id,
-		                          vk::PipelineCache     cache) {
-			auto out = assets.save_raw(id);
-
-			auto data = device.getPipelineCacheData(cache);
-
-			out.write(reinterpret_cast<const char*>(data.data()), data.size());
-		}
-	} // namespace
-
-	Swapchain::Swapchain(const vk::Device&          dev,
-	                     vk::PhysicalDevice         gpu,
-	                     Window&                    window,
-	                     vk::SwapchainCreateInfoKHR info)
-	  : Window_modification_handler(window)
-	  , _device(dev)
-	  , _gpu(gpu)
-	  , _window(window)
-	  , _info(info)
-	  , _swapchain(dev.createSwapchainKHRUnique(info))
-	  , _images(dev.getSwapchainImagesKHR(*_swapchain))
-	  , _image_width(info.imageExtent.width)
-	  , _image_height(info.imageExtent.height)
-	  , _image_format(info.imageFormat) {
-
-		_create_image_views();
-	}
-
-	void Swapchain::_create_image_views() {
-		MIRRAGE_DEBUG("Created swapchain with " << _images.size() << " images (min=" << _info.minImageCount
-		                                        << ")");
-
-		_image_views.clear();
-		_image_views.reserve(_images.size());
-		for(auto& image : _images) {
-			auto ivc = vk::ImageViewCreateInfo{};
-			ivc.setImage(image);
-			ivc.setViewType(vk::ImageViewType::e2D);
-			ivc.setFormat(_info.imageFormat);
-			ivc.setSubresourceRange(vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
-			_image_views.emplace_back(_device.createImageViewUnique(ivc));
-		}
-	}
-
-	auto Swapchain::acquireNextImage(vk::Semaphore s, vk::Fence f) const -> std::size_t {
-		return _device.acquireNextImageKHR(*_swapchain, std::numeric_limits<std::uint64_t>::max(), s, f).value;
-	}
-	bool Swapchain::present(vk::Queue& q, std::size_t img_index, vk::Semaphore s) {
-		auto img_index_vk = gsl::narrow<uint32_t>(img_index);
-
-		auto info   = vk::PresentInfoKHR{s ? 1u : 0u, &s, 1, &*_swapchain, &img_index_vk};
-		auto result = vkQueuePresentKHR(VkQueue(q), reinterpret_cast<VkPresentInfoKHR*>(&info));
-
-		_window.on_present();
-
-		if(result != VK_SUCCESS || _recreate_pending) {
-			_recreate_pending = false;
-			_device.waitIdle();
-
-			auto capabilities = _gpu.getSurfaceCapabilitiesKHR(_window.surface());
-			MIRRAGE_DEBUG("Extends: " << capabilities.currentExtent.width << ", "
-			                          << capabilities.currentExtent.height);
-
-			_image_width  = _window.width();
-			_image_height = _window.height();
-
-			_info.oldSwapchain       = *_swapchain;
-			_info.imageExtent.width  = _image_width;
-			_info.imageExtent.height = _image_height;
-
-			_swapchain = _device.createSwapchainKHRUnique(_info);
-			_images    = _device.getSwapchainImagesKHR(*_swapchain);
-
-			_create_image_views();
-
-			MIRRAGE_INFO("Swapchain recreated");
-
-			return true;
-		}
-
-		return false;
-	}
-	void Swapchain::recreate() { _recreate_pending = true; }
-	void Swapchain::on_window_modified(Window& window) { recreate(); }
-
-
+	};
 
 	Device::Device(Context&               context,
 	               asset::Asset_manager&  assets,
 	               vk::UniqueDevice       device,
 	               vk::PhysicalDevice     gpu,
 	               Queue_tag              transfer_queue,
+	               Queue_tag              default_draw_queue,
 	               Queue_family_mapping   queue_mapping,
 	               Swapchain_create_infos swapchains,
 	               bool                   dedicated_alloc_supported)
@@ -164,8 +58,8 @@ namespace mirrage::graphic {
 	  , _gpu(gpu)
 	  , _assets(assets)
 	  , _gpu_properties(gpu.getProperties())
-	  , _pipeline_cache_id(locate_matching_pipeline_cache(_gpu, assets))
-	  , _pipeline_cache(load_pipeline_cache(*_device, assets, _pipeline_cache_id))
+	  , _device_specific_asset_loaders(std::make_unique<Asset_loaders>(assets, *this, default_draw_queue))
+	  , _pipeline_cache(load_main_pipeline_cache(*this, assets))
 	  , _queue_family_mappings(std::move(queue_mapping))
 	  , _memory_allocator(*_device, _gpu, dedicated_alloc_supported)
 	  , _transfer_manager(*this, transfer_queue, 2)
@@ -272,7 +166,9 @@ namespace mirrage::graphic {
 	}
 
 	void Device::backup_caches() {
-		store_pipeline_cache(*_device, _assets, _pipeline_cache_id, *_pipeline_cache);
+		if(_pipeline_cache.ready()) {
+			_assets.save(_pipeline_cache.get());
+		}
 	}
 
 	auto Device::get_queue(Queue_tag tag) -> vk::Queue {
@@ -291,7 +187,7 @@ namespace mirrage::graphic {
 	}
 
 	auto Device::create_render_pass_builder() -> Render_pass_builder {
-		return Render_pass_builder{*_device, *_pipeline_cache, _assets};
+		return Render_pass_builder{*_device, **_pipeline_cache.get(), _assets};
 	}
 
 	auto Device::create_semaphore() -> vk::UniqueSemaphore { return _device->createSemaphoreUnique({}); }
@@ -426,12 +322,7 @@ namespace mirrage::graphic {
 
 	auto Device::create_descriptor_pool(std::uint32_t maxSets, std::vector<vk::DescriptorPoolSize> pool_sizes)
 	        -> Descriptor_pool {
-		return {*_device,
-		        _device->createDescriptorPoolUnique(
-		                vk::DescriptorPoolCreateInfo{vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-		                                             maxSets,
-		                                             gsl::narrow<std::uint32_t>(pool_sizes.size()),
-		                                             pool_sizes.data()})};
+		return {*_device, maxSets, std::move(pool_sizes)};
 	}
 
 	auto Device::create_fence() -> Fence { return Fence{*_device}; }

@@ -50,8 +50,9 @@ namespace mirrage::renderer {
 		Material(graphic::Device&,
 		         vk::UniqueDescriptorSet,
 		         vk::Sampler,
-		         graphic::Texture_cache& tex_cache,
-		         const Material_data&    data);
+		         graphic::Texture_ptr albedo,
+		         graphic::Texture_ptr mat_data,
+		         util::Str_id         material_id);
 
 		void bind(graphic::Render_pass& pass);
 
@@ -208,3 +209,39 @@ namespace mirrage::renderer {
 		auto _load_material(const asset::AID&) -> Material_ptr;
 	};
 } // namespace mirrage::renderer
+
+
+namespace mirrage::asset {
+
+	template <>
+	struct Loader<renderer::Material> {
+	  public:
+		Loader(graphic::Device& device, asset::Asset_manager& assets, std::uint32_t max_unique_materials);
+
+		auto load(istream in) -> std::shared_ptr<renderer::Material>;
+		void save(ostream, const renderer::Material&) { MIRRAGE_FAIL("Save of materials is not supported!"); }
+
+	  private:
+		graphic::Device&              _device;
+		asset::Asset_manager&         _assets;
+		vk::UniqueSampler             _sampler;
+		vk::UniqueDescriptorSetLayout _descriptor_set_layout;
+		graphic::Descriptor_pool      _descriptor_set_pool;
+	};
+
+	template <>
+	struct Loader<renderer::Model> {
+	  public:
+		Loader(graphic::Device& device, asset::Asset_manager& assets, std::uint32_t owner_qfamily)
+		  : _device(device), _assets(assets), _owner_qfamily(owner_qfamily) {}
+
+		auto load(istream in) -> std::shared_ptr<renderer::Model>;
+		void save(ostream, const renderer::Material&) { MIRRAGE_FAIL("Save of materials is not supported!"); }
+
+	  private:
+		graphic::Device&      _device;
+		asset::Asset_manager& _assets;
+		std::uint32_t         _owner_qfamily;
+	};
+
+} // namespace mirrage::asset

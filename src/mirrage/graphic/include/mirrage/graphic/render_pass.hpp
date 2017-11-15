@@ -24,16 +24,18 @@ namespace mirrage::graphic {
 
 	enum class Shader_stage { vertex, tessellation_control, tessellation_eval, geometry, fragment };
 
+	using Shader_module = vk::UniqueShaderModule;
+
 	struct Pipeline_stage {
 		Shader_stage                            stage;
-		vk::UniqueShaderModule                  shader;
+		asset::Loading<Shader_module>           shader;
 		std::string                             entry_point;
 		vk::SpecializationInfo                  constants_info;
 		std::vector<vk::SpecializationMapEntry> constants;
 		std::vector<char>                       constant_buffer;
 
 		Pipeline_stage() = default;
-		Pipeline_stage(Shader_stage stage, vk::UniqueShaderModule shader, std::string entry_point)
+		Pipeline_stage(Shader_stage stage, asset::Loading<Shader_module> shader, std::string entry_point)
 		  : stage(stage), shader(std::move(shader)), entry_point(std::move(entry_point)) {}
 
 		template <class T>
@@ -426,3 +428,21 @@ namespace mirrage::graphic {
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR8G8B8A8Unorm, offset);
 	}
 } // namespace mirrage::graphic
+
+namespace mirrage::asset {
+
+	template <>
+	struct Loader<graphic::Shader_module> {
+	  public:
+		Loader(graphic::Device& device) : _device(device) {}
+
+		auto load(istream in) -> std::shared_ptr<graphic::Shader_module>;
+		void save(ostream, const graphic::Shader_module&) {
+			MIRRAGE_FAIL("Save of shader modules is not supported!");
+		}
+
+	  private:
+		graphic::Device& _device;
+	};
+
+} // namespace mirrage::asset

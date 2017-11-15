@@ -83,7 +83,9 @@ namespace mirrage {
 
 			Image_data() = default;
 			Image_data(std::uint32_t width, std::uint32_t height)
-			  : width(width), height(height), mip_levels(std::floor(std::log2(std::min(width, height))) + 1) {
+			  : width(width)
+			  , height(height)
+			  , mip_levels(std::floor(std::log2(std::min(width, height))) + 1) {
 				for(auto i = 0u; i < mip_levels.size(); i++) {
 					auto width  = std::max(1u, this->width >> i);
 					auto height = std::max(1u, this->height >> i);
@@ -110,7 +112,8 @@ namespace mirrage {
 			}
 		};
 
-		auto get_texture_name(const aiMaterial& material, aiTextureType type) -> util::maybe<std::string> {
+		auto get_texture_name(const aiMaterial& material, aiTextureType type)
+		        -> util::maybe<std::string> {
 			auto count = material.GetTextureCount(type);
 			if(count == 0)
 				return util::nothing;
@@ -133,11 +136,11 @@ namespace mirrage {
 
 			for(std::uint32_t y = 0; y < image.height; y++) {
 				for(std::uint32_t x = 0; x < image.width; x++) {
-					auto pixel =
-					        Pixel<float>{static_cast<float>(data[(y * image.width + x) * 4 + 0]) / 255.f,
-					                     static_cast<float>(data[(y * image.width + x) * 4 + 1]) / 255.f,
-					                     static_cast<float>(data[(y * image.width + x) * 4 + 2]) / 255.f,
-					                     static_cast<float>(data[(y * image.width + x) * 4 + 3]) / 255.f};
+					auto pixel = Pixel<float>{
+					        static_cast<float>(data[(y * image.width + x) * 4 + 0]) / 255.f,
+					        static_cast<float>(data[(y * image.width + x) * 4 + 1]) / 255.f,
+					        static_cast<float>(data[(y * image.width + x) * 4 + 2]) / 255.f,
+					        static_cast<float>(data[(y * image.width + x) * 4 + 3]) / 255.f};
 
 					if(srgb) {
 						pixel.r = std::pow(pixel.r, 1.f / 2.2f);
@@ -190,10 +193,10 @@ namespace mirrage {
 					for(std::uint32_t x = 0; x < width; x++) {
 						auto  src = image.pixel(i, x, y);
 						auto& dst = rgb8_image.pixel(i, x, y);
-						dst.r     = static_cast<std::uint8_t>(glm::clamp(src.r * 255.f, 0.f, 255.f));
-						dst.g     = static_cast<std::uint8_t>(glm::clamp(src.g * 255.f, 0.f, 255.f));
-						dst.b     = static_cast<std::uint8_t>(glm::clamp(src.b * 255.f, 0.f, 255.f));
-						dst.a     = static_cast<std::uint8_t>(glm::clamp(src.a * 255.f, 0.f, 255.f));
+						dst.r = static_cast<std::uint8_t>(glm::clamp(src.r * 255.f, 0.f, 255.f));
+						dst.g = static_cast<std::uint8_t>(glm::clamp(src.g * 255.f, 0.f, 255.f));
+						dst.b = static_cast<std::uint8_t>(glm::clamp(src.b * 255.f, 0.f, 255.f));
+						dst.a = static_cast<std::uint8_t>(glm::clamp(src.a * 255.f, 0.f, 255.f));
 					}
 				}
 			}
@@ -238,8 +241,8 @@ namespace mirrage {
 
 		auto texture_dir = output + "/textures/";
 
-		auto substance_id =
-		        util::Str_id(get_texture_name(material, substamce_id_texture_type).get_or_other("default"));
+		auto substance_id = util::Str_id(
+		        get_texture_name(material, substamce_id_texture_type).get_or("default"));
 
 		// load and combine textures
 		auto albedo_name_mb = get_texture_name(material, albedo_texture_type);
@@ -249,7 +252,8 @@ namespace mirrage {
 		auto albedo_name = base_dir + "/" + albedo_name_mb.get_or_throw();
 
 		auto albedo = load_texture2d(albedo_name);
-		generate_mip_maps(albedo, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+		generate_mip_maps(albedo,
+		                  [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
 		albedo_name = name + "_albedo.ktx";
 		store_texture(albedo, texture_dir + albedo_name);
 
@@ -264,19 +268,24 @@ namespace mirrage {
 			case "default"_strid:
 			default:
 				auto metallic = load_texture2d(
-				        base_dir + "/" + get_texture_name(material, metallic_texture_type).get_or_throw(),
+				        base_dir + "/"
+				                + get_texture_name(material, metallic_texture_type).get_or_throw(),
 				        false);
 				auto roughness = load_texture2d(
-				        base_dir + "/" + get_texture_name(material, roughness_texture_type).get_or_throw(),
+				        base_dir + "/"
+				                + get_texture_name(material, roughness_texture_type).get_or_throw(),
 				        false);
 				auto normal = load_texture2d(
-				        base_dir + "/" + get_texture_name(material, normal_texture_type).get_or_throw(),
+				        base_dir + "/"
+				                + get_texture_name(material, normal_texture_type).get_or_throw(),
 				        false);
 
-				generate_mip_maps(metallic,
-				                  [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
-				generate_mip_maps(roughness,
-				                  [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+				generate_mip_maps(metallic, [](auto a, auto b, auto c, auto d) {
+					return (a + b + c + d) / 4.f;
+				});
+				generate_mip_maps(roughness, [](auto a, auto b, auto c, auto d) {
+					return (a + b + c + d) / 4.f;
+				});
 
 				normal.foreach([&](auto& pixel, auto level, auto x, auto y) {
 					if(level > 0) {
@@ -285,10 +294,14 @@ namespace mirrage {
 						auto n_11 = normal.pixel(level - 1, x * 2 + 1, y * 2 + 1);
 						auto n_01 = normal.pixel(level - 1, x * 2, y * 2 + 1);
 
-						auto n = glm::normalize(glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
-						         + glm::normalize(glm::vec3(n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
-						         + glm::normalize(glm::vec3(n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
-						         + glm::normalize(glm::vec3(n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
+						auto n = glm::normalize(
+						                 glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
+						         + glm::normalize(glm::vec3(
+						                   n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
+						         + glm::normalize(glm::vec3(
+						                   n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
+						         + glm::normalize(glm::vec3(
+						                   n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
 
 						n       = glm::normalize(n / 4.f);
 						pixel.r = n.x * 0.5 + 0.5;

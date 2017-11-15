@@ -174,15 +174,18 @@ namespace mirrage::graphic {
 
 		auto final_image = _device.create_image(image_create_info, false, Memory_lifetime::normal, dedicated);
 
-		_image_transfers.emplace_back(std::move(staging_buffer),
-		                              *final_image,
-		                              size,
-		                              owner,
-		                              actual_mip_levels,
-		                              stored_mip_levels,
-		                              mip_levels == 0,
-		                              real_dimensions,
-		                              std::move(mip_image_sizes));
+		{
+			auto lock = std::scoped_lock{_mutex};
+			_image_transfers.emplace_back(std::move(staging_buffer),
+			                              *final_image,
+			                              size,
+			                              owner,
+			                              actual_mip_levels,
+			                              stored_mip_levels,
+			                              mip_levels == 0,
+			                              real_dimensions,
+			                              std::move(mip_image_sizes));
+		}
 
 		return {std::move(final_image), actual_mip_levels, mip_levels == 0, real_dimensions};
 	}
@@ -215,7 +218,10 @@ namespace mirrage::graphic {
 		        Memory_lifetime::normal,
 		        dedicated);
 
-		_buffer_transfers.emplace_back(std::move(staging_buffer), *final_buffer, size, owner);
+		{
+			auto lock = std::scoped_lock{_mutex};
+			_buffer_transfers.emplace_back(std::move(staging_buffer), *final_buffer, size, owner);
+		}
 
 		return {std::move(final_buffer)};
 	}
@@ -257,6 +263,8 @@ namespace mirrage::graphic {
 	}
 
 	auto Transfer_manager::next_frame(vk::CommandBuffer main_queue_commands) -> util::maybe<vk::Semaphore> {
+		auto lock = std::scoped_lock{_mutex};
+
 		if(_buffer_transfers.empty() && _image_transfers.empty())
 			return util::nothing;
 

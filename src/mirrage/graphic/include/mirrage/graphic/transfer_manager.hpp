@@ -11,6 +11,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <tuple>
 
 
@@ -253,6 +254,7 @@ namespace mirrage::graphic {
 		vk::Queue           _queue;
 		vk::UniqueSemaphore _semaphore;
 		Command_buffer_pool _command_buffer_pool;
+		mutable std::mutex  _mutex;
 
 		Per_frame_queue<vk::UniqueCommandBuffer> _command_buffers;
 

@@ -1,6 +1,7 @@
 #include <mirrage/asset/stream.hpp>
 
 #include <mirrage/asset/asset_manager.hpp>
+#include <mirrage/asset/error.hpp>
 
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/string_utils.hpp>
@@ -13,9 +14,6 @@
 
 namespace mirrage::asset {
 
-	Loading_failed::~Loading_failed() = default;
-
-
 	class stream::fbuf : public std::streambuf {
 		fbuf(const fbuf& other) = delete;
 		fbuf& operator=(const fbuf& other) = delete;
@@ -24,41 +22,47 @@ namespace mirrage::asset {
 			if(PHYSFS_eof(file)) {
 				return traits_type::eof();
 			}
-			size_t bytesRead = PHYSFS_read(file, buffer, 1, bufferSize);
+			auto bytesRead = PHYSFS_readBytes(file, buffer.data(), bufferSize);
 			if(bytesRead < 1) {
 				return traits_type::eof();
 			}
-			setg(buffer, buffer, buffer + bytesRead);
-			return (unsigned char) *gptr();
+			setg(buffer.data(), buffer.data(), buffer.data() + bytesRead);
+			return static_cast<unsigned char>(*gptr());
 		}
 
-		pos_type seekoff(std::streamoff pos, std::ios_base::seekdir dir, std::ios_base::openmode mode) {
+		pos_type seekoff(std::streamoff          pos,
+		                 std::ios_base::seekdir  dir,
+		                 std::ios_base::openmode mode) {
 			switch(dir) {
-				case std::ios_base::beg: PHYSFS_seek(file, pos); break;
+				case std::ios_base::beg: PHYSFS_seek(file, static_cast<std::uint64_t>(pos)); break;
 				case std::ios_base::cur:
 					// subtract characters currently in buffer from seek position
-					PHYSFS_seek(file, (PHYSFS_tell(file) + pos) - (egptr() - gptr()));
+					PHYSFS_seek(file,
+					            static_cast<PHYSFS_uint64>((PHYSFS_tell(file) + pos)
+					                                       - (egptr() - gptr())));
 					break;
 				//case std::_S_ios_seekdir_end:
 				case std::ios_base::end:
-				default: PHYSFS_seek(file, PHYSFS_fileLength(file) + pos); break;
+				default:
+					PHYSFS_seek(file, static_cast<PHYSFS_uint64>(PHYSFS_fileLength(file) + pos));
+					break;
 			}
 			if(mode & std::ios_base::in) {
 				setg(egptr(), egptr(), egptr());
 			}
 			if(mode & std::ios_base::out) {
-				setp(buffer, buffer);
+				setp(buffer.data(), buffer.data());
 			}
 			return PHYSFS_tell(file);
 		}
 
 		pos_type seekpos(pos_type pos, std::ios_base::openmode mode) {
-			PHYSFS_seek(file, pos);
+			PHYSFS_seek(file, static_cast<PHYSFS_uint64>(pos));
 			if(mode & std::ios_base::in) {
 				setg(egptr(), egptr(), egptr());
 			}
 			if(mode & std::ios_base::out) {
-				setp(buffer, buffer);
+				setp(buffer.data(), buffer.data());
 			}
 			return PHYSFS_tell(file);
 		}
@@ -68,51 +72,50 @@ namespace mirrage::asset {
 				return 0; // no-op
 			}
 
-			auto res = PHYSFS_write(file, pbase(), pptr() - pbase(), 1);
+			auto res =
+			        PHYSFS_writeBytes(file, pbase(), static_cast<PHYSFS_uint32>(pptr() - pbase()));
 			if(res < 1) {
 				return traits_type::eof();
 			}
 			if(c != traits_type::eof()) {
-				res = PHYSFS_write(file, &c, 1, 1);
+				res = PHYSFS_writeBytes(file, &c, 1);
 				if(res < 1) {
 					return traits_type::eof();
 				}
 			}
-			setp(buffer, static_cast<size_t>(res) == bufferSize ? buffer + bufferSize : buffer + res);
+			setp(buffer.data(),
+			     static_cast<size_t>(res) == bufferSize ? buffer.data() + bufferSize
+			                                            : buffer.data() + res);
 
 			return 0;
 		}
 
 		int sync() { return overflow(); }
 
-		char*        buffer;
-		size_t const bufferSize;
+		static constexpr auto        bufferSize = PHYSFS_uint32(1024L * 256);
+		std::array<char, bufferSize> buffer;
 
 	  protected:
 		PHYSFS_File* const file;
 
 	  public:
-		fbuf(File_handle* file, std::size_t bufferSize = 1024L * 256)
-		  : bufferSize(bufferSize), file((PHYSFS_File*) file) {
-			buffer    = new char[bufferSize];
-			char* end = buffer + bufferSize;
+		fbuf(File_handle* file) : file(reinterpret_cast<PHYSFS_File*>(file)) {
+			char* end = buffer.data() + bufferSize;
 			setg(end, end, end);
-			setp(buffer, end);
+			setp(buffer.data(), end);
 		}
 
-		~fbuf() {
-			sync();
-			delete[] buffer;
-		}
+		~fbuf() { sync(); }
 	};
 
 	struct File_handle {};
 
 	stream::stream(AID aid, Asset_manager& manager, File_handle* file, const std::string& path)
-	  : _file(file), _aid(aid), _manager(manager) {
-		MIRRAGE_INVARIANT(file, "Error opening file \"" << path << "\": " << PHYSFS_getLastError());
-
-		_fbuf.reset(new fbuf(file));
+	  : _file(file), _aid(aid), _manager(manager), _fbuf(std::make_unique<fbuf>(file)) {
+		auto errc = PHYSFS_getLastErrorCode();
+		if(errc != PHYSFS_ERR_OK)
+			throw std::system_error(static_cast<Asset_error>(errc),
+			                        "Error opening file \"" + path + "\"");
 	}
 
 	stream::stream(stream&& o)
@@ -124,7 +127,7 @@ namespace mirrage::asset {
 		_fbuf.reset();
 
 		if(_file)
-			PHYSFS_close((PHYSFS_File*) _file);
+			PHYSFS_close(reinterpret_cast<PHYSFS_File*>(_file));
 	}
 
 	stream& stream::operator=(stream&& rhs) noexcept {
@@ -139,17 +142,16 @@ namespace mirrage::asset {
 		_fbuf.reset();
 
 		if(_file)
-			PHYSFS_close((PHYSFS_File*) _file);
+			PHYSFS_close(reinterpret_cast<PHYSFS_File*>(_file));
 	}
 
-	auto stream::physical_location() const noexcept -> util::maybe<std::string> {
-		return _manager.physical_location(_aid);
+	size_t stream::length() const noexcept {
+		return static_cast<size_t>(PHYSFS_fileLength(reinterpret_cast<PHYSFS_File*>(_file)));
 	}
-
-	size_t stream::length() const noexcept { return PHYSFS_fileLength((PHYSFS_File*) _file); }
 
 	istream::istream(AID aid, Asset_manager& manager, const std::string& path)
-	  : stream(aid, manager, (File_handle*) PHYSFS_openRead(path.c_str()), path), std::istream(_fbuf.get()) {}
+	  : stream(aid, manager, reinterpret_cast<File_handle*>(PHYSFS_openRead(path.c_str())), path)
+	  , std::istream(_fbuf.get()) {}
 	istream::istream(istream&& o) : stream(std::move(o)), std::istream(_fbuf.get()) {}
 	auto istream::operator=(istream&& s) -> istream& {
 		stream::operator=(std::move(s));
@@ -179,30 +181,26 @@ namespace mirrage::asset {
 	}
 	std::vector<char> istream::bytes() {
 		std::vector<char> res(length(), 0);
-		read((char*) res.data(), res.size());
+		read(res.data(), static_cast<std::streamsize>(res.size()));
 
 		return res;
 	}
 	void istream::read_direct(char* target, std::size_t size) {
 		seekg(0, cur);
-		PHYSFS_read((PHYSFS_File*) _file, target, 1, size);
+		PHYSFS_readBytes(reinterpret_cast<PHYSFS_File*>(_file), target, size);
 	}
 
 
 	ostream::ostream(AID aid, Asset_manager& manager, const std::string& path)
-	  : stream(aid, manager, (File_handle*) PHYSFS_openWrite(path.c_str()), path)
+	  : stream(aid, manager, reinterpret_cast<File_handle*>(PHYSFS_openWrite(path.c_str())), path)
 	  , std::ostream(_fbuf.get()) {}
 	ostream::ostream(ostream&& o) : stream(std::move(o)), std::ostream(_fbuf.get()) {}
-	ostream::~ostream() {
-		//		if(good())
-		//			flush();
-
-		_manager._post_write();
-	}
+	ostream::~ostream() { _manager._post_write(); }
 
 	auto ostream::operator=(ostream&& s) -> ostream& {
 		stream::operator=(std::move(s));
 		init(_fbuf.get());
 		return *this;
 	}
+
 } // namespace mirrage::asset

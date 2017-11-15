@@ -24,10 +24,6 @@ namespace mirrage::asset {
 	struct File_handle;
 	class Asset_manager;
 
-	struct Loading_failed : public util::Error {
-		explicit Loading_failed(const std::string& msg) noexcept : util::Error(msg) {}
-		virtual ~Loading_failed();
-	};
 
 	class stream {
 	  public:
@@ -43,8 +39,6 @@ namespace mirrage::asset {
 
 		auto  aid() const noexcept { return _aid; }
 		auto& manager() noexcept { return _manager; }
-
-		auto physical_location() const noexcept -> util::maybe<std::string>;
 
 		void close();
 
@@ -100,25 +94,17 @@ namespace mirrage::asset {
 
 			sf2::deserialize_json(in,
 			                      [&](auto& msg, uint32_t row, uint32_t column) {
-				                      MIRRAGE_ERROR("Error parsing JSON from " << in.aid().str() << " at "
-				                                                               << row << ":" << column << ": "
-				                                                               << msg);
+				                      MIRRAGE_ERROR("Error parsing JSON from "
+				                                    << in.aid().str() << " at " << row << ":"
+				                                    << column << ": " << msg);
 			                      },
 			                      *r);
 
 			return r;
 		}
-		static void store(ostream out, const T& asset) { sf2::serialize_json(out, asset); }
+		static void save(ostream out, const T& asset) { sf2::serialize_json(out, asset); }
 	};
 
-	template <class T>
-	struct Interceptor {
-		static auto on_intercept(Asset_manager&, const AID& interceptor_aid, const AID& org_aid)
-		        -> std::shared_ptr<T> {
-			MIRRAGE_FAIL("Required Interceptor specialization not found loading '"
-			             << org_aid.str() << "' via '" << interceptor_aid.str() << "'");
-		}
-	};
 } // namespace mirrage::asset
 #else
 
@@ -130,10 +116,11 @@ namespace mirrage::asset {
 	 */
 	template <class T>
 	struct Loader {
-		static_assert(util::dependent_false<T>(), "Required AssetLoader specialization not provided.");
+		static_assert(util::dependent_false<T>(),
+		              "Required AssetLoader specialization not provided.");
 
-		static auto load(istream in) throw(Loading_failed) -> std::shared_ptr<T>;
-		static void store(ostream out, const T& asset) throw(Loading_failed);
+		static auto load(istream in) -> std::shared_ptr<T>;
+		static void save(ostream out, const T& asset);
 	};
 } // namespace mirrage::asset
 #endif

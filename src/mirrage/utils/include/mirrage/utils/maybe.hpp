@@ -37,7 +37,9 @@ namespace mirrage::util {
 		/*implicit*/ maybe(T&& data) noexcept : _valid(true), _data(std::move(data)) {}
 		/*implicit*/ maybe(const T& data) noexcept : _valid(true), _data(data) {}
 		maybe(const maybe& o) noexcept : _valid(o._valid), _data(o._data) {}
-		maybe(maybe&& o) noexcept : _valid(o._valid), _data(std::move(o._data)) { o._valid = false; }
+		maybe(maybe&& o) noexcept : _valid(o._valid), _data(std::move(o._data)) {
+			o._valid = false;
+		}
 
 		~maybe() noexcept {
 			if(is_some())
@@ -111,9 +113,16 @@ namespace mirrage::util {
 			return _data;
 		}
 
-		T&       get_ref_or_other(T& other) noexcept { return is_some() ? _data : other; }
-		const T& get_ref_or_other(const T& other) const noexcept { return is_some() ? _data : other; }
-		T        get_or_other(T other) const noexcept { return is_some() ? _data : other; }
+		T&       get_ref_or(T& other) noexcept { return is_some() ? _data : other; }
+		const T& get_ref_or(const T& other) const noexcept { return is_some() ? _data : other; }
+		T        get_or(T other) const noexcept { return is_some() ? _data : other; }
+
+		template <typename Func,
+		          typename = std::enable_if_t<!std::is_convertible_v<Func&, const T&>>,
+		          typename = decltype(std::declval<Func>())>
+		T get_or(Func&& f) const noexcept {
+			return is_some() ? _data : f();
+		}
 
 		template <typename Func,
 		          class = std::enable_if_t<std::is_same<std::result_of_t<Func(T&)>, void>::value>>
@@ -142,7 +151,7 @@ namespace mirrage::util {
 			if(is_some())
 				return f(_data);
 			else
-				return nothing();
+				return maybe<std::result_of_t<Func(T&)>>{};
 		}
 
 		template <typename RT, typename Func>
@@ -257,8 +266,17 @@ namespace mirrage::util {
 
 			return *_ref;
 		}
-		T& get_or_other(std::remove_const_t<T>& other) const noexcept { return is_some() ? *_ref : other; }
-		const T& get_or_other(const T& other) const noexcept { return is_some() ? *_ref : other; }
+		T& get_or(std::remove_const_t<T>& other) const noexcept {
+			return is_some() ? *_ref : other;
+		}
+		const T& get_or(const T& other) const noexcept { return is_some() ? *_ref : other; }
+
+		template <typename Func,
+		          typename = std::enable_if_t<!std::is_convertible_v<Func&, const T&>>,
+		          typename = decltype(std::declval<Func>())>
+		T& get_or(Func&& f) const noexcept {
+			return is_some() ? *_ref : f();
+		}
 
 		template <typename Func,
 		          class = std::enable_if_t<std::is_same<std::result_of_t<Func(T&)>, void>::value>>
@@ -272,7 +290,7 @@ namespace mirrage::util {
 			if(is_some())
 				return f(*_ref);
 			else
-				return nothing;
+				return {};
 		}
 
 		template <typename Func,
@@ -287,7 +305,7 @@ namespace mirrage::util {
 			if(is_some())
 				return f(*_ref);
 			else
-				return nothing;
+				return {};
 		}
 
 		template <typename RT, typename Func>
@@ -334,7 +352,8 @@ namespace mirrage::util {
 		  private:
 			template <typename Func, int... S>
 			void call(Func&& f, seq<S...>) {
-				call(std::forward<Func>(f), std::forward<decltype(std::get<S>(args))>(std::get<S>(args))...);
+				call(std::forward<Func>(f),
+				     std::forward<decltype(std::get<S>(args))>(std::get<S>(args))...);
 			}
 
 			template <typename Func, typename... Args>

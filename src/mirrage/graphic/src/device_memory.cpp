@@ -6,6 +6,7 @@
 
 #include <bitset>
 #include <cmath>
+#include <mutex>
 
 
 namespace mirrage::graphic {
@@ -19,7 +20,7 @@ namespace mirrage::graphic {
 		template <std::uint32_t MinSize, std::uint32_t MaxSize>
 		class Buddy_block_alloc {
 		  public:
-			Buddy_block_alloc(const vk::Device&, std::uint32_t type);
+			Buddy_block_alloc(const vk::Device&, std::uint32_t type, bool mapable, std::mutex& free_mutex);
 			Buddy_block_alloc(const Buddy_block_alloc&) = delete;
 			Buddy_block_alloc(Buddy_block_alloc&&)      = delete;
 			Buddy_block_alloc& operator=(const Buddy_block_alloc&) = delete;
@@ -40,7 +41,7 @@ namespace mirrage::graphic {
 					free_memory = total_size / (1L << (i + 1)) * free;
 				}
 
-				return free_memory;
+				return gsl::narrow<std::uint32_t>(free_memory);
 			}
 
 			auto empty() const noexcept { return !_free_blocks[0].empty(); }
@@ -53,10 +54,12 @@ namespace mirrage::graphic {
 			static constexpr auto blocks     = (1 << layers) - 1;
 
 			vk::UniqueDeviceMemory _memory;
+			char*                  _mapped_addr;
 
 			std::array<Free_list, layers> _free_blocks;
 			std::bitset<blocks / 2>       _free_buddies;
 			std::int64_t                  _allocation_count = 0;
+			std::mutex&                   _free_mutex;
 
 			auto _index_to_offset(std::uint32_t layer, std::uint32_t idx) -> vk::DeviceSize;
 
@@ -78,12 +81,14 @@ namespace mirrage::graphic {
 	template <std::uint32_t MinSize, std::uint32_t MaxSize>
 	class Device_memory_pool {
 	  public:
-		Device_memory_pool(const vk::Device&, std::uint32_t type);
+		Device_memory_pool(const vk::Device&, std::uint32_t type, bool mapable);
 		~Device_memory_pool() = default;
 
 		auto alloc(std::uint32_t size, std::uint32_t alignment) -> util::maybe<Device_memory>;
 
 		auto shrink_to_fit() -> std::size_t {
+			auto lock = std::scoped_lock{_mutex};
+
 			auto new_end = std::remove_if(
 			        _blocks.begin(), _blocks.end(), [](auto& block) { return block->empty(); });
 			auto deleted = std::distance(new_end, _blocks.end());
@@ -94,10 +99,12 @@ namespace mirrage::graphic {
 
 			_blocks.erase(new_end, _blocks.end());
 
-			return deleted;
+			return gsl::narrow<std::size_t>(deleted);
 		}
 
 		auto usage_statistic() const -> Device_memory_pool_usage {
+			auto lock = std::scoped_lock{_mutex};
+
 			auto usage = Device_memory_pool_usage{0, 0, _blocks.size()};
 			for(auto& block : _blocks) {
 				usage.reserved += MaxSize;
@@ -108,8 +115,10 @@ namespace mirrage::graphic {
 		}
 
 	  private:
-		const vk::Device& _device;
-		std::uint32_t     _type;
+		const vk::Device&  _device;
+		std::uint32_t      _type;
+		bool               _mapable;
+		mutable std::mutex _mutex;
 
 		std::vector<std::unique_ptr<Buddy_block_alloc<MinSize, MaxSize>>> _blocks;
 	};
@@ -117,12 +126,13 @@ namespace mirrage::graphic {
 
 	class Device_heap {
 	  public:
-		Device_heap(const vk::Device& device, std::uint32_t type)
+		Device_heap(const vk::Device& device, std::uint32_t type, bool mapable)
 		  : _device(device)
 		  , _type(type)
-		  , _temporary_pool(device, type)
-		  , _normal_pool(device, type)
-		  , _persistent_pool(device, type) {}
+		  , _mapable(mapable)
+		  , _temporary_pool(device, type, mapable)
+		  , _normal_pool(device, type, mapable)
+		  , _persistent_pool(device, type, mapable) {}
 		Device_heap(const Device_heap&) = delete;
 		Device_heap(Device_heap&&)      = delete;
 		Device_heap& operator=(const Device_heap&) = delete;
@@ -146,6 +156,7 @@ namespace mirrage::graphic {
 			// single allocation
 			auto alloc_info = vk::MemoryAllocateInfo{size, _type};
 			auto m          = _device.allocateMemoryUnique(alloc_info);
+			auto mem_addr = _mapable ? static_cast<char*>(_device.mapMemory(*m, 0, VK_WHOLE_SIZE)) : nullptr;
 			return Device_memory{this,
 			                     +[](void* self, std::uint32_t, std::uint32_t, vk::DeviceMemory memory) {
 				                     static_cast<Device_heap*>(self)->_device.freeMemory(memory);
@@ -153,7 +164,8 @@ namespace mirrage::graphic {
 			                     0,
 			                     size,
 			                     m.release(),
-			                     0};
+			                     0,
+			                     mem_addr};
 		}
 
 		auto shrink_to_fit() -> std::size_t {
@@ -179,6 +191,7 @@ namespace mirrage::graphic {
 
 		const vk::Device& _device;
 		std::uint32_t     _type;
+		bool              _mapable;
 
 		Device_memory_pool<1024L * 1024 * 4, 256L * 1024 * 1024> _temporary_pool;
 		Device_memory_pool<1024L * 1024 * 1, 256L * 1024 * 1024> _normal_pool;
@@ -228,8 +241,15 @@ namespace mirrage::graphic {
 	                             std::uint32_t    index,
 	                             std::uint32_t    layer,
 	                             vk::DeviceMemory m,
-	                             vk::DeviceSize   o)
-	  : _owner(owner), _deleter(deleter), _index(index), _layer(layer), _memory(m), _offset(o) {}
+	                             vk::DeviceSize   o,
+	                             void*            mapped_addr)
+	  : _owner(owner)
+	  , _deleter(deleter)
+	  , _index(index)
+	  , _layer(layer)
+	  , _memory(m)
+	  , _offset(o)
+	  , _mapped_addr(mapped_addr) {}
 
 
 	Device_memory_allocator::Device_memory_allocator(const vk::Device&  device,
@@ -241,11 +261,18 @@ namespace mirrage::graphic {
 
 		auto memory_properties = gpu.getMemoryProperties();
 
-		_pools.resize(memory_properties.memoryTypeCount);
-
 		const auto host_visible_flags =
 		        vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent;
 		const auto device_local_flags = vk::MemoryPropertyFlagBits::eDeviceLocal;
+
+
+		_pools.reserve(memory_properties.memoryTypeCount);
+		for(auto id : util::range(memory_properties.memoryTypeCount)) {
+			auto host_visible = (memory_properties.memoryTypes[id].propertyFlags & host_visible_flags)
+			                    == host_visible_flags;
+
+			_pools.emplace_back(std::make_unique<Device_heap>(_device, id, host_visible));
+		}
 
 		for(auto i : util::range(memory_properties.memoryTypeCount)) {
 			auto host_visible = (memory_properties.memoryTypes[i].propertyFlags & host_visible_flags)
@@ -286,9 +313,6 @@ namespace mirrage::graphic {
 		for(auto id : pool_ids) {
 			if(type_mask & (1u << id)) {
 				auto& pool = _pools[id];
-				if(!pool) {
-					pool.reset(new Device_heap(_device, id));
-				}
 
 				try {
 					return pool->alloc(size, alignment, lifetime);
@@ -340,7 +364,9 @@ namespace mirrage::graphic {
 				}
 #endif
 				MIRRAGE_DEBUG("Alloc: " << (requirements.size / 1024.f / 1024.f) << " MB");
-				auto mem = _device.allocateMemoryUnique(alloc_info);
+				auto mem      = _device.allocateMemoryUnique(alloc_info);
+				auto mem_addr = host_visible ? static_cast<char*>(_device.mapMemory(*mem, 0, VK_WHOLE_SIZE))
+				                             : nullptr;
 				return Device_memory{
 				        this,
 				        +[](void* self, std::uint32_t, std::uint32_t, vk::DeviceMemory memory) {
@@ -349,7 +375,8 @@ namespace mirrage::graphic {
 				        0,
 				        0,
 				        mem.release(),
-				        0};
+				        0,
+				        mem_addr};
 			}
 		}
 
@@ -390,8 +417,10 @@ namespace mirrage::graphic {
 
 	// POOL
 	template <std::uint32_t MinSize, std::uint32_t MaxSize>
-	Device_memory_pool<MinSize, MaxSize>::Device_memory_pool(const vk::Device& device, std::uint32_t type)
-	  : _device(device), _type(type) {}
+	Device_memory_pool<MinSize, MaxSize>::Device_memory_pool(const vk::Device& device,
+	                                                         std::uint32_t     type,
+	                                                         bool              mapable)
+	  : _device(device), _type(type), _mapable(mapable) {}
 
 	template <std::uint32_t MinSize, std::uint32_t MaxSize>
 	auto Device_memory_pool<MinSize, MaxSize>::alloc(std::uint32_t size, std::uint32_t alignment)
@@ -400,13 +429,16 @@ namespace mirrage::graphic {
 		if(size > MaxSize)
 			return util::nothing;
 
+		auto lock = std::scoped_lock{_mutex};
+
 		for(auto& block : _blocks) {
 			auto m = block->alloc(size, alignment);
 			if(m.is_some())
 				return m;
 		}
 
-		_blocks.emplace_back(std::make_unique<Buddy_block_alloc<MinSize, MaxSize>>(_device, _type));
+		_blocks.emplace_back(
+		        std::make_unique<Buddy_block_alloc<MinSize, MaxSize>>(_device, _type, _mapable, _mutex));
 
 		auto m = _blocks.back()->alloc(size, alignment);
 		MIRRAGE_INVARIANT(m.is_some(),
@@ -419,8 +451,13 @@ namespace mirrage::graphic {
 	namespace {
 
 		template <std::uint32_t MinSize, std::uint32_t MaxSize>
-		Buddy_block_alloc<MinSize, MaxSize>::Buddy_block_alloc(const vk::Device& device, std::uint32_t type)
-		  : _memory(device.allocateMemoryUnique({MaxSize, type})) {
+		Buddy_block_alloc<MinSize, MaxSize>::Buddy_block_alloc(const vk::Device& device,
+		                                                       std::uint32_t     type,
+		                                                       bool              mapable,
+		                                                       std::mutex&       free_mutex)
+		  : _memory(device.allocateMemoryUnique({MaxSize, type}))
+		  , _mapped_addr(mapable ? static_cast<char*>(device.mapMemory(*_memory, 0, VK_WHOLE_SIZE)) : nullptr)
+		  , _free_mutex(free_mutex) {
 			MIRRAGE_DEBUG("Alloc: " << (MaxSize / 1024.f / 1024.f) << " MB");
 			_free_blocks[0].emplace_back(0);
 		}
@@ -483,11 +520,14 @@ namespace mirrage::graphic {
 			                     index,
 			                     layer,
 			                     *_memory,
-			                     offset};
+			                     offset,
+			                     _mapped_addr ? _mapped_addr + offset : nullptr};
 		}
 
 		template <std::uint32_t MinSize, std::uint32_t MaxSize>
 		void Buddy_block_alloc<MinSize, MaxSize>::free(std::uint32_t layer, std::uint32_t index) {
+			auto lock = std::scoped_lock{_free_mutex};
+
 			_allocation_count--;
 
 			_free_blocks[layer].emplace_back(index);

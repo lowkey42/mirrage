@@ -13,7 +13,7 @@ namespace mirrage::net {
 		unspecified_network_error
 	};
 
-	std::error_code make_error_code(Net_error e);
+	extern std::error_code make_error_code(Net_error e);
 
 } // namespace mirrage::net
 

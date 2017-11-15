@@ -11,6 +11,7 @@ file(GLOB_RECURSE HEADER_FILES
 add_library(mirrage_asset STATIC
 	src/aid.cpp
 	src/asset_manager.cpp
+	src/error.cpp
 	src/stream.cpp
 	${HEADER_FILES}
 )
@@ -27,8 +28,11 @@ target_include_directories(mirrage_asset PUBLIC
 target_link_libraries(mirrage_asset
 	PUBLIC
 		mirrage::utils
+		mirrage::error
 		gsl
 		physfs-static
+		Async++
+		robin-map
 )
    
 

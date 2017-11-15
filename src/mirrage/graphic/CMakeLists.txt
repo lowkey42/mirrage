@@ -23,9 +23,11 @@ add_library(mirrage_graphic STATIC
 	src/ktx_parser.cpp
 	src/ktx_parser.hpp
 	src/mesh.cpp
+	src/pipeline_cache.cpp
 	src/profiler.cpp
 	src/render_pass.cpp
 	src/streamed_buffer.cpp
+	src/swapchain.cpp
 	src/texture.cpp
 	src/transfer_manager.cpp
 	src/vk_wrapper.cpp

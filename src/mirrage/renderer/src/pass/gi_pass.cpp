@@ -47,28 +47,28 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_integrate_brdf"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_integrate_brdf"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+			builder.add_dependency(util::nothing,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlags{},
+			                       pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite);
 
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
+			builder.add_dependency(pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite,
+			                       util::nothing,
+			                       vk::PipelineStageFlagBits::eBottomOfPipe,
+			                       vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                               | vk::AccessFlagBits::eTransferRead);
 
 
 			auto render_pass = builder.build();
 
-			out_framebuffer =
-			        builder.build_framebuffer({target.view(), util::Rgba{}}, target.width(), target.height());
+			out_framebuffer = builder.build_framebuffer(
+			        {target.view(), util::Rgba{}}, target.width(), target.height());
 
 			return render_pass;
 		}
@@ -134,9 +134,10 @@ namespace mirrage::renderer {
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
-			pipeline.add_push_constant("pcs"_strid,
-			                           sizeof(Gi_constants),
-			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+			pipeline.add_push_constant(
+			        "pcs"_strid,
+			        sizeof(Gi_constants),
+			        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 
 			auto& pass = builder.add_subpass(pipeline)
 			                     .color_attachment(color_input,
@@ -156,22 +157,22 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_reproject"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_reproject"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+			builder.add_dependency(util::nothing,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlags{},
+			                       pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite);
 
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
+			builder.add_dependency(pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite,
+			                       util::nothing,
+			                       vk::PipelineStageFlagBits::eBottomOfPipe,
+			                       vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                               | vk::AccessFlagBits::eTransferRead);
 
 
 			auto render_pass = builder.build();
@@ -182,7 +183,8 @@ namespace mirrage::renderer {
 			         {specular.view(0), util::Rgba{0, 0, 0, 0}},
 			         {history_weight.view(0), util::Rgba{0, 0, 0, 0}}}};
 
-			out_framebuffer = builder.build_framebuffer(attachments, diffuse.width(0), diffuse.height(0));
+			out_framebuffer =
+			        builder.build_framebuffer(attachments, diffuse.width(0), diffuse.height(0));
 
 			return render_pass;
 		}
@@ -217,9 +219,10 @@ namespace mirrage::renderer {
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
-			pipeline.add_push_constant("pcs"_strid,
-			                           sizeof(Gi_constants),
-			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+			pipeline.add_push_constant(
+			        "pcs"_strid,
+			        sizeof(Gi_constants),
+			        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 
 			auto& pass = builder.add_subpass(pipeline).color_attachment(
 			        color, graphic::all_color_components, graphic::blend_premultiplied_alpha);
@@ -247,25 +250,29 @@ namespace mirrage::renderer {
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			pass.stage("upsample"_strid)
-			        .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 3, 1)
+			        .shader("frag_shader:gi_sample"_aid,
+			                graphic::Shader_stage::fragment,
+			                "main",
+			                3,
+			                1)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+			builder.add_dependency(util::nothing,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlags{},
+			                       pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite);
 
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
+			builder.add_dependency(pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite,
+			                       util::nothing,
+			                       vk::PipelineStageFlagBits::eBottomOfPipe,
+			                       vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                               | vk::AccessFlagBits::eTransferRead);
 
 
 			auto render_pass = builder.build();
@@ -305,9 +312,10 @@ namespace mirrage::renderer {
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
-			pipeline.add_push_constant("pcs"_strid,
-			                           sizeof(Gi_constants),
-			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+			pipeline.add_push_constant(
+			        "pcs"_strid,
+			        sizeof(Gi_constants),
+			        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 
 			auto& pass = builder.add_subpass(pipeline).color_attachment(
 			        color, graphic::all_color_components, graphic::blend_premultiplied_alpha);
@@ -316,28 +324,29 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_sample_spec"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_sample_spec"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+			builder.add_dependency(util::nothing,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlags{},
+			                       pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite);
 
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
+			builder.add_dependency(pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite,
+			                       util::nothing,
+			                       vk::PipelineStageFlagBits::eBottomOfPipe,
+			                       vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                               | vk::AccessFlagBits::eTransferRead);
 
 
 			auto render_pass = builder.build();
 
-			out_framebuffer = builder.build_framebuffer(
-			        {gi_spec_buffer.view(0), util::Rgba{}}, gi_spec_buffer.width(), gi_spec_buffer.height());
+			out_framebuffer = builder.build_framebuffer({gi_spec_buffer.view(0), util::Rgba{}},
+			                                            gi_spec_buffer.width(),
+			                                            gi_spec_buffer.height());
 
 			return render_pass;
 		}
@@ -371,36 +380,45 @@ namespace mirrage::renderer {
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
 
-			pipeline.add_push_constant("pcs"_strid,
-			                           sizeof(Gi_constants),
-			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+			pipeline.add_push_constant(
+			        "pcs"_strid,
+			        sizeof(Gi_constants),
+			        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 
 			auto& pass = builder.add_subpass(pipeline).color_attachment(color);
 
 			pass.stage("blur_h"_strid)
 			        .shader("frag_shader:gi_spec_blur"_aid, graphic::Shader_stage::fragment)
-			        .shader("vert_shader:gi_spec_blur"_aid, graphic::Shader_stage::vertex, "main", 0, 1);
+			        .shader("vert_shader:gi_spec_blur"_aid,
+			                graphic::Shader_stage::vertex,
+			                "main",
+			                0,
+			                1);
 
 			pass.stage("blur_v"_strid)
 			        .shader("frag_shader:gi_spec_blur"_aid, graphic::Shader_stage::fragment)
-			        .shader("vert_shader:gi_spec_blur"_aid, graphic::Shader_stage::vertex, "main", 0, 0);
+			        .shader("vert_shader:gi_spec_blur"_aid,
+			                graphic::Shader_stage::vertex,
+			                "main",
+			                0,
+			                0);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+			builder.add_dependency(util::nothing,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlags{},
+			                       pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite);
 
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
+			builder.add_dependency(pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite,
+			                       util::nothing,
+			                       vk::PipelineStageFlagBits::eBottomOfPipe,
+			                       vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                               | vk::AccessFlagBits::eTransferRead);
 
 
 			auto render_pass = builder.build();
@@ -408,8 +426,10 @@ namespace mirrage::renderer {
 			out_blur_framebuffer = builder.build_framebuffer(
 			        {blur_buffer.view(0), util::Rgba{}}, blur_buffer.width(), blur_buffer.height());
 
-			out_result_framebuffer = builder.build_framebuffer(
-			        {result_buffer.view(0), util::Rgba{}}, result_buffer.width(), result_buffer.height());
+			out_result_framebuffer =
+			        builder.build_framebuffer({result_buffer.view(0), util::Rgba{}},
+			                                  result_buffer.width(),
+			                                  result_buffer.height());
 
 			return render_pass;
 		}
@@ -440,9 +460,10 @@ namespace mirrage::renderer {
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
-			pipeline.add_push_constant("pcs"_strid,
-			                           sizeof(Gi_constants),
-			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+			pipeline.add_push_constant(
+			        "pcs"_strid,
+			        sizeof(Gi_constants),
+			        vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 
 			auto& pass = builder.add_subpass(pipeline).color_attachment(
 			        color, graphic::all_color_components, graphic::blend_premultiplied_alpha);
@@ -451,28 +472,29 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_blend"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_blend"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+			builder.add_dependency(util::nothing,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlags{},
+			                       pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite);
 
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
+			builder.add_dependency(pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite,
+			                       util::nothing,
+			                       vk::PipelineStageFlagBits::eBottomOfPipe,
+			                       vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                               | vk::AccessFlagBits::eTransferRead);
 
 
 			auto render_pass = builder.build();
 
-			out_framebuffer = builder.build_framebuffer(
-			        {color_in_out.view(0), util::Rgba{}}, color_in_out.width(), color_in_out.height());
+			out_framebuffer = builder.build_framebuffer({color_in_out.view(0), util::Rgba{}},
+			                                            color_in_out.width(),
+			                                            color_in_out.height());
 
 			return render_pass;
 		}
@@ -483,8 +505,9 @@ namespace mirrage::renderer {
 			        vk::FormatFeatureFlagBits::eColorAttachment
 			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 
-			MIRRAGE_INVARIANT(format.is_some(),
-			                  "No Float R16G16 format supported (required for BRDF preintegration)!");
+			MIRRAGE_INVARIANT(
+			        format.is_some(),
+			        "No Float R16G16 format supported (required for BRDF preintegration)!");
 
 			return format.get_or_throw();
 		}
@@ -522,19 +545,22 @@ namespace mirrage::renderer {
 	                 graphic::Render_target_2D& diffuse_in)
 	  : _renderer(renderer)
 	  , _highres_base_mip_level(calc_base_mip_level(in_out.width(), in_out.height(), true))
-	  , _base_mip_level(calc_base_mip_level(in_out.width(), in_out.height(), renderer.settings().gi_highres))
+	  , _base_mip_level(calc_base_mip_level(
+	            in_out.width(), in_out.height(), renderer.settings().gi_highres))
 	  , _max_mip_level(calc_max_mip_level(in_out.width(), in_out.height()))
 	  , _diffuse_mip_level(_base_mip_level + renderer.settings().gi_diffuse_mip_level)
-	  , _min_mip_level(std::min(_diffuse_mip_level, _base_mip_level + renderer.settings().gi_min_mip_level))
+	  , _min_mip_level(std::min(_diffuse_mip_level,
+	                            _base_mip_level + renderer.settings().gi_min_mip_level))
 	  , _gbuffer_sampler(renderer.device().create_sampler(12,
 	                                                      vk::SamplerAddressMode::eClampToEdge,
 	                                                      vk::BorderColor::eIntOpaqueBlack,
 	                                                      vk::Filter::eLinear,
 	                                                      vk::SamplerMipmapMode::eLinear))
-	  , _descriptor_set_layout(renderer.device(),
-	                           *_gbuffer_sampler,
-	                           9,
-	                           vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex)
+	  , _descriptor_set_layout(
+	            renderer.device(),
+	            *_gbuffer_sampler,
+	            9,
+	            vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex)
 	  , _color_in_out(in_out)
 	  , _color_diffuse_in(diffuse_in)
 
@@ -543,7 +569,8 @@ namespace mirrage::renderer {
 	                0,
 	                renderer.gbuffer().color_format,
 	                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
-	                        | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eColorAttachment,
+	                        | vk::ImageUsageFlagBits::eTransferSrc
+	                        | vk::ImageUsageFlagBits::eColorAttachment,
 	                vk::ImageAspectFlagBits::eColor)
 
 	  , _gi_diffuse_history(renderer.device(),
@@ -581,12 +608,13 @@ namespace mirrage::renderer {
 	                    vk::ImageAspectFlagBits::eColor)
 
 	  , _integrated_brdf_format(get_brdf_format(renderer.device()))
-	  , _integrated_brdf(renderer.device(),
-	                     {512, 512},
-	                     1,
-	                     _integrated_brdf_format,
-	                     vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment,
-	                     vk::ImageAspectFlagBits::eColor)
+	  , _integrated_brdf(
+	            renderer.device(),
+	            {512, 512},
+	            1,
+	            _integrated_brdf_format,
+	            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eColorAttachment,
+	            vk::ImageAspectFlagBits::eColor)
 	  , _brdf_integration_renderpass(build_integrate_brdf_render_pass(
 	            renderer, _integrated_brdf_format, _integrated_brdf, _brdf_integration_framebuffer))
 
@@ -599,14 +627,15 @@ namespace mirrage::renderer {
 	                                               _gi_specular,
 	                                               _history_weight,
 	                                               _reproject_framebuffer))
-	  , _reproject_descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
-	                                                                {renderer.gbuffer().depth.view(),
-	                                                                 renderer.gbuffer().mat_data.view(),
-	                                                                 renderer.gbuffer().albedo_mat_id.view(0),
-	                                                                 _gi_diffuse_history.view(),
-	                                                                 _gi_specular_history.view(),
-	                                                                 renderer.gbuffer().prev_depth.view(),
-	                                                                 _integrated_brdf.view()}))
+	  , _reproject_descriptor_set(
+	            _descriptor_set_layout.create_set(renderer.descriptor_pool(),
+	                                              {renderer.gbuffer().depth.view(),
+	                                               renderer.gbuffer().mat_data.view(),
+	                                               renderer.gbuffer().albedo_mat_id.view(0),
+	                                               _gi_diffuse_history.view(),
+	                                               _gi_specular_history.view(),
+	                                               renderer.gbuffer().prev_depth.view(),
+	                                               _integrated_brdf.view()}))
 
 	  , _sample_renderpass(build_sample_render_pass(renderer,
 	                                                *_descriptor_set_layout,
@@ -619,12 +648,13 @@ namespace mirrage::renderer {
 
 	  , _sample_spec_renderpass(build_sample_spec_render_pass(
 	            renderer, *_descriptor_set_layout, _gi_specular, _sample_spec_framebuffer))
-	  , _sample_spec_descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
-	                                                                  {_color_diffuse_in.view(),
-	                                                                   renderer.gbuffer().depth.view(),
-	                                                                   renderer.gbuffer().mat_data.view(),
-	                                                                   _gi_diffuse.view(),
-	                                                                   _history_weight.view()}))
+	  , _sample_spec_descriptor_set(
+	            _descriptor_set_layout.create_set(renderer.descriptor_pool(),
+	                                              {_color_diffuse_in.view(),
+	                                               renderer.gbuffer().depth.view(),
+	                                               renderer.gbuffer().mat_data.view(),
+	                                               _gi_diffuse.view(),
+	                                               _history_weight.view()}))
 
 	  , _blur_render_pass(build_blur_render_pass(renderer,
 	                                             *_descriptor_set_layout,
@@ -635,20 +665,21 @@ namespace mirrage::renderer {
 	  , _blur_descriptor_set_horizontal(_descriptor_set_layout.create_set(
 	            renderer.descriptor_pool(), {renderer.gbuffer().depth.view(), _gi_specular.view()}))
 	  , _blur_descriptor_set_vertical(_descriptor_set_layout.create_set(
-	            renderer.descriptor_pool(), {renderer.gbuffer().depth.view(), _gi_specular_history.view()}))
+	            renderer.descriptor_pool(),
+	            {renderer.gbuffer().depth.view(), _gi_specular_history.view()}))
 
-	  , _blend_renderpass(
-	            build_blend_render_pass(renderer, *_descriptor_set_layout, _color_in_out, _blend_framebuffer))
-	  , _blend_descriptor_set(
-	            _descriptor_set_layout.create_set(renderer.descriptor_pool(),
-	                                              {renderer.gbuffer().depth.view(0),
-	                                               renderer.gbuffer().mat_data.view(0),
-	                                               renderer.gbuffer().depth.view(_base_mip_level),
-	                                               renderer.gbuffer().mat_data.view(_base_mip_level),
-	                                               _gi_diffuse.view(),
-	                                               _gi_specular.view(),
-	                                               renderer.gbuffer().albedo_mat_id.view(0),
-	                                               _integrated_brdf.view()})) {
+	  , _blend_renderpass(build_blend_render_pass(
+	            renderer, *_descriptor_set_layout, _color_in_out, _blend_framebuffer))
+	  , _blend_descriptor_set(_descriptor_set_layout.create_set(
+	            renderer.descriptor_pool(),
+	            {renderer.gbuffer().depth.view(0),
+	             renderer.gbuffer().mat_data.view(0),
+	             renderer.gbuffer().depth.view(_base_mip_level),
+	             renderer.gbuffer().mat_data.view(_base_mip_level),
+	             _gi_diffuse.view(),
+	             _gi_specular.view(),
+	             renderer.gbuffer().albedo_mat_id.view(0),
+	             _integrated_brdf.view()})) {
 		auto end = _max_mip_level;
 		_sample_descriptor_sets.reserve(end - _min_mip_level);
 		for(auto i = 0; i < end - _min_mip_level; i++) {
@@ -662,7 +693,7 @@ namespace mirrage::renderer {
 			               _history_weight.view(),
 			               renderer.gbuffer().depth.view(prev_mip),
 			               renderer.gbuffer().mat_data.view(prev_mip),
-			               renderer.gbuffer().ambient_occlusion.get_or_other(_gi_diffuse_history).view()};
+			               renderer.gbuffer().ambient_occlusion.get_or(_gi_diffuse_history).view()};
 
 			_sample_descriptor_sets.emplace_back(
 			        _descriptor_set_layout.create_set(renderer.descriptor_pool(), images));
@@ -700,7 +731,8 @@ namespace mirrage::renderer {
 			                       vk::ImageLayout::eUndefined,
 			                       vk::ImageLayout::eShaderReadOnlyOptimal);
 
-			for(auto rt : {&_gi_specular, &_gi_diffuse_history, &_gi_specular_history, &_history_weight}) {
+			for(auto rt :
+			    {&_gi_specular, &_gi_diffuse_history, &_gi_specular_history, &_history_weight}) {
 				graphic::clear_texture(command_buffer,
 				                       *rt,
 				                       util::Rgba{0, 0, 0, 0},
@@ -750,15 +782,17 @@ namespace mirrage::renderer {
 	}
 
 	void Gi_pass::_integrate_brdf(vk::CommandBuffer& command_buffer) {
-		_brdf_integration_renderpass.execute(
-		        command_buffer, _brdf_integration_framebuffer, [&] { command_buffer.draw(3, 1, 0, 0); });
+		_brdf_integration_renderpass.execute(command_buffer, _brdf_integration_framebuffer, [&] {
+			command_buffer.draw(3, 1, 0, 0);
+		});
 	}
 
 	void Gi_pass::_reproject_history(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals) {
 		auto _ = _renderer.profiler().push("Reproject");
 
 		_reproject_renderpass.execute(command_buffer, _reproject_framebuffer, [&] {
-			auto descriptor_sets = std::array<vk::DescriptorSet, 2>{globals, *_reproject_descriptor_set};
+			auto descriptor_sets =
+			        std::array<vk::DescriptorSet, 2>{globals, *_reproject_descriptor_set};
 			_reproject_renderpass.bind_descriptor_sets(0, descriptor_sets);
 
 			auto pcs         = Gi_constants{};
@@ -816,7 +850,8 @@ namespace mirrage::renderer {
 	}
 
 	namespace {
-		float calc_ds_factor(int lod, float fov_h, float fov_v, float screen_width, float screen_height) {
+		float calc_ds_factor(
+		        int lod, float fov_h, float fov_v, float screen_width, float screen_height) {
 			float dp = glm::pow(2.f, 2.f * lod); // screen area of one pixel (w*h)
 			return (4.0f * glm::tan(fov_h / 2.f) * glm::tan(fov_v / 2.f) * dp)
 			       / (screen_width * screen_height);
@@ -847,12 +882,12 @@ namespace mirrage::renderer {
 
 				if(i < end - 1) {
 					// barrier against write to previous mipmap level
-					auto subresource =
-					        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor,
-					                                  gsl::narrow<std::uint32_t>(i - _min_mip_level + 1),
-					                                  1,
-					                                  0,
-					                                  1};
+					auto subresource = vk::ImageSubresourceRange{
+					        vk::ImageAspectFlagBits::eColor,
+					        gsl::narrow<std::uint32_t>(i - _min_mip_level + 1),
+					        1,
+					        0,
+					        1};
 					auto barrier = vk::ImageMemoryBarrier{vk::AccessFlagBits::eColorAttachmentWrite,
 					                                      vk::AccessFlagBits::eShaderRead,
 					                                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -861,12 +896,13 @@ namespace mirrage::renderer {
 					                                      VK_QUEUE_FAMILY_IGNORED,
 					                                      _gi_diffuse.image(),
 					                                      subresource};
-					command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
-					                               vk::PipelineStageFlagBits::eFragmentShader,
-					                               vk::DependencyFlags{},
-					                               {},
-					                               {},
-					                               {barrier});
+					command_buffer.pipelineBarrier(
+					        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+					        vk::PipelineStageFlagBits::eFragmentShader,
+					        vk::DependencyFlags{},
+					        {},
+					        {},
+					        {barrier});
 				}
 
 				_sample_renderpass.execute(command_buffer, fb, [&] {
@@ -876,13 +912,14 @@ namespace mirrage::renderer {
 						_sample_renderpass.set_stage("upsample"_strid);
 					}
 
-					_sample_renderpass.bind_descriptor_set(1, *_sample_descriptor_sets[i - _min_mip_level]);
+					_sample_renderpass.bind_descriptor_set(
+					        1, *_sample_descriptor_sets[i - _min_mip_level]);
 
 					pcs.prev_projection[0][3] = i;
 					auto fov_h                = _renderer.global_uniforms().proj_planes.z;
 					auto fov_v                = _renderer.global_uniforms().proj_planes.w;
-					pcs.prev_projection[2][3] =
-					        calc_ds_factor(i, fov_h, fov_v, _color_in_out.width(0), _color_in_out.height(0));
+					pcs.prev_projection[2][3] = calc_ds_factor(
+					        i, fov_h, fov_v, _color_in_out.width(0), _color_in_out.height(0));
 					_sample_renderpass.push_constant("pcs"_strid, pcs);
 
 					command_buffer.draw(3, 1, 0, 0);
@@ -957,9 +994,11 @@ namespace mirrage::renderer {
 	                                  ecs::Entity_manager&      entities,
 	                                  util::maybe<Meta_system&> meta_system,
 	                                  bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
-		auto& in_out = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
+		auto& in_out =
+		        !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
-		auto& in_diff = !write_first_pp_buffer ? renderer.gbuffer().colorB : renderer.gbuffer().colorA;
+		auto& in_diff =
+		        !write_first_pp_buffer ? renderer.gbuffer().colorB : renderer.gbuffer().colorA;
 
 		// writes back to the read texture, so we don't have to flip write_first_pp_buffer
 

@@ -80,6 +80,7 @@ namespace mirrage {
 
 
 	Engine::Engine(const std::string& title,
+	               const std::string& org,
 	               std::uint32_t      version_major,
 	               std::uint32_t      version_minor,
 	               bool               debug,
@@ -88,17 +89,18 @@ namespace mirrage {
 	               char**             argv,
 	               char**)
 	  : _screens(*this)
-	  , _asset_manager(std::make_unique<asset::Asset_manager>(argc > 0 ? argv[0] : "", title))
+	  , _asset_manager(std::make_unique<asset::Asset_manager>(argc > 0 ? argv[0] : "", org, title))
 	  , _translator(std::make_unique<Translator>(*_asset_manager))
 	  , _sdl(headless)
-	  , _graphics_context(headless ? std::unique_ptr<graphic::Context>()
-	                               : std::make_unique<graphic::Context>(
-	                                         title,
-	                                         graphic::make_version_number(version_major, version_minor, 0),
-	                                         "No Engine",
-	                                         graphic::make_version_number(0, 0, 0),
-	                                         debug,
-	                                         *_asset_manager))
+	  , _graphics_context(
+	            headless ? std::unique_ptr<graphic::Context>()
+	                     : std::make_unique<graphic::Context>(
+	                               title,
+	                               graphic::make_version_number(version_major, version_minor, 0),
+	                               "No Engine",
+	                               graphic::make_version_number(0, 0, 0),
+	                               debug,
+	                               *_asset_manager))
 	  , _graphics_main_window(headless ? std::unique_ptr<graphic::Window>()
 	                                   : _graphics_context->create_window("Main"))
 	  , _input_manager(headless ? std::unique_ptr<input::Input_manager>()
@@ -110,7 +112,8 @@ namespace mirrage {
 	  , _headless(headless) {
 
 		if(_graphics_main_window) {
-			_input_manager->viewport({0, 0, _graphics_main_window->width(), _graphics_main_window->height()});
+			_input_manager->viewport(
+			        {0, 0, _graphics_main_window->width(), _graphics_main_window->height()});
 			_input_manager->window(_graphics_main_window->window_handle());
 		}
 

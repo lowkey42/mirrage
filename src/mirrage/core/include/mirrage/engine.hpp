@@ -47,6 +47,7 @@ namespace mirrage {
 	class Engine {
 	  public:
 		Engine(const std::string& title,
+		       const std::string& org,
 		       std::uint32_t      version_major,
 		       std::uint32_t      version_minor,
 		       bool               debug,
