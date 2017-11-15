@@ -102,6 +102,11 @@ namespace mirrage::systems {
 
 		void stop();
 
+		void pause() { _paused = true; }
+		void unpause() { _paused = false; }
+		void toggle_pause() { _paused = !_paused; }
+		auto paused() const { return _paused; }
+
 		void start_recording(Nim_sequence&);
 		// appends the current state of all relevant objects
 		void record(util::Time length, Nim_sequence&);
@@ -118,6 +123,7 @@ namespace mirrage::systems {
 		float            _current_position;
 		int              _end_position;
 		bool             _loop;
+		bool             _paused = false;
 
 		void _update_lookup_table();
 	};

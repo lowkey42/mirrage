@@ -231,7 +231,7 @@ namespace mirrage::renderer {
 			                2,
 			                sample_count,
 			                4,
-			                prioritise_near_samples ? 1 : 0)
+			                prioritise_near_samples)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			pass.stage("sample_last"_strid)

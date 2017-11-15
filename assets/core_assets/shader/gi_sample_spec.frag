@@ -2,6 +2,9 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+// losely based on https://www.gamedev.net/topic/658702-help-with-gpu-pro-5-hi-z-screen-space-reflections/?view=findpost&p=5173175
+//   and http://roar11.com/2015/07/screen-space-glossy-reflections/
+
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
@@ -36,13 +39,9 @@ float luminance_norm(vec3 c) {
 	return sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
 }
 
-// losely based on https://www.gamedev.net/topic/658702-help-with-gpu-pro-5-hi-z-screen-space-reflections/?view=findpost&p=5173175
-//   and http://roar11.com/2015/07/screen-space-glossy-reflections/
-
-
 float roughness_to_spec_lobe_angle(float roughness) {
 	// see: http://graphicrants.blogspot.de/2013/08/specular-brdf-reference.html
-	float power = clamp(2/max(0.0001, roughness*roughness) - 2, 32.0, 1024*20);
+	float power = clamp(2/max(0.0001, roughness*roughness) - 2, 4.0, 1024*16);
 
 	return acos(pow(0.244, 1.0/(power + 1.0)));
 }
@@ -62,7 +61,7 @@ float isosceles_triangle_next_adjacent(float adjacentLength, float incircleRadiu
 	return adjacentLength - (incircleRadius * 2.0f);
 }
 
-vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L, float coneTheta) {
+vec3 sample_color_lod(float roughness, vec2 hit_uv, vec3 L, float coneTheta) {
 	float min_lod = pcs.prev_projection[0][3];
 	float max_lod = max(min_lod, pcs.prev_projection[1][3]);
 	vec2  depth_size  = textureSize(depth_sampler, int(min_lod + 0.5));
@@ -71,46 +70,13 @@ vec3 cone_tracing(float roughness, vec2 hit_uv, vec3 L, float coneTheta) {
 
 	vec2  delta = (hit_uv - vertex_out.tex_coords);
 	float adjacent_length = length(delta);
-	if(adjacent_length<0.00001)
+	if(adjacent_length<0.0001)
 		return vec3(0,0,0);
 
-	vec2  adjacent_unit   = delta / adjacent_length;
-
-	vec4 color = vec4(0,0,0,0);
-	float glossiness_mult = glossiness;
-	float remaining_alpha = 1.0;
-
-	for(int i=0; i<14; i++) {
-		float opposite_length = isosceles_triangle_opposite(adjacent_length, coneTheta);
-		float incircle_size   = isosceles_triangle_inradius(adjacent_length, opposite_length);
-
-		vec2 uv = (vertex_out.tex_coords + adjacent_unit*(adjacent_length - incircle_size));
-		float lod = incircle_size<0.00001 ? min_lod : clamp(log2(incircle_size * screen_size)-1, min_lod, max_lod);
-
-		vec4 s = vec4(textureLod(color_sampler, uv, lod).rgb, 1) * glossiness_mult;
-		if(lod > max_lod-0.5) {
-			s.rgb *= 1.0 - min(0.5, lod-(max_lod-0.5))*2;
-		} else {
-			int ilod = int(lod + 0.5);
-			vec3 N = decode_normal(texelFetch(mat_data_sampler, ivec2(uv*textureSize(mat_data_sampler, ilod)), ilod).rg);
-			s.rgb *= clamp(1.0 - dot(L, N), 0, 1);
-		}
-
-		remaining_alpha -= s.a;
-		if(remaining_alpha < 0.0) {
-			s.rgb *= (1.0 - abs(remaining_alpha));
-		}
-		color += s;
-
-		if(color.a >= 1.0) {
-			break;
-		}
-
-		adjacent_length = isosceles_triangle_next_adjacent(adjacent_length, incircle_size);
-		glossiness_mult *= glossiness;
-	}
-
-	return color.rgb * (1 - max(0.0, remaining_alpha));
+	float opposite_length = isosceles_triangle_opposite(adjacent_length, coneTheta);
+	float incircle_size   = isosceles_triangle_inradius(adjacent_length, opposite_length);
+	float lod = incircle_size<0.00001 ? min_lod : max(log2(incircle_size * screen_size), min_lod);
+	return textureLod(color_sampler, hit_uv, lod).rgb;
 }
 
 void main() {
@@ -148,7 +114,7 @@ void main() {
 	vec3 raycast_hit_point;
 	if(spec_visible &&
 	   traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
-							depthSize, 2.0, global_uniforms.proj_planes.x,
+							depthSize, 1.0, global_uniforms.proj_planes.x,
 							10, 0.5*jitter.z, max_distance, max_steps, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 
@@ -163,7 +129,7 @@ void main() {
 
 		float factor_normal = mix(1, 1.0 - smoothstep(0.6, 0.9, abs(dot(N, hit_N))), step(0.0001, hit_mat_data.b));
 
-		vec3 color = cone_tracing(roughness, hit_uv, dir, coneTheta);
+		vec3 color = sample_color_lod(roughness, hit_uv, dir, coneTheta);
 
 		out_color.rgb = max(color * factor_distance * factor_normal, vec3(0));
 

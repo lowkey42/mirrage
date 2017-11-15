@@ -52,10 +52,12 @@ void main() {
 
 	vec4 center_depths = vec4(depth_00.y, depth_10.x, depth_11.w, depth_01.z);
 
-	vec4 score = vec4(g2(avg_depth - center_depths.x),
-	                  g2(avg_depth - center_depths.y),
-	                  g2(avg_depth - center_depths.z),
-	                  g2(avg_depth - center_depths.w) );
+	vec4 score = vec4(0.8, 0.8, 0.8, 1.0);
+
+	score *= vec4(g2(avg_depth - center_depths.x),
+	              g2(avg_depth - center_depths.y),
+	              g2(avg_depth - center_depths.z),
+	              g2(avg_depth - center_depths.w) );
 
 
 	vec4 normal_x_00 = textureGather(mat_data_sampler, uv_00, 0);
@@ -89,13 +91,21 @@ void main() {
 	              g1(avg_normal_y - center_normals_y.z),
 	              g1(avg_normal_y - center_normals_y.w) );
 
-	int max_index = 0;
-	if(score.y > score.x)
+	int max_index = 3;
+	float s = score.w;
+
+	if(score.x > s) {
+		max_index = 0;
+		s = score.x;
+	}
+	if(score.y > s) {
 		max_index = 1;
-	if(score.z > score.y)
+		s = score.y;
+	}
+	if(score.z > s) {
 		max_index = 2;
-	if(score.w > score.z)
-		max_index = 3;
+		s = score.z;
+	}
 
 
 	out_depth    = texelFetch(depth_sampler,    ivec2(vertex_out.tex_coords * tex_size) + center_offsets[max_index], 0);

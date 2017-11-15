@@ -137,6 +137,10 @@ namespace mirrage {
 						        _meta_system.nims().play_looped(rec);
 					        });
 					break;
+				case "pause"_strid:
+					MIRRAGE_INFO("Pause/Unpause playback");
+					_meta_system.nims().toggle_pause();
+					break;
 
 				case "toggle_ui"_strid: _show_ui = !_show_ui; break;
 

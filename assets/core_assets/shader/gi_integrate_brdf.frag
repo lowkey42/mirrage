@@ -2,6 +2,9 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+// Based on:
+//     http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
+//     https://learnopengl.com/#!PBR/IBL/Specular-IBL
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;

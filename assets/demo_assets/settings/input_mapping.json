@@ -30,6 +30,7 @@
                 "F1": {"type":"once", "action":"start_record"},
                 "F2": {"type":"once", "action":"save_record"},
                 "F3": {"type":"once", "action":"playback"},
+                "Space": {"type":"once", "action":"pause"},
 
                 "F11": {"type":"once", "action":"toggle_ui"}
             },

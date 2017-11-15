@@ -124,7 +124,7 @@ vec3 gi_sample(int lod, int base_mip) {
 	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 19.0;
 
 	for(int i=0; i<SAMPLES; i++) {
-		float r = mix(LAST_SAMPLE==1 ? 2.0 : R/2.0, R, float(i)/float(SAMPLES));
+		float r = max(4, mix(LAST_SAMPLE==1 ? 4.0 : R/2.0, R, float(i)/float(SAMPLES)));
 
 		angle += angle_step;
 		float sin_angle = sin(angle);
@@ -168,7 +168,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	vec3 dir = normalize(diff);
 	float r2 = max(dot(diff, diff), 0.01*0.01);
 
-	float visibility = 1.0; // TODO: raycast
+	float visibility = 1.0; // TODO
 
 	vec4 mat_data = texelFetch(mat_data_sampler, src_uv, 0);
 	vec3 N = decode_normal(mat_data.rg);
@@ -189,7 +189,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	float R2 = REC_PI * NdotL_src * ds;
 	float area = R2 / (r2 + R2); // point-to-differential area form-factor
 
-	weight = visibility * NdotL_dst * area;
+	weight = visibility * NdotL_dst * area * step(0.1, r2);
 
 	return max(vec3(0.0), radiance * weight);
 }
