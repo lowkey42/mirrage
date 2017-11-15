@@ -66,15 +66,13 @@ vec3 decode_tangent_normal(vec2 tn) {
 vec3 tangent_space_to_world(vec3 N) {
 	vec3 VN = normalize(normal);
 
-// calculate tangent (assimp generated tangent contain weird artifacts)
+	// calculate tangent
 	vec3 p_dx = dFdx(view_pos);
 	vec3 p_dy = dFdy(view_pos);
 
 	vec2 tc_dx = dFdx(tex_coords);
 	vec2 tc_dy = dFdy(tex_coords);
 
-
-	  // TODO: check alternativ
 	vec3 p_dy_N = cross(p_dy, VN);
 	vec3 p_dx_N = cross(VN, p_dx);
 
@@ -84,16 +82,5 @@ vec3 tangent_space_to_world(vec3 N) {
 	float inv_max = inversesqrt(max(dot(T,T), dot(B,B)));
 	mat3 TBN = mat3(T*inv_max, B*inv_max, VN);
 	return normalize(TBN * N);
-
-
-/*
-	vec3 VT = normalize( tc_dy.y * p_dx - tc_dx.y * p_dy );
-
-	VT = normalize(VT - dot(VT, VN) * VN);
-	vec3 VB = cross(VT, VN);
-	mat3 TBN = mat3(VT, VB, VN);
-
-	return normalize(TBN * N);*/
-
 }
 

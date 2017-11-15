@@ -166,8 +166,10 @@ namespace mirrage::systems {
 		if(!_playing)
 			return;
 
-		_current_position +=
-		        dt / _playing->frame_length(static_cast<int>(_current_position)) * _playback_speed;
+		if(!_paused) {
+			_current_position +=
+			        dt / _playing->frame_length(static_cast<int>(_current_position)) * _playback_speed;
+		}
 
 		if(_loop) {
 			_current_position = static_cast<float>(std::fmod(_current_position, _playing->frames()));
