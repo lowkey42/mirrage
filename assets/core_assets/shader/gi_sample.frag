@@ -33,7 +33,7 @@ layout(push_constant) uniform Push_constants {
 	mat4 projection;
 
 	// [0][0] = higher resolution base MIP level
-	// [2][0] = exponent for alternative MIP level scaling factor (for more color bleeding)
+	// [2][0] = exponent for alternative MIP level scaling factor (see PRIORITISE_NEAR_SAMPLES)
 	// [0][3] = current MIP level (relative to base MIP)
 	// [1][3] = highest relevant MIP level (relative to base MIP)
 	// [2][3] = precalculated part of the ds factor used in calc_illumination_from
@@ -163,7 +163,7 @@ vec3 gi_sample(int lod, int base_mip) {
 	return c;
 }
 
-// calculate the light transfer between to pixel of the current level
+// calculate the light transfer between two pixel of the current level
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal, out float weight) {
 	// fetch depth/normal at src pixel

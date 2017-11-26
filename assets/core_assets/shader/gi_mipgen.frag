@@ -54,7 +54,7 @@ void main() {
 	              g2(avg_depth - center_depths.z),
 	              g2(avg_depth - center_depths.w) );
 
-	// sample x axis of encoded normals and modulate score based on their difference to center value
+	// sample x axis of encoded normals and modulate score based on their difference to the avg value
 	vec4 normal_x_00 = textureGather(mat_data_sampler, uv_00, 0);
 	vec4 normal_x_10 = textureGather(mat_data_sampler, uv_10, 0);
 	vec4 normal_x_11 = textureGather(mat_data_sampler, uv_11, 0);
@@ -70,7 +70,7 @@ void main() {
 	              g1(avg_normal_x - center_normals_x.z),
 	              g1(avg_normal_x - center_normals_x.w) );
 
-	// sample y axis of encoded normals and modulate score based on their difference to center value
+	// sample y axis of encoded normals and modulate score based on their difference to the avg value
 	vec4 normal_y_00 = textureGather(mat_data_sampler, uv_00, 1);
 	vec4 normal_y_10 = textureGather(mat_data_sampler, uv_10, 1);
 	vec4 normal_y_11 = textureGather(mat_data_sampler, uv_11, 1);
