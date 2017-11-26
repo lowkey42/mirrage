@@ -43,8 +43,9 @@ target_link_libraries(mirrage
 		mirrage::graphic
 		mirrage::gui
 		mirrage::input
+		mirrage::net
 )
-   
+
 
 install(TARGETS mirrage EXPORT mirrage_targets
 	INCLUDES DESTINATION include

@@ -2,10 +2,6 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-#include "normal_encoding.glsl"
-#include "poisson.glsl"
-#include "random.glsl"
-
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
@@ -17,31 +13,31 @@ layout(location = 1) out vec4 out_mat_data;
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
 
-layout(push_constant) uniform Push_constants {
-	vec4 arguments;
-} pcs;
-
-
+// gaussian weight for normal axis difference
 float g1(float x) {
 	float b = 0;
 	float c = 0.1;
 	return exp(- (x-b)*(x-b) / (2*c*c));
 }
+
+// gaussian weight for depth difference
 float g2(float x) {
 	float b = 0;
 	float c = 0.001f;
 	return exp(- (x-b)*(x-b) / (2*c*c));
 }
 
+// finds the pixel of the 4 high-res pixels that is most similar to their surrounding 16 pixels
 void main() {
+	// calculate uv coordinates of 2x2 blocks to sample
 	vec2 tex_size = textureSize(depth_sampler, 0);
-
 	const vec2 uv_00 = vertex_out.tex_coords + vec2(-1,-1) / tex_size;
 	const vec2 uv_10 = vertex_out.tex_coords + vec2( 1,-1) / tex_size;
 	const vec2 uv_11 = vertex_out.tex_coords + vec2( 1, 1) / tex_size;
 	const vec2 uv_01 = vertex_out.tex_coords + vec2(-1, 1) / tex_size;
 	const ivec2[] center_offsets = ivec2[4](ivec2(0,0), ivec2(1,0), ivec2(1,1), ivec2(0,1));
 
+	// sample depth and calculate score based on their difference to the center depth value
 	vec4 depth_00 = textureGather(depth_sampler, uv_00, 0);
 	vec4 depth_10 = textureGather(depth_sampler, uv_10, 0);
 	vec4 depth_11 = textureGather(depth_sampler, uv_11, 0);
@@ -52,14 +48,13 @@ void main() {
 
 	vec4 center_depths = vec4(depth_00.y, depth_10.x, depth_11.w, depth_01.z);
 
-	vec4 score = vec4(0.8, 0.8, 0.8, 1.0);
-
+	vec4 score = vec4(1.0);
 	score *= vec4(g2(avg_depth - center_depths.x),
 	              g2(avg_depth - center_depths.y),
 	              g2(avg_depth - center_depths.z),
 	              g2(avg_depth - center_depths.w) );
 
-
+	// sample x axis of encoded normals and modulate score based on their difference to the avg value
 	vec4 normal_x_00 = textureGather(mat_data_sampler, uv_00, 0);
 	vec4 normal_x_10 = textureGather(mat_data_sampler, uv_10, 0);
 	vec4 normal_x_11 = textureGather(mat_data_sampler, uv_11, 0);
@@ -75,7 +70,7 @@ void main() {
 	              g1(avg_normal_x - center_normals_x.z),
 	              g1(avg_normal_x - center_normals_x.w) );
 
-
+	// sample y axis of encoded normals and modulate score based on their difference to the avg value
 	vec4 normal_y_00 = textureGather(mat_data_sampler, uv_00, 1);
 	vec4 normal_y_10 = textureGather(mat_data_sampler, uv_10, 1);
 	vec4 normal_y_11 = textureGather(mat_data_sampler, uv_11, 1);
@@ -91,6 +86,7 @@ void main() {
 	              g1(avg_normal_y - center_normals_y.z),
 	              g1(avg_normal_y - center_normals_y.w) );
 
+	// determine the index of the pixel with the highes score
 	int max_index = 3;
 	float s = score.w;
 
@@ -107,7 +103,7 @@ void main() {
 		s = score.z;
 	}
 
-
+	// write the depth/mat_data that is most similar to its surroundings
 	out_depth    = texelFetch(depth_sampler,    ivec2(vertex_out.tex_coords * tex_size) + center_offsets[max_index], 0);
 	out_mat_data = texelFetch(mat_data_sampler, ivec2(vertex_out.tex_coords * tex_size) + center_offsets[max_index], 0);
 }

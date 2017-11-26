@@ -65,8 +65,9 @@ namespace mirrage::util {
 #define CLEANUP_CONCATENATE(s1, s2) CLEANUP_CONCATENATE_DIRECT(s1, s2)
 #define CLEANUP_ANONYMOUS_VARIABLE(str) CLEANUP_CONCATENATE(str, __LINE__)
 
-#define ON_EXIT \
-	auto CLEANUP_ANONYMOUS_VARIABLE(_on_scope_exit) = ::mirrage::util::detail::cleanup_scope_guard() + [&]
+#define ON_EXIT                                       \
+	auto CLEANUP_ANONYMOUS_VARIABLE(_on_scope_exit) = \
+	        ::mirrage::util::detail::cleanup_scope_guard() + [&]
 
 
 	template <typename T>
@@ -147,6 +148,7 @@ namespace mirrage::util {
 	auto build_array(F&& factory) {
 		return detail::build_array_impl<N>(factory, std::make_index_sequence<N>());
 	}
+
 
 	namespace detail {
 		using type_id_t = std::intptr_t;
@@ -267,7 +269,8 @@ namespace mirrage::util {
 	  public:
 		tracking_ptr() = default;
 		tracking_ptr(trackable<T>& t)
-		  : _trackable(t._get_obj_addr()), _last_seen_revision(_trackable ? _trackable->revision : 0) {}
+		  : _trackable(t._get_obj_addr())
+		  , _last_seen_revision(_trackable ? _trackable->revision : 0) {}
 
 		tracking_ptr(const tracking_ptr<T>& t) = default;
 		tracking_ptr(tracking_ptr<T>&& t)      = default;
@@ -488,7 +491,8 @@ namespace mirrage::util {
 		return {rbegin(c), rend(c)};
 	}
 	template <class Container, typename = std::enable_if_t<!std::is_arithmetic<Container>::value>>
-	auto range_reverse(const Container& c) -> iter_range<typename Container::const_reverse_iterator> {
+	auto range_reverse(const Container& c)
+	        -> iter_range<typename Container::const_reverse_iterator> {
 		using namespace std;
 		return {rbegin(c), rend(c)};
 	}

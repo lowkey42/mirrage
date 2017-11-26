@@ -36,6 +36,9 @@ namespace mirrage {
 	namespace gui {
 		class Gui;
 	}
+	namespace net {
+		class Net_manager;
+	}
 	class Translator;
 	struct Engine_event_filter;
 
@@ -47,6 +50,7 @@ namespace mirrage {
 		       std::uint32_t      version_major,
 		       std::uint32_t      version_minor,
 		       bool               debug,
+		       bool               headless,
 		       int                argc,
 		       char**             argv,
 		       char**             env);
@@ -68,6 +72,7 @@ namespace mirrage {
 		auto& bus() noexcept { return _bus; }
 		auto& screens() noexcept { return _screens; }
 		auto& translator() noexcept { return *_translator; }
+		auto& net() noexcept { return *_net_manager; }
 
 	  protected:
 		virtual void _on_pre_frame(util::Time) {}
@@ -75,7 +80,7 @@ namespace mirrage {
 
 	  protected:
 		struct Sdl_wrapper {
-			Sdl_wrapper();
+			Sdl_wrapper(bool headless);
 			~Sdl_wrapper();
 		};
 
@@ -89,8 +94,11 @@ namespace mirrage {
 		std::unique_ptr<graphic::Window>      _graphics_main_window;
 		std::unique_ptr<input::Input_manager> _input_manager;
 		std::unique_ptr<Engine_event_filter>  _event_filter;
+		std::unique_ptr<net::Net_manager>     _net_manager;
 
 		double _current_time = 0;
 		double _last_time    = 0;
+
+		bool _headless;
 	};
 } // namespace mirrage

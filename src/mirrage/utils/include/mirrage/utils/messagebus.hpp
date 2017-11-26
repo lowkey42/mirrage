@@ -77,15 +77,11 @@ namespace mirrage::util {
 
 		template <typename Msg, typename... Arg>
 		void send(Arg&&... arg) {
-			send<Msg>(util::typeuid_of<void>(), std::forward<Arg>(arg)...);
-		}
-		template <typename Msg, typename... Arg>
-		void send(Typeuid self, Arg&&... arg) {
-			send_msg(Msg{std::forward<Arg>(arg)...}, self);
+			send_msg(Msg{std::forward<Arg>(arg)...});
 		}
 
 		template <typename Msg>
-		void send_msg(const Msg& msg, Typeuid self);
+		void send_msg(const Msg& msg);
 
 		void enable();
 		void disable();
@@ -97,8 +93,8 @@ namespace mirrage::util {
 			std::function<void(Sub&, bool)> activator;
 		};
 
-		Message_bus&                     _bus;
-		std::unordered_map<Typeuid, Sub> _boxes;
+		Message_bus&                        _bus;
+		std::unordered_map<type_uid_t, Sub> _boxes;
 	};
 
 
@@ -110,7 +106,7 @@ namespace mirrage::util {
 		auto create_child() -> Message_bus;
 
 		template <typename T>
-		void register_mailbox(Mailbox<T>& mailbox, Typeuid self = 0);
+		void register_mailbox(Mailbox<T>& mailbox);
 		template <typename T>
 		void unregister_mailbox(Mailbox<T>& mailbox);
 
@@ -118,38 +114,33 @@ namespace mirrage::util {
 
 		template <typename Msg, typename... Arg>
 		void send(Arg&&... arg) {
-			send_others<Msg>(util::typeuid_of<void>(), std::forward<Arg>(arg)...);
-		}
-		template <typename Msg, typename... Arg>
-		void send_others(Typeuid self, Arg&&... arg) {
-			send_msg(Msg{std::forward<Arg>(arg)...}, self);
+			send_msg(Msg{std::forward<Arg>(arg)...});
 		}
 
 		template <typename Msg>
-		void send_msg(const Msg& msg, Typeuid self);
+		void send_msg(const Msg& msg, void* self = nullptr);
 
 	  private:
 		Message_bus(Message_bus* parent);
 
 		struct Mailbox_ref {
 			template <typename T>
-			Mailbox_ref(Mailbox<T>& mailbox, Typeuid self = 0);
+			Mailbox_ref(Mailbox<T>& mailbox);
 
 			template <typename T>
-			void exec_send(const T& m, Typeuid self);
+			void exec_send(const T& m, void* src);
 
 			bool operator==(const Mailbox_ref& rhs) const noexcept {
 				return _type == rhs._type && _mailbox == rhs._mailbox;
 			}
 
-			Typeuid                                 _self;
-			Typeuid                                 _type;
+			type_uid_t                              _type;
 			void*                                   _mailbox;
 			std::function<void(void*, const void*)> _send;
 			bool                                    _deleted = false;
 		};
 
-		auto& group(Typeuid id) {
+		auto& group(type_uid_t id) {
 			if(std::size_t(id) >= _mb_groups.size()) {
 				_mb_groups.resize(id + 1);
 				_mb_groups.back().reserve(4);

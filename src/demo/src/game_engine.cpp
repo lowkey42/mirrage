@@ -22,7 +22,7 @@ namespace mirrage {
 	                         int                argc,
 	                         char**             argv,
 	                         char**             env)
-	  : Engine(title, version_major, version_minor, debug, argc, argv, env)
+	  : Engine(title, version_major, version_minor, debug, false, argc, argv, env)
 	  , _renderer_factory(std::make_unique<renderer::Deferred_renderer_factory>(
 	            graphics_context(),
 	            window(),
