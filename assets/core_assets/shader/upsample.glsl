@@ -2,57 +2,52 @@
 #define UPSAMPLE_INCLUDED
 
 #include "global_uniforms.glsl"
-#include "poisson.glsl"
-#include "random.glsl"
 
-vec4 weight_depth(vec4 x, float depth_dev) {
-	float c = depth_dev;
-	return exp(- x*x / (2*c*c));
+// calculate a weighting factor based on the normal differences x and the deviation
+vec4 weight_depth(vec4 x, float dev) {
+	return exp(-x*x / (2*dev*dev));
 }
+
+// calculate a weighting factor based on the difference of the encoded normals
 vec4 weight_mat_data(vec4 dx, vec4 dy) {
 	return max(vec4(0.005), 1 - smoothstep(0.05, 0.2, (dx*dx+dy*dy)));
 }
 
+// calculate the uv coordinates of the 2x2 blocks to sample and the per-pixel weights based on normal/depth
+// returns the sum of all per-pixel weights
 float calc_upsampled_weights(sampler2D highres_depth_sampler, sampler2D highres_mat_data_sampler,
-                             sampler2D depth_sampler, sampler2D mat_data_sampler, vec2 tex_coords,
-                             out vec2 uv_00, out vec2 uv_10, out vec2 uv_11, out vec2 uv_01,
+                             sampler2D depth_sampler,         sampler2D mat_data_sampler,
+                             vec2 tex_coords,
+                             out vec2 uv_00,     out vec2 uv_10,     out vec2 uv_11,     out vec2 uv_01,
                              out vec4 weight_00, out vec4 weight_10, out vec4 weight_11, out vec4 weight_01) {
-
-    vec2 tex_size = textureSize(depth_sampler, 0);
-
-	float depth = texelFetch(highres_depth_sampler, ivec2(textureSize(highres_depth_sampler, 0)*tex_coords), 0).r;
-	float depth_dev = mix(0.3, 1.5, depth) / global_uniforms.proj_planes.y;
-
+	// sample high-res depth + normal
+	float depth = texelFetch(highres_depth_sampler,    ivec2(textureSize(highres_depth_sampler,    0)*tex_coords), 0).r;
 	vec2 normal = texelFetch(highres_mat_data_sampler, ivec2(textureSize(highres_mat_data_sampler, 0)*tex_coords), 0).xy;
 
-
+    // calculate uv coordinates
+    vec2 tex_size = textureSize(depth_sampler, 0);
 	uv_00 = tex_coords + vec2(-1,-1) / tex_size;
 	uv_10 = tex_coords + vec2( 1,-1) / tex_size;
 	uv_11 = tex_coords + vec2( 1, 1) / tex_size;
 	uv_01 = tex_coords + vec2(-1, 1) / tex_size;
 
-	weight_00 = vec4(0.125794409230998,
-	                 0.132980760133811,
-	                 0.125794409230998,
-	                 0.118996412547595);
-	weight_10 = vec4(0.125794409230998,
-	                 0.106482668507451,
-	                 0.100728288549083,
-	                 0.118996412547595);
-	weight_11 = vec4(0.100728288549083,
-	                 0.085264655436308,
-	                 0.100728288549083,
-	                 0.118996412547595);
-	weight_01 = vec4(0.100728288549083,
-	                 0.106482668507451,
-	                 0.125794409230998,
-	                 0.118996412547595);
+	// initialize the per-pixel weights with gaussian weights
+	weight_00 = vec4(0.125794409230998, 0.132980760133811, 0.125794409230998, 0.118996412547595);
+	weight_10 = vec4(0.125794409230998, 0.106482668507451, 0.100728288549083, 0.118996412547595);
+	weight_11 = vec4(0.100728288549083, 0.085264655436308, 0.100728288549083, 0.118996412547595);
+	weight_01 = vec4(0.100728288549083, 0.106482668507451, 0.125794409230998, 0.118996412547595);
 
+	// calculate the maximum depth deviation based on the distance, to reduce bluring
+	//   near the camera where it's most noticable
+	float depth_dev = mix(0.3, 1.5, depth) / global_uniforms.proj_planes.y;
+
+	// sample low-res depth and modulate the weights based on their difference to the high-res depth
 	weight_00 *= weight_depth(textureGather(depth_sampler, uv_00, 0) - depth, depth_dev);
 	weight_10 *= weight_depth(textureGather(depth_sampler, uv_10, 0) - depth, depth_dev);
 	weight_11 *= weight_depth(textureGather(depth_sampler, uv_11, 0) - depth, depth_dev);
 	weight_01 *= weight_depth(textureGather(depth_sampler, uv_01, 0) - depth, depth_dev);
 
+	// sample the encoded low-res normals
 	vec4 normal_x_00 = textureGather(mat_data_sampler, uv_00, 0) - normal.x;
 	vec4 normal_x_10 = textureGather(mat_data_sampler, uv_10, 0) - normal.x;
 	vec4 normal_x_11 = textureGather(mat_data_sampler, uv_11, 0) - normal.x;
@@ -63,40 +58,37 @@ float calc_upsampled_weights(sampler2D highres_depth_sampler, sampler2D highres_
 	vec4 normal_y_11 = textureGather(mat_data_sampler, uv_11, 1) - normal.y;
 	vec4 normal_y_01 = textureGather(mat_data_sampler, uv_01, 1) - normal.y;
 
+	// modulate the weights based on normal difference
 	weight_00 *= weight_mat_data(normal_x_00, normal_y_00);
 	weight_10 *= weight_mat_data(normal_x_10, normal_y_10);
 	weight_11 *= weight_mat_data(normal_x_11, normal_y_11);
 	weight_01 *= weight_mat_data(normal_x_01, normal_y_01);
 
-
+	// sum all per-pixel weights
 	return dot(weight_00, vec4(1))
 	     + dot(weight_10, vec4(1))
 	     + dot(weight_11, vec4(1))
 	     + dot(weight_01, vec4(1));
 }
 
+// calculate the high-res approximation of the given low-res solution (color_sampler) at a single point
+//   using Join-Bilateral-Upsampling based on the high- and low-res normal and depth values
 vec3 upsampled_result(sampler2D highres_depth_sampler, sampler2D highres_mat_data_sampler,
-                      sampler2D depth_sampler, sampler2D mat_data_sampler,
-                      sampler2D color_sampler, vec2 tex_coords) {
-	vec2 uv_00;
-	vec2 uv_10;
-	vec2 uv_11;
-	vec2 uv_01;
-
-	vec4 weight_00;
-	vec4 weight_10;
-	vec4 weight_11;
-	vec4 weight_01;
-
+                      sampler2D depth_sampler,         sampler2D mat_data_sampler,
+                      sampler2D color_sampler,         vec2 tex_coords) {
+    // calculate the uv coordinates and per-pixel weights
+	vec2  uv_00,     uv_10,     uv_11,     uv_01;
+	vec4  weight_00, weight_10, weight_11, weight_01;
 	float weight_sum = calc_upsampled_weights(highres_depth_sampler, highres_mat_data_sampler,
-	                                          depth_sampler, mat_data_sampler, tex_coords,
-	                                          uv_00, uv_10, uv_11, uv_01,
-	                                          weight_00, weight_10, weight_11, weight_01);
+	                                          depth_sampler,         mat_data_sampler, tex_coords,
+	                                          uv_00,     uv_10,      uv_11,     uv_01,
+	                                          weight_00, weight_10,  weight_11, weight_01);
 
+	// fallback to linear interpolation if no good match could be found in the low-res solution
 	if(weight_sum<0.001)
 		return textureLod(color_sampler, tex_coords, 0).rgb;
 
-
+	// gather the RGB values of the 16 surrounding pixels and weight them by the calcuated weights
 	float color_r = dot(vec4(1),
 	                textureGather(color_sampler, uv_00, 0) * weight_00
 	              + textureGather(color_sampler, uv_10, 0) * weight_10
@@ -115,36 +107,30 @@ vec3 upsampled_result(sampler2D highres_depth_sampler, sampler2D highres_mat_dat
 	              + textureGather(color_sampler, uv_11, 2) * weight_11
 	              + textureGather(color_sampler, uv_01, 2) * weight_01);
 
-	vec3 color = vec3(color_r, color_g, color_b) / weight_sum;
-	return color;
+	return vec3(color_r, color_g, color_b) / weight_sum;
 }
 
-
+// same as upsampled_result but upsamples to solutions at the same time
 void upsampled_two(sampler2D highres_depth_sampler, sampler2D highres_mat_data_sampler,
-                   sampler2D depth_sampler, sampler2D mat_data_sampler,
-                   sampler2D color_sampler_a, sampler2D color_sampler_b, vec2 tex_coords,
-                   out vec3 out_color_a, out vec3 out_color_b) {
-	vec2 uv_00;
-	vec2 uv_10;
-	vec2 uv_11;
-	vec2 uv_01;
-
-	vec4 weight_00;
-	vec4 weight_10;
-	vec4 weight_11;
-	vec4 weight_01;
-
+                   sampler2D depth_sampler,         sampler2D mat_data_sampler,
+                   sampler2D color_sampler_a,       sampler2D color_sampler_b, vec2 tex_coords,
+                   out vec3  out_color_a,           out vec3  out_color_b) {
+    // calculate the uv coordinates and per-pixel weights
+	vec2  uv_00,     uv_10,     uv_11,     uv_01;
+	vec4  weight_00, weight_10, weight_11, weight_01;
 	float weight_sum = calc_upsampled_weights(highres_depth_sampler, highres_mat_data_sampler,
-	                                          depth_sampler, mat_data_sampler, tex_coords,
-	                                          uv_00, uv_10, uv_11, uv_01,
-	                                          weight_00, weight_10, weight_11, weight_01);
+	                                          depth_sampler,         mat_data_sampler, tex_coords,
+	                                          uv_00,     uv_10,      uv_11,     uv_01,
+	                                          weight_00, weight_10,  weight_11, weight_01);
 
+	// fallback to linear interpolation if no good match could be found in the low-res solution
 	if(weight_sum<0.001) {
 		out_color_a = textureLod(color_sampler_a, tex_coords, 0).rgb;
 		out_color_b = textureLod(color_sampler_b, tex_coords, 0).rgb;
+		return;
 	}
 
-
+	// gather the RGB values of the 16 surrounding pixels and weight them by the calcuated weights
 	float color_r = dot(vec4(1),
 	                textureGather(color_sampler_a, uv_00, 0) * weight_00
 	              + textureGather(color_sampler_a, uv_10, 0) * weight_10
@@ -165,7 +151,7 @@ void upsampled_two(sampler2D highres_depth_sampler, sampler2D highres_mat_data_s
 
 	out_color_a = vec3(color_r, color_g, color_b) / weight_sum;
 
-
+	// gather the RGB values of the 16 surrounding pixels and weight them by the calcuated weights
 	color_r = dot(vec4(1),
 	          textureGather(color_sampler_b, uv_00, 0) * weight_00
 	        + textureGather(color_sampler_b, uv_10, 0) * weight_10

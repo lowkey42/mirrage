@@ -91,14 +91,15 @@ namespace mirrage {
 	  , _asset_manager(std::make_unique<asset::Asset_manager>(argc > 0 ? argv[0] : "", title))
 	  , _translator(std::make_unique<Translator>(*_asset_manager))
 	  , _sdl(headless)
-	  , _graphics_context(headless ? std::unique_ptr<graphic::Context>()
-	                               : std::make_unique<graphic::Context>(
-	                                         title,
-	                                         graphic::make_version_number(version_major, version_minor, 0),
-	                                         "No Engine",
-	                                         graphic::make_version_number(0, 0, 0),
-	                                         debug,
-	                                         *_asset_manager))
+	  , _graphics_context(
+	            headless ? std::unique_ptr<graphic::Context>()
+	                     : std::make_unique<graphic::Context>(
+	                               title,
+	                               graphic::make_version_number(version_major, version_minor, 0),
+	                               "No Engine",
+	                               graphic::make_version_number(0, 0, 0),
+	                               debug,
+	                               *_asset_manager))
 	  , _graphics_main_window(headless ? std::unique_ptr<graphic::Window>()
 	                                   : _graphics_context->create_window("Main"))
 	  , _input_manager(headless ? std::unique_ptr<input::Input_manager>()
@@ -110,11 +111,16 @@ namespace mirrage {
 	  , _headless(headless) {
 
 		if(_graphics_main_window) {
-			_input_manager->viewport({0, 0, _graphics_main_window->width(), _graphics_main_window->height()});
+			_input_manager->viewport(
+			        {0, 0, _graphics_main_window->width(), _graphics_main_window->height()});
 			_input_manager->window(_graphics_main_window->window_handle());
 		}
 
 		if(headless) {
+#ifdef _WIN32
+			// TODO
+			(void) sigIntHandler;
+#else
 			struct sigaction action;
 			action.sa_handler = sigIntHandler;
 			sigemptyset(&action.sa_mask);
@@ -122,6 +128,7 @@ namespace mirrage {
 
 			sigaction(SIGINT, &action, nullptr);
 			sigaction(SIGTERM, &action, nullptr);
+#endif
 		}
 	}
 

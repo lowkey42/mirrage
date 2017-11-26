@@ -136,13 +136,16 @@ void main() {
 		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
 
 	} else {
-		out_color.rgb = textureLod(result_sampler, vertex_out.tex_coords, pcs.prev_projection[0][3]).rgb / (PI*PI*2);
+		out_color.rgb = textureLod(result_sampler, vertex_out.tex_coords, pcs.prev_projection[0][3]).rgb / (PI*PI*4);
 	}
 
 	float history_weight = texelFetch(history_weight_sampler,
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 	                                  0).r;
 
+	float weight_measure = smoothstep(1.0/120.0, 1.0/30.0, global_uniforms.time.z);
+	float weight_min = mix(0.85, 0.1, weight_measure);
+	float weight_max = mix(0.95, 0.85, weight_measure);
 	out_color *= 1.0 - (history_weight*0.92);
 
 	out_color = max(out_color, vec4(0));

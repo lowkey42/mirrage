@@ -4,7 +4,8 @@
 
 #include "normal_encoding.glsl"
 #include "color_conversion.glsl"
-
+#include "random.glsl"
+#include "global_uniforms.glsl"
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
@@ -128,5 +129,5 @@ vec3 resolve_fxaa() {
 
 void main() {
 	//out_color = vec4(tone_mapping(texture(color_sampler, vertex_out.tex_coords).rgb), 1.0);
-	out_color = vec4(tone_mapping(resolve_fxaa().rgb), 1.0);
+	out_color = vec4(tone_mapping(resolve_fxaa().rgb) + random(vec4(vertex_out.tex_coords,global_uniforms.time.x,0))/255.0/2.0, 1.0);
 }
