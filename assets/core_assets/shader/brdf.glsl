@@ -1,5 +1,5 @@
+// Based on: https://learnopengl.com/#!PBR/IBL/Specular-IBL
 
-// TODO: refactor and rewrite as required
 float DistributionGGX(vec3 N, vec3 H, float roughness) {
 	const float PI = 3.14159265359;
 

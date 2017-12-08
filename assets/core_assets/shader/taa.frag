@@ -2,6 +2,10 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+// Based on:
+//   http://twvideo01.ubm-us.net/o1/vault/gdc2016/Presentations/Pedersen_LasseJonFuglsang_TemporalReprojectionAntiAliasing.pdf
+//   https://github.com/playdeadgames/temporal
+
 #include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 
@@ -83,10 +87,6 @@ vec3 prev_color_normalized(vec2 uv) {
 }
 
 void main() {
-	// based on:
-	//   http://twvideo01.ubm-us.net/o1/vault/gdc2016/Presentations/Pedersen_LasseJonFuglsang_TemporalReprojectionAntiAliasing.pdf
-	//   https://github.com/playdeadgames/temporal
-
 	mat4 reprojection_fov = constants.reprojection_fov;
 	vec2 offset = vec2(reprojection_fov[0][3], reprojection_fov[1][3]);
 	reprojection_fov[0][3] = 0;

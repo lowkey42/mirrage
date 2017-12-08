@@ -18,9 +18,9 @@ include(nuklear_interface.cmake)
 
 add_subdirectory(magic_get)
 
-SET(PHYSFS_INTERNAL_ZLIB TRUE)
-SET(PHYSFS_ARCHIVE_7Z FALSE)
-SET(PHYSFS_BUILD_SHARED FALSE)
+SET(PHYSFS_INTERNAL_ZLIB TRUE CACHE BOOL "" FORCE)
+SET(PHYSFS_ARCHIVE_7Z FALSE CACHE BOOL "" FORCE)
+SET(PHYSFS_BUILD_SHARED FALSE CACHE BOOL "" FORCE)
 add_subdirectory(physfs)
 
 add_subdirectory(sdl_vulkan)
