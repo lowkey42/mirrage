@@ -140,10 +140,10 @@ float calc_avg_occluder(vec3 surface_lightspace, float search_area,
                         out int num_occluders) {
 	int shadowmap = int(model_uniforms.light_data2.r);
 
-	float depth_acc;
-	float depth_count;
+	float depth_acc=0;
+	float depth_count=0;
 	num_occluders = 0;
-#
+
 	float angle = random(vec4(surface_lightspace, global_uniforms.time.y));
 	float sin_angle = sin(angle);
 	float cos_angle = cos(angle);

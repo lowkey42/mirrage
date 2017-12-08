@@ -2,6 +2,7 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
+// Based on http://graphics.cs.williams.edu/papers/SAOHPG12/McGuire12SAO.pdf
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
@@ -29,8 +30,6 @@ layout(push_constant) uniform Push_constants {
 #include "normal_encoding.glsl"
 #include "poisson.glsl"
 #include "random.glsl"
-
-// heavily based on http://graphics.cs.williams.edu/papers/SAOHPG12/McGuire12SAO.pdf
 
 vec3 to_view_space(ivec2 ss_p, int mip) {
 	vec2 uv = vec2(ss_p) / textureSize(depth_sampler, MIN_MIP);
