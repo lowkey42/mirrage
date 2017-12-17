@@ -82,7 +82,7 @@ void main() {
 }
 
 
-float calc_penumbra(vec3 surface_lightspace, float light_size,
+float calc_penumbra(vec3 surface_lightspace, float light_size, float rand,
                     out int num_occluders);
 
 float sample_shadowmap(vec3 view_pos) {
@@ -97,8 +97,10 @@ float sample_shadowmap(vec3 view_pos) {
 	float shadowmap_size = textureSize(sampler2D(shadowmaps[shadowmap], shadowmap_depth_sampler), 0).x;
 	float light_size = model_uniforms.light_data.r / 800.0;
 
-	int num_occluders;
-	float penumbra_softness = calc_penumbra(lightspace_pos.xyz, light_size, num_occluders);
+	vec2 rand = PDnrand2(vec4(global_uniforms.time.y, vertex_out.tex_coords, lightspace_pos.x));
+
+	int num_occluders = 0;
+	float penumbra_softness = calc_penumbra(lightspace_pos.xyz, light_size, rand.r, num_occluders);
 
 	//return penumbra_softness>=0.5 ? 1.0 : 0.0;
 
@@ -113,9 +115,12 @@ float sample_shadowmap(vec3 view_pos) {
 	if(SHADOW_QUALITY<=1)
 		samples = min(samples, 8);
 
+	if(SHADOW_QUALITY>=2)
+		samples = 16;
+
 	float z_bias = 0.00035;
 
-	float angle = random(vec4(lightspace_pos.xyz, global_uniforms.time.y));
+	float angle = rand.g;
 	float sin_angle = sin(angle);
 	float cos_angle = cos(angle);
 
@@ -131,20 +136,18 @@ float sample_shadowmap(vec3 view_pos) {
 		                                     vec3(p, lightspace_pos.z-z_bias)));
 	}
 
-	visiblity *= visiblity;
-
 	return clamp(smoothstep(0, 1, visiblity), 0.0, 1.0);
 }
 
-float calc_avg_occluder(vec3 surface_lightspace, float search_area,
+float calc_avg_occluder(vec3 surface_lightspace, float search_area, float rand,
                         out int num_occluders) {
 	int shadowmap = int(model_uniforms.light_data2.r);
 
-	float depth_acc=0;
-	float depth_count=0;
-	num_occluders = 0;
+	float depth_acc   = 0;
+	float depth_count = 0;
+	num_occluders     = 0;
 
-	float angle = random(vec4(surface_lightspace, global_uniforms.time.y));
+	float angle     = rand;
 	float sin_angle = sin(angle);
 	float cos_angle = cos(angle);
 
@@ -166,8 +169,8 @@ float calc_avg_occluder(vec3 surface_lightspace, float search_area,
 	return depth_acc / depth_count;
 }
 
-float calc_penumbra(vec3 surface_lightspace, float light_size, out int num_occluders) {
-	float avg_occluder = calc_avg_occluder(surface_lightspace, light_size, num_occluders);
+float calc_penumbra(vec3 surface_lightspace, float light_size, float rand, out int num_occluders) {
+	float avg_occluder = calc_avg_occluder(surface_lightspace, light_size, rand, num_occluders);
 
 	const float scale = 10.0;
 	float softness = (surface_lightspace.z - avg_occluder) * scale;

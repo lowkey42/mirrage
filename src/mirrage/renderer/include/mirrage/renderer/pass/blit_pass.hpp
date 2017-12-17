@@ -26,6 +26,7 @@ namespace mirrage::renderer {
 	  private:
 		Deferred_renderer&                   _renderer;
 		graphic::Texture_2D&                 _src;
+		graphic::Texture_ptr                 _blue_noise;
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
 		vk::UniqueDescriptorSet              _descriptor_set;
@@ -42,8 +43,9 @@ namespace mirrage::renderer {
 		                 util::maybe<Meta_system&>,
 		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
 
-		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
-		        -> int override;
+		auto rank_device(vk::PhysicalDevice,
+		                 util::maybe<std::uint32_t> graphics_queue,
+		                 int                        current_score) -> int override;
 
 		void configure_device(vk::PhysicalDevice,
 		                      util::maybe<std::uint32_t> graphics_queue,

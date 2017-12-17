@@ -4,6 +4,8 @@
 
 // Based on http://graphics.cs.williams.edu/papers/SAOHPG12/McGuire12SAO.pdf
 
+// Based on http://graphics.cs.williams.edu/papers/SAOHPG12/McGuire12SAO.pdf
+
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
 } vertex_out;

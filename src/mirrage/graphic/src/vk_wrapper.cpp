@@ -10,20 +10,23 @@ namespace mirrage::graphic {
 	  : _device(device), _pool(std::move(pool)) {}
 	Command_buffer_pool::~Command_buffer_pool() { _device.waitIdle(); }
 
-	auto Command_buffer_pool::create_primary(std::size_t count) -> std::vector<vk::UniqueCommandBuffer> {
+	auto Command_buffer_pool::create_primary(std::size_t count)
+	        -> std::vector<vk::UniqueCommandBuffer> {
 		return _device.allocateCommandBuffersUnique(
 		        vk::CommandBufferAllocateInfo(*_pool, vk::CommandBufferLevel::ePrimary, count));
 	}
-	auto Command_buffer_pool::create_secondary(std::size_t count) -> std::vector<vk::UniqueCommandBuffer> {
+	auto Command_buffer_pool::create_secondary(std::size_t count)
+	        -> std::vector<vk::UniqueCommandBuffer> {
 		return _device.allocateCommandBuffersUnique(
 		        vk::CommandBufferAllocateInfo(*_pool, vk::CommandBufferLevel::eSecondary, count));
 	}
 
 
 
-	auto Descriptor_pool::create_descriptor(vk::DescriptorSetLayout layout) -> vk::UniqueDescriptorSet {
-		return std::move(
-		        _device.allocateDescriptorSetsUnique(vk::DescriptorSetAllocateInfo{*_pool, 1, &layout})[0]);
+	auto Descriptor_pool::create_descriptor(vk::DescriptorSetLayout layout)
+	        -> vk::UniqueDescriptorSet {
+		return std::move(_device.allocateDescriptorSetsUnique(
+		        vk::DescriptorSetAllocateInfo{*_pool, 1, &layout})[0]);
 	}
 
 	Descriptor_pool::Descriptor_pool(const vk::Device& device, vk::UniqueDescriptorPool pool)
@@ -61,7 +64,8 @@ namespace mirrage::graphic {
 	                                             std::initializer_list<vk::ImageView> images) {
 
 		MIRRAGE_INVARIANT(images.size() <= _image_number,
-		                  "Number of images (" << images.size() << ") doesn't match size of descriptor set ("
+		                  "Number of images (" << images.size()
+		                                       << ") doesn't match size of descriptor set ("
 		                                       << _image_number << ")");
 
 		auto desc_images = std::vector<vk::DescriptorImageInfo>();
@@ -82,15 +86,19 @@ namespace mirrage::graphic {
 			                         nullptr);
 		}
 
-		_device.vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
+		_device.vk_device()->updateDescriptorSets(
+		        desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
 
 
 	Fence::operator bool() const { return _device.getFenceStatus(*_fence) == vk::Result::eSuccess; }
 	void   Fence::reset() { _device.resetFences({*_fence}); }
-	void Fence::wait() { _device.waitForFences({*_fence}, true, std::numeric_limits<std::uint64_t>::max()); }
+	void   Fence::wait() {
+        _device.waitForFences({*_fence}, true, std::numeric_limits<std::uint64_t>::max());
+	}
 
-	Fence::Fence(const vk::Device& device) : _device(device), _fence(_device.createFenceUnique({})) {}
+	Fence::Fence(const vk::Device& device)
+	  : _device(device), _fence(_device.createFenceUnique({})) {}
 
 	auto create_fence(Device& d) -> Fence { return d.create_fence(); }
 
@@ -102,7 +110,8 @@ namespace mirrage::graphic {
 	                         std::vector<vk::ClearValue> cv)
 	  : _fb(std::move(fb)), _viewport(viewport), _scissor(scissor), _clear_values(std::move(cv)) {}
 
-	void Framebuffer::viewport(float x, float y, float width, float height, float min_depth, float max_depth) {
+	void Framebuffer::viewport(
+	        float x, float y, float width, float height, float min_depth, float max_depth) {
 		_viewport.x        = x;
 		_viewport.y        = y;
 		_viewport.width    = width;
@@ -129,7 +138,10 @@ namespace mirrage::graphic {
 				case vk::ImageLayout::eColorAttachmentOptimal:
 					return vk::AccessFlagBits::eColorAttachmentWrite;
 
+				case vk::ImageLayout::eDepthReadOnlyStencilAttachmentOptimalKHR:
+				case vk::ImageLayout::eDepthAttachmentStencilReadOnlyOptimalKHR:
 				case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
+					return vk::AccessFlagBits::eDepthStencilAttachmentRead;
 					return vk::AccessFlagBits::eDepthStencilAttachmentRead;
 
 				case vk::ImageLayout::eDepthStencilAttachmentOptimal:
@@ -138,12 +150,15 @@ namespace mirrage::graphic {
 
 				case vk::ImageLayout::eTransferSrcOptimal: return vk::AccessFlagBits::eTransferRead;
 
-				case vk::ImageLayout::eTransferDstOptimal: return vk::AccessFlagBits::eTransferWrite;
+				case vk::ImageLayout::eTransferDstOptimal:
+					return vk::AccessFlagBits::eTransferWrite;
 
-				case vk::ImageLayout::eShaderReadOnlyOptimal: return vk::AccessFlagBits::eShaderRead;
+				case vk::ImageLayout::eShaderReadOnlyOptimal:
+					return vk::AccessFlagBits::eShaderRead;
 
 				case vk::ImageLayout::eSharedPresentKHR:
-				case vk::ImageLayout::ePresentSrcKHR: return vk::AccessFlagBits::eColorAttachmentWrite;
+				case vk::ImageLayout::ePresentSrcKHR:
+					return vk::AccessFlagBits::eColorAttachmentWrite;
 			}
 			MIRRAGE_FAIL("Unreachable");
 		}
@@ -281,16 +296,19 @@ namespace mirrage::graphic {
 		}
 
 		auto src_range = std::array<vk::Offset3D, 2>{
-		        vk::Offset3D{0, 0, 0}, vk::Offset3D{int32_t(src.width()), int32_t(src.height()), 1}};
+		        vk::Offset3D{0, 0, 0},
+		        vk::Offset3D{int32_t(src.width()), int32_t(src.height()), 1}};
 		auto dst_range = std::array<vk::Offset3D, 2>{
-		        vk::Offset3D{0, 0, 0}, vk::Offset3D{int32_t(dst.width()), int32_t(dst.height()), 1}};
-		auto blit = vk::ImageBlit{// src
-		                          vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
-		                          src_range,
+		        vk::Offset3D{0, 0, 0},
+		        vk::Offset3D{int32_t(dst.width()), int32_t(dst.height()), 1}};
+		auto blit =
+		        vk::ImageBlit{// src
+		                      vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
+		                      src_range,
 
-		                          // dst
-		                          vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
-		                          dst_range};
+		                      // dst
+		                      vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
+		                      dst_range};
 		cb.blitImage(src.image(),
 		             vk::ImageLayout::eTransferSrcOptimal,
 		             dst.image(),
@@ -340,11 +358,12 @@ namespace mirrage::graphic {
 		                                 initial_mip_level,
 		                                 mip_levels);
 
-		cb.clearColorImage(img.image(),
-		                   vk::ImageLayout::eTransferDstOptimal,
-		                   vk::ClearColorValue{std::array<float, 4>{color.r, color.g, color.b, color.a}},
-		                   {vk::ImageSubresourceRange{
-		                           vk::ImageAspectFlagBits::eColor, initial_mip_level, mip_levels, 0, 1}});
+		cb.clearColorImage(
+		        img.image(),
+		        vk::ImageLayout::eTransferDstOptimal,
+		        vk::ClearColorValue{std::array<float, 4>{color.r, color.g, color.b, color.a}},
+		        {vk::ImageSubresourceRange{
+		                vk::ImageAspectFlagBits::eColor, initial_mip_level, mip_levels, 0, 1}});
 
 		graphic::image_layout_transition(cb,
 		                                 img.image(),

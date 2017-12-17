@@ -9,7 +9,9 @@ namespace mirrage::renderer {
 
 	class Gi_pass : public Pass {
 	  public:
-		Gi_pass(Deferred_renderer&, graphic::Render_target_2D& in_out, graphic::Render_target_2D& diffuse_in);
+		Gi_pass(Deferred_renderer&,
+		        graphic::Render_target_2D& in_out,
+		        graphic::Render_target_2D& diffuse_in);
 
 
 		void update(util::Time dt) override;
@@ -110,8 +112,9 @@ namespace mirrage::renderer {
 		                 util::maybe<Meta_system&>,
 		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
 
-		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
-		        -> int override;
+		auto rank_device(vk::PhysicalDevice,
+		                 util::maybe<std::uint32_t> graphics_queue,
+		                 int                        current_score) -> int override;
 
 		void configure_device(vk::PhysicalDevice,
 		                      util::maybe<std::uint32_t> graphics_queue,
