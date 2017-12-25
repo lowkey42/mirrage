@@ -37,7 +37,6 @@ target_link_libraries(mirrage
 	PUBLIC
 		mirrage::utils
 		sdl2::sdl2
-		SDL_vulkan
 		mirrage::asset
 		mirrage::ecs
 		mirrage::graphic

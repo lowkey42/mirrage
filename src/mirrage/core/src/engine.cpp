@@ -100,8 +100,7 @@ namespace mirrage {
 	                               graphic::make_version_number(0, 0, 0),
 	                               debug,
 	                               *_asset_manager))
-	  , _graphics_main_window(headless ? std::unique_ptr<graphic::Window>()
-	                                   : _graphics_context->create_window("Main"))
+	  , _graphics_main_window(headless ? util::nothing : _graphics_context->find_window("Main"))
 	  , _input_manager(headless ? std::unique_ptr<input::Input_manager>()
 	                            : std::make_unique<input::Input_manager>(_bus, *_asset_manager))
 	  , _event_filter(headless ? std::unique_ptr<Engine_event_filter>()
@@ -110,11 +109,10 @@ namespace mirrage {
 	  , _current_time(SDL_GetTicks() / 1000.0)
 	  , _headless(headless) {
 
-		if(_graphics_main_window) {
-			_input_manager->viewport(
-			        {0, 0, _graphics_main_window->width(), _graphics_main_window->height()});
-			_input_manager->window(_graphics_main_window->window_handle());
-		}
+		_graphics_main_window.process([&](auto& window) {
+			_input_manager->viewport({0, 0, window.width(), window.height()});
+			_input_manager->window(window.window_handle());
+		});
 
 		if(headless) {
 #ifdef _WIN32
@@ -177,8 +175,8 @@ namespace mirrage {
 		auto delta_time          = std::max(0.f, static_cast<float>(_current_time - _last_time));
 		auto delta_time_smoothed = smooth(std::min(delta_time, 1.f / 1));
 
-		if(_graphics_main_window && _input_manager) {
-			_input_manager->viewport(_graphics_main_window->viewport());
+		if(_graphics_main_window.is_some() && _input_manager) {
+			_input_manager->viewport(_graphics_main_window.get_or_throw().viewport());
 		}
 
 		_bus.update();

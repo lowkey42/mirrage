@@ -28,6 +28,7 @@ namespace mirrage::renderer {
 			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(renderer.noise_descriptor_set_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
 
 			pipeline.add_push_constant(
@@ -77,9 +78,8 @@ namespace mirrage::renderer {
 	                     graphic::Texture_2D& src)
 	  : _renderer(renderer)
 	  , _src(src)
-	  , _blue_noise(renderer.texture_cache().load("tex:blue_noise"_aid))
 	  , _sampler(renderer.device().create_sampler(1,
-	                                              vk::SamplerAddressMode::eRepeat,
+	                                              vk::SamplerAddressMode::eClampToEdge,
 	                                              vk::BorderColor::eIntOpaqueBlack,
 	                                              vk::Filter::eLinear,
 	                                              vk::SamplerMipmapMode::eNearest))
@@ -88,8 +88,7 @@ namespace mirrage::renderer {
 	            renderer.descriptor_pool(),
 	            {src.view(),
 	             renderer.gbuffer().avg_log_luminance.get_or_other(src).view(),
-	             renderer.gbuffer().bloom.get_or_other(src).view(),
-	             _blue_noise->view()}))
+	             renderer.gbuffer().bloom.get_or_other(src).view()}))
 	  , _render_pass(build_render_pass(renderer, *_descriptor_set_layout, _framebuffers))
 	  , _tone_mapping_enabled(renderer.gbuffer().avg_log_luminance.is_some())
 	  , _bloom_enabled(renderer.gbuffer().bloom.is_some()) {}
@@ -103,8 +102,8 @@ namespace mirrage::renderer {
 	                     std::size_t       swapchain_image) {
 
 		_render_pass.execute(command_buffer, _framebuffers.at(swapchain_image), [&] {
-			auto descriptor_sets =
-			        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_descriptor_set};
+			auto descriptor_sets = std::array<vk::DescriptorSet, 3>{
+			        global_uniform_set, _renderer.noise_descriptor_set(), *_descriptor_set};
 			_render_pass.bind_descriptor_sets(0, descriptor_sets);
 
 			glm::vec4 settings;

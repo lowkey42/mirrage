@@ -13,10 +13,11 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 out_color;
 
-layout(set=1, binding = 0) uniform sampler2D color_sampler;
-layout(set=1, binding = 1) uniform sampler2D avg_log_luminance_sampler;
-layout(set=1, binding = 2) uniform sampler2D bloom_sampler;
-layout(set=1, binding = 3) uniform sampler2D blue_noise;
+layout(set=1, binding = 0) uniform sampler2D blue_noise;
+
+layout(set=2, binding = 0) uniform sampler2D color_sampler;
+layout(set=2, binding = 1) uniform sampler2D avg_log_luminance_sampler;
+layout(set=2, binding = 2) uniform sampler2D bloom_sampler;
 
 layout(push_constant) uniform Settings {
 	vec4 options;

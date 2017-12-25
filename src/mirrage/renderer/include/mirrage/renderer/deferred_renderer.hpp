@@ -30,14 +30,14 @@ namespace mirrage::renderer {
 		int shadowmap_resolution = 2048;
 		int shadow_quality       = 99; // 0 = lowest
 
-		bool  gi                         = true;
-		bool  gi_highres                 = true;
-		int   gi_diffuse_mip_level       = 1;
-		int   gi_min_mip_level           = 0;
-		int   gi_samples                 = 128;
-		float gi_prioritise_near_samples = 0.8f;
-		int   gi_low_quality_mip_levels  = 0;
-		float exposure_override          = 0.f;
+		bool  gi                        = true;
+		bool  gi_highres                = true;
+		int   gi_diffuse_mip_level      = 1;
+		int   gi_min_mip_level          = 0;
+		int   gi_samples                = 128;
+		bool  gi_jitter_samples         = false;
+		int   gi_low_quality_mip_levels = 0;
+		float exposure_override         = 0.f;
 
 		bool ssao  = true;
 		bool bloom = true;
@@ -50,8 +50,12 @@ namespace mirrage::renderer {
 	};
 
 #ifdef sf2_structDef
-	sf2_structDef(
-	        Renderer_settings, shadowmap_resolution, shadow_quality, gi, dynamic_shadows, debug_gi_layer);
+	sf2_structDef(Renderer_settings,
+	              shadowmap_resolution,
+	              shadow_quality,
+	              gi,
+	              dynamic_shadows,
+	              debug_gi_layer);
 #endif
 
 	struct Global_uniforms {
@@ -171,8 +175,9 @@ namespace mirrage::renderer {
 
 		template <class T>
 		auto find_pass() -> util::tracking_ptr<T> {
-			auto pass = std::find_if(
-			        _passes.begin(), _passes.end(), [](auto& p) { return dynamic_cast<T*>(&*p) != nullptr; });
+			auto pass = std::find_if(_passes.begin(), _passes.end(), [](auto& p) {
+				return dynamic_cast<T*>(&*p) != nullptr;
+			});
 
 			return pass != _passes.end() ? util::tracking_ptr<T>(pass->create_ptr())
 			                             : util::tracking_ptr<T>{};
@@ -189,7 +194,9 @@ namespace mirrage::renderer {
 		auto gbuffer() noexcept -> auto& { return *_gbuffer; }
 		auto gbuffer() const noexcept -> auto& { return *_gbuffer; }
 		auto global_uniforms() const noexcept -> auto& { return _global_uniforms; }
-		auto global_uniforms_layout() const noexcept { return *_global_uniform_descriptor_set_layout; }
+		auto global_uniforms_layout() const noexcept {
+			return *_global_uniform_descriptor_set_layout;
+		}
 
 		auto device() noexcept -> auto& { return *_factory->_device; }
 		auto window() noexcept -> auto& { return _factory->_window; }
@@ -199,11 +206,16 @@ namespace mirrage::renderer {
 		auto create_descriptor_set(vk::DescriptorSetLayout) -> vk::UniqueDescriptorSet;
 		auto descriptor_pool() noexcept -> auto& { return _descriptor_set_pool; }
 
+		auto noise_descriptor_set_layout() const noexcept { return *_noise_descriptor_set_layout; }
+		auto noise_descriptor_set() const noexcept { return *_noise_descriptor_set; }
+
 		auto active_camera() noexcept -> util::maybe<Camera_state&>;
 
 		auto settings() const -> auto& { return _factory->settings(); }
 		void save_settings() { _factory->save_settings(); }
-		void settings(const Renderer_settings& s, bool apply = true) { _factory->settings(s, apply); }
+		void settings(const Renderer_settings& s, bool apply = true) {
+			_factory->settings(s, apply);
+		}
 
 
 		auto profiler() const noexcept -> auto& { return _profiler; }
@@ -220,8 +232,9 @@ namespace mirrage::renderer {
 		std::unique_ptr<GBuffer> _gbuffer;
 		Global_uniforms          _global_uniforms;
 		graphic::Profiler        _profiler;
-		float                    _time_acc   = 0.f;
-		float                    _delta_time = 0.f;
+		float                    _time_acc      = 0.f;
+		float                    _delta_time    = 0.f;
+		std::uint32_t            _frame_counter = 0;
 
 		std::unique_ptr<graphic::Texture_cache> _texture_cache;
 		std::unique_ptr<Model_loader>           _model_loader;
@@ -229,6 +242,11 @@ namespace mirrage::renderer {
 		vk::UniqueDescriptorSetLayout _global_uniform_descriptor_set_layout;
 		vk::UniqueDescriptorSet       _global_uniform_descriptor_set;
 		graphic::Dynamic_buffer       _global_uniform_buffer;
+
+		graphic::Texture_ptr                 _blue_noise;
+		vk::UniqueSampler                    _noise_sampler;
+		graphic::Image_descriptor_set_layout _noise_descriptor_set_layout;
+		vk::UniqueDescriptorSet              _noise_descriptor_set;
 
 		std::vector<util::trackable<Pass>> _passes;
 

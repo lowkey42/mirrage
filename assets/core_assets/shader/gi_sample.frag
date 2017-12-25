@@ -9,23 +9,27 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 out_color;
 
-layout(set=1, binding = 0) uniform sampler2D color_sampler;
-layout(set=1, binding = 1) uniform sampler2D depth_sampler;
-layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
-layout(set=1, binding = 3) uniform sampler2D result_sampler;
-layout(set=1, binding = 4) uniform sampler2D history_weight_sampler;
-layout(set=1, binding = 5) uniform sampler2D prev_depth_sampler;
-layout(set=1, binding = 6) uniform sampler2D prev_mat_data_sampler;
-layout(set=1, binding = 7) uniform sampler2D ao_sampler;
+layout(set=1, binding = 0) uniform sampler2D noise_sampler;
+
+layout(set=2, binding = 0) uniform sampler2D color_sampler;
+layout(set=2, binding = 1) uniform sampler2D depth_sampler;
+layout(set=2, binding = 2) uniform sampler2D mat_data_sampler;
+layout(set=2, binding = 3) uniform sampler2D result_sampler;
+layout(set=2, binding = 4) uniform sampler2D history_weight_sampler;
+layout(set=2, binding = 5) uniform sampler2D prev_depth_sampler;
+layout(set=2, binding = 6) uniform sampler2D prev_mat_data_sampler;
+layout(set=2, binding = 7) uniform sampler2D ao_sampler;
 
 layout (constant_id = 0) const int LAST_SAMPLE = 0;  // 1 if this is the last MIP level to sample
 layout (constant_id = 1) const float R = 40;         // the radius to fetch samples from
 layout (constant_id = 2) const int SAMPLES = 128;    // the number of samples to fetch
 layout (constant_id = 3) const int UPSAMPLE_ONLY = 0;// 1 if only the previous result should be
                                                      //   upsampled but no new samples calculated
+layout (constant_id = 4) const int JITTER = 1;       // 1 if the samples should be jittered to cover more area
 
-// nearer samples have a higher weight. Less physically correct but results in more noticable color bleeding
-layout (constant_id = 4) const float PRIORITISE_NEAR_SAMPLES = 0.6;
+layout(set=3, binding = 0) uniform Sample_points {
+    vec4 points[SAMPLES];
+} sample_points;
 
 // arguments are packet into the matrices to keep the pipeline layouts compatible between GI passes
 layout(push_constant) uniform Push_constants {
@@ -132,33 +136,27 @@ vec3 gi_sample(int lod, int base_mip) {
 	// fetch SAMPLES samples in a spiral pattern and combine their GI contribution
 	vec3 c = vec3(0,0,0);
 	float samples_used = 0.0;
-	float angle = random(vec4(vertex_out.tex_coords, 0, global_uniforms.time.x*10.0));
-	float angle_step = 1.0 / float(SAMPLES) * PI * 2.0 * 19.0;
 
-	for(int i=0; i<SAMPLES; i++) {
-		float r = max(4, mix(LAST_SAMPLE==1 ? 4.0 : R/2.0, R, float(i)/float(SAMPLES)));
+	float angle_step = PI*2 / pow((sqrt(5.0)+1.0)/2.0, 2.0);
 
-		angle += angle_step;
-		float sin_angle = sin(angle);
-		float cos_angle = cos(angle);
+	float angle =  PDnrand2(vec4(vertex_out.tex_coords, lod, global_uniforms.time.x*10.0)).r * 2*PI;
+	float sin_angle = sin(angle);
+	float cos_angle = cos(angle);
 
-		ivec2 p = ivec2(uv + vec2(sin_angle, cos_angle) * r);
+	for(int i=0; i<SAMPLES/2; i++) {
+		vec4 rand = JITTER==0 ? vec4(0.5) : texture(noise_sampler, PDnrand2(vec4(vertex_out.tex_coords, lod+20+i, global_uniforms.time.x*10.0)));
+
+		vec2 pp = sample_points.points[i].xy;
+		ivec2 p = ivec2(uv + vec2(pp.x*cos_angle - pp.y*sin_angle, pp.x*sin_angle + pp.y*cos_angle) + R*0.2 * (rand.rg*2-1));
 		float weight;
-		vec3 sc = calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
+		c += calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
+		samples_used += weight;
 
-		c += sc;
+		pp = sample_points.points[i].zw;
+		p = ivec2(uv + vec2(pp.x*cos_angle - pp.y*sin_angle, pp.x*sin_angle + pp.y*cos_angle) + R*0.2 * (rand.ba*2-1));
+		c += calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
 		samples_used += weight;
 	}
-
-	// scale the collected diffuse GI by a factor to compensate for low intensity of smaller MIP levels
-	float actual_lod = lod - pcs.prev_projection[0][0];
-	float scale_exponent = mix(actual_lod,
-	                           pcs.prev_projection[2][0],
-	                           PRIORITISE_NEAR_SAMPLES);
-	c *= pow(2.0, scale_exponent*2);
-
-	// normalize based on number of samples for consistent results, independent of SAMPLES
-	c *= 128.0 / SAMPLES;
 
 	return c;
 }
@@ -185,9 +183,6 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 
 	float visibility = 1.0; // v(x, x_i); currently not implemented
 
-	// interpolate r^2 to (r^2)^1.25 for distant pixels to counter missing visibility term
-	r2 = mix(r2, pow(r2,1.25), clamp((r2-1)*0.5, 0, 1));
-
 	float NdotL_src = clamp(dot(N, dir),              0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
 
@@ -202,7 +197,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	float ds = pcs.prev_projection[2][3] * z*z * clamp(cos_alpha / cos_beta, 0.001, 1000.0);
 
 	// multiply all factors, that modulate the light transfer
-	weight = visibility * NdotL_dst * NdotL_src * ds / (0.1+r2);
+	weight = clamp(visibility * NdotL_dst * NdotL_src * ds / (0.1+r2), 0,1);
 
 	// fetch the light emitted by the src pixel, modulate it by the calculated factor and return it
 	vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;

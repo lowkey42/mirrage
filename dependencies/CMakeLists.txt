@@ -23,6 +23,5 @@ SET(PHYSFS_ARCHIVE_7Z FALSE CACHE BOOL "" FORCE)
 SET(PHYSFS_BUILD_SHARED FALSE CACHE BOOL "" FORCE)
 add_subdirectory(physfs)
 
-add_subdirectory(sdl_vulkan)
 add_subdirectory(sf2)
 

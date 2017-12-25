@@ -97,10 +97,10 @@ float sample_shadowmap(vec3 view_pos) {
 	float shadowmap_size = textureSize(sampler2D(shadowmaps[shadowmap], shadowmap_depth_sampler), 0).x;
 	float light_size = model_uniforms.light_data.r / 800.0;
 
-	vec2 rand = PDnrand2(vec4(global_uniforms.time.y, vertex_out.tex_coords, lightspace_pos.x));
+	float rand = random(vec4(lightspace_pos.xyz, global_uniforms.time.y));
 
 	int num_occluders = 0;
-	float penumbra_softness = calc_penumbra(lightspace_pos.xyz, light_size, rand.r, num_occluders);
+	float penumbra_softness = calc_penumbra(lightspace_pos.xyz, light_size, rand, num_occluders);
 
 	//return penumbra_softness>=0.5 ? 1.0 : 0.0;
 
@@ -120,7 +120,7 @@ float sample_shadowmap(vec3 view_pos) {
 
 	float z_bias = 0.00035;
 
-	float angle = rand.g;
+	float angle = rand;
 	float sin_angle = sin(angle);
 	float cos_angle = cos(angle);
 

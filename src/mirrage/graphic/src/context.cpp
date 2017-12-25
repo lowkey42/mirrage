@@ -1,5 +1,7 @@
-#include <SDL_vulkan.h> // has to be includes before vulkan
-#include <sf2/sf2.hpp>  // has to be first so he sf2_struct define is set
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h>
+
+#include <sf2/sf2.hpp> // has to be first so he sf2_struct define is set
 
 #include <mirrage/graphic/context.hpp>
 #include <mirrage/graphic/device.hpp>
@@ -9,12 +11,12 @@
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
-#include <SDL2/SDL.h>
 #include <gsl/gsl>
 
 #include <cstdio>
 #include <iostream>
 #include <sstream>
+#include <unordered_set>
 
 
 extern "C" {
@@ -56,19 +58,41 @@ namespace mirrage::graphic {
 			}
 		}
 
-		void add_present_extensions(std::vector<const char*>& extensions) {
-			auto present_extensions      = std::vector<const char*>(4);
-			auto present_extensions_size = static_cast<unsigned int>(present_extensions.size());
-			if(!SDL_GetVulkanInstanceExtensions(&present_extensions_size,
-			                                    present_extensions.data())) {
+		void add_presnet_extensions(std::vector<const char*>& extensions, SDL_Window* window) {
+			auto count = static_cast<unsigned int>(0);
+			if(!SDL_Vulkan_GetInstanceExtensions(window, &count, nullptr)) {
 				MIRRAGE_FAIL("Unable to determine present extensions: " << SDL_GetError());
 			}
 
-			if(present_extensions_size > 0) {
-				extensions.insert(extensions.end(),
-				                  present_extensions.begin(),
-				                  present_extensions.begin() + present_extensions_size);
+			auto begin = extensions.size();
+			extensions.resize(begin + count);
+
+			if(!SDL_Vulkan_GetInstanceExtensions(window, &count, extensions.data() + begin)) {
+				MIRRAGE_FAIL("Unable to determine present extensions: " << SDL_GetError());
 			}
+		}
+
+		void add_present_extensions(std::vector<const char*>&                          extensions,
+		                            const std::unordered_map<std::string, Window_ptr>& windows) {
+
+			extensions.reserve(extensions.size() + windows.size() * 4);
+
+			for(auto && [_, window] : windows) {
+				(void) _;
+				add_presnet_extensions(extensions, window->window_handle());
+			}
+		}
+
+		void sort_and_unique(std::vector<const char*>& extensions) {
+			std::sort(extensions.begin(), extensions.end(), [](auto lhs, auto rhs) {
+				return std::strcmp(lhs, rhs) < 0;
+			});
+			auto new_end =
+			        std::unique(extensions.begin(), extensions.end(), [](auto lhs, auto rhs) {
+				        return std::strcmp(lhs, rhs) == 0;
+			        });
+
+			extensions.erase(new_end, extensions.end());
 		}
 
 		auto check_extensions(const std::vector<const char*>& required,
@@ -201,12 +225,22 @@ namespace mirrage::graphic {
 
 		sdl_error_check();
 
+		for(auto && [title, win] : _settings->windows) {
+			_windows.emplace(title,
+			                 std::make_unique<Window>(title,
+			                                          app_name() + " | " + title,
+			                                          win.display,
+			                                          win.width,
+			                                          win.height,
+			                                          win.fullscreen));
+		}
+
 		auto instanceCreateInfo = vk::InstanceCreateInfo{};
 		auto appInfo            = vk::ApplicationInfo{
                 appName.c_str(), appVersion, engineName.c_str(), engineVersion, VK_API_VERSION_1_0};
 
 		auto required_extensions = std::vector<const char*>{VK_KHR_SURFACE_EXTENSION_NAME};
-		add_present_extensions(required_extensions);
+		add_present_extensions(required_extensions, _windows);
 		auto optional_extensions = std::vector<const char*>{};
 
 
@@ -216,6 +250,8 @@ namespace mirrage::graphic {
 			required_extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		}
 
+		sort_and_unique(required_extensions);
+		sort_and_unique(optional_extensions);
 		auto extensions = check_extensions(required_extensions, optional_extensions);
 
 		auto log = util::info(__func__, __FILE__, __LINE__);
@@ -245,6 +281,11 @@ namespace mirrage::graphic {
 			                 | vk::DebugReportFlagBitsEXT::eWarning,
 			         debugCallback});
 		}
+
+		for(auto && [_, window] : _windows) {
+			(void) _;
+			window->create_surface(*this);
+		}
 	}
 	Context::~Context() = default;
 
@@ -264,16 +305,9 @@ namespace mirrage::graphic {
 		return true;
 	}
 
-	auto Context::create_window(std::string name, int width, int height) -> Window_ptr {
-		auto settings = _find_window_settings(name, width, height);
-
-		return std::make_unique<Window>(*this,
-		                                name,
-		                                app_name() + " | " + name,
-		                                settings.display,
-		                                settings.width,
-		                                settings.height,
-		                                settings.fullscreen);
+	auto Context::find_window(std::string name) -> util::maybe<Window&> {
+		auto iter = _windows.find(name);
+		return iter == _windows.end() ? util::nothing : util::justPtr(&*iter->second);
 	}
 	auto Context::_find_window_settings(const std::string& name, int width, int height)
 	        -> Window_settings {
@@ -431,7 +465,7 @@ namespace mirrage::graphic {
 				sc_info.setImageSharingMode(vk::SharingMode::eExclusive);
 				sc_info.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment);
 				sc_info.setImageArrayLayers(1);
-				sc_info.setMinImageCount(std::max(2u, capabilities.minImageCount));
+				sc_info.setMinImageCount(std::max(3u, capabilities.minImageCount));
 				if(capabilities.maxImageCount > 0
 				   && capabilities.maxImageCount < sc_info.minImageCount) {
 					sc_info.setMinImageCount(capabilities.maxImageCount);

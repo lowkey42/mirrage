@@ -26,7 +26,6 @@ namespace mirrage::renderer {
 	  private:
 		Deferred_renderer&                   _renderer;
 		graphic::Texture_2D&                 _src;
-		graphic::Texture_ptr                 _blue_noise;
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
 		vk::UniqueDescriptorSet              _descriptor_set;
