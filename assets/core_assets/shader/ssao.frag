@@ -56,8 +56,7 @@ vec2 to_uv(vec3 pos) {
 vec2 tap_location(int i, float spin_angle, out float out_ss_radius) {
 	// Radius relative to ssR
 	float alpha = float(i + 0.5) * (1.0 / SAMPLES);
-	float angle = alpha * (SPIRAL_TURNS * 6.28) + spin_angle;
-	angle = i * (3.14159265359*(3.0-sqrt(5.0))) + spin_angle;
+	float angle = i * (3.14159265359*(3.0-sqrt(5.0))) + spin_angle;
 
 	out_ss_radius = alpha;
 	return vec2(cos(angle), sin(angle));

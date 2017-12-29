@@ -563,7 +563,9 @@ namespace mirrage::renderer {
 			auto format = device.get_supported_format(
 			        {vk::Format::eR16G16Sfloat},
 			        vk::FormatFeatureFlagBits::eColorAttachment
-			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
+			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear
+			                | vk::FormatFeatureFlagBits::eBlitDst
+			                | vk::FormatFeatureFlagBits::eBlitSrc);
 
 			MIRRAGE_INVARIANT(
 			        format.is_some(),
@@ -573,11 +575,11 @@ namespace mirrage::renderer {
 		}
 		auto get_history_weight_format(graphic::Device& device) {
 			auto format = device.get_supported_format(
-			        {vk::Format::eR8Unorm, vk::Format::eR8G8Unorm, vk::Format::eR8G8B8A8Unorm},
+			        {vk::Format::eR8G8Unorm, vk::Format::eR8G8B8A8Unorm},
 			        vk::FormatFeatureFlagBits::eColorAttachment
 			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 
-			MIRRAGE_INVARIANT(format.is_some(), "No Float R8 format supported!");
+			MIRRAGE_INVARIANT(format.is_some(), "No Float R8G8 format supported!");
 
 			return format.get_or_throw();
 		}
@@ -669,8 +671,17 @@ namespace mirrage::renderer {
 	                    1,
 	                    _history_weight_format,
 	                    vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-	                            | vk::ImageUsageFlagBits::eTransferDst,
+	                            | vk::ImageUsageFlagBits::eTransferDst
+	                            | vk::ImageUsageFlagBits::eTransferSrc,
 	                    vk::ImageAspectFlagBits::eColor)
+	  , _history_weight_prev(renderer.device(),
+	                         {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
+	                         1,
+	                         _history_weight_format,
+	                         vk::ImageUsageFlagBits::eColorAttachment
+	                                 | vk::ImageUsageFlagBits::eSampled
+	                                 | vk::ImageUsageFlagBits::eTransferDst,
+	                         vk::ImageAspectFlagBits::eColor)
 
 	  , _integrated_brdf_format(get_brdf_format(renderer.device()))
 	  , _integrated_brdf(
@@ -700,7 +711,8 @@ namespace mirrage::renderer {
 	                                               _gi_diffuse_history.view(),
 	                                               _gi_specular_history.view(),
 	                                               renderer.gbuffer().prev_depth.view(),
-	                                               _integrated_brdf.view()}))
+	                                               _integrated_brdf.view(),
+	                                               _history_weight_prev.view()}))
 
 	  , _sample_descriptor_set_layout(renderer.device().create_descriptor_set_layout(
 	            vk::DescriptorSetLayoutBinding{0,
@@ -862,8 +874,11 @@ namespace mirrage::renderer {
 			                       vk::ImageLayout::eUndefined,
 			                       vk::ImageLayout::eShaderReadOnlyOptimal);
 
-			for(auto rt :
-			    {&_gi_specular, &_gi_diffuse_history, &_gi_specular_history, &_history_weight}) {
+			for(auto rt : {&_gi_specular,
+			               &_gi_diffuse_history,
+			               &_gi_specular_history,
+			               &_history_weight,
+			               &_history_weight_prev}) {
 				graphic::clear_texture(command_buffer,
 				                       *rt,
 				                       util::Rgba{0, 0, 0, 0},
@@ -908,6 +923,14 @@ namespace mirrage::renderer {
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      _gi_specular_history,
+		                      vk::ImageLayout::eUndefined,
+		                      vk::ImageLayout::eShaderReadOnlyOptimal);
+
+		graphic::blit_texture(command_buffer,
+		                      _history_weight,
+		                      vk::ImageLayout::eShaderReadOnlyOptimal,
+		                      vk::ImageLayout::eShaderReadOnlyOptimal,
+		                      _history_weight_prev,
 		                      vk::ImageLayout::eUndefined,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal);
 	}

@@ -48,6 +48,7 @@ namespace mirrage::renderer {
 
 		vk::Format                _history_weight_format;
 		graphic::Render_target_2D _history_weight;
+		graphic::Render_target_2D _history_weight_prev;
 
 		// preintegration of BRDF. Based on:
 		//     http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf

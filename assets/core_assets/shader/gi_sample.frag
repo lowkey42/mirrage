@@ -76,7 +76,7 @@ void main() {
 	else
 		out_color = vec4(0,0,0, 1);
 
-	// calculate contibution from this level (if we haven't reached the target level, yet)
+	// calculate contribution from this level (if we haven't reached the target level, yet)
 	if(UPSAMPLE_ONLY==0)
 		out_color.rgb += gi_sample(int(current_mip+0.5), int(base_mip+0.5));
 
@@ -85,11 +85,13 @@ void main() {
 		// calculate interpolation factor based on the depth-error in its surrounding during reporjection
 		vec2 hws_step = 1.0 / textureSize(history_weight_sampler, 0);
 
-		vec4  history_weights = textureGather(history_weight_sampler, vertex_out.tex_coords+hws_step, 0);
-		float history_weight  = min(history_weights.x, min(history_weights.y, min(history_weights.z, history_weights.w)));
-
-		history_weights = textureGather(history_weight_sampler, vertex_out.tex_coords-hws_step, 0);
-		history_weight  = min(history_weight,min(history_weights.x, min(history_weights.y, min(history_weights.z, history_weights.w))));
+		float history_sample_count = dot(textureGather(history_weight_sampler, vertex_out.tex_coords-hws_step, 1), vec4(1));
+		history_sample_count += texture(history_weight_sampler, vertex_out.tex_coords+hws_step*vec2(1,-1)).g;
+		history_sample_count += texture(history_weight_sampler, vertex_out.tex_coords+hws_step*vec2(1, 0)).g;
+		history_sample_count += texture(history_weight_sampler, vertex_out.tex_coords+hws_step*vec2(1, 1)).g;
+		history_sample_count += texture(history_weight_sampler, vertex_out.tex_coords+hws_step*vec2(-1,1)).g;
+		history_sample_count += texture(history_weight_sampler, vertex_out.tex_coords+hws_step*vec2( 0,1)).g;
+		history_sample_count = history_sample_count / 9.0;
 
 		// modulate diffuse GI by ambient occlusion
 		if(pcs.projection[3][3]>0.0) {
@@ -101,13 +103,8 @@ void main() {
 		// normalize diffuse GI by its luminance to reduce fire-flies
 		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
 
-		// calculate the min/max interpolation weights based on the delta time
-		float weight_measure = smoothstep(1.0/120.0, 1.0/30.0, global_uniforms.time.z);
-		float weight_min = mix(0.85, 0.1, weight_measure);
-		float weight_max = mix(0.98, 0.85, weight_measure);
-
 		// scale by calculated weight to alpha-blend with the reprojected result of the previous frame
-		out_color *= 1.0 - mix(weight_min, weight_max, history_weight);
+		out_color *= 1.0 - history_sample_count;
 	}
 
 	// clamp the result to a reasonable range to reduce artefacts
