@@ -4,7 +4,8 @@
 
 #include "normal_encoding.glsl"
 #include "color_conversion.glsl"
-
+#include "random.glsl"
+#include "global_uniforms.glsl"
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
@@ -12,9 +13,11 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 out_color;
 
-layout(set=1, binding = 0) uniform sampler2D color_sampler;
-layout(set=1, binding = 1) uniform sampler2D avg_log_luminance_sampler;
-layout(set=1, binding = 2) uniform sampler2D bloom_sampler;
+layout(set=1, binding = 0) uniform sampler2D blue_noise;
+
+layout(set=2, binding = 0) uniform sampler2D color_sampler;
+layout(set=2, binding = 1) uniform sampler2D avg_log_luminance_sampler;
+layout(set=2, binding = 2) uniform sampler2D bloom_sampler;
 
 layout(push_constant) uniform Settings {
 	vec4 options;
@@ -126,7 +129,25 @@ vec3 resolve_fxaa() {
 	}
 }
 
+vec3 highlow_mix(vec3 color, float cutoff, vec3 low, vec3 high) {
+	return mix(high, low, lessThan(color, vec3(cutoff)));
+}
+
+// Based on http://momentsingraphics.de/?p=127
+vec3 dither(vec3 color) {
+	vec3 color_srgb = highlow_mix(color, 0.0031308, 12.92*color, 1.055*pow(color, vec3(1.0/2.4))-0.055);
+
+	vec3 rand = texture(blue_noise, vertex_out.tex_coords*vec2(1920,1080)/128.0).rgb;
+
+	vec3 rand_tri = rand*2.0-1.0;
+	rand_tri = sign(rand_tri) * (1.0-sqrt(1.0-abs(rand_tri)));
+
+	color_srgb += rand / 253.0;
+
+	return highlow_mix(color_srgb, 0.04045, color_srgb/12.92, pow(color_srgb/1.055 + 0.055/1.055, vec3(2.4)));
+}
+
 void main() {
 	//out_color = vec4(tone_mapping(texture(color_sampler, vertex_out.tex_coords).rgb), 1.0);
-	out_color = vec4(tone_mapping(resolve_fxaa().rgb), 1.0);
+	out_color = vec4(dither(tone_mapping(resolve_fxaa().rgb)), 1.0);
 }

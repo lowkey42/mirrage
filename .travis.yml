@@ -4,9 +4,17 @@ compiler:
   - gcc
   - clang
 
+cache:
+  directories:
+  - $CACHE_DIR
+
 env:
-  - ANALYZE=false
-  - ANALYZE=true
+  global:
+    - CACHE_DIR=$HOME/.cache/docker
+    - CACHE_FILE_DI=$CACHE_DIR/docker_image.tar.gz
+  matrix:
+    - ANALYZE=false
+    - ANALYZE=true
 
 matrix:
   exclude:
@@ -17,8 +25,11 @@ services:
   - docker
   
 before_install:
+  - if [ -f ${CACHE_FILE_DI} ]; then gunzip -c ${CACHE_FILE_DI} | docker load; fi
   - docker pull lowkey42/build-env:latest
   - docker run -e "CXX=$CXX" -e "CC=$CC" -v $TRAVIS_BUILD_DIR:/repo -itd --name build lowkey42/build-env
+  - mkdir -p $CACHE_DIR
+  - if [ ! -f ${CACHE_FILE_DI} ]; then docker save lowkey42/build-env:latest | gzip > ${CACHE_FILE_DI}; fi
 
 script:
   - source $TRAVIS_BUILD_DIR/.travis.sh

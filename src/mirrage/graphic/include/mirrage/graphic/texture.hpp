@@ -33,6 +33,7 @@ namespace mirrage::graphic {
 
 			auto view() const noexcept { return *_image_view; }
 			auto image() const noexcept { return _image.image(); }
+			auto transfer_task() const { return _image.transfer_task(); }
 
 			auto width() const noexcept { return _image.width(); }
 			auto height() const noexcept { return _image.height(); }

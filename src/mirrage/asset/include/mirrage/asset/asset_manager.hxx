@@ -66,10 +66,14 @@ namespace mirrage::asset {
 		template <class T>
 		constexpr auto has_reload_v = has_reload<T>::value;
 
+		template <class T>
+		constexpr auto is_task_v =
+		        std::is_same_v<
+		                std::remove_reference_t<std::decay_t<T>>,
+		                async::task> || std::is_same_v<std::remove_reference_t<std::decay_t<T>>, async::shared_task>;
 
 		template <typename T>
-		auto Asset_container<T>::load(const AID& aid, const std::string& path, bool cache) -> Loading<T> {
-
+		auto Asset_container<T>::load(AID aid, const std::string& path, bool cache) -> Loading<T> {
 			auto lock = std::scoped_lock{_container_mutex};
 
 			auto found = _assets.find(path);
@@ -77,10 +81,20 @@ namespace mirrage::asset {
 				return found->second.ptr;
 
 			// not found => load
+			// clang-format off
 			auto loading = async::spawn([path = std::string(path), aid, this] {
-				               return Ptr<T>(aid, this->load(_manager._open(aid, path)));
-			               })
-			                       .share();
+				auto result = this->load(_manager._open(aid, path));
+				if constexpr(is_task_v<decltype(result)>) {
+					// if the loader returned a task, warp it and return the task (unwrapping)
+					return result.then([aid](auto&& r) {
+						return Ptr<T>(aid, std::forward<decltype(r)>(r));
+					});
+
+				} else {
+					return Ptr<T>(aid, std::move(result));
+				};
+			}).share();
+			// clang-format on
 
 			if(cache)
 				_assets.try_emplace(path, Asset{loading, _manager._last_modified(path)});

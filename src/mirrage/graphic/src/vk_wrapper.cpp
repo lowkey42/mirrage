@@ -25,14 +25,14 @@ namespace mirrage::graphic {
 		auto alloc_info = vk::DescriptorSetAllocateInfo{*_pools.back(), 1, &layout};
 		auto desc_set   = VkDescriptorSet{};
 		auto ret        = vkAllocateDescriptorSets(
-                _device, reinterpret_cast<VkDescriptorSetAllocateInfo*>(&alloc_info), &desc_set);
+                *_device, reinterpret_cast<VkDescriptorSetAllocateInfo*>(&alloc_info), &desc_set);
 
 		if(ret == VK_SUCCESS)
 			return vk::UniqueDescriptorSet(desc_set);
 
 		alloc_info.descriptorPool = create_descriptor_pool();
 		ret                       = vkAllocateDescriptorSets(
-                _device, reinterpret_cast<VkDescriptorSetAllocateInfo*>(&alloc_info), &desc_set);
+                *_device, reinterpret_cast<VkDescriptorSetAllocateInfo*>(&alloc_info), &desc_set);
 
 		if(ret == VK_SUCCESS) {
 			MIRRAGE_INFO("Allocated a new descriptorSetPool (shouldn't happen too often!).");
@@ -45,12 +45,12 @@ namespace mirrage::graphic {
 	Descriptor_pool::Descriptor_pool(const vk::Device&                   device,
 	                                 std::uint32_t                       maxSets,
 	                                 std::vector<vk::DescriptorPoolSize> pool_sizes)
-	  : _device(device), _maxSets(maxSets), _pool_sizes(pool_sizes) {
+	  : _device(&device), _maxSets(maxSets), _pool_sizes(pool_sizes) {
 		create_descriptor_pool();
 	}
 
 	auto Descriptor_pool::create_descriptor_pool() -> vk::DescriptorPool {
-		auto pool = _device.createDescriptorPoolUnique(
+		auto pool = _device->createDescriptorPoolUnique(
 		        vk::DescriptorPoolCreateInfo{vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
 		                                     _maxSets,
 		                                     gsl::narrow<std::uint32_t>(_pool_sizes.size()),
@@ -161,7 +161,10 @@ namespace mirrage::graphic {
 				case vk::ImageLayout::eColorAttachmentOptimal:
 					return vk::AccessFlagBits::eColorAttachmentWrite;
 
+				case vk::ImageLayout::eDepthReadOnlyStencilAttachmentOptimalKHR:
+				case vk::ImageLayout::eDepthAttachmentStencilReadOnlyOptimalKHR:
 				case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
+					return vk::AccessFlagBits::eDepthStencilAttachmentRead;
 					return vk::AccessFlagBits::eDepthStencilAttachmentRead;
 
 				case vk::ImageLayout::eDepthStencilAttachmentOptimal:

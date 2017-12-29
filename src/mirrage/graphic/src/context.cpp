@@ -1,5 +1,7 @@
-#include <SDL_vulkan.h> // has to be includes before vulkan
-#include <sf2/sf2.hpp>  // has to be first so he sf2_struct define is set
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h>
+
+#include <sf2/sf2.hpp> // has to be first so he sf2_struct define is set
 
 #include <mirrage/graphic/context.hpp>
 #include <mirrage/graphic/device.hpp>
@@ -9,12 +11,12 @@
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
-#include <SDL2/SDL.h>
 #include <gsl/gsl>
 
 #include <cstdio>
 #include <iostream>
 #include <sstream>
+#include <unordered_set>
 
 
 extern "C" {
@@ -22,8 +24,8 @@ VkResult vkCreateDebugReportCallbackEXT(VkInstance                              
                                         const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
                                         const VkAllocationCallbacks*              pAllocator,
                                         VkDebugReportCallbackEXT*                 pCallback) {
-	auto func = (PFN_vkCreateDebugReportCallbackEXT) vkGetInstanceProcAddr(instance,
-	                                                                       "vkCreateDebugReportCallbackEXT");
+	auto func = (PFN_vkCreateDebugReportCallbackEXT) vkGetInstanceProcAddr(
+	        instance, "vkCreateDebugReportCallbackEXT");
 	if(func != nullptr) {
 		return func(instance, pCreateInfo, pAllocator, pCallback);
 	} else {
@@ -56,22 +58,46 @@ namespace mirrage::graphic {
 			}
 		}
 
-		void add_present_extensions(std::vector<const char*>& extensions) {
-			auto present_extensions      = std::vector<const char*>(4);
-			auto present_extensions_size = static_cast<unsigned int>(present_extensions.size());
-			if(!SDL_GetVulkanInstanceExtensions(&present_extensions_size, present_extensions.data())) {
+		void add_presnet_extensions(std::vector<const char*>& extensions, SDL_Window* window) {
+			auto count = static_cast<unsigned int>(0);
+			if(!SDL_Vulkan_GetInstanceExtensions(window, &count, nullptr)) {
 				MIRRAGE_FAIL("Unable to determine present extensions: " << SDL_GetError());
 			}
 
-			if(present_extensions_size > 0) {
-				extensions.insert(extensions.end(),
-				                  present_extensions.begin(),
-				                  present_extensions.begin() + present_extensions_size);
+			auto begin = extensions.size();
+			extensions.resize(begin + count);
+
+			if(!SDL_Vulkan_GetInstanceExtensions(window, &count, extensions.data() + begin)) {
+				MIRRAGE_FAIL("Unable to determine present extensions: " << SDL_GetError());
 			}
 		}
 
+		void add_present_extensions(std::vector<const char*>&                          extensions,
+		                            const std::unordered_map<std::string, Window_ptr>& windows) {
+
+			extensions.reserve(extensions.size() + windows.size() * 4);
+
+			for(auto && [_, window] : windows) {
+				(void) _;
+				add_presnet_extensions(extensions, window->window_handle());
+			}
+		}
+
+		void sort_and_unique(std::vector<const char*>& extensions) {
+			std::sort(extensions.begin(), extensions.end(), [](auto lhs, auto rhs) {
+				return std::strcmp(lhs, rhs) < 0;
+			});
+			auto new_end =
+			        std::unique(extensions.begin(), extensions.end(), [](auto lhs, auto rhs) {
+				        return std::strcmp(lhs, rhs) == 0;
+			        });
+
+			extensions.erase(new_end, extensions.end());
+		}
+
 		auto check_extensions(const std::vector<const char*>& required,
-		                      const std::vector<const char*>& optional) -> std::vector<const char*> {
+		                      const std::vector<const char*>& optional)
+		        -> std::vector<const char*> {
 			auto extensions = std::vector<const char*>();
 			extensions.reserve(required.size() + optional.size());
 
@@ -105,7 +131,8 @@ namespace mirrage::graphic {
 			}
 
 			if(!all_supported) {
-				MIRRAGE_FAIL("At least one required extension is not supported (see log for details)!");
+				MIRRAGE_FAIL(
+				        "At least one required extension is not supported (see log for details)!");
 			}
 
 			return extensions;
@@ -127,8 +154,9 @@ namespace mirrage::graphic {
 				}
 
 				if(!layer_requested) {
-					MIRRAGE_DEBUG("Additional validation layer is available, that hasn't been requested: "
-					              << l.layerName);
+					MIRRAGE_DEBUG(
+					        "Additional validation layer is available, that hasn't been requested: "
+					        << l.layerName);
 				}
 			}
 
@@ -197,12 +225,22 @@ namespace mirrage::graphic {
 
 		sdl_error_check();
 
+		for(auto && [title, win] : _settings->windows) {
+			_windows.emplace(title,
+			                 std::make_unique<Window>(title,
+			                                          app_name() + " | " + title,
+			                                          win.display,
+			                                          win.width,
+			                                          win.height,
+			                                          win.fullscreen));
+		}
+
 		auto instanceCreateInfo = vk::InstanceCreateInfo{};
 		auto appInfo            = vk::ApplicationInfo{
                 appName.c_str(), appVersion, engineName.c_str(), engineVersion, VK_API_VERSION_1_0};
 
 		auto required_extensions = std::vector<const char*>{VK_KHR_SURFACE_EXTENSION_NAME};
-		add_present_extensions(required_extensions);
+		add_present_extensions(required_extensions, _windows);
 		auto optional_extensions = std::vector<const char*>{};
 
 
@@ -212,6 +250,8 @@ namespace mirrage::graphic {
 			required_extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		}
 
+		sort_and_unique(required_extensions);
+		sort_and_unique(optional_extensions);
 		auto extensions = check_extensions(required_extensions, optional_extensions);
 
 		auto log = util::info(__func__, __FILE__, __LINE__);
@@ -236,9 +276,15 @@ namespace mirrage::graphic {
 		if(debug) {
 			_debug_callback = _instance->createDebugReportCallbackEXTUnique(
 			        {/*	vk::DebugReportFlagBitsEXT::eDebug | vk::DebugReportFlagBitsEXT::eInformation | */
-			         vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::ePerformanceWarning
+			         vk::DebugReportFlagBitsEXT::eError
+			                 | vk::DebugReportFlagBitsEXT::ePerformanceWarning
 			                 | vk::DebugReportFlagBitsEXT::eWarning,
 			         debugCallback});
+		}
+
+		for(auto && [_, window] : _windows) {
+			(void) _;
+			window->create_surface(*this);
 		}
 	}
 	Context::~Context() = default;
@@ -250,22 +296,17 @@ namespace mirrage::graphic {
 		return true;
 	}
 
-	auto Context::create_window(std::string name, int width, int height) -> Window_ptr {
-		auto settings = _find_window_settings(name, width, height);
-
-		return std::make_unique<Window>(*this,
-		                                name,
-		                                app_name() + " | " + name,
-		                                settings.display,
-		                                settings.width,
-		                                settings.height,
-		                                settings.fullscreen);
+	auto Context::find_window(std::string name) -> util::maybe<Window&> {
+		auto iter = _windows.find(name);
+		return iter == _windows.end() ? util::nothing : util::justPtr(&*iter->second);
 	}
-	auto Context::_find_window_settings(const std::string& name, int width, int height) -> Window_settings {
+	auto Context::_find_window_settings(const std::string& name, int width, int height)
+	        -> Window_settings {
 		auto& cfg = settings();
 
-		auto win_cfg = std::find_if(
-		        std::begin(cfg.windows), std::end(cfg.windows), [&](auto& w) { return w.first == name; });
+		auto win_cfg = std::find_if(std::begin(cfg.windows), std::end(cfg.windows), [&](auto& w) {
+			return w.first == name;
+		});
 
 		if(win_cfg == std::end(cfg.windows)) { // no config create new
 			auto new_settings = cfg;
@@ -287,9 +328,10 @@ namespace mirrage::graphic {
 	namespace {
 		bool supports_present(vk::PhysicalDevice& gpu, const std::vector<Window*>& can_present_to) {
 			auto supported_extensions = gpu.enumerateDeviceExtensionProperties();
-			auto sc_ext = std::find_if(supported_extensions.begin(), supported_extensions.end(), [](auto& e) {
-				return std::strcmp(e.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
-			});
+			auto sc_ext               = std::find_if(
+                    supported_extensions.begin(), supported_extensions.end(), [](auto& e) {
+                        return std::strcmp(e.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
+                    });
 
 			if(sc_ext == supported_extensions.end()) {
 				return false;
@@ -306,16 +348,18 @@ namespace mirrage::graphic {
 			return true;
 		}
 
-		auto find_graphics_queue(vk::PhysicalDevice& gpu, const std::vector<Window*>& can_present_to)
+		auto find_graphics_queue(vk::PhysicalDevice&         gpu,
+		                         const std::vector<Window*>& can_present_to)
 		        -> util::maybe<std::uint32_t> {
 			auto i = 0;
 
 			for(auto& queue_family : gpu.getQueueFamilyProperties()) {
 				auto can_present =
 				        can_present_to.empty()
-				        || std::all_of(can_present_to.begin(), can_present_to.end(), [&](auto window) {
-					           return gpu.getSurfaceSupportKHR(i, window->surface());
-				           });
+				        || std::all_of(
+				                   can_present_to.begin(), can_present_to.end(), [&](auto window) {
+					                   return gpu.getSurfaceSupportKHR(i, window->surface());
+				                   });
 
 				if(queue_family.queueCount > 0 && can_present
 				   && queue_family.timestampValidBits
@@ -337,7 +381,8 @@ namespace mirrage::graphic {
 
 			// check for transfer-only queue
 			for(auto& queue_family : families) {
-				if(queue_family.queueCount > 0 && (queue_family.queueFlags & vk::QueueFlagBits::eTransfer)
+				if(queue_family.queueCount > 0
+				   && (queue_family.queueFlags & vk::QueueFlagBits::eTransfer)
 				   && !(queue_family.queueFlags & vk::QueueFlagBits::eGraphics)) {
 					return i;
 				}
@@ -377,8 +422,9 @@ namespace mirrage::graphic {
 				return {target_format, target_space};
 			}
 
-			opt_found = std::find_if(
-			        formats.begin(), formats.end(), [&](auto& f) { return f.format == target_format; });
+			opt_found = std::find_if(formats.begin(), formats.end(), [&](auto& f) {
+				return f.format == target_format;
+			});
 			if(opt_found != formats.end()) {
 				return *opt_found;
 			}
@@ -410,15 +456,17 @@ namespace mirrage::graphic {
 				sc_info.setImageSharingMode(vk::SharingMode::eExclusive);
 				sc_info.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment);
 				sc_info.setImageArrayLayers(1);
-				sc_info.setMinImageCount(std::max(2u, capabilities.minImageCount));
-				if(capabilities.maxImageCount > 0 && capabilities.maxImageCount < sc_info.minImageCount) {
+				sc_info.setMinImageCount(std::max(3u, capabilities.minImageCount));
+				if(capabilities.maxImageCount > 0
+				   && capabilities.maxImageCount < sc_info.minImageCount) {
 					sc_info.setMinImageCount(capabilities.maxImageCount);
 				}
 
-				auto present_modes = gpu.getSurfacePresentModesKHR(window->surface());
-				auto mailbox_supported =
-				        std::find(present_modes.begin(), present_modes.end(), vk::PresentModeKHR::eMailbox)
-				        != present_modes.end();
+				auto present_modes     = gpu.getSurfacePresentModesKHR(window->surface());
+				auto mailbox_supported = std::find(present_modes.begin(),
+				                                   present_modes.end(),
+				                                   vk::PresentModeKHR::eMailbox)
+				                         != present_modes.end();
 				if(mailbox_supported) {
 					sc_info.setPresentMode(vk::PresentModeKHR::eMailbox);
 				} else {
@@ -439,11 +487,11 @@ namespace mirrage::graphic {
 
 				sc_info.setImageExtent(capabilities.currentExtent);
 
-				auto format =
-				        find_surface_format(gpu,
-				                            *window,
-				                            srgb ? vk::Format::eB8G8R8A8Srgb : vk::Format::eB8G8R8A8Unorm,
-				                            vk::ColorSpaceKHR::eSrgbNonlinear);
+				auto format = find_surface_format(gpu,
+				                                  *window,
+				                                  srgb ? vk::Format::eB8G8R8A8Srgb
+				                                       : vk::Format::eB8G8R8A8Unorm,
+				                                  vk::ColorSpaceKHR::eSrgbNonlinear);
 
 				sc_info.setImageFormat(format.format);
 				sc_info.setImageColorSpace(format.colorSpace);
@@ -469,6 +517,14 @@ namespace mirrage::graphic {
 			auto graphics_queue = find_graphics_queue(gpu, can_present_to);
 
 			auto score = selector(gpu, graphics_queue);
+
+			auto gpu_name = std::string(gpu.getProperties().deviceName);
+			MIRRAGE_INFO("Detected GPU: " << gpu_name);
+
+			if(!_settings->gpu_preference.empty() && _settings->gpu_preference == gpu_name) {
+				score = std::numeric_limits<int>::max();
+			}
+
 			if(score > top_score) {
 				top_score = score;
 				top_gpu   = gpu;
@@ -479,6 +535,8 @@ namespace mirrage::graphic {
 			MIRRAGE_FAIL("Couldn't find a GPU that supports vulkan and all required features.");
 		}
 
+		MIRRAGE_INFO("Selected GPU: " << top_gpu.getProperties().deviceName);
+
 		auto cfg = vk::DeviceCreateInfo{};
 		cfg.setEnabledLayerCount(gsl::narrow<uint32_t>(_enabled_layers.size()));
 		cfg.setPpEnabledLayerNames(_enabled_layers.data());
@@ -487,9 +545,9 @@ namespace mirrage::graphic {
 		auto supported_extensions = top_gpu.enumerateDeviceExtensionProperties();
 		auto extension_supported  = [&](const char* e) {
             return supported_extensions.end()
-                   != std::find_if(supported_extensions.begin(), supported_extensions.end(), [&](auto& se) {
-                          return !strcmp(se.extensionName, e);
-                      });
+                   != std::find_if(supported_extensions.begin(),
+                                   supported_extensions.end(),
+                                   [&](auto& se) { return !strcmp(se.extensionName, e); });
 		};
 
 		auto dedicated_alloc_supported = false;
@@ -554,7 +612,8 @@ namespace mirrage::graphic {
 		auto used_queues = std::vector<vk::DeviceQueueCreateInfo>{};
 		used_queues.reserve(queue_families.size());
 		for(auto& qf : queue_families) {
-			MIRRAGE_INVARIANT(std::get<1>(qf.second).size() == std::get<0>(qf.second), "Size mismatch");
+			MIRRAGE_INVARIANT(std::get<1>(qf.second).size() == std::get<0>(qf.second),
+			                  "Size mismatch");
 
 			used_queues.emplace_back(vk::DeviceQueueCreateFlags(),
 			                         qf.first,

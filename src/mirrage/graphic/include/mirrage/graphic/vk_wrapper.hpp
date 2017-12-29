@@ -106,19 +106,12 @@ namespace mirrage::graphic {
 
 	class Descriptor_pool {
 	  public:
-		Descriptor_pool(Descriptor_pool&& rhs) : _device(rhs._device), _pool(std::move(rhs._pool)) {}
-		Descriptor_pool& operator=(Descriptor_pool&& rhs) {
-			_pool = std::move(rhs._pool);
-			return *this;
-		}
-		~Descriptor_pool() = default;
-
 		auto create_descriptor(vk::DescriptorSetLayout) -> vk::UniqueDescriptorSet;
 
 	  private:
 		friend class Device;
 
-		const vk::Device&                     _device;
+		const vk::Device*                     _device;
 		std::uint32_t                         _maxSets;
 		std::vector<vk::DescriptorPoolSize>   _pool_sizes;
 		std::vector<vk::UniqueDescriptorPool> _pools;

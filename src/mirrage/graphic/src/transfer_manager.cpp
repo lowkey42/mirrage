@@ -5,21 +5,25 @@
 
 namespace mirrage::graphic {
 
-	Static_buffer::Static_buffer(Static_buffer&& rhs) noexcept : _buffer(std::move(rhs._buffer)) {}
+	Static_buffer::Static_buffer(Static_buffer&& rhs) noexcept
+	  : _buffer(std::move(rhs._buffer)), _transfer_task(std::move(rhs._transfer_task)) {}
 	Static_buffer& Static_buffer::operator=(Static_buffer&& rhs) noexcept {
-		_buffer = std::move(rhs._buffer);
+		_buffer        = std::move(rhs._buffer);
+		_transfer_task = std::move(rhs._transfer_task);
 		return *this;
 	}
 
 	Static_image::Static_image(Static_image&& rhs) noexcept
 	  : _image(std::move(rhs._image))
 	  , _mip_count(std::move(rhs._mip_count))
-	  , _dimensions(std::move(rhs._dimensions)) {}
+	  , _dimensions(std::move(rhs._dimensions))
+	  , _transfer_task(std::move(rhs._transfer_task)) {}
 
 	Static_image& Static_image::operator=(Static_image&& rhs) noexcept {
-		_image      = std::move(rhs._image);
-		_mip_count  = std::move(rhs._mip_count);
-		_dimensions = std::move(rhs._dimensions);
+		_image         = std::move(rhs._image);
+		_mip_count     = std::move(rhs._mip_count);
+		_dimensions    = std::move(rhs._dimensions);
+		_transfer_task = std::move(rhs._transfer_task);
 
 		return *this;
 	}
@@ -108,6 +112,8 @@ namespace mirrage::graphic {
 		}
 
 		_image_transfers.reserve(128);
+
+		_reset_transfer_event();
 	}
 	Transfer_manager::~Transfer_manager() {}
 
@@ -187,7 +193,11 @@ namespace mirrage::graphic {
 			                              std::move(mip_image_sizes));
 		}
 
-		return {std::move(final_image), actual_mip_levels, mip_levels == 0, real_dimensions};
+		return {std::move(final_image),
+		        actual_mip_levels,
+		        mip_levels == 0,
+		        real_dimensions,
+		        _transfer_done_task};
 	}
 
 	auto Transfer_manager::upload_buffer(vk::BufferUsageFlags       usage,
@@ -223,7 +233,7 @@ namespace mirrage::graphic {
 			_buffer_transfers.emplace_back(std::move(staging_buffer), *final_buffer, size, owner);
 		}
 
-		return {std::move(final_buffer)};
+		return {std::move(final_buffer), _transfer_done_task};
 	}
 
 	auto Transfer_manager::_create_staging_buffer(vk::BufferUsageFlags       usage,
@@ -391,6 +401,10 @@ namespace mirrage::graphic {
 		auto submit_info = vk::SubmitInfo{0, nullptr, nullptr, 1, &command_buffer, 1, &*_semaphore};
 		_queue.submit({submit_info}, _command_buffers.start_new_frame());
 
+		// signal waiting tasks that the transfer will be done in this frame
+		_tranfer_done_event.set();
+		_reset_transfer_event();
+
 		return *_semaphore;
 	}
 
@@ -425,4 +439,10 @@ namespace mirrage::graphic {
 
 		cb.copyBufferToImage(*t.src, t.dst, vk::ImageLayout::eTransferDstOptimal, regions);
 	}
+
+	void Transfer_manager::_reset_transfer_event() {
+		_tranfer_done_event = async::event_task<void>{};
+		_transfer_done_task = _tranfer_done_event.get_task().share();
+	}
+
 } // namespace mirrage::graphic

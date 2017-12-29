@@ -9,7 +9,9 @@ namespace mirrage::renderer {
 
 	class Gi_pass : public Pass {
 	  public:
-		Gi_pass(Deferred_renderer&, graphic::Render_target_2D& in_out, graphic::Render_target_2D& diffuse_in);
+		Gi_pass(Deferred_renderer&,
+		        graphic::Render_target_2D& in_out,
+		        graphic::Render_target_2D& diffuse_in);
 
 
 		void update(util::Time dt) override;
@@ -46,6 +48,7 @@ namespace mirrage::renderer {
 
 		vk::Format                _history_weight_format;
 		graphic::Render_target_2D _history_weight;
+		graphic::Render_target_2D _history_weight_prev;
 
 		// preintegration of BRDF. Based on:
 		//     http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
@@ -61,6 +64,12 @@ namespace mirrage::renderer {
 		vk::UniqueDescriptorSet _reproject_descriptor_set;
 
 		// GI sampling for diffuse illumination
+		vk::UniqueDescriptorSetLayout        _sample_descriptor_set_layout;
+		vk::UniqueDescriptorSet              _sample_descriptor_set;
+		vk::UniqueDescriptorSet              _last_sample_descriptor_set;
+		graphic::Static_buffer               _sample_points_buffer;
+		graphic::Static_buffer               _last_sample_points_buffer;
+		int                                  _resource_loading_delay = 4;
 		std::vector<graphic::Framebuffer>    _sample_framebuffers;
 		graphic::Render_pass                 _sample_renderpass;
 		std::vector<vk::UniqueDescriptorSet> _sample_descriptor_sets;
@@ -110,8 +119,9 @@ namespace mirrage::renderer {
 		                 util::maybe<Meta_system&>,
 		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
 
-		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
-		        -> int override;
+		auto rank_device(vk::PhysicalDevice,
+		                 util::maybe<std::uint32_t> graphics_queue,
+		                 int                        current_score) -> int override;
 
 		void configure_device(vk::PhysicalDevice,
 		                      util::maybe<std::uint32_t> graphics_queue,

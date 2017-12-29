@@ -109,7 +109,7 @@ namespace mirrage::asset {
 			using Loader<T>::load;
 			using Loader<T>::save;
 
-			auto load(const AID& aid, const std::string& name, bool cache) -> Loading<T>;
+			auto load(AID aid, const std::string& name, bool cache) -> Loading<T>;
 
 			void save(const AID& aid, const std::string& name, const T&);
 
