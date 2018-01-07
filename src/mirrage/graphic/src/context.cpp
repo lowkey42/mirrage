@@ -421,14 +421,20 @@ namespace mirrage::graphic {
 
 			auto formats = gpu.getSurfaceFormatsKHR(window.surface());
 			if(formats.size() == 1 && formats.front().format == vk::Format::eUndefined) {
-				return {target_format, target_space};
+				auto surface_format       = vk::SurfaceFormatKHR{};
+				surface_format.format     = target_format;
+				surface_format.colorSpace = target_space;
+				return surface_format;
 			}
 
 			auto opt_found = std::find_if(formats.begin(), formats.end(), [&](auto& f) {
 				return f.format == target_format && f.colorSpace == target_space;
 			});
 			if(opt_found != formats.end()) {
-				return {target_format, target_space};
+				auto surface_format       = vk::SurfaceFormatKHR{};
+				surface_format.format     = target_format;
+				surface_format.colorSpace = target_space;
+				return surface_format;
 			}
 
 			opt_found = std::find_if(formats.begin(), formats.end(), [&](auto& f) {
