@@ -45,7 +45,7 @@ namespace mirrage::input {
 
 		std::tuple<std::unordered_map<Context_id, Context>, Context_id> load_context_map(
 		        asset::Asset_manager& assets, std::unordered_map<Context_id, Context>& map) {
-			auto cm = assets.load<Context_map>(mapping_aid);
+			auto cm = assets.load<Context_map>(mapping_aid).get();
 
 			cm->live_contexts = &map;
 

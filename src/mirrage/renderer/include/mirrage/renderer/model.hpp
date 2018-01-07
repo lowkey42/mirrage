@@ -174,40 +174,6 @@ namespace mirrage::renderer {
 	};
 	using Model_ptr = std::shared_ptr<Model>;
 
-
-	class Model_loader {
-	  public:
-		Model_loader(graphic::Device& device,
-		             std::uint32_t    owner_qfamily,
-		             graphic::Texture_cache&,
-		             std::size_t max_unique_materials);
-		Model_loader(Model_loader&&) = default;
-		Model_loader& operator=(Model_loader&&) = default;
-		~Model_loader();
-
-		auto load(const asset::AID&) -> future<Model_ptr>;
-
-		auto material_descriptor_set_layout() const { return *_material_descriptor_set_layout; }
-
-		void shrink_to_fit();
-
-
-	  private:
-		graphic::Device*        _device;
-		std::uint32_t           _owner_qfamily;
-		graphic::Texture_cache* _texture_cache;
-
-		vk::UniqueSampler             _sampler;
-		vk::UniqueDescriptorSetLayout _material_descriptor_set_layout;
-		graphic::Descriptor_pool      _material_descriptor_set_pool;
-
-		std::unordered_map<asset::AID, Material_ptr> _materials;
-		std::unordered_map<asset::AID, Model_ptr>    _models;
-
-		auto _parse_obj(const asset::AID& aid) -> Model_ptr;
-
-		auto _load_material(const asset::AID&) -> Material_ptr;
-	};
 } // namespace mirrage::renderer
 
 

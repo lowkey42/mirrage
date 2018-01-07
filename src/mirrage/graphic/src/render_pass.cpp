@@ -155,7 +155,7 @@ namespace mirrage::graphic {
 			                                          s.constant_buffer.data()};
 			stage_create_infos.emplace_back(vk::PipelineShaderStageCreateFlags{},
 			                                vk_stage,
-			                                *s.shader.get(),
+			                                **s.shader.get(),
 			                                s.entry_point.c_str(),
 			                                s.constants.empty() ? nullptr : &s.constants_info);
 		}

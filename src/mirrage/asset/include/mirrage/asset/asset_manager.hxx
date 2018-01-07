@@ -4,6 +4,7 @@
 #include "asset_manager.hpp"
 #endif
 
+#include <async++.h>
 
 namespace mirrage::asset {
 
@@ -66,11 +67,10 @@ namespace mirrage::asset {
 		template <class T>
 		constexpr auto has_reload_v = has_reload<T>::value;
 
-		template <class T>
+		template <class TaskType, class T>
 		constexpr auto is_task_v =
-		        std::is_same_v<
-		                std::remove_reference_t<std::decay_t<T>>,
-		                async::task> || std::is_same_v<std::remove_reference_t<std::decay_t<T>>, async::shared_task>;
+		        std::is_same_v<T,
+		                       ::async::task<TaskType>> || std::is_same_v<T, ::async::shared_task<TaskType>>;
 
 		template <typename T>
 		auto Asset_container<T>::load(AID aid, const std::string& path, bool cache) -> Loading<T> {
@@ -84,13 +84,16 @@ namespace mirrage::asset {
 			// clang-format off
 			auto loading = async::spawn([path = std::string(path), aid, this] {
 				auto result = this->load(_manager._open(aid, path));
-				if constexpr(is_task_v<decltype(result)>) {
+				using RT = std::remove_reference_t<std::decay_t<decltype(result)>>;
+
+				if constexpr(is_task_v<std::shared_ptr<T>,  RT>) {
 					// if the loader returned a task, warp it and return the task (unwrapping)
 					return result.then([aid](auto&& r) {
 						return Ptr<T>(aid, std::forward<decltype(r)>(r));
 					});
 
 				} else {
+					static_assert(std::is_same_v<std::shared_ptr<T>, RT>);
 					return Ptr<T>(aid, std::move(result));
 				};
 			}).share();
@@ -150,11 +153,8 @@ namespace mirrage::asset {
 				static_assert(std::is_same_v<T&, decltype(*asset_ptr._ptr)>,
 				              "The lhs should be an l-value reference!");
 
-				static_assert(
-				        std::is_same_v<T&&, decltype(std::move(*load(_manager._open(asset_ptr.aid(), path))))>,
-				        "The rhs should be an r-value reference!");
-
-				*asset_ptr._ptr = std::move(*load(_manager._open(asset_ptr.aid(), path)));
+				*asset_ptr._ptr =
+				        std::move(const_cast<T&>(*load(_manager._open(asset_ptr.aid(), path)).get()));
 			}
 
 			// TODO: notify other systems about change

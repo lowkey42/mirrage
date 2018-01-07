@@ -33,7 +33,6 @@ namespace mirrage::graphic {
 
 			auto view() const noexcept { return *_image_view; }
 			auto image() const noexcept { return _image.image(); }
-			auto transfer_task() const { return _image.transfer_task(); }
 
 			auto width() const noexcept { return _image.width(); }
 			auto height() const noexcept { return _image.height(); }
@@ -172,16 +171,21 @@ namespace mirrage::asset {
 		Loader(graphic::Device& device, std::uint32_t owner_qfamily)
 		  : _device(device), _owner_qfamily(owner_qfamily) {}
 
-		auto load(istream in) -> std::shared_ptr<graphic::Texture<Type>> {
-			auto[image, format, real_type] =
-			        graphic::detail::load_image_data(_device, _owner_qfamily, std::move(in));
+		auto load(istream in) {
+			auto data = graphic::detail::load_image_data(_device, _owner_qfamily, std::move(in));
+			auto && [image, format, real_type] = data;
+			(void) format;
+
 			if(real_type != Type)
 				throw std::system_error(asset::Asset_error::loading_failed,
 				                        "Requested image-type doesn't match type read from file: "
 				                                + std::to_string(static_cast<int>(Type))
 				                                + " != " + std::to_string(static_cast<int>(real_type)));
 
-			return std::make_shared<graphic::Texture<Type>>(_device, std::move(image), format);
+			return image.transfer_task().then([this, data{std::move(data)}]() mutable {
+				return std::make_shared<graphic::Texture<Type>>(
+				        _device, std::move(std::get<0>(data)), std::get<1>(data));
+			});
 		}
 		void save(ostream, const graphic::Texture<Type>&) { MIRRAGE_FAIL("Save of textures not supported!"); }
 

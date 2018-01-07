@@ -20,39 +20,92 @@ namespace mirrage::graphic {
 	}
 
 
+	DescriptorSet::DescriptorSet(vk::Device         device,
+	                             vk::DescriptorPool pool,
+	                             vk::DescriptorSet  set,
+	                             std::mutex&        deletion_mutex)
+	  : _device(device), _pool(pool), _set(set), _deletion_mutex(&deletion_mutex) {}
+	DescriptorSet::DescriptorSet(DescriptorSet&& rhs) noexcept
+	  : _device(std::move(rhs._device))
+	  , _pool(std::move(rhs._pool))
+	  , _set(std::move(rhs._set))
+	  , _deletion_mutex(std::move(rhs._deletion_mutex)) {
+		rhs._deletion_mutex = nullptr;
+	}
+	DescriptorSet& DescriptorSet::operator=(DescriptorSet&& rhs) noexcept {
+		_destroy();
 
-	auto Descriptor_pool::create_descriptor(vk::DescriptorSetLayout layout) -> vk::UniqueDescriptorSet {
-		auto alloc_info = vk::DescriptorSetAllocateInfo{*_pools.back(), 1, &layout};
-		auto desc_set   = VkDescriptorSet{};
-		auto ret        = vkAllocateDescriptorSets(
-                *_device, reinterpret_cast<VkDescriptorSetAllocateInfo*>(&alloc_info), &desc_set);
+		_device             = std::move(rhs._device);
+		_pool               = std::move(rhs._pool);
+		_set                = std::move(rhs._set);
+		_deletion_mutex     = std::move(rhs._deletion_mutex);
+		rhs._deletion_mutex = nullptr;
 
-		if(ret == VK_SUCCESS)
-			return vk::UniqueDescriptorSet(desc_set);
+		return *this;
+	}
+	DescriptorSet::~DescriptorSet() { _destroy(); }
 
-		alloc_info.descriptorPool = create_descriptor_pool();
-		ret                       = vkAllocateDescriptorSets(
-                *_device, reinterpret_cast<VkDescriptorSetAllocateInfo*>(&alloc_info), &desc_set);
-
-		if(ret == VK_SUCCESS) {
-			MIRRAGE_INFO("Allocated a new descriptorSetPool (shouldn't happen too often!).");
-			return vk::UniqueDescriptorSet(desc_set);
+	void DescriptorSet::_destroy() {
+		if(_deletion_mutex) {
+			auto lock = std::scoped_lock{*_deletion_mutex};
+			vkFreeDescriptorSets(_device, _pool, 1, reinterpret_cast<VkDescriptorSet*>(&_set));
+			_set            = vk::DescriptorSet{};
+			_deletion_mutex = nullptr;
 		}
+	}
+
+
+	auto Descriptor_pool::create_descriptor(vk::DescriptorSetLayout layout) -> DescriptorSet {
+		auto lock = std::scoped_lock{_mutex};
+
+		auto retries = 2;
+		do {
+			retries--;
+
+			auto free_iter = std::find_if(begin(_free), end(_free), [](auto count) { return count > 0; });
+			if(free_iter == _free.end()) {
+				_free.emplace_back(_chunk_size);
+				create_descriptor_pool();
+				free_iter = _free.end() - 1;
+			}
+
+			*free_iter -= 1;
+			auto& pool = _pools.at(gsl::narrow<std::size_t>(std::distance(_free.begin(), free_iter)));
+
+			auto alloc_info = vk::DescriptorSetAllocateInfo{*pool, 1, &layout};
+			auto desc_set   = VkDescriptorSet{};
+			auto ret        = vkAllocateDescriptorSets(
+                    _device, reinterpret_cast<VkDescriptorSetAllocateInfo*>(&alloc_info), &desc_set);
+
+			if(ret == VK_SUCCESS) {
+				return DescriptorSet(_device, *pool, desc_set, _mutex);
+
+			} else if(ret != VK_SUCCESS) {
+				MIRRAGE_INFO("Allocated a new descriptorSetPool (shouldn't happen too often!).");
+				*free_iter = 0;
+			}
+
+		} while(retries > 0);
 
 		MIRRAGE_FAIL("Unable to allocate descriptor set!");
 	}
 
-	Descriptor_pool::Descriptor_pool(const vk::Device&                   device,
-	                                 std::uint32_t                       maxSets,
-	                                 std::vector<vk::DescriptorPoolSize> pool_sizes)
-	  : _device(&device), _maxSets(maxSets), _pool_sizes(pool_sizes) {
+	Descriptor_pool::Descriptor_pool(vk::Device                                device,
+	                                 std::uint32_t                             chunk_size,
+	                                 std::initializer_list<vk::DescriptorType> types)
+	  : _device(device), _chunk_size(chunk_size) {
+		_pool_sizes.reserve(types.size());
+		for(auto type : types) {
+			_pool_sizes.emplace_back(type, chunk_size);
+		}
+
 		create_descriptor_pool();
 	}
 
 	auto Descriptor_pool::create_descriptor_pool() -> vk::DescriptorPool {
-		auto pool = _device->createDescriptorPoolUnique(
+		auto pool = _device.createDescriptorPoolUnique(
 		        vk::DescriptorPoolCreateInfo{vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-		                                     _maxSets,
+		                                     _chunk_size,
 		                                     gsl::narrow<std::uint32_t>(_pool_sizes.size()),
 		                                     _pool_sizes.data()});
 
@@ -80,6 +133,7 @@ namespace mirrage::graphic {
 			return device.create_descriptor_set_layout(bindings);
 		}
 	} // namespace
+
 	Image_descriptor_set_layout::Image_descriptor_set_layout(graphic::Device&     device,
 	                                                         vk::Sampler          sampler,
 	                                                         std::uint32_t        image_number,

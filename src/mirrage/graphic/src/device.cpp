@@ -320,9 +320,9 @@ namespace mirrage::graphic {
 		        vk::DescriptorSetLayoutCreateInfo{vk::DescriptorSetLayoutCreateFlags{}, 1, &binding});
 	}
 
-	auto Device::create_descriptor_pool(std::uint32_t maxSets, std::vector<vk::DescriptorPoolSize> pool_sizes)
-	        -> Descriptor_pool {
-		return {*_device, maxSets, std::move(pool_sizes)};
+	auto Device::create_descriptor_pool(std::uint32_t                             chunk_size,
+	                                    std::initializer_list<vk::DescriptorType> types) -> Descriptor_pool {
+		return {*_device, chunk_size, types};
 	}
 
 	auto Device::create_fence() -> Fence { return Fence{*_device}; }

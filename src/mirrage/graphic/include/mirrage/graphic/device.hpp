@@ -59,7 +59,7 @@ namespace mirrage::graphic {
 		                                bool      resetable   = true,
 		                                bool      short_lived = false) -> Command_buffer_pool;
 
-		auto create_descriptor_pool(std::uint32_t maxSets, std::vector<vk::DescriptorPoolSize> pool_sizes)
+		auto create_descriptor_pool(std::uint32_t chunk_size, std::initializer_list<vk::DescriptorType> types)
 		        -> Descriptor_pool;
 
 		auto create_descriptor_set_layout(gsl::span<const vk::DescriptorSetLayoutBinding> bindings)

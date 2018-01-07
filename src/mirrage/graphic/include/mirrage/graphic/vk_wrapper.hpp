@@ -10,6 +10,7 @@
 
 #include <initializer_list>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -104,21 +105,45 @@ namespace mirrage::graphic {
 		Command_buffer_pool(const vk::Device& device, vk::UniqueCommandPool pool);
 	};
 
+	class DescriptorSet {
+	  public:
+		DescriptorSet() = default;
+		DescriptorSet(vk::Device, vk::DescriptorPool, vk::DescriptorSet, std::mutex&);
+		DescriptorSet(DescriptorSet&&) noexcept;
+		DescriptorSet& operator=(DescriptorSet&&) noexcept;
+		~DescriptorSet();
+
+		auto get() const noexcept { return _set; }
+		auto operator*() const noexcept { return get(); }
+
+		operator vk::DescriptorSet() const noexcept { return get(); }
+
+	  private:
+		vk::Device         _device;
+		vk::DescriptorPool _pool;
+		vk::DescriptorSet  _set;
+		std::mutex*        _deletion_mutex = nullptr;
+
+		void _destroy();
+	};
+
 	class Descriptor_pool {
 	  public:
-		auto create_descriptor(vk::DescriptorSetLayout) -> vk::UniqueDescriptorSet;
+		auto create_descriptor(vk::DescriptorSetLayout) -> DescriptorSet;
 
 	  private:
 		friend class Device;
 
-		const vk::Device*                     _device;
-		std::uint32_t                         _maxSets;
+		vk::Device                            _device;
+		std::uint32_t                         _chunk_size;
 		std::vector<vk::DescriptorPoolSize>   _pool_sizes;
 		std::vector<vk::UniqueDescriptorPool> _pools;
+		std::vector<std::uint32_t>            _free;
+		mutable std::mutex                    _mutex;
 
-		Descriptor_pool(const vk::Device&                   device,
-		                std::uint32_t                       maxSets,
-		                std::vector<vk::DescriptorPoolSize> pool_sizes);
+		Descriptor_pool(vk::Device                                device,
+		                std::uint32_t                             chunk_size,
+		                std::initializer_list<vk::DescriptorType> types);
 
 		auto create_descriptor_pool() -> vk::DescriptorPool;
 	};
@@ -133,8 +158,7 @@ namespace mirrage::graphic {
 		auto layout() const noexcept { return *_layout; }
 		auto operator*() const noexcept { return *_layout; }
 
-		auto create_set(Descriptor_pool& pool, std::initializer_list<vk::ImageView> images)
-		        -> vk::UniqueDescriptorSet {
+		auto create_set(Descriptor_pool& pool, std::initializer_list<vk::ImageView> images) -> DescriptorSet {
 			auto set = pool.create_descriptor(layout());
 			update_set(*set, images);
 			return set;

@@ -13,6 +13,8 @@
 #include <mirrage/utils/stacktrace.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
+#include <gsl/gsl>
+
 #include <iostream>
 #include <memory>
 #include <string>
@@ -73,6 +75,7 @@ namespace mirrage::asset {
 
 		auto operator=(ostream &&) -> ostream&;
 	};
+
 } // namespace mirrage::asset
 
 #ifdef ENABLE_SF2_ASSETS
@@ -94,9 +97,9 @@ namespace mirrage::asset {
 
 			sf2::deserialize_json(in,
 			                      [&](auto& msg, uint32_t row, uint32_t column) {
-				                      MIRRAGE_ERROR("Error parsing JSON from "
-				                                    << in.aid().str() << " at " << row << ":"
-				                                    << column << ": " << msg);
+				                      MIRRAGE_ERROR("Error parsing JSON from " << in.aid().str() << " at "
+				                                                               << row << ":" << column << ": "
+				                                                               << msg);
 			                      },
 			                      *r);
 
@@ -116,11 +119,24 @@ namespace mirrage::asset {
 	 */
 	template <class T>
 	struct Loader {
-		static_assert(util::dependent_false<T>(),
-		              "Required AssetLoader specialization not provided.");
+		static_assert(util::dependent_false<T>(), "Required AssetLoader specialization not provided.");
 
 		static auto load(istream in) -> std::shared_ptr<T>;
 		static void save(ostream out, const T& asset);
 	};
 } // namespace mirrage::asset
 #endif
+
+namespace mirrage::asset {
+
+	using Bytes = std::vector<char>;
+
+	template <>
+	struct Loader<Bytes> {
+		static auto load(istream in) -> std::shared_ptr<Bytes> { return std::make_shared<Bytes>(in.bytes()); }
+		void        save(ostream out, const Bytes& data) {
+            out.write(data.data(), gsl::narrow<std::streamsize>(data.size()));
+		}
+	};
+
+} // namespace mirrage::asset
