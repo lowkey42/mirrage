@@ -18,10 +18,7 @@ namespace mirrage::graphic {
 
 	class Device_memory {
 	  public:
-		using Deleter = void(void*,
-		                     std::uint32_t    index,
-		                     std::uint32_t    layer,
-		                     vk::DeviceMemory memory);
+		using Deleter = void(void*, std::uint32_t index, std::uint32_t layer, vk::DeviceMemory memory);
 
 		Device_memory();
 		Device_memory(void*         owner,
@@ -81,8 +78,7 @@ namespace mirrage::graphic {
 		           std::size_t     alignment,
 		           std::uint32_t   type_mask,
 		           bool            host_visible,
-		           Memory_lifetime lifetime = Memory_lifetime::normal)
-		        -> util::maybe<Device_memory>;
+		           Memory_lifetime lifetime = Memory_lifetime::normal) -> util::maybe<Device_memory>;
 
 		auto alloc_dedicated(vk::Image, bool host_visible) -> util::maybe<Device_memory>;
 		auto alloc_dedicated(vk::Buffer, bool host_visible) -> util::maybe<Device_memory>;
@@ -94,9 +90,7 @@ namespace mirrage::graphic {
 			return _is_dedicated_allocations_supported;
 		}
 
-		auto is_unified_memory_architecture() const noexcept {
-			return _is_unified_memory_architecture;
-		}
+		auto is_unified_memory_architecture() const noexcept { return _is_unified_memory_architecture; }
 
 	  private:
 		friend class Device_memory;
@@ -108,15 +102,14 @@ namespace mirrage::graphic {
 		std::vector<std::uint32_t>                _host_visible_pools;
 		std::vector<std::uint32_t>                _device_local_pools;
 
-		auto alloc_dedicated(vk::Buffer, vk::Image, bool host_visible)
-		        -> util::maybe<Device_memory>;
+		auto alloc_dedicated(vk::Buffer, vk::Image, bool host_visible) -> util::maybe<Device_memory>;
 	};
 
-	template <class T>
+	template <class T, class Deleter>
 	class Memory_backed {
 	  public:
 		Memory_backed() = default;
-		Memory_backed(vk::UniqueHandle<T>&& instance, Device_memory&& memory)
+		Memory_backed(vk::UniqueHandle<T, Deleter>&& instance, Device_memory&& memory)
 		  : _instance(std::move(instance)), _memory(std::move(memory)) {}
 
 		const T& operator*() const noexcept { return *_instance; }
@@ -125,10 +118,10 @@ namespace mirrage::graphic {
 		auto memory() -> auto& { return _memory; }
 
 	  private:
-		vk::UniqueHandle<T> _instance;
-		Device_memory       _memory;
+		vk::UniqueHandle<T, Deleter> _instance;
+		Device_memory                _memory;
 	};
 
-	using Backed_buffer = Memory_backed<vk::Buffer>;
-	using Backed_image  = Memory_backed<vk::Image>;
+	using Backed_buffer = Memory_backed<vk::Buffer, vk::BufferDeleter>;
+	using Backed_image  = Memory_backed<vk::Image, vk::ImageDeleter>;
 } // namespace mirrage::graphic
