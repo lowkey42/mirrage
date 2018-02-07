@@ -189,68 +189,11 @@ namespace mirrage::renderer {
 			return render_pass;
 		}
 
-		void calculate_sample_points(int count, bool ring, int radius, char* out) {
-			auto points = gsl::span<glm::vec2>(reinterpret_cast<glm::vec2*>(out), count);
-
-			const auto outer_radius = static_cast<float>(radius);
-			const auto inner_radius = ring ? outer_radius / 2.f - 4.f : 0.0f;
-
-			const auto angle_step = glm::pi<float>() * 2.f / glm::pow((glm::sqrt(5.0f) + 1.0f) / 2.0f, 2.0f);
-
-			for(auto i : util::range(count)) {
-				float r     = util::max(4.f,
-                                    glm::mix(inner_radius, outer_radius, glm::sqrt(float(i) / float(count))));
-				auto  angle = i * angle_step;
-
-				float sin_angle = glm::sin(angle);
-				float cos_angle = glm::cos(angle);
-
-				points[i].x = sin_angle * r;
-				points[i].y = cos_angle * r;
-			}
-
-			// sort for cache coherence
-			auto open_points = std::vector<std::int64_t>();
-			open_points.resize(gsl::narrow<std::size_t>(count - 1));
-			std::iota(open_points.begin(), open_points.end(), 1);
-
-			auto path = std::vector<glm::vec2>();
-			path.reserve(gsl::narrow<std::size_t>(points.size()));
-			path.emplace_back(0);
-
-			while(!open_points.empty()) {
-				auto min_dist = std::numeric_limits<float>::max();
-				auto min_i    = open_points.begin();
-
-				auto last_point = path.back();
-				for(auto i = open_points.begin(); i != open_points.end(); i++) {
-					auto p = points.at(*i);
-
-					auto dx   = last_point.x - p.x;
-					auto dy   = last_point.y - p.y;
-					auto dist = dx * dx + dy * dy;
-
-					if(dist < min_dist) {
-						min_dist = dist;
-						min_i    = i;
-					}
-				}
-
-				path.emplace_back(points[*min_i]);
-				*min_i = open_points.back();
-				open_points.pop_back();
-			}
-
-			std::copy(path.begin(), path.end(), points.begin());
-		}
-
 		auto build_sample_render_pass(Deferred_renderer&        renderer,
 		                              vk::DescriptorSetLayout   desc_set_layout,
-		                              vk::DescriptorSetLayout   points_desc_set_layout,
 		                              int                       min_mip_level,
 		                              int                       max_mip_level,
 		                              int                       sample_count,
-		                              bool                      jitter_samples,
 		                              Render_target_2D&         gi_buffer,
 		                              std::vector<Framebuffer>& out_framebuffers) {
 
@@ -276,7 +219,7 @@ namespace mirrage::renderer {
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(renderer.noise_descriptor_set_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
-			pipeline.add_descriptor_set_layout(points_desc_set_layout);
+
 			pipeline.add_push_constant("pcs"_strid,
 			                           sizeof(Gi_constants),
 			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
@@ -284,16 +227,29 @@ namespace mirrage::renderer {
 			auto& pass = builder.add_subpass(pipeline).color_attachment(
 			        color, graphic::all_color_components, graphic::blend_premultiplied_alpha);
 
+			// first sample (no upsampling of previous level)
+			pass.stage("sample_first"_strid)
+			        .shader("frag_shader:gi_sample"_aid,
+			                graphic::Shader_stage::fragment,
+			                "main",
+			                2,
+			                sample_count,
+			                3,
+			                0)
+			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
+
+			// "normal" sample (+ upsampling)
 			pass.stage("sample"_strid)
 			        .shader("frag_shader:gi_sample"_aid,
 			                graphic::Shader_stage::fragment,
 			                "main",
 			                2,
 			                sample_count,
-			                4,
-			                jitter_samples)
+			                3,
+			                1)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
+			// circle instead of ring sample-pattern
 			pass.stage("sample_last"_strid)
 			        .shader("frag_shader:gi_sample"_aid,
 			                graphic::Shader_stage::fragment,
@@ -304,8 +260,27 @@ namespace mirrage::renderer {
 			                sample_count)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
+			// circle instead of ring sample-pattern AND blend with history
+			pass.stage("sample_fin"_strid)
+			        .shader("frag_shader:gi_sample"_aid,
+			                graphic::Shader_stage::fragment,
+			                "main",
+			                0,
+			                1,
+			                2,
+			                sample_count,
+			                5,
+			                1)
+			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
+
+			// only upsample the previous level
 			pass.stage("upsample"_strid)
-			        .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 3, 1)
+			        .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 4, 1)
+			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
+
+			// only upsample the previous level AND blend with history
+			pass.stage("upsample_fin"_strid)
+			        .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 4, 1, 5, 1)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			builder.add_dependency(
@@ -680,33 +655,11 @@ namespace mirrage::renderer {
 	                                                                 _integrated_brdf.view(),
 	                                                                 _history_weight_prev.view()}))
 
-	  , _sample_descriptor_set_layout(
-	            renderer.device().create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
-	                    0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eFragment}))
-	  , _sample_descriptor_set(renderer.descriptor_pool().create_descriptor(*_sample_descriptor_set_layout))
-	  , _last_sample_descriptor_set(
-	            renderer.descriptor_pool().create_descriptor(*_sample_descriptor_set_layout))
-	  , _sample_points_buffer(renderer.device().transfer().upload_buffer(
-	            vk::BufferUsageFlagBits::eUniformBuffer,
-	            renderer.queue_family(),
-	            to_2prod(renderer.settings().gi_samples) * sizeof(glm::vec2),
-	            [samples = renderer.settings().gi_samples](char* data) {
-		            calculate_sample_points(to_2prod(samples), true, 40.f, data);
-	            }))
-	  , _last_sample_points_buffer(renderer.device().transfer().upload_buffer(
-	            vk::BufferUsageFlagBits::eUniformBuffer,
-	            renderer.queue_family(),
-	            to_2prod(renderer.settings().gi_samples) * sizeof(glm::vec2),
-	            [samples = renderer.settings().gi_samples](char* data) {
-		            calculate_sample_points(to_2prod(samples), false, 40.f, data);
-	            }))
 	  , _sample_renderpass(build_sample_render_pass(renderer,
 	                                                *_descriptor_set_layout,
-	                                                *_sample_descriptor_set_layout,
 	                                                _min_mip_level,
 	                                                _max_mip_level,
 	                                                to_2prod(renderer.settings().gi_samples),
-	                                                renderer.settings().gi_jitter_samples,
 	                                                _gi_diffuse,
 	                                                _sample_framebuffers))
 
@@ -761,36 +714,6 @@ namespace mirrage::renderer {
 			_sample_descriptor_sets.emplace_back(
 			        _descriptor_set_layout.create_set(renderer.descriptor_pool(), images));
 		}
-
-		MIRRAGE_DEBUG("Init gi");
-		auto sample_count = gsl::narrow<unsigned int>(renderer.settings().gi_samples);
-
-		auto buffer_info =
-		        vk::DescriptorBufferInfo(_sample_points_buffer.buffer(), 0, sample_count * sizeof(glm::vec2));
-
-		auto desc_writes = std::array<vk::WriteDescriptorSet, 1>();
-		desc_writes[0]   = vk::WriteDescriptorSet{
-                *_sample_descriptor_set, 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &buffer_info};
-
-		renderer.device().vk_device()->updateDescriptorSets(
-		        desc_writes.size(), desc_writes.data(), 0, nullptr);
-
-
-		buffer_info = vk::DescriptorBufferInfo(
-		        _last_sample_points_buffer.buffer(), 0, sample_count * sizeof(glm::vec2));
-
-		desc_writes[0] = vk::WriteDescriptorSet{*_last_sample_descriptor_set,
-		                                        0,
-		                                        0,
-		                                        1,
-		                                        vk::DescriptorType::eUniformBuffer,
-		                                        nullptr,
-		                                        &buffer_info};
-
-		renderer.device().vk_device()->updateDescriptorSets(
-		        desc_writes.size(), desc_writes.data(), 0, nullptr);
-
-		MIRRAGE_DEBUG("Init gi done");
 	}
 
 
@@ -800,11 +723,6 @@ namespace mirrage::renderer {
 	                   Command_buffer_source&,
 	                   vk::DescriptorSet global_uniform_set,
 	                   std::size_t) {
-
-		if(_resource_loading_delay > 0) {
-			_resource_loading_delay--;
-			return;
-		}
 
 		if(!_renderer.settings().gi) {
 			_first_frame = true;
@@ -962,7 +880,8 @@ namespace mirrage::renderer {
 		                     float fov_h,
 		                     float fov_v,
 		                     float screen_width,
-		                     float screen_height) {
+		                     float screen_height,
+		                     float proj_y_plane) {
 			auto dp = glm::pi<float>() * 40.f * 40.f;
 			if(last_sample)
 				dp -= glm::pi<float>() * 20.f * 20.f;
@@ -970,7 +889,7 @@ namespace mirrage::renderer {
 			dp /= samples;
 
 			return (4.0f * glm::tan(fov_h / 2.f) * glm::tan(fov_v / 2.f) * dp)
-			       / (screen_width * screen_height);
+			       / (screen_width * screen_height) * proj_y_plane * proj_y_plane;
 		}
 	} // namespace
 
@@ -996,7 +915,8 @@ namespace mirrage::renderer {
 		{
 			auto _               = _renderer.profiler().push("Sample (diffuse)");
 			auto first_iteration = true;
-			for(auto i = end - 1; i >= std::min(_min_mip_level, begin); i--) {
+			auto last_i          = std::min(_min_mip_level, begin);
+			for(auto i = end - 1; i >= last_i; i--) {
 				auto& fb = _sample_framebuffers.at(i - _min_mip_level);
 
 				if(i < end - 1) {
@@ -1024,11 +944,21 @@ namespace mirrage::renderer {
 				}
 
 				_sample_renderpass.execute(command_buffer, fb, [&] {
+					if(i == last_i) {
+						if(i < begin) {
+							_sample_renderpass.set_stage("upsample_fin"_strid);
+						} else {
+							_sample_renderpass.set_stage("sample_fin"_strid);
+						}
 
-					if(i == begin) {
+					} else if(i == begin) {
 						_sample_renderpass.set_stage("sample_last"_strid);
 					} else if(i < begin) {
 						_sample_renderpass.set_stage("upsample"_strid);
+					} else if(i == end - 1) {
+						_sample_renderpass.set_stage("sample_first"_strid);
+					} else {
+						_sample_renderpass.set_stage("sample"_strid);
 					}
 
 					if(first_iteration) {
@@ -1036,12 +966,6 @@ namespace mirrage::renderer {
 					}
 
 					_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[i - _min_mip_level]);
-
-					if(i == begin) {
-						_sample_renderpass.bind_descriptor_set(3, *_last_sample_descriptor_set);
-					} else {
-						_sample_renderpass.bind_descriptor_set(3, *_sample_descriptor_set);
-					}
 
 					pcs.prev_projection[0][3] = i;
 					auto fov_h                = _renderer.global_uniforms().proj_planes.z;
@@ -1052,7 +976,8 @@ namespace mirrage::renderer {
 					                                           fov_h,
 					                                           fov_v,
 					                                           _color_in_out.width(i),
-					                                           _color_in_out.height(i));
+					                                           _color_in_out.height(i),
+					                                           _renderer.global_uniforms().proj_planes.y);
 
 					_sample_renderpass.push_constant("pcs"_strid, pcs);
 

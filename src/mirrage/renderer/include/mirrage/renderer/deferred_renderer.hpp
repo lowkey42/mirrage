@@ -42,7 +42,7 @@ namespace mirrage::renderer {
 		bool ssao  = true;
 		bool bloom = true;
 
-		float background_intensity = 1.f;
+		float background_intensity = 0.f;
 
 		bool dynamic_shadows = false;
 		bool debug_disect    = false;
