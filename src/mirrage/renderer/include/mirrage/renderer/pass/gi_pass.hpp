@@ -64,12 +64,6 @@ namespace mirrage::renderer {
 		vk::UniqueDescriptorSet _reproject_descriptor_set;
 
 		// GI sampling for diffuse illumination
-		vk::UniqueDescriptorSetLayout        _sample_descriptor_set_layout;
-		vk::UniqueDescriptorSet              _sample_descriptor_set;
-		vk::UniqueDescriptorSet              _last_sample_descriptor_set;
-		graphic::Static_buffer               _sample_points_buffer;
-		graphic::Static_buffer               _last_sample_points_buffer;
-		int                                  _resource_loading_delay = 4;
 		std::vector<graphic::Framebuffer>    _sample_framebuffers;
 		graphic::Render_pass                 _sample_renderpass;
 		std::vector<vk::UniqueDescriptorSet> _sample_descriptor_sets;

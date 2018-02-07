@@ -487,9 +487,9 @@ namespace mirrage {
 
 			nk_property_int(ctx, "Sample Count", 8, &renderer_settings.gi_samples, 256, 1, 1);
 
-			bool_nk_wrapper = renderer_settings.gi_jitter_samples ? 1 : 0;
-			nk_checkbox_label(ctx, "Jitter GI Samples", &bool_nk_wrapper);
-			renderer_settings.gi_jitter_samples = bool_nk_wrapper == 1;
+			//			bool_nk_wrapper = renderer_settings.gi_jitter_samples ? 1 : 0;
+			//			nk_checkbox_label(ctx, "Jitter GI Samples", &bool_nk_wrapper);
+			//			renderer_settings.gi_jitter_samples = bool_nk_wrapper == 1;
 
 			nk_property_int(ctx,
 			                "Low-Quality MIP-Levels",

@@ -53,7 +53,7 @@ namespace mirrage::graphic {
 		auto end() noexcept { return _sub_results.end(); }
 
 	  private:
-		static constexpr auto history_size = 8;
+		static constexpr auto history_size = 60;
 		using Lookup_table                 = std::unordered_map<std::string, std::size_t>;
 		using Time_history                 = std::array<double, history_size>;
 
@@ -119,7 +119,8 @@ namespace mirrage::graphic {
 		void start(vk::CommandBuffer);
 		auto push(const std::string& name,
 		          vk::PipelineStageFlagBits = vk::PipelineStageFlagBits::eAllCommands) -> Push_raii;
-		auto push(const char* name, vk::PipelineStageFlagBits stage = vk::PipelineStageFlagBits::eAllCommands)
+		auto push(const char*               name,
+		          vk::PipelineStageFlagBits stage = vk::PipelineStageFlagBits::eAllCommands)
 		        -> Push_raii {
 			if(_active)
 				return push(std::string(name), stage);

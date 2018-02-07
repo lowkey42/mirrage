@@ -23,13 +23,12 @@ layout(set=2, binding = 7) uniform sampler2D ao_sampler;
 layout (constant_id = 0) const int LAST_SAMPLE = 0;  // 1 if this is the last MIP level to sample
 layout (constant_id = 1) const float R = 40;         // the radius to fetch samples from
 layout (constant_id = 2) const int SAMPLES = 128;    // the number of samples to fetch
-layout (constant_id = 3) const int UPSAMPLE_ONLY = 0;// 1 if only the previous result should be
+layout (constant_id = 3) const int UPSAMPLE = 1;     // 1 if there is a previous frame that should be upsampled
+layout (constant_id = 4) const int UPSAMPLE_ONLY = 0;// 1 if only the previous result should be
                                                      //   upsampled but no new samples calculated
-layout (constant_id = 4) const int JITTER = 1;       // 1 if the samples should be jittered to cover more area
+layout (constant_id = 5) const int BLEND_HISTORY = 0;// 1 if this is the last call and should blend
+                                                     //   with the history buffer
 
-layout(set=3, binding = 0) uniform Sample_points {
-    vec4 points[SAMPLES];
-} sample_points;
 
 // arguments are packet into the matrices to keep the pipeline layouts compatible between GI passes
 layout(push_constant) uniform Push_constants {
@@ -55,7 +54,7 @@ layout(push_constant) uniform Push_constants {
 
 vec3 gi_sample(int lod, int base_mip);
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
-                            vec3 shaded_point, vec3 shaded_normal, out float weight);
+                            vec3 shaded_point, vec3 shaded_normal);
 
 // calculate luminance of a color (used for normalization)
 float luminance_norm(vec3 c) {
@@ -69,7 +68,7 @@ void main() {
 	float base_mip    = pcs.prev_projection[3][3];
 
 	// upsample the previous result (if there is one)
-	if(current_mip < max_mip)
+	if(UPSAMPLE==1)
 		out_color = vec4(upsampled_result(depth_sampler, mat_data_sampler,
 		                                  prev_depth_sampler, prev_mat_data_sampler,
 		                                  result_sampler, vertex_out.tex_coords), 1.0);
@@ -81,7 +80,7 @@ void main() {
 		out_color.rgb += gi_sample(int(current_mip+0.5), int(base_mip+0.5));
 
 	// reached the last MIP level => blend with history
-	if(abs(current_mip - base_mip) < 0.00001) {
+	if(BLEND_HISTORY==1) {
 		// calculate interpolation factor based on the depth-error in its surrounding during reporjection
 		vec2 hws_step = 1.0 / textureSize(history_weight_sampler, 0);
 
@@ -132,27 +131,25 @@ vec3 gi_sample(int lod, int base_mip) {
 
 	// fetch SAMPLES samples in a spiral pattern and combine their GI contribution
 	vec3 c = vec3(0,0,0);
-	float samples_used = 0.0;
-
-	float angle_step = PI*2 / pow((sqrt(5.0)+1.0)/2.0, 2.0);
 
 	float angle =  PDnrand2(vec4(vertex_out.tex_coords, lod, global_uniforms.time.x*10.0)).r * 2*PI;
-	float sin_angle = sin(angle);
-	float cos_angle = cos(angle);
 
-	for(int i=0; i<SAMPLES/2; i++) {
-		vec4 rand = JITTER==0 ? vec4(0.5) : texture(noise_sampler, PDnrand2(vec4(vertex_out.tex_coords, lod+20+i, global_uniforms.time.x*10.0)));
+	float outer_radius = R;
+	float inner_radius = LAST_SAMPLE==0 ? outer_radius / 2.0 - 4.0 : 0.0;
+	float angle_step = PI * 2.0 / pow((sqrt(5.0) + 1.0) / 2.0, 2.0);
 
-		vec2 pp = sample_points.points[i].xy;
-		ivec2 p = ivec2(uv + vec2(pp.x*cos_angle - pp.y*sin_angle, pp.x*sin_angle + pp.y*cos_angle) + R*0.2 * (rand.rg*2-1));
+	for(int i=0; i<SAMPLES; i++) {
+		float r = max(
+				4.0,
+				mix(inner_radius, outer_radius, sqrt(float(i) / float(SAMPLES))));
+		float a = i * angle_step + angle;
+
+		float sin_angle = sin(a);
+		float cos_angle = cos(a);
+
+		ivec2 p = ivec2(uv + vec2(sin_angle * r, cos_angle * r));
 		float weight;
-		c += calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
-		samples_used += weight;
-
-		pp = sample_points.points[i].zw;
-		p = ivec2(uv + vec2(pp.x*cos_angle - pp.y*sin_angle, pp.x*sin_angle + pp.y*cos_angle) + R*0.2 * (rand.ba*2-1));
-		c += calc_illumination_from(lod, texture_size, p, uv, depth, P, N, weight);
-		samples_used += weight;
+		c += calc_illumination_from(lod, texture_size, p, uv, depth, P, N);
 	}
 
 	return c;
@@ -160,7 +157,7 @@ vec3 gi_sample(int lod, int base_mip) {
 
 // calculate the light transfer between two pixel of the current level
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
-                            vec3 shaded_point, vec3 shaded_normal, out float weight) {
+                            vec3 shaded_point, vec3 shaded_normal) {
 	// fetch depth/normal at src pixel
 	vec4 mat_data = texelFetch(mat_data_sampler, src_uv, 0);
 	vec3 N = decode_normal(mat_data.rg);
@@ -190,14 +187,18 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	// calculate the size of the differential area
 	float cos_alpha = Pn.z;
 	float cos_beta  = dot(Pn, N);
-	float z = depth * global_uniforms.proj_planes.y;
-	float ds = pcs.prev_projection[2][3] * z*z * clamp(cos_alpha / cos_beta, 0.001, 1000.0);
+	float ds = pcs.prev_projection[2][3] * depth*depth * clamp(cos_alpha / cos_beta, 0.001, 1000.0);
 
 	// multiply all factors, that modulate the light transfer
-	weight = clamp(visibility * NdotL_dst * NdotL_src * ds / (0.1+r2), 0,1);
+	float weight = visibility * NdotL_dst * NdotL_src * ds / (0.1+r2);
 
-	// fetch the light emitted by the src pixel, modulate it by the calculated factor and return it
-	vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;
-	return max(vec3(0.0), radiance * weight);
+	if(weight<0.001) {
+		return vec3(0);
+
+	} else {
+		// fetch the light emitted by the src pixel, modulate it by the calculated factor and return it
+		vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;
+		return radiance * weight;
+	}
 }
 
