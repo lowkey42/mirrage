@@ -200,14 +200,14 @@ namespace mirrage::graphic {
 
 
 
-	Device_memory::Device_memory() : _owner(nullptr) {}
 	Device_memory::Device_memory(Device_memory&& rhs) noexcept
 	  : _owner(rhs._owner)
 	  , _deleter(rhs._deleter)
 	  , _index(rhs._index)
 	  , _layer(rhs._layer)
 	  , _memory(std::move(rhs._memory))
-	  , _offset(rhs._offset) {
+	  , _offset(rhs._offset)
+	  , _mapped_addr(rhs._mapped_addr) {
 
 		rhs._owner = nullptr;
 	}
@@ -219,12 +219,13 @@ namespace mirrage::graphic {
 			_deleter(_owner, _index, _layer, _memory);
 		}
 
-		_owner   = rhs._owner;
-		_deleter = rhs._deleter;
-		_index   = rhs._index;
-		_layer   = rhs._layer;
-		_memory  = rhs._memory;
-		_offset  = rhs._offset;
+		_owner       = rhs._owner;
+		_deleter     = rhs._deleter;
+		_index       = rhs._index;
+		_layer       = rhs._layer;
+		_memory      = rhs._memory;
+		_offset      = rhs._offset;
+		_mapped_addr = rhs._mapped_addr;
 
 		rhs._owner = nullptr;
 
@@ -242,7 +243,7 @@ namespace mirrage::graphic {
 	                             std::uint32_t    layer,
 	                             vk::DeviceMemory m,
 	                             vk::DeviceSize   o,
-	                             void*            mapped_addr)
+	                             char*            mapped_addr)
 	  : _owner(owner)
 	  , _deleter(deleter)
 	  , _index(index)

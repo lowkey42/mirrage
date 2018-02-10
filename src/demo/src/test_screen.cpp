@@ -134,7 +134,7 @@ namespace mirrage {
 					        .load_maybe<systems::Nim_sequence>("nim:demo_animation"_aid, false)
 					        .process([&](auto&& rec) {
 						        _selected_preset = 0;
-						        _meta_system.nims().play_looped(rec.get());
+						        _meta_system.nims().play_looped(rec);
 					        });
 					break;
 				case "pause"_strid:
@@ -304,6 +304,8 @@ namespace mirrage {
 
 	void Test_screen::_draw() {
 		if(_show_ui) {
+			_gui.start_frame();
+
 			_draw_settings_window();
 
 			if(_show_profiler) {

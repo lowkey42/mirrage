@@ -319,11 +319,10 @@ namespace mirrage::gui {
 				nk_font_atlas_begin(&atlas);
 
 				assets.load_maybe<Gui_cfg>("cfg:gui"_aid, false).process([&](auto& cfg) {
-					for(auto& font : cfg.get()->fonts) {
-						assets.load_maybe<asset::Bytes>(font.aid, false).process([&](auto&& asset) {
-							auto& data = *asset.get();
-							auto  f    = nk_font_atlas_add_from_memory(
-                                    &atlas, const_cast<char*>(data.data()), data.size(), font.size, nullptr);
+					for(auto& font : cfg->fonts) {
+						assets.load_maybe<asset::Bytes>(font.aid, false).process([&](auto&& data) {
+							auto f = nk_font_atlas_add_from_memory(
+							        &atlas, const_cast<char*>(data->data()), data->size(), font.size, nullptr);
 							if(font.default_font) {
 								atlas.default_font = f;
 							}
@@ -471,6 +470,7 @@ namespace mirrage::gui {
 
 		_impl->renderer.draw(_impl->ctx.ctx, _impl->viewport, _impl->screen_size, _impl->ui_matrix);
 	}
+	void Gui::start_frame() { nk_clear(&_impl->ctx.ctx); }
 
 	auto Gui::ctx() -> nk_context* {
 		if(_renderer.modified(_last_renderer)) {

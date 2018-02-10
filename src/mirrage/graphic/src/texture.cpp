@@ -120,7 +120,7 @@ namespace mirrage::graphic::detail {
 		return views;
 	}
 
-	auto load_image_data(Device device, std::uint32_t owner_qfamily, asset::istream in)
+	auto load_image_data(Device& device, std::uint32_t owner_qfamily, asset::istream in)
 	        -> std::tuple<Static_image, vk::Format, Image_type> {
 		auto header     = parse_header(in, in.aid().str());
 		auto dimensions = Image_dimensions(header.width, header.height, header.depth, header.layers);

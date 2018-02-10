@@ -14,21 +14,6 @@
 
 namespace mirrage::renderer {
 
-	// TODO: replace with real feature class that will be used later
-	//         Originally used std::shared_future<> here but couldn't
-	//         get it to run (not segfault) on windows after ~2 day.
-	template <class T>
-	using future = util::maybe<T>;
-
-	template <class T>
-	auto is_future_ready(const future<T>& f) {
-		return f.is_some();
-	}
-	template <class T>
-	auto get_future_value(future<T>& f) {
-		return f.get_or_throw();
-	}
-
 
 	extern auto create_material_descriptor_set_layout(graphic::Device&, vk::Sampler)
 	        -> vk::UniqueDescriptorSetLayout;
@@ -48,23 +33,23 @@ namespace mirrage::renderer {
 	class Material {
 	  public:
 		Material(graphic::Device&,
-		         vk::UniqueDescriptorSet,
+		         graphic::DescriptorSet,
 		         vk::Sampler,
 		         graphic::Texture_ptr albedo,
 		         graphic::Texture_ptr mat_data,
 		         util::Str_id         material_id);
 
-		void bind(graphic::Render_pass& pass);
+		void bind(graphic::Render_pass& pass) const;
 
 		auto material_id() const noexcept { return _material_id; }
 
 	  private:
-		vk::UniqueDescriptorSet _descriptor_set;
-		graphic::Texture_ptr    _albedo;
-		graphic::Texture_ptr    _mat_data;
-		util::Str_id            _material_id;
+		graphic::DescriptorSet _descriptor_set;
+		graphic::Texture_ptr   _albedo;
+		graphic::Texture_ptr   _mat_data;
+		util::Str_id           _material_id;
 	};
-	using Material_ptr = std::shared_ptr<Material>;
+	using Material_ptr = asset::Ptr<Material>;
 
 
 	struct Model_vertex {
@@ -135,29 +120,25 @@ namespace mirrage::renderer {
 
 	class Model {
 	  public:
-		Model(graphic::Device&              device,
-		      std::uint32_t                 owner_qfamily,
-		      std::uint32_t                 vertex_count,
-		      std::uint32_t                 index_count,
-		      std::function<void(char*)>    write_vertices,
-		      std::function<void(char*)>    write_indices,
-		      std::vector<Sub_mesh>         sub_meshes,
-		      util::maybe<const asset::AID> aid = util::nothing);
+		Model(graphic::Mesh           mesh,
+		      std::vector<Sub_mesh>   sub_meshes,
+		      util::maybe<asset::AID> aid = util::nothing);
 
 		auto aid() const noexcept -> auto& { return _aid; }
 
 		// binds the vertices and indices
-		void bind_mesh(const graphic::Command_buffer&, std::uint32_t vertex_binding);
+		void bind_mesh(const graphic::Command_buffer&, std::uint32_t vertex_binding) const;
 
 		// binds the material of the sub mesh and returns its index range (offset, count)
-		auto bind_sub_mesh(graphic::Render_pass&, std::size_t index) -> std::pair<std::size_t, std::size_t>;
+		auto bind_sub_mesh(graphic::Render_pass&, std::size_t index) const
+		        -> std::pair<std::size_t, std::size_t>;
 
 		// binds all sub meshes and calls a callback after binding each
 		template <typename F>
 		void bind(const graphic::Command_buffer& cb,
 		          graphic::Render_pass&          pass,
 		          std::uint32_t                  vertex_binding,
-		          F&&                            on_sub_mesh) {
+		          F&&                            on_sub_mesh) const {
 			bind_mesh(cb, vertex_binding);
 
 			for(auto& sm : _sub_meshes) {
@@ -168,11 +149,11 @@ namespace mirrage::renderer {
 
 
 	  private:
-		graphic::Mesh                 _mesh;
-		std::vector<Sub_mesh>         _sub_meshes;
-		util::maybe<const asset::AID> _aid;
+		graphic::Mesh           _mesh;
+		std::vector<Sub_mesh>   _sub_meshes;
+		util::maybe<asset::AID> _aid;
 	};
-	using Model_ptr = std::shared_ptr<Model>;
+	using Model_ptr = asset::Ptr<Model>;
 
 } // namespace mirrage::renderer
 
@@ -182,17 +163,17 @@ namespace mirrage::asset {
 	template <>
 	struct Loader<renderer::Material> {
 	  public:
-		Loader(graphic::Device& device, asset::Asset_manager& assets, std::uint32_t max_unique_materials);
+		Loader(graphic::Device& device, asset::Asset_manager& assets, vk::Sampler, vk::DescriptorSetLayout);
 
-		auto load(istream in) -> std::shared_ptr<renderer::Material>;
+		auto load(istream in) -> async::task<renderer::Material>;
 		void save(ostream, const renderer::Material&) { MIRRAGE_FAIL("Save of materials is not supported!"); }
 
 	  private:
-		graphic::Device&              _device;
-		asset::Asset_manager&         _assets;
-		vk::UniqueSampler             _sampler;
-		vk::UniqueDescriptorSetLayout _descriptor_set_layout;
-		graphic::Descriptor_pool      _descriptor_set_pool;
+		graphic::Device&         _device;
+		asset::Asset_manager&    _assets;
+		vk::Sampler              _sampler;
+		vk::DescriptorSetLayout  _descriptor_set_layout;
+		graphic::Descriptor_pool _descriptor_set_pool;
 	};
 
 	template <>
@@ -201,7 +182,7 @@ namespace mirrage::asset {
 		Loader(graphic::Device& device, asset::Asset_manager& assets, std::uint32_t owner_qfamily)
 		  : _device(device), _assets(assets), _owner_qfamily(owner_qfamily) {}
 
-		auto load(istream in) -> std::shared_ptr<renderer::Model>;
+		auto load(istream in) -> async::task<renderer::Model>;
 		void save(ostream, const renderer::Material&) { MIRRAGE_FAIL("Save of materials is not supported!"); }
 
 	  private:

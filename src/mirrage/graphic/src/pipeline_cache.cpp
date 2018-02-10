@@ -37,25 +37,22 @@ namespace mirrage::graphic {
 				                           << " pipeline cahces. Deleting oldest caches.");
 
 				std::sort(std::begin(caches), std::end(caches), [&](auto& lhs, auto& rhs) {
-					return assets.last_modified(lhs).get_or(-1)
-					       > assets.last_modified(rhs).get_or(-1);
+					return assets.last_modified(lhs).get_or(-1) > assets.last_modified(rhs).get_or(-1);
 				});
 
-				std::for_each(std::begin(caches) + max_pipeline_cache_count - 1,
-				              std::end(caches),
-				              [&](auto& aid) {
-					              if(!assets.try_delete(aid)) {
-						              MIRRAGE_WARN("Unable to delete outdated pipeline cache: "
-						                           + aid.str());
-					              }
-				              });
+				std::for_each(
+				        std::begin(caches) + max_pipeline_cache_count - 1, std::end(caches), [&](auto& aid) {
+					        if(!assets.try_delete(aid)) {
+						        MIRRAGE_WARN("Unable to delete outdated pipeline cache: " + aid.str());
+					        }
+				        });
 			}
 		}
 
 	} // namespace
 
 	auto load_main_pipeline_cache(const Device& device, asset::Asset_manager& assets)
-	        -> asset::Loading<Pipeline_cache> {
+	        -> asset::Ptr<Pipeline_cache> {
 
 		auto key = main_pipeline_cache_key(device);
 
@@ -67,8 +64,7 @@ namespace mirrage::graphic {
 
 		return assets.load_maybe<Pipeline_cache>(aid).get_or([&] {
 			return asset::make_ready_asset(
-			        aid,
-			        device.vk_device()->createPipelineCacheUnique(vk::PipelineCacheCreateInfo{}));
+			        aid, device.vk_device()->createPipelineCacheUnique(vk::PipelineCacheCreateInfo{}));
 		});
 	}
 
@@ -76,21 +72,18 @@ namespace mirrage::graphic {
 
 namespace mirrage::asset {
 
-	auto Loader<graphic::Pipeline_cache>::load(istream in)
-	        -> std::shared_ptr<graphic::Pipeline_cache> {
+	auto Loader<graphic::Pipeline_cache>::load(istream in) -> graphic::Pipeline_cache {
 
-		auto data        = in.bytes();
-		auto create_info = vk::PipelineCacheCreateInfo{
-		        vk::PipelineCacheCreateFlags{}, data.size(), data.data()};
+		auto data = in.bytes();
+		auto create_info =
+		        vk::PipelineCacheCreateInfo{vk::PipelineCacheCreateFlags{}, data.size(), data.data()};
 
-		return std::make_shared<graphic::Pipeline_cache>(
-		        _device.createPipelineCacheUnique(create_info));
+		return graphic::Pipeline_cache(_device.createPipelineCacheUnique(create_info));
 	}
 
 	void Loader<graphic::Pipeline_cache>::save(ostream out, const graphic::Pipeline_cache& cache) {
 		auto data = _device.getPipelineCacheData(*cache);
-		out.write(reinterpret_cast<const char*>(data.data()),
-		          gsl::narrow<std::streamsize>(data.size()));
+		out.write(reinterpret_cast<const char*>(data.data()), gsl::narrow<std::streamsize>(data.size()));
 	}
 
 } // namespace mirrage::asset

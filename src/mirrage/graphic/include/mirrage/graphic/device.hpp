@@ -149,9 +149,8 @@ namespace mirrage::graphic {
 		vk::PhysicalDevice                         _gpu;
 		asset::Asset_manager&                      _assets;
 		vk::PhysicalDeviceProperties               _gpu_properties;
-		std::unique_ptr<Asset_loaders>             _device_specific_asset_loaders;
 		std::unordered_map<std::string, Swapchain> _swapchains;
-		asset::Loading<Pipeline_cache>             _pipeline_cache;
+		asset::Ptr<Pipeline_cache>                 _pipeline_cache;
 		Queue_family_mapping                       _queue_family_mappings;
 		Device_memory_allocator                    _memory_allocator;
 		Transfer_manager                           _transfer_manager;
@@ -167,5 +166,7 @@ namespace mirrage::graphic {
 		util::maybe<vk::Format> _srg_format;
 		util::maybe<vk::Format> _srgb_format;
 		util::maybe<vk::Format> _srgba_format;
+
+		std::unique_ptr<Asset_loaders> _device_specific_asset_loaders;
 	};
 } // namespace mirrage::graphic

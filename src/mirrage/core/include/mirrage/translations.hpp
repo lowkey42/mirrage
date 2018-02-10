@@ -44,8 +44,7 @@ namespace mirrage {
 		auto supported_languages() const -> std::vector<Language_id>;
 
 		auto translate(const std::string& str) const -> const std::string&;
-		auto translate(const Category_id& category, const std::string& str) const
-		        -> const std::string&;
+		auto translate(const Category_id& category, const std::string& str) const -> const std::string&;
 		// TODO: may need printf-style translate(...)
 
 
@@ -83,7 +82,7 @@ namespace mirrage::asset {
 	 */
 	template <>
 	struct Loader<Localisation_data> {
-		static auto              load(istream in) -> std::shared_ptr<Localisation_data>;
+		static auto              load(istream in) -> Localisation_data;
 		[[noreturn]] static void save(ostream, const Localisation_data&) {
 			MIRRAGE_FAIL("store<Localisation_data>(...) not supported!");
 		}

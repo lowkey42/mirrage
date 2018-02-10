@@ -79,8 +79,8 @@ namespace mirrage {
 	Engine::Sdl_wrapper::~Sdl_wrapper() { SDL_Quit(); }
 
 
-	Engine::Engine(const std::string& title,
-	               const std::string& org,
+	Engine::Engine(const std::string& org,
+	               const std::string& title,
 	               std::uint32_t      version_major,
 	               std::uint32_t      version_minor,
 	               bool               debug,

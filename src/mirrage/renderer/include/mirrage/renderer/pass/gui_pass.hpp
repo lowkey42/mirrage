@@ -42,9 +42,9 @@ namespace mirrage::renderer {
 
 	  private:
 		struct Loaded_texture {
-			vk::UniqueDescriptorSet descriptor_set;
-			graphic::Texture_ptr    texture;
-			struct nk_image         handle;
+			graphic::DescriptorSet descriptor_set;
+			graphic::Texture_ptr   texture;
+			struct nk_image        handle;
 
 			Loaded_texture(int                  handle,
 			               graphic::Texture_ptr texture,
@@ -58,7 +58,7 @@ namespace mirrage::renderer {
 		vk::UniqueSampler                 _sampler;
 		vk::UniqueDescriptorSetLayout     _descriptor_set_layout;
 		graphic::Render_pass              _render_pass;
-		vk::UniqueDescriptorSet           _descriptor_set;
+		graphic::DescriptorSet            _descriptor_set;
 		graphic::Streamed_buffer          _mesh_buffer;
 
 		// texture cache/store

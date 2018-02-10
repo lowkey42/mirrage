@@ -37,9 +37,7 @@ namespace mirrage::util {
 		/*implicit*/ maybe(T&& data) noexcept : _valid(true), _data(std::move(data)) {}
 		/*implicit*/ maybe(const T& data) noexcept : _valid(true), _data(data) {}
 		maybe(const maybe& o) noexcept : _valid(o._valid), _data(o._data) {}
-		maybe(maybe&& o) noexcept : _valid(o._valid), _data(std::move(o._data)) {
-			o._valid = false;
-		}
+		maybe(maybe&& o) noexcept : _valid(o._valid), _data(std::move(o._data)) { o._valid = false; }
 
 		~maybe() noexcept {
 			if(is_some())
@@ -173,7 +171,7 @@ namespace mirrage::util {
 	  private:
 		bool _valid;
 		union {
-			T _data;
+			std::remove_const_t<T> _data;
 		};
 	};
 
@@ -266,9 +264,7 @@ namespace mirrage::util {
 
 			return *_ref;
 		}
-		T& get_or(std::remove_const_t<T>& other) const noexcept {
-			return is_some() ? *_ref : other;
-		}
+		T&       get_or(std::remove_const_t<T>& other) const noexcept { return is_some() ? *_ref : other; }
 		const T& get_or(const T& other) const noexcept { return is_some() ? *_ref : other; }
 
 		template <typename Func,
@@ -352,8 +348,7 @@ namespace mirrage::util {
 		  private:
 			template <typename Func, int... S>
 			void call(Func&& f, seq<S...>) {
-				call(std::forward<Func>(f),
-				     std::forward<decltype(std::get<S>(args))>(std::get<S>(args))...);
+				call(std::forward<Func>(f), std::forward<decltype(std::get<S>(args))>(std::get<S>(args))...);
 			}
 
 			template <typename Func, typename... Args>

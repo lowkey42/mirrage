@@ -92,6 +92,11 @@ public:
 	{
 		return internal_task != nullptr;
 	}
+	
+	std::size_t refcount() const
+	{
+		return internal_task!=nullptr ? internal_task->ref_count.load() : 0;
+	}
 
 	// Query whether the task has finished executing
 	bool ready() const

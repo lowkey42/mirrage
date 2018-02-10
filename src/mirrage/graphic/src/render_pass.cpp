@@ -155,7 +155,7 @@ namespace mirrage::graphic {
 			                                          s.constant_buffer.data()};
 			stage_create_infos.emplace_back(vk::PipelineShaderStageCreateFlags{},
 			                                vk_stage,
-			                                **s.shader.get(),
+			                                **s.shader,
 			                                s.entry_point.c_str(),
 			                                s.constants.empty() ? nullptr : &s.constants_info);
 		}
@@ -556,13 +556,12 @@ namespace mirrage::graphic {
 
 namespace mirrage::asset {
 
-	auto Loader<graphic::Shader_module>::load(istream in) -> std::shared_ptr<graphic::Shader_module> {
+	auto Loader<graphic::Shader_module>::load(istream in) -> graphic::Shader_module {
 		auto code = in.bytes();
 		auto module_info =
 		        vk::ShaderModuleCreateInfo{{}, code.size(), reinterpret_cast<const uint32_t*>(code.data())};
 
-		return std::make_shared<graphic::Shader_module>(
-		        _device.vk_device()->createShaderModuleUnique(module_info));
+		return _device.vk_device()->createShaderModuleUnique(module_info);
 	}
 
 } // namespace mirrage::asset

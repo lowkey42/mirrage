@@ -98,10 +98,11 @@ namespace mirrage::renderer {
 
 		render_pass.set_stage("light_dir"_strid);
 
-		render_pass.bind_descriptor_sets(1, {&*_input_attachment_descriptor_set, 1});
+		render_pass.bind_descriptor_sets(1, {_input_attachment_descriptor_set.get_ptr(), 1});
 
 		if(_gbuffer.shadowmaps) {
-			render_pass.bind_descriptor_sets(2, {&*_gbuffer.shadowmaps, 1});
+			auto desc_set = *_gbuffer.shadowmaps;
+			render_pass.bind_descriptor_sets(2, {&desc_set, 1});
 		}
 
 		Deferred_push_constants dpc{};

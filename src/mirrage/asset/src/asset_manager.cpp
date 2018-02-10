@@ -80,8 +80,7 @@ namespace {
 
 		auto wildcard = last_of(file, '*').get_or(file.length());
 		if(wildcard != (file.find_first_of('*') + 1)) {
-			MIRRAGE_WARN("More than one wildcard ist currently not supported. Found in: "
-			             << wildcard_path);
+			MIRRAGE_WARN("More than one wildcard ist currently not supported. Found in: " << wildcard_path);
 		}
 
 		auto prefix = file.substr(0, wildcard - 1);
@@ -96,21 +95,21 @@ namespace {
 	}
 
 	bool exists_file(const std::string path) {
-		if(PHYSFS_exists(path.c_str()) == 0)
+		if(!PHYSFS_exists(path.c_str()))
 			return false;
 
 		auto stat = PHYSFS_Stat{};
-		if(PHYSFS_stat(path.c_str(), &stat) == 0)
+		if(!PHYSFS_stat(path.c_str(), &stat))
 			return false;
 
 		return stat.filetype == PHYSFS_FILETYPE_REGULAR;
 	}
 	bool exists_dir(const std::string path) {
-		if(PHYSFS_exists(path.c_str()) == 0)
+		if(!PHYSFS_exists(path.c_str()))
 			return false;
 
 		auto stat = PHYSFS_Stat{};
-		if(PHYSFS_stat(path.c_str(), &stat) == 0)
+		if(!PHYSFS_stat(path.c_str(), &stat))
 			return false;
 
 		return stat.filetype == PHYSFS_FILETYPE_DIRECTORY;
@@ -132,8 +131,7 @@ namespace {
 		}
 	}
 
-	constexpr auto default_source = {std::make_tuple("assets", false),
-	                                 std::make_tuple("assets.zip", true)};
+	constexpr auto default_source = {std::make_tuple("assets", false), std::make_tuple("assets.zip", true)};
 } // namespace
 
 namespace mirrage::asset {
@@ -227,7 +225,7 @@ namespace mirrage::asset {
 				                        "Error adding custom archive: "s + path);
 		};
 
-		if(exists_file("archives.lst")) {
+		if(!exists_file("archives.lst")) {
 			bool lost = true;
 			for(auto& s : default_source) {
 				const char* path;
@@ -261,6 +259,7 @@ namespace mirrage::asset {
 			for(auto&& l : in.lines()) {
 				if(l.find_last_of('*') != std::string::npos) {
 					for(auto& file : list_wildcard_files(l)) {
+						MIRRAGE_INFO("Added FS directory: " << file);
 						add_source(file.c_str());
 					}
 					continue;
@@ -275,8 +274,8 @@ namespace mirrage::asset {
 	Asset_manager::~Asset_manager() {
 		_containers.clear();
 		if(!PHYSFS_deinit()) {
-			MIRRAGE_FAIL("Unable to shutdown PhysicsFS: "
-			             << PHYSFS_getErrorByCode((PHYSFS_getLastErrorCode())));
+			MIRRAGE_FAIL(
+			        "Unable to shutdown PhysicsFS: " << PHYSFS_getErrorByCode((PHYSFS_getLastErrorCode())));
 		}
 	}
 
@@ -312,8 +311,7 @@ namespace mirrage::asset {
 		return resolve(id).process(false, [](auto&& path) { return exists_file(path); });
 	}
 	auto Asset_manager::try_delete(const AID& id) -> bool {
-		return resolve(id).process(true,
-		                           [](auto&& path) { return PHYSFS_delete(path.c_str()) == 0; });
+		return resolve(id).process(true, [](auto&& path) { return PHYSFS_delete(path.c_str()) == 0; });
 	}
 
 	auto Asset_manager::open(const AID& id) -> util::maybe<istream> {
@@ -364,12 +362,13 @@ namespace mirrage::asset {
 		return resolve(id).process([&](auto& path) { return _last_modified(path); });
 	}
 
-	auto Asset_manager::resolve(const AID& id) const noexcept -> util::maybe<std::string> {
+	auto Asset_manager::resolve(const AID& id, bool only_preexisting) const noexcept
+	        -> util::maybe<std::string> {
 		auto lock = std::shared_lock{_dispatchers_mutex};
 
 		auto res = _dispatchers.find(id);
 
-		if(res != _dispatchers.end() && exists_file(res->second))
+		if(res != _dispatchers.end() && (exists_file(res->second) || !only_preexisting))
 			return res->second;
 
 		else if(exists_file(id.name()))
@@ -382,6 +381,15 @@ namespace mirrage::asset {
 			auto path = append_file(baseDir.get_or_throw(), id.name());
 			if(exists_file(path))
 				return std::move(path);
+
+			else if(!only_preexisting) {
+				PHYSFS_mkdir(baseDir.get_or_throw().c_str());
+				return std::move(path);
+			}
+		}
+
+		if(!only_preexisting) {
+			return id.name();
 		}
 
 		return util::nothing;
@@ -425,6 +433,7 @@ namespace mirrage::asset {
 		_dispatchers.clear();
 
 		for(auto&& df : list_files("", "assets", ".map")) {
+			MIRRAGE_INFO("Added asset mapping: " << df);
 			auto in = _open({}, df);
 			for(auto&& l : in.lines()) {
 				auto        kvp  = util::split(l, "=");
@@ -438,8 +447,8 @@ namespace mirrage::asset {
 
 	auto Asset_manager::_last_modified(const std::string& path) const -> int64_t {
 		auto stat = PHYSFS_Stat{};
-		if(auto errc = PHYSFS_stat(path.c_str(), &stat); errc != 0)
-			throw std::system_error(static_cast<Asset_error>(errc));
+		if(!PHYSFS_stat(path.c_str(), &stat))
+			throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()));
 
 		return stat.modtime;
 	}

@@ -2,6 +2,8 @@
 
 #include <mirrage/graphic/settings.hpp>
 
+#include <mirrage/asset/asset_manager.hpp>
+
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/str_id.hpp>
 #include <mirrage/utils/template_utils.hpp>
@@ -55,7 +57,7 @@ namespace mirrage {
 			auto instantiate_device(Device_selector,
 			                        Device_factory,
 			                        const std::vector<Window*>& can_present_to = {},
-			                        bool                        srgb = false) -> Device_ptr;
+			                        bool                        srgb           = false) -> Device_ptr;
 
 			auto find_window(std::string name) -> util::maybe<Window&>;
 
@@ -66,17 +68,17 @@ namespace mirrage {
 			auto asset_manager() -> auto& { return _assets; }
 
 		  private:
-			asset::Asset_manager&                       _assets;
-			std::string                                 _name;
-			std::shared_ptr<const Graphics_settings>    _settings;
-			std::vector<const char*>                    _enabled_layers;
-			std::unordered_map<std::string, Window_ptr> _windows;
+			asset::Asset_manager&         _assets;
+			std::string                   _name;
+			asset::Ptr<Graphics_settings> _settings;
+			std::vector<const char*>      _enabled_layers;
 
 			vk::UniqueInstance               _instance;
 			vk::UniqueDebugReportCallbackEXT _debug_callback;
 
-			auto _find_window_settings(const std::string& name, int width, int height)
-			        -> Window_settings;
+			std::unordered_map<std::string, Window_ptr> _windows;
+
+			auto _find_window_settings(const std::string& name, int width, int height) -> Window_settings;
 		};
 	} // namespace graphic
 } // namespace mirrage

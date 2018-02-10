@@ -31,16 +31,16 @@ namespace mirrage::graphic {
 			assets.create_stateful_loader<Shader_module>(device);
 		}
 		~Asset_loaders() {
-			assets.remove_stateful_loader<graphic::Pipeline_cache>();
-			assets.remove_stateful_loader<graphic::Texture<Image_type::single_1d>>();
-			assets.remove_stateful_loader<graphic::Texture<Image_type::single_2d>>();
-			assets.remove_stateful_loader<graphic::Texture<Image_type::single_3d>>();
-			assets.remove_stateful_loader<graphic::Texture<Image_type::array_1d>>();
-			assets.remove_stateful_loader<graphic::Texture<Image_type::array_2d>>();
-			assets.remove_stateful_loader<graphic::Texture<Image_type::array_3d>>();
-			assets.remove_stateful_loader<graphic::Texture<Image_type::cubemap>>();
-			assets.remove_stateful_loader<graphic::Texture<Image_type::array_cubemap>>();
-			assets.remove_stateful_loader<graphic::Shader_module>();
+			assets.remove_stateful_loader<Pipeline_cache>();
+			assets.remove_stateful_loader<Texture<Image_type::single_1d>>();
+			assets.remove_stateful_loader<Texture<Image_type::single_2d>>();
+			assets.remove_stateful_loader<Texture<Image_type::single_3d>>();
+			assets.remove_stateful_loader<Texture<Image_type::array_1d>>();
+			assets.remove_stateful_loader<Texture<Image_type::array_2d>>();
+			assets.remove_stateful_loader<Texture<Image_type::array_3d>>();
+			assets.remove_stateful_loader<Texture<Image_type::cubemap>>();
+			assets.remove_stateful_loader<Texture<Image_type::array_cubemap>>();
+			assets.remove_stateful_loader<Shader_module>();
 		}
 	};
 
@@ -58,7 +58,6 @@ namespace mirrage::graphic {
 	  , _gpu(gpu)
 	  , _assets(assets)
 	  , _gpu_properties(gpu.getProperties())
-	  , _device_specific_asset_loaders(std::make_unique<Asset_loaders>(assets, *this, default_draw_queue))
 	  , _pipeline_cache(load_main_pipeline_cache(*this, assets))
 	  , _queue_family_mappings(std::move(queue_mapping))
 	  , _memory_allocator(*_device, _gpu, dedicated_alloc_supported)
@@ -121,7 +120,8 @@ namespace mirrage::graphic {
 	                                       vk::FormatFeatureFlagBits::eBlitDst
 	                                               | vk::FormatFeatureFlagBits::eBlitSrc
 	                                               | vk::FormatFeatureFlagBits::eSampledImageFilterLinear,
-	                                       Format_usage::image_optimal)) {
+	                                       Format_usage::image_optimal))
+	  , _device_specific_asset_loaders(std::make_unique<Asset_loaders>(assets, *this, default_draw_queue)) {
 
 		for(auto& sc_info : swapchains) {
 			_swapchains.emplace(
@@ -167,7 +167,7 @@ namespace mirrage::graphic {
 
 	void Device::backup_caches() {
 		if(_pipeline_cache.ready()) {
-			_assets.save(_pipeline_cache.get());
+			_assets.save(_pipeline_cache);
 		}
 	}
 
@@ -187,7 +187,7 @@ namespace mirrage::graphic {
 	}
 
 	auto Device::create_render_pass_builder() -> Render_pass_builder {
-		return Render_pass_builder{*_device, **_pipeline_cache.get(), _assets};
+		return Render_pass_builder{*_device, **_pipeline_cache, _assets};
 	}
 
 	auto Device::create_semaphore() -> vk::UniqueSemaphore { return _device->createSemaphoreUnique({}); }

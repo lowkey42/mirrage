@@ -17,7 +17,8 @@ namespace mirrage::graphic {
 		Swapchain& operator=(Swapchain&&) = default;
 		~Swapchain() override             = default;
 
-		auto get_images() const -> auto& { return _image_views; }
+		auto get_images() const -> auto& { return _images; }
+		auto get_image_views() const -> auto& { return _image_views; }
 		auto acquireNextImage(vk::Semaphore, vk::Fence) const -> std::size_t;
 
 		bool present(vk::Queue&, std::size_t img_index, vk::Semaphore);

@@ -28,7 +28,7 @@ namespace mirrage::renderer {
 		graphic::Texture_2D&                 _src;
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
-		vk::UniqueDescriptorSet              _descriptor_set;
+		graphic::DescriptorSet               _descriptor_set;
 		std::vector<graphic::Framebuffer>    _framebuffers;
 		graphic::Render_pass                 _render_pass;
 		const bool                           _tone_mapping_enabled;
@@ -42,9 +42,8 @@ namespace mirrage::renderer {
 		                 util::maybe<Meta_system&>,
 		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
 
-		auto rank_device(vk::PhysicalDevice,
-		                 util::maybe<std::uint32_t> graphics_queue,
-		                 int                        current_score) -> int override;
+		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
+		        -> int override;
 
 		void configure_device(vk::PhysicalDevice,
 		                      util::maybe<std::uint32_t> graphics_queue,

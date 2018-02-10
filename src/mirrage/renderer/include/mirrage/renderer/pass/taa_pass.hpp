@@ -36,7 +36,7 @@ namespace mirrage::renderer {
 		graphic::Texture_2D&                 _read_frame;
 		graphic::Render_target_2D&           _write_frame;
 		graphic::Render_target_2D            _prev_frame;
-		vk::UniqueDescriptorSet              _descriptor_set;
+		graphic::DescriptorSet               _descriptor_set;
 
 		bool          _first_frame   = true;
 		bool          _render_into_a = true;

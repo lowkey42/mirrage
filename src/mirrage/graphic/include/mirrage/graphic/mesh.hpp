@@ -50,10 +50,11 @@ namespace mirrage::graphic {
 		     std::function<void(char*)> write_indices);
 
 
-		void bind(vk::CommandBuffer, std::uint32_t vertex_binding);
+		void bind(vk::CommandBuffer, std::uint32_t vertex_binding) const;
 
 		auto index_count() const noexcept { return _indices; }
 
+		auto internal_buffer() const noexcept -> auto& { return _buffer; }
 
 	  private:
 		Static_buffer  _buffer;

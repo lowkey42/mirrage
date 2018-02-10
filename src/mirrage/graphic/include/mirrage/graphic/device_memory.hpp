@@ -18,19 +18,16 @@ namespace mirrage::graphic {
 
 	class Device_memory {
 	  public:
-		using Deleter = void(void*,
-		                     std::uint32_t    index,
-		                     std::uint32_t    layer,
-		                     vk::DeviceMemory memory);
+		using Deleter = void(void*, std::uint32_t index, std::uint32_t layer, vk::DeviceMemory memory);
 
-		Device_memory();
+		Device_memory() = default;
 		Device_memory(void*         owner,
 		              Deleter*      deleter,
 		              std::uint32_t index,
 		              std::uint32_t layer,
 		              vk::DeviceMemory,
 		              vk::DeviceSize,
-		              void* mapped_addr);
+		              char* mapped_addr);
 
 		Device_memory(Device_memory&&) noexcept;
 		Device_memory& operator=(Device_memory&&) noexcept;
@@ -39,18 +36,18 @@ namespace mirrage::graphic {
 		auto memory() const noexcept { return _memory; }
 		auto offset() const noexcept { return _offset; }
 
-		auto mapped_addr() const noexcept -> util::maybe<void*> {
-			return _mapped_addr ? _mapped_addr : util::maybe<void*>::nothing();
+		auto mapped_addr() const noexcept -> util::maybe<char*> {
+			return _mapped_addr ? _mapped_addr : util::maybe<char*>::nothing();
 		}
 
 	  private:
-		void*            _owner;
-		Deleter*         _deleter;
-		std::uint32_t    _index;
-		std::uint32_t    _layer;
+		void*            _owner   = nullptr;
+		Deleter*         _deleter = nullptr;
+		std::uint32_t    _index   = 0;
+		std::uint32_t    _layer   = 0;
 		vk::DeviceMemory _memory;
-		vk::DeviceSize   _offset;
-		void*            _mapped_addr;
+		vk::DeviceSize   _offset      = 0;
+		char*            _mapped_addr = nullptr;
 	};
 
 	class Device_heap;
@@ -87,8 +84,7 @@ namespace mirrage::graphic {
 		           std::size_t     alignment,
 		           std::uint32_t   type_mask,
 		           bool            host_visible,
-		           Memory_lifetime lifetime = Memory_lifetime::normal)
-		        -> util::maybe<Device_memory>;
+		           Memory_lifetime lifetime = Memory_lifetime::normal) -> util::maybe<Device_memory>;
 
 		auto alloc_dedicated(vk::Image, bool host_visible) -> util::maybe<Device_memory>;
 		auto alloc_dedicated(vk::Buffer, bool host_visible) -> util::maybe<Device_memory>;
@@ -100,9 +96,7 @@ namespace mirrage::graphic {
 			return _is_dedicated_allocations_supported;
 		}
 
-		auto is_unified_memory_architecture() const noexcept {
-			return _is_unified_memory_architecture;
-		}
+		auto is_unified_memory_architecture() const noexcept { return _is_unified_memory_architecture; }
 
 	  private:
 		friend class Device_memory;
@@ -114,8 +108,7 @@ namespace mirrage::graphic {
 		std::vector<std::uint32_t>                _host_visible_pools;
 		std::vector<std::uint32_t>                _device_local_pools;
 
-		auto alloc_dedicated(vk::Buffer, vk::Image, bool host_visible)
-		        -> util::maybe<Device_memory>;
+		auto alloc_dedicated(vk::Buffer, vk::Image, bool host_visible) -> util::maybe<Device_memory>;
 	};
 
 	template <class T>

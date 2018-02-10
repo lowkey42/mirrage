@@ -92,8 +92,8 @@ namespace mirrage::asset {
 		static_assert(sf2::is_loadable<T, sf2::format::Json_reader>::value,
 		              "Required AssetLoader specialization not provided.");
 
-		static auto load(istream in) -> std::shared_ptr<T> {
-			auto r = std::make_shared<T>();
+		static auto load(istream in) -> T {
+			auto r = T();
 
 			sf2::deserialize_json(in,
 			                      [&](auto& msg, uint32_t row, uint32_t column) {
@@ -101,7 +101,7 @@ namespace mirrage::asset {
 				                                                               << row << ":" << column << ": "
 				                                                               << msg);
 			                      },
-			                      *r);
+			                      r);
 
 			return r;
 		}
@@ -121,7 +121,7 @@ namespace mirrage::asset {
 	struct Loader {
 		static_assert(util::dependent_false<T>(), "Required AssetLoader specialization not provided.");
 
-		static auto load(istream in) -> std::shared_ptr<T>;
+		static auto load(istream in) -> T;
 		static void save(ostream out, const T& asset);
 	};
 } // namespace mirrage::asset
@@ -133,7 +133,7 @@ namespace mirrage::asset {
 
 	template <>
 	struct Loader<Bytes> {
-		static auto load(istream in) -> std::shared_ptr<Bytes> { return std::make_shared<Bytes>(in.bytes()); }
+		static auto load(istream in) -> Bytes { return in.bytes(); }
 		void        save(ostream out, const Bytes& data) {
             out.write(data.data(), gsl::narrow<std::streamsize>(data.size()));
 		}

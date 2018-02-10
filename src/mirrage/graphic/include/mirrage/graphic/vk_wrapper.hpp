@@ -113,10 +113,14 @@ namespace mirrage::graphic {
 		DescriptorSet& operator=(DescriptorSet&&) noexcept;
 		~DescriptorSet();
 
+		DescriptorSet(const DescriptorSet&) = delete;
+		DescriptorSet& operator=(const DescriptorSet&) = delete;
+
 		auto get() const noexcept { return _set; }
+		auto get_ptr() const noexcept { return &_set; }
 		auto operator*() const noexcept { return get(); }
 
-		operator vk::DescriptorSet() const noexcept { return get(); }
+		explicit operator bool() const noexcept { return get(); }
 
 	  private:
 		vk::Device         _device;
@@ -127,6 +131,8 @@ namespace mirrage::graphic {
 		void _destroy();
 	};
 
+	// TODO: actual management of DescriptorSet-Objects
+	// TODO: ERROR [debugCallback:188@context.cpp][VK | ObjectTracker] Unable to remove DescriptorSet obj 0x19a. Was it created? Has it already been destroyed?
 	class Descriptor_pool {
 	  public:
 		auto create_descriptor(vk::DescriptorSetLayout) -> DescriptorSet;
@@ -144,6 +150,11 @@ namespace mirrage::graphic {
 		Descriptor_pool(vk::Device                                device,
 		                std::uint32_t                             chunk_size,
 		                std::initializer_list<vk::DescriptorType> types);
+
+		Descriptor_pool(const Descriptor_pool&) = delete;
+		Descriptor_pool(Descriptor_pool&&)      = delete;
+		Descriptor_pool& operator=(const Descriptor_pool&) = delete;
+		Descriptor_pool& operator=(Descriptor_pool&&) = delete;
 
 		auto create_descriptor_pool() -> vk::DescriptorPool;
 	};
@@ -346,10 +357,20 @@ namespace mirrage::graphic {
 	                         vk::ImageLayout             final_dst_layout);
 
 	extern void clear_texture(vk::CommandBuffer           cb,
-	                          const detail::Base_texture& src,
+	                          const detail::Base_texture& img,
 	                          util::Rgba                  color,
 	                          vk::ImageLayout             initial_layout,
 	                          vk::ImageLayout             final_layout,
 	                          std::uint32_t               initial_mip_level = 0,
 	                          std::uint32_t               mip_levels        = 0);
+
+	extern void clear_texture(vk::CommandBuffer cb,
+	                          vk::Image         img,
+	                          std::uint32_t     width,
+	                          std::uint32_t     height,
+	                          util::Rgba        color,
+	                          vk::ImageLayout   initial_layout,
+	                          vk::ImageLayout   final_layout,
+	                          std::uint32_t     initial_mip_level = 0,
+	                          std::uint32_t     mip_levels        = 0);
 } // namespace mirrage::graphic

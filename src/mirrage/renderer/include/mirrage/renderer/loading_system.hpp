@@ -20,7 +20,7 @@ namespace mirrage::renderer {
 	 */
 	class Loading_system {
 	  public:
-		Loading_system(ecs::Entity_manager& ecs, Model_loader&);
+		Loading_system(ecs::Entity_manager& ecs, asset::Asset_manager&);
 		virtual ~Loading_system() = default;
 
 		void update(util::Time);
@@ -36,7 +36,7 @@ namespace mirrage::renderer {
 		virtual void _update(util::Time);
 
 	  private:
-		Model_loader& _loader;
+		asset::Asset_manager& _assets;
 
 		void _finish_loading();
 	};

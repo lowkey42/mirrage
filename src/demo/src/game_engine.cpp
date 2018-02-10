@@ -26,17 +26,17 @@ namespace mirrage {
 	  , _renderer_factory(std::make_unique<renderer::Deferred_renderer_factory>(
 	            graphics_context(),
 	            window(),
-	            util::make_vector(
-	                    renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
-	                    renderer::make_pass_factory<renderer::Deferred_pass_factory>(),
-	                    renderer::make_pass_factory<renderer::Gen_mipmap_pass_factory>(),
-	                    renderer::make_pass_factory<renderer::Ssao_pass_factory>(),
-	                    renderer::make_pass_factory<renderer::Gi_pass_factory>(),
-	                    renderer::make_pass_factory<renderer::Taa_pass_factory>(),
-	                    renderer::make_pass_factory<renderer::Tone_mapping_pass_factory>(),
-	                    renderer::make_pass_factory<renderer::Bloom_pass_factory>(),
-	                    renderer::make_pass_factory<renderer::Blit_pass_factory>(),
-	                    renderer::make_pass_factory<renderer::Gui_pass_factory>()))) {}
+	            assets(),
+	            util::make_vector(renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Deferred_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Gen_mipmap_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Ssao_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Gi_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Taa_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Tone_mapping_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Bloom_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Blit_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Gui_pass_factory>()))) {}
 
 	Game_engine::~Game_engine() {
 		screens().clear(); // destroy all screens before the engine

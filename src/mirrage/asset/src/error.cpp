@@ -46,8 +46,7 @@ namespace mirrage::asset {
 					case Asset_error::app_callback:
 						return PHYSFS_getErrorByCode(static_cast<PHYSFS_ErrorCode>(e));
 
-					case Asset_error::resolve_failed:
-						return "An AID couldn't be resolved to a path.";
+					case Asset_error::resolve_failed: return "An AID couldn't be resolved to a path.";
 					case Asset_error::loading_failed:
 						return "Couldn't create an asset instanc from the istream.";
 					case Asset_error::stateful_loader_not_initialized:
@@ -90,14 +89,13 @@ namespace mirrage::asset {
 					case Asset_error::not_mounted:
 					case Asset_error::open_for_reading:
 					case Asset_error::open_for_writing:
-					case Asset_error::stateful_loader_not_initialized:
-						return Error_type::asset_usage_error;
+					case Asset_error::stateful_loader_not_initialized: return Error_type::asset_usage_error;
 
 					case Asset_error::resolve_failed:
 					case Asset_error::loading_failed: return Error_type::asset_not_found;
 				}
 
-				MIRRAGE_FAIL("Unexpected Net_error: " << e);
+				MIRRAGE_FAIL("Unexpected Asset_error: " << e);
 			}
 		};
 		const Error_type_category error_cat{};

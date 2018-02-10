@@ -33,6 +33,8 @@ namespace mirrage::graphic {
 		rhs._deletion_mutex = nullptr;
 	}
 	DescriptorSet& DescriptorSet::operator=(DescriptorSet&& rhs) noexcept {
+		MIRRAGE_INVARIANT(this != &rhs, "move to self");
+
 		_destroy();
 
 		_device             = std::move(rhs._device);
@@ -417,26 +419,47 @@ namespace mirrage::graphic {
 	                   std::uint32_t               initial_mip_level,
 	                   std::uint32_t               mip_levels) {
 
+		clear_texture(cb,
+		              img.image(),
+		              img.width(),
+		              img.height(),
+		              color,
+		              initial_layout,
+		              final_layout,
+		              initial_mip_level,
+		              mip_levels);
+	}
+
+	void clear_texture(vk::CommandBuffer cb,
+	                   vk::Image         img,
+	                   std::uint32_t     width,
+	                   std::uint32_t     height,
+	                   util::Rgba        color,
+	                   vk::ImageLayout   initial_layout,
+	                   vk::ImageLayout   final_layout,
+	                   std::uint32_t     initial_mip_level,
+	                   std::uint32_t     mip_levels) {
+
 		if(mip_levels == 0) {
-			mip_levels = std::floor(std::log2(std::min(img.width(), img.height()))) + 1;
+			mip_levels = std::floor(std::log2(std::min(width, height))) + 1;
 		}
 
 		graphic::image_layout_transition(cb,
-		                                 img.image(),
+		                                 img,
 		                                 initial_layout,
 		                                 vk::ImageLayout::eTransferDstOptimal,
 		                                 vk::ImageAspectFlagBits::eColor,
 		                                 initial_mip_level,
 		                                 mip_levels);
 
-		cb.clearColorImage(img.image(),
+		cb.clearColorImage(img,
 		                   vk::ImageLayout::eTransferDstOptimal,
 		                   vk::ClearColorValue{std::array<float, 4>{color.r, color.g, color.b, color.a}},
 		                   {vk::ImageSubresourceRange{
 		                           vk::ImageAspectFlagBits::eColor, initial_mip_level, mip_levels, 0, 1}});
 
 		graphic::image_layout_transition(cb,
-		                                 img.image(),
+		                                 img,
 		                                 vk::ImageLayout::eTransferDstOptimal,
 		                                 final_layout,
 		                                 vk::ImageAspectFlagBits::eColor,

@@ -52,37 +52,33 @@ namespace mirrage::asset {
 	class Ptr {
 	  public:
 		Ptr() = default;
-		Ptr(const AID& id, std::shared_ptr<R> res = std::shared_ptr<R>());
+		Ptr(const AID& aid, async::shared_task<R> task) : _aid(aid), _task(std::move(task)) {}
 
-		bool operator==(const Ptr& o) const noexcept;
-		bool operator<(const Ptr& o) const noexcept;
+		bool operator==(const Ptr& o) const noexcept { return _aid == o._aid; }
+		bool operator!=(const Ptr& o) const noexcept { return _aid != o._aid; }
+		bool operator<(const Ptr& o) const noexcept { return _aid < o._aid; }
 
-		auto operator*() -> const R&;
-		auto operator*() const -> const R&;
-
-		auto operator-> () -> const R*;
-		auto operator-> () const -> const R*;
-
-		operator bool() const noexcept { return !!_ptr; }
-		operator std::shared_ptr<const R>() const;
+		auto     operator*() const -> const R& { return get_blocking(); }
+		auto     operator-> () const -> const R* { return &get_blocking(); }
+		explicit operator bool() const noexcept { return !!aid(); }
 
 		auto aid() const noexcept -> const AID& { return _aid; }
-
-		void reset() { _ptr.reset(); }
+		auto get_blocking() const -> const R&;
+		auto get_if_ready() const -> util::maybe<R&>;
+		auto ready() const -> bool;
+		auto internal_task() const -> auto& { return _task; }
+		void reset();
 
 	  private:
-		friend class detail::Asset_container<R>;
-
-		AID                _aid;
-		std::shared_ptr<R> _ptr;
+		AID                   _aid;
+		async::shared_task<R> _task;
+		mutable const R*      _cached_result = nullptr;
 	};
 
-	template <typename T>
-	using Loading = async::shared_task<Ptr<T>>;
 
 	template <typename T>
-	auto make_ready_asset(const AID& id, T&& val) -> Loading<T> {
-		return async::make_task(Ptr<T>(id, std::make_shared<T>(std::move(val)))).share();
+	auto make_ready_asset(const AID& id, T&& val) -> Ptr<std::remove_cv_t<std::remove_reference_t<T>>> {
+		return {id, async::make_task(std::forward<T>(val)).share()};
 	}
 
 	namespace detail {
@@ -109,7 +105,7 @@ namespace mirrage::asset {
 			using Loader<T>::load;
 			using Loader<T>::save;
 
-			auto load(AID aid, const std::string& name, bool cache) -> Loading<T>;
+			auto load(AID aid, const std::string& name, bool cache) -> Ptr<T>;
 
 			void save(const AID& aid, const std::string& name, const T&);
 
@@ -118,8 +114,9 @@ namespace mirrage::asset {
 
 		  private:
 			struct Asset {
-				Loading<T> ptr;
-				int64_t    last_modified;
+				AID                   aid;
+				async::shared_task<T> task;
+				int64_t               last_modified;
 			};
 
 			Asset_manager&          _manager;
@@ -141,10 +138,10 @@ namespace mirrage::asset {
 
 
 		template <typename T>
-		auto load(const AID& id, bool cache = true) -> Loading<T>;
+		auto load(const AID& id, bool cache = true) -> Ptr<T>;
 
 		template <typename T>
-		auto load_maybe(const AID& id, bool cache = true) -> util::maybe<Loading<T>>;
+		auto load_maybe(const AID& id, bool cache = true) -> util::maybe<Ptr<T>>;
 
 		template <typename T>
 		void save(const AID& id, const T& asset);
@@ -162,7 +159,7 @@ namespace mirrage::asset {
 		auto list(Asset_type type) -> std::vector<AID>;
 		auto last_modified(const AID& id) const noexcept -> util::maybe<std::int64_t>;
 
-		auto resolve(const AID& id) const noexcept -> util::maybe<std::string>;
+		auto resolve(const AID& id, bool only_preexisting = true) const noexcept -> util::maybe<std::string>;
 		auto resolve_reverse(std::string_view) -> util::maybe<AID>;
 
 		template <typename T, typename... Args>

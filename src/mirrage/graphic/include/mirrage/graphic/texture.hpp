@@ -154,7 +154,7 @@ namespace mirrage::graphic {
 	using Texture_cube           = Texture<Image_type::cubemap>;
 	using Render_target_cube     = Render_target<Image_type::cubemap>;
 
-	using Texture_ptr = std::shared_ptr<Texture_2D>;
+	using Texture_ptr = asset::Ptr<Texture_2D>;
 
 	namespace detail {
 		extern auto load_image_data(Device& device, std::uint32_t owner_qfamily, asset::istream)
@@ -183,8 +183,7 @@ namespace mirrage::asset {
 				                                + " != " + std::to_string(static_cast<int>(real_type)));
 
 			return image.transfer_task().then([this, data{std::move(data)}]() mutable {
-				return std::make_shared<graphic::Texture<Type>>(
-				        _device, std::move(std::get<0>(data)), std::get<1>(data));
+				return graphic::Texture<Type>{_device, std::move(std::get<0>(data)), std::get<1>(data)};
 			});
 		}
 		void save(ostream, const graphic::Texture<Type>&) { MIRRAGE_FAIL("Save of textures not supported!"); }

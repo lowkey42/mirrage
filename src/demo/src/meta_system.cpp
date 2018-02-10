@@ -12,7 +12,7 @@ namespace mirrage {
 	Meta_system::Meta_system(Game_engine& engine)
 	  : _entities(engine.assets(), this)
 	  , _renderer(engine.renderer_factory().create_renderer(_entities, *this))
-	  , _model_loading(std::make_unique<renderer::Loading_system>(_entities, _renderer->model_loader()))
+	  , _model_loading(std::make_unique<renderer::Loading_system>(_entities, engine.assets()))
 	  , _nims(std::make_unique<systems::Nim_system>(_entities)) {
 		_entities.register_component_type<ecs::components::Transform_comp>();
 	}

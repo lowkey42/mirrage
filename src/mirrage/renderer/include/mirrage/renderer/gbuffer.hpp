@@ -28,7 +28,7 @@ namespace mirrage::renderer {
 		util::maybe<graphic::Texture_2D&> ambient_occlusion;
 
 		vk::UniqueDescriptorSetLayout shadowmaps_layout;
-		vk::UniqueDescriptorSet       shadowmaps;
+		graphic::DescriptorSet        shadowmaps;
 
 		util::maybe<graphic::Texture_2D_array&> voxels;
 

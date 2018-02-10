@@ -19,21 +19,14 @@ namespace mirrage::renderer {
 	  : _factory(&factory)
 	  , _entity_manager(&ecs)
 	  , _meta_system(userdata)
-	  , _descriptor_set_pool(
-	            device().create_descriptor_pool(512,
-	                                            {{vk::DescriptorType::eUniformBuffer, 64},
-	                                             {vk::DescriptorType::eCombinedImageSampler, 512},
-	                                             {vk::DescriptorType::eInputAttachment, 256},
-	                                             {vk::DescriptorType::eSampledImage, 512},
-	                                             {vk::DescriptorType::eSampler, 128}}))
-	  , _gbuffer(std::make_unique<GBuffer>(
-	            device(), factory._window.width(), factory._window.height()))
+	  , _descriptor_set_pool(device().create_descriptor_pool(512,
+	                                                         {vk::DescriptorType::eUniformBuffer,
+	                                                          vk::DescriptorType::eCombinedImageSampler,
+	                                                          vk::DescriptorType::eInputAttachment,
+	                                                          vk::DescriptorType::eSampledImage,
+	                                                          vk::DescriptorType::eSampler}))
+	  , _gbuffer(std::make_unique<GBuffer>(device(), factory._window.width(), factory._window.height()))
 	  , _profiler(device(), 64)
-
-	  , _texture_cache(std::make_unique<graphic::Texture_cache>(
-	            device(), device().get_queue_family("draw"_strid)))
-	  , _model_loader(std::make_unique<Model_loader>(
-	            device(), device().get_queue_family("draw"_strid), *_texture_cache, 64))
 
 	  , _global_uniform_descriptor_set_layout(
 	            device().create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
@@ -43,26 +36,22 @@ namespace mirrage::renderer {
 	                    vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment}))
 	  , _global_uniform_descriptor_set(
 	            _descriptor_set_pool.create_descriptor(*_global_uniform_descriptor_set_layout))
-	  , _global_uniform_buffer(device().transfer().create_dynamic_buffer(
-	            sizeof(Global_uniforms),
-	            vk::BufferUsageFlagBits::eUniformBuffer,
-	            vk::PipelineStageFlagBits::eVertexShader,
-	            vk::AccessFlagBits::eUniformRead,
-	            vk::PipelineStageFlagBits::eFragmentShader,
-	            vk::AccessFlagBits::eUniformRead))
-	  , _blue_noise(texture_cache().load("tex:blue_noise"_aid))
+	  , _global_uniform_buffer(
+	            device().transfer().create_dynamic_buffer(sizeof(Global_uniforms),
+	                                                      vk::BufferUsageFlagBits::eUniformBuffer,
+	                                                      vk::PipelineStageFlagBits::eVertexShader,
+	                                                      vk::AccessFlagBits::eUniformRead,
+	                                                      vk::PipelineStageFlagBits::eFragmentShader,
+	                                                      vk::AccessFlagBits::eUniformRead))
+	  , _blue_noise(asset_manager().load<graphic::Texture_2D>("tex:blue_noise"_aid))
 	  , _noise_sampler(device().create_sampler(1,
 	                                           vk::SamplerAddressMode::eRepeat,
 	                                           vk::BorderColor::eIntOpaqueBlack,
 	                                           vk::Filter::eNearest,
 	                                           vk::SamplerMipmapMode::eNearest))
-	  , _noise_descriptor_set_layout(
-	            device(), *_noise_sampler, 1, vk::ShaderStageFlagBits::eFragment)
-	  , _noise_descriptor_set(
-	            _noise_descriptor_set_layout.create_set(descriptor_pool(), {_blue_noise->view()}))
+	  , _noise_descriptor_set_layout(device(), *_noise_sampler, 1, vk::ShaderStageFlagBits::eFragment)
 	  , _passes(util::map(passes, [&, write_first_pp_buffer = true](auto& factory) mutable {
-		  return util::trackable<Pass>(
-		          factory->create_pass(*this, ecs, userdata, write_first_pp_buffer));
+		  return util::trackable<Pass>(factory->create_pass(*this, ecs, userdata, write_first_pp_buffer));
 	  }))
 	  , _cameras(&ecs.list<Camera_comp>()) {
 
@@ -89,8 +78,7 @@ namespace mirrage::renderer {
 		_gbuffer.reset();
 
 		// recreate gbuffer and renderpasses
-		_gbuffer = std::make_unique<GBuffer>(
-		        device(), _factory->_window.width(), _factory->_window.height());
+		_gbuffer = std::make_unique<GBuffer>(device(), _factory->_window.width(), _factory->_window.height());
 
 		auto write_first_pp_buffer = true;
 		for(auto i = std::size_t(0); i < _passes.size(); i++) {
@@ -104,8 +92,8 @@ namespace mirrage::renderer {
 	}
 
 	void Deferred_renderer::_write_global_uniform_descriptor_set() {
-		auto buffer_info = vk::DescriptorBufferInfo(
-		        _global_uniform_buffer.buffer(), 0, sizeof(Global_uniforms));
+		auto buffer_info =
+		        vk::DescriptorBufferInfo(_global_uniform_buffer.buffer(), 0, sizeof(Global_uniforms));
 
 		auto desc_writes = std::array<vk::WriteDescriptorSet, 1>();
 		desc_writes[0]   = vk::WriteDescriptorSet{*_global_uniform_descriptor_set,
@@ -116,8 +104,7 @@ namespace mirrage::renderer {
                                                 nullptr,
                                                 &buffer_info};
 
-		device().vk_device()->updateDescriptorSets(
-		        desc_writes.size(), desc_writes.data(), 0, nullptr);
+		device().vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
 
 	void Deferred_renderer::update(util::Time dt) {
@@ -130,12 +117,23 @@ namespace mirrage::renderer {
 		}
 	}
 	void Deferred_renderer::draw() {
+		if(!_noise_descriptor_set) {
+			if(_blue_noise.ready()) {
+				MIRRAGE_DEBUG("Noise texture loaded");
+				_noise_descriptor_set =
+				        _noise_descriptor_set_layout.create_set(descriptor_pool(), {_blue_noise->view()});
+
+			} else {
+				// texture not loaded, skip frame
+				return;
+			}
+		}
+
 		if(active_camera().is_nothing())
 			return;
 
 		auto main_command_buffer = _factory->queue_temporary_command_buffer();
-		main_command_buffer.begin(
-		        vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+		main_command_buffer.begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 		_profiler.start(main_command_buffer);
 		ON_EXIT {
 			_profiler.end();
@@ -168,14 +166,11 @@ namespace mirrage::renderer {
 			pass->shrink_to_fit();
 		}
 
-		_model_loader->shrink_to_fit();
-		_texture_cache->shrink_to_fit();
 		device().shrink_to_fit();
 		device().print_memory_usage(std::cout);
 	}
 
-	void Deferred_renderer::_update_global_uniforms(vk::CommandBuffer   cb,
-	                                                const Camera_state& camera) {
+	void Deferred_renderer::_update_global_uniforms(vk::CommandBuffer cb, const Camera_state& camera) {
 		_global_uniforms.eye_pos       = glm::vec4(camera.eye_position, 1.f);
 		_global_uniforms.view_proj_mat = camera.view_projection;
 		_global_uniforms.view_mat      = camera.view;
@@ -186,13 +181,11 @@ namespace mirrage::renderer {
 		_global_uniforms.proj_planes.y = camera.far_plane;
 		_global_uniforms.proj_planes.z = camera.fov_horizontal;
 		_global_uniforms.proj_planes.w = camera.fov_vertical;
-		_global_uniforms.time =
-		        glm::vec4(_time_acc, glm::sin(_time_acc), _delta_time, _frame_counter);
-		_global_uniforms.proj_info =
-		        glm::vec4(-2.f / camera.projection[0][0],
-		                  -2.f / camera.projection[1][1],
-		                  (1.f - camera.projection[0][2]) / camera.projection[0][0],
-		                  (1.f + camera.projection[1][2]) / camera.projection[1][1]);
+		_global_uniforms.time      = glm::vec4(_time_acc, glm::sin(_time_acc), _delta_time, _frame_counter);
+		_global_uniforms.proj_info = glm::vec4(-2.f / camera.projection[0][0],
+		                                       -2.f / camera.projection[1][1],
+		                                       (1.f - camera.projection[0][2]) / camera.projection[0][0],
+		                                       (1.f + camera.projection[1][2]) / camera.projection[1][1]);
 		_global_uniform_buffer.update_obj(cb, _global_uniforms);
 	}
 
@@ -201,7 +194,7 @@ namespace mirrage::renderer {
 			return _active_camera.get_or_throw();
 
 		auto max_prio = std::numeric_limits<float>::lowest();
-		auto active   = (Camera_comp*) nullptr;
+		auto active   = static_cast<Camera_comp*>(nullptr);
 
 		for(auto& camera : *_cameras) {
 			if(camera.priority() > max_prio) {
@@ -226,47 +219,68 @@ namespace mirrage::renderer {
 		}
 	}
 
-	auto Deferred_renderer::create_descriptor_set(vk::DescriptorSetLayout layout)
-	        -> vk::UniqueDescriptorSet {
+	auto Deferred_renderer::create_descriptor_set(vk::DescriptorSetLayout layout) -> graphic::DescriptorSet {
 		return _descriptor_set_pool.create_descriptor(layout);
 	}
 
 
-	Deferred_renderer_factory::Deferred_renderer_factory(
-	        graphic::Context&                          context,
-	        graphic::Window&                           window,
-	        std::vector<std::unique_ptr<Pass_factory>> passes)
-	  : _pass_factories(std::move(passes))
+	struct Deferred_renderer_factory::Asset_loaders {
+		asset::Asset_manager& assets;
+
+		Asset_loaders(asset::Asset_manager&   assets,
+		              graphic::Device&        device,
+		              vk::Sampler             material_sampler,
+		              vk::DescriptorSetLayout material_layout,
+		              std::uint32_t           draw_queue)
+		  : assets(assets) {
+
+			assets.create_stateful_loader<Material>(device, assets, material_sampler, material_layout);
+			assets.create_stateful_loader<Model>(device, assets, draw_queue);
+		}
+		~Asset_loaders() {
+			assets.remove_stateful_loader<Model>();
+			assets.remove_stateful_loader<Material>();
+		}
+	};
+
+	Deferred_renderer_factory::Deferred_renderer_factory(graphic::Context&                          context,
+	                                                     graphic::Window&                           window,
+	                                                     asset::Asset_manager&                      assets,
+	                                                     std::vector<std::unique_ptr<Pass_factory>> passes)
+	  : _assets(assets)
+	  , _pass_factories(std::move(passes))
 	  , _window(window)
-	  , _device(context.instantiate_device(
-	            FOE_SELF(_rank_device), FOE_SELF(_init_device), {&_window}, true))
+	  , _device(context.instantiate_device(FOE_SELF(_rank_device), FOE_SELF(_init_device), {&_window}, true))
 	  , _swapchain(_device->get_single_swapchain())
 	  , _queue_family(_device->get_queue_family("draw"_strid))
 	  , _queue(_device->get_queue("draw"_strid))
 	  , _image_acquired(_device->create_semaphore())
 	  , _image_presented(_device->create_semaphore())
-	  , _command_buffer_pool(_device->create_command_buffer_pool("draw"_strid, true, true)) {
+	  , _command_buffer_pool(_device->create_command_buffer_pool("draw"_strid, true, true))
+	  , _model_material_sampler(_device->create_sampler(12))
+	  , _model_desc_set_layout(create_material_descriptor_set_layout(*_device, *_model_material_sampler))
+	  , _asset_loaders(std::make_unique<Asset_loaders>(
+	            _assets, *_device, *_model_material_sampler, *_model_desc_set_layout, _queue_family)) {
 
-		auto maybe_settings =
-		        context.asset_manager().load_maybe<Renderer_settings>("cfg:renderer"_aid);
+		auto maybe_settings = _assets.load_maybe<Renderer_settings>("cfg:renderer"_aid);
 		if(maybe_settings.is_nothing()) {
-			_settings = std::make_shared<Renderer_settings>();
+			_settings = asset::make_ready_asset("cfg:renderer"_aid, Renderer_settings{});
 			save_settings();
 
 		} else {
 			_settings = maybe_settings.get_or_throw();
 		}
 	}
+	Deferred_renderer_factory::~Deferred_renderer_factory() = default;
 
 	void Deferred_renderer_factory::settings(const Renderer_settings& s, bool apply) {
-		_settings = std::make_shared<Renderer_settings>(s);
+		_settings = asset::make_ready_asset("cfg:renderer"_aid, s);
 
 		_recreation_pending |= apply;
 	}
 	void Deferred_renderer_factory::save_settings() {
-		auto& assets = _device->context().asset_manager();
-		assets.save<Renderer_settings>("cfg:renderer"_aid, *_settings);
-		_settings = assets.load<Renderer_settings>("cfg:renderer"_aid);
+		_assets.save<Renderer_settings>("cfg:renderer"_aid, *_settings);
+		_settings = _assets.load<Renderer_settings>("cfg:renderer"_aid);
 	}
 
 	auto Deferred_renderer_factory::create_renderer(ecs::Entity_manager&      ecs,
@@ -288,8 +302,23 @@ namespace mirrage::renderer {
 		_device->wait_idle();
 	}
 	void Deferred_renderer_factory::_present() {
-		if(_aquired_swapchain_image.is_nothing())
-			return; // nothing drawn, nothing to do
+		if(_aquired_swapchain_image.is_nothing()) {
+			auto& image = _swapchain.get_images().at(_aquire_next_image());
+			auto  cb    = queue_temporary_command_buffer();
+			cb.begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+			ON_EXIT { cb.end(); };
+
+			graphic::clear_texture(cb,
+			                       image,
+			                       _swapchain.image_width(),
+			                       _swapchain.image_height(),
+			                       util::Rgba{0, 0, 0, 0},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::ePresentSrcKHR,
+			                       0,
+			                       1);
+			//return; // nothing drawn, nothing to do
+		}
 
 
 		auto transfer_barriers =
@@ -331,8 +360,8 @@ namespace mirrage::renderer {
 		_aquired_swapchain_image = util::nothing;
 	}
 
-	auto Deferred_renderer_factory::_rank_device(vk::PhysicalDevice         gpu,
-	                                             util::maybe<std::uint32_t> gqueue) -> int {
+	auto Deferred_renderer_factory::_rank_device(vk::PhysicalDevice gpu, util::maybe<std::uint32_t> gqueue)
+	        -> int {
 		auto properties = gpu.getProperties();
 		auto features   = gpu.getFeatures();
 
@@ -359,8 +388,7 @@ namespace mirrage::renderer {
 		return score;
 	}
 
-	auto Deferred_renderer_factory::_init_device(vk::PhysicalDevice         gpu,
-	                                             util::maybe<std::uint32_t> gqueue)
+	auto Deferred_renderer_factory::_init_device(vk::PhysicalDevice gpu, util::maybe<std::uint32_t> gqueue)
 	        -> graphic::Device_create_info {
 		auto ret_val = Device_create_info{};
 
@@ -392,8 +420,7 @@ namespace mirrage::renderer {
 		_queued_commands.emplace_back(cmd);
 	}
 	auto Deferred_renderer_factory::queue_temporary_command_buffer() -> vk::CommandBuffer {
-		auto cb =
-		        *_device->destroy_after_frame(std::move(_command_buffer_pool.create_primary()[0]));
+		auto cb = *_device->destroy_after_frame(std::move(_command_buffer_pool.create_primary()[0]));
 		queue_commands(cb);
 
 		return cb;

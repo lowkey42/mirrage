@@ -137,11 +137,9 @@ namespace mirrage::graphic {
 		                              true,
 		                              Memory_lifetime::temporary);
 
-		const vk::Device* dev = _device.vk_device();
-
 		// fill buffer
-		auto ptr = static_cast<char*>(
-		        dev->mapMemory(staging_buffer.memory().memory(), staging_buffer.memory().offset(), size));
+		auto ptr = staging_buffer.memory().mapped_addr().get_or_throw("Staging GPU memory is not mapped!");
+		auto begin_ptr = ptr;
 
 		write_data(ptr);
 
@@ -151,15 +149,15 @@ namespace mirrage::graphic {
 		for(auto i : util::range(stored_mip_levels)) {
 			(void) i;
 
-			auto size = *reinterpret_cast<std::uint32_t*>(ptr);
-			size += 3 - ((size + 3) % 4); // mipPadding
-			ptr += sizeof(std::uint32_t); // imageSize
-			ptr += size;                  // data
+			MIRRAGE_INVARIANT(ptr - begin_ptr < size, "buffer overflow");
 
-			mip_image_sizes.emplace_back(size);
+			auto mip_size = *reinterpret_cast<std::uint32_t*>(ptr);
+			mip_size += 3 - ((mip_size + 3) % 4); // mipPadding
+			ptr += sizeof(std::uint32_t);         // imageSize
+			ptr += mip_size;                      // data
+
+			mip_image_sizes.emplace_back(mip_size);
 		}
-
-		dev->unmapMemory(staging_buffer.memory().memory());
 
 		auto real_dimensions = Image_dimensions{std::max(1u, dimensions.width),
 		                                        std::max(1u, dimensions.height),
@@ -243,15 +241,10 @@ namespace mirrage::graphic {
 
 		auto staging_buffer = _device.create_buffer(vk::BufferCreateInfo({}, size, usage), true, lifetime);
 
-		const vk::Device* dev = _device.vk_device();
-
 		// fill buffer
-		auto ptr = static_cast<char*>(
-		        dev->mapMemory(staging_buffer.memory().memory(), staging_buffer.memory().offset(), size));
+		auto ptr = staging_buffer.memory().mapped_addr().get_or_throw("Staging GPU memory is not mapped!");
 
 		write_data(ptr);
-
-		dev->unmapMemory(staging_buffer.memory().memory());
 
 		return staging_buffer;
 	}

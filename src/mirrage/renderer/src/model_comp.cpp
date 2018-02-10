@@ -12,12 +12,10 @@
 
 namespace mirrage::renderer {
 
-	void load_component(ecs::Deserializer& state, Model_comp& comp) {
-		MIRRAGE_FAIL("Shouldn't be called directly");
-	}
+	void load_component(ecs::Deserializer&, Model_comp&) { MIRRAGE_FAIL("Shouldn't be called directly"); }
 
 	void save_component(ecs::Serializer& state, const Model_comp& comp) {
-		state.write_virtual(sf2::vmember("aid", comp._model_aid.str()));
+		state.write_virtual(sf2::vmember("aid", comp.model_aid().str()));
 	}
 
 
@@ -45,6 +43,6 @@ namespace mirrage::renderer {
 	}
 
 	void save_component(ecs::Serializer& state, const Model_loading_comp& comp) {
-		state.write_virtual(sf2::vmember("aid", comp._model_aid.str()));
+		state.write_virtual(sf2::vmember("aid", comp.model_aid().str()));
 	}
 } // namespace mirrage::renderer

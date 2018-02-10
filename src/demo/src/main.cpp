@@ -55,7 +55,7 @@ int main(int argc, char** argv, char** env) {
 }
 
 namespace {
-	constexpr auto app_name = "BachelorProject";
+	constexpr auto app_name = "Mirrage";
 	int            argc;
 	char**         argv;
 	char**         env;

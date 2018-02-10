@@ -16,8 +16,7 @@ namespace mirrage::graphic {
 
 			auto buffer = device.create_buffer(create_info, true, Memory_lifetime::normal, true);
 			auto mapped_memory =
-			        static_cast<char*>(device.vk_device()->mapMemory(buffer.memory().memory(), 0, capacity))
-			        + buffer.memory().offset();
+			        buffer.memory().mapped_addr().get_or_throw("Streamed_buffer GPU memory is not mapped!");
 			_buffers.emplace_back(std::move(buffer), mapped_memory);
 		}
 	}

@@ -65,8 +65,7 @@ namespace mirrage::renderer {
 
 
 			auto model_pipeline = pipeline;
-			model_pipeline.add_descriptor_set_layout(
-			        renderer.model_loader().material_descriptor_set_layout());
+			model_pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 			model_pipeline.vertex<Model_vertex>(0,
 			                                    false,
 			                                    0,

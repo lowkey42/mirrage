@@ -30,22 +30,17 @@ namespace mirrage::asset {
 			return static_cast<unsigned char>(*gptr());
 		}
 
-		pos_type seekoff(std::streamoff          pos,
-		                 std::ios_base::seekdir  dir,
-		                 std::ios_base::openmode mode) {
+		pos_type seekoff(std::streamoff pos, std::ios_base::seekdir dir, std::ios_base::openmode mode) {
 			switch(dir) {
 				case std::ios_base::beg: PHYSFS_seek(file, static_cast<std::uint64_t>(pos)); break;
 				case std::ios_base::cur:
 					// subtract characters currently in buffer from seek position
 					PHYSFS_seek(file,
-					            static_cast<PHYSFS_uint64>((PHYSFS_tell(file) + pos)
-					                                       - (egptr() - gptr())));
+					            static_cast<PHYSFS_uint64>((PHYSFS_tell(file) + pos) - (egptr() - gptr())));
 					break;
 				//case std::_S_ios_seekdir_end:
 				case std::ios_base::end:
-				default:
-					PHYSFS_seek(file, static_cast<PHYSFS_uint64>(PHYSFS_fileLength(file) + pos));
-					break;
+				default: PHYSFS_seek(file, static_cast<PHYSFS_uint64>(PHYSFS_fileLength(file) + pos)); break;
 			}
 			if(mode & std::ios_base::in) {
 				setg(egptr(), egptr(), egptr());
@@ -72,8 +67,7 @@ namespace mirrage::asset {
 				return 0; // no-op
 			}
 
-			auto res =
-			        PHYSFS_writeBytes(file, pbase(), static_cast<PHYSFS_uint32>(pptr() - pbase()));
+			auto res = PHYSFS_writeBytes(file, pbase(), static_cast<PHYSFS_uint32>(pptr() - pbase()));
 			if(res < 1) {
 				return traits_type::eof();
 			}
@@ -84,8 +78,7 @@ namespace mirrage::asset {
 				}
 			}
 			setp(buffer.data(),
-			     static_cast<size_t>(res) == bufferSize ? buffer.data() + bufferSize
-			                                            : buffer.data() + res);
+			     static_cast<size_t>(res) == bufferSize ? buffer.data() + bufferSize : buffer.data() + res);
 
 			return 0;
 		}
@@ -112,10 +105,11 @@ namespace mirrage::asset {
 
 	stream::stream(AID aid, Asset_manager& manager, File_handle* file, const std::string& path)
 	  : _file(file), _aid(aid), _manager(manager), _fbuf(std::make_unique<fbuf>(file)) {
-		auto errc = PHYSFS_getLastErrorCode();
-		if(errc != PHYSFS_ERR_OK)
-			throw std::system_error(static_cast<Asset_error>(errc),
+
+		if(file == nullptr) {
+			throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 			                        "Error opening file \"" + path + "\"");
+		}
 	}
 
 	stream::stream(stream&& o)
