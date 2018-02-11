@@ -132,7 +132,6 @@ namespace mirrage::graphic {
 	};
 
 	// TODO: actual management of DescriptorSet-Objects
-	// TODO: ERROR [debugCallback:188@context.cpp][VK | ObjectTracker] Unable to remove DescriptorSet obj 0x19a. Was it created? Has it already been destroyed?
 	class Descriptor_pool {
 	  public:
 		auto create_descriptor(vk::DescriptorSetLayout) -> DescriptorSet;
