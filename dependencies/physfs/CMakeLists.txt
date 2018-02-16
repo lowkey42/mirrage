@@ -1,371 +1,301 @@
 # PhysicsFS; a portable, flexible file i/o abstraction.
-# Copyright (C) 2007  Ryan C. Gordon.
 #
 # Please see the file LICENSE.txt in the source's root directory.
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.4)
+# The CMake project file is meant to get this compiling on all sorts of
+#  platforms quickly, and serve as the way Unix platforms and Linux distros
+#  package up official builds, but you don't _need_ to use this; we have
+#  built PhysicsFS to (hopefully) be able to drop into your project and
+#  compile, using preprocessor checks for platform-specific bits instead of
+#  testing in here.
 
-PROJECT(PhysicsFS)
-SET(PHYSFS_VERSION 2.0.3)
+cmake_minimum_required(VERSION 2.8.4)
+
+project(PhysicsFS)
+set(PHYSFS_VERSION 3.0.0)
 
 # Increment this if/when we break backwards compatibility.
-SET(PHYSFS_SOVERSION 1)
+set(PHYSFS_SOVERSION 1)
 
 # I hate that they define "WIN32" ... we're about to move to Win64...I hope!
-IF(WIN32 AND NOT WINDOWS)
-    SET(WINDOWS TRUE)
-ENDIF(WIN32 AND NOT WINDOWS)
+if(WIN32 AND NOT WINDOWS)
+    set(WINDOWS TRUE)
+endif()
 
-# Bleh, let's do it for "APPLE" too.
-IF(APPLE AND NOT MACOSX)
-    SET(MACOSX TRUE)
-ENDIF(APPLE AND NOT MACOSX)
+include_directories(./src)
 
-# For now, Haiku and BeOS are the same, as far as the build system cares.
-IF(HAIKU AND NOT BEOS)
-    SET(BEOS TRUE)
-ENDIF(HAIKU AND NOT BEOS)
+if(APPLE)
+    set(OTHER_LDFLAGS ${OTHER_LDFLAGS} "-framework IOKit -framework Foundation")
+    set(PHYSFS_M_SRCS src/physfs_platform_apple.m)
+endif()
 
-INCLUDE(CheckIncludeFile)
-INCLUDE(CheckLibraryExists)
-INCLUDE(CheckCSourceCompiles)
+if(CMAKE_COMPILER_IS_GNUCC)
+    # Don't use -rpath.
+    set(CMAKE_SKIP_RPATH ON CACHE BOOL "Skip RPATH" FORCE)
+endif()
 
-INCLUDE_DIRECTORIES(.)
-#INCLUDE_DIRECTORIES(platform)
-#INCLUDE_DIRECTORIES(archivers)
+if(CMAKE_C_COMPILER_ID STREQUAL "SunPro")
+    add_definitions(-erroff=E_EMPTY_TRANSLATION_UNIT)
+    add_definitions(-xldscope=hidden)
+endif()
 
-IF(MACOSX)
-    # Fallback to older OS X on PowerPC to support wider range of systems...
-    IF(CMAKE_OSX_ARCHITECTURES MATCHES ppc)
-        ADD_DEFINITIONS(-DMAC_OS_X_VERSION_MIN_REQUIRED=1020)
-        SET(OTHER_LDFLAGS ${OTHER_LDFLAGS} " -mmacosx-version-min=10.2")
-    ENDIF(CMAKE_OSX_ARCHITECTURES MATCHES ppc)
-
-    # Need these everywhere...
-    ADD_DEFINITIONS(-fno-common)
-    SET(OTHER_LDFLAGS ${OTHER_LDFLAGS} " -framework Carbon -framework IOKit")
-ENDIF(MACOSX)
-
-# Add some gcc-specific command lines.
-IF(CMAKE_COMPILER_IS_GNUCC)
-    # Always build with debug symbols...you can strip it later.
-    ADD_DEFINITIONS(-g -pipe -fsigned-char)
-
-    # Stupid BeOS generates warnings in the system headers.
-    IF(NOT BEOS)
-        ADD_DEFINITIONS(-Wall)
-    ENDIF(NOT BEOS)
-
-    CHECK_C_SOURCE_COMPILES("
-        #if ((defined(__GNUC__)) && (__GNUC__ >= 4))
-        int main(int argc, char **argv) { int is_gcc4 = 1; return 0; }
-        #else
-        #error This is not gcc4.
-        #endif
-    " PHYSFS_IS_GCC4)
-
-    IF(PHYSFS_IS_GCC4)
-        # Not supported on several operating systems at this time.
-        IF(NOT OS2 AND NOT SOLARIS AND NOT WINDOWS)
-             ADD_DEFINITIONS(-fvisibility=hidden)
-        ENDIF(NOT OS2 AND NOT SOLARIS AND NOT WINDOWS)
-    ENDIF(PHYSFS_IS_GCC4)
-ENDIF(CMAKE_COMPILER_IS_GNUCC)
-
-IF(MSVC)
-    # VS.NET 8.0 got really really anal about strcpy, etc, which even if we
-    #  cleaned up our code, zlib, etc still use...so disable the warning.
-    ADD_DEFINITIONS(-D_CRT_SECURE_NO_WARNINGS=1)
-ENDIF(MSVC)
-
-# Basic chunks of source code ...
-
-SET(ZLIB_SRCS
-    zlib123/adler32.c
-    zlib123/compress.c
-    zlib123/crc32.c
-    zlib123/deflate.c
-    zlib123/gzio.c
-    zlib123/infback.c
-    zlib123/inffast.c
-    zlib123/inflate.c
-    zlib123/inftrees.c
-    zlib123/trees.c
-    zlib123/uncompr.c
-    zlib123/zutil.c
-)
-
-SET(LZMA_SRCS
-    lzma/C/7zCrc.c
-    lzma/C/Archive/7z/7zBuffer.c
-    lzma/C/Archive/7z/7zDecode.c
-    lzma/C/Archive/7z/7zExtract.c
-    lzma/C/Archive/7z/7zHeader.c
-    lzma/C/Archive/7z/7zIn.c
-    lzma/C/Archive/7z/7zItem.c
-    lzma/C/Archive/7z/7zMethodID.c
-    lzma/C/Compress/Branch/BranchX86.c
-    lzma/C/Compress/Branch/BranchX86_2.c
-    lzma/C/Compress/Lzma/LzmaDecode.c
-)
-
-IF(BEOS)
+if(HAIKU)
     # We add this explicitly, since we don't want CMake to think this
-    #  is a C++ project unless we're on BeOS.
-    SET(PHYSFS_BEOS_SRCS platform/beos.cpp)
-    FIND_LIBRARY(BE_LIBRARY be)
-    FIND_LIBRARY(ROOT_LIBRARY root)
-    SET(OPTIONAL_LIBRARY_LIBS ${OPTIONAL_LIBRARY_LIBS} ${BE_LIBRARY} ${ROOT_LIBRARY})
-ENDIF(BEOS)
+    #  is a C++ project unless we're on Haiku.
+    set(PHYSFS_CPP_SRCS src/physfs_platform_haiku.cpp)
+    find_library(BE_LIBRARY be)
+    find_library(ROOT_LIBRARY root)
+    set(OPTIONAL_LIBRARY_LIBS ${OPTIONAL_LIBRARY_LIBS} ${BE_LIBRARY} ${ROOT_LIBRARY})
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "WindowsPhone" OR CMAKE_SYSTEM_NAME STREQUAL "WindowsStore")
+    set(WINRT TRUE)
+endif()
+
+if(WINRT)
+    set(PHYSFS_CPP_SRCS src/physfs_platform_winrt.cpp)
+endif()
+
+if(UNIX AND NOT WINDOWS AND NOT APPLE)  # (MingW and such might be UNIX _and_ WINDOWS!)
+    find_library(PTHREAD_LIBRARY pthread)
+    if(PTHREAD_LIBRARY)
+        set(OPTIONAL_LIBRARY_LIBS ${OPTIONAL_LIBRARY_LIBS} ${PTHREAD_LIBRARY})
+    endif()
+endif()
 
 # Almost everything is "compiled" here, but things that don't apply to the
 #  build are #ifdef'd out. This is to make it easy to embed PhysicsFS into
 #  another project or bring up a new build system: just compile all the source
 #  code and #define the things you want.
-SET(PHYSFS_SRCS
-    physfs.c
-    physfs_byteorder.c
-    physfs_unicode.c
-    platform/os2.c
-    platform/pocketpc.c
-    platform/posix.c
-    platform/unix.c
-    platform/macosx.c
-    platform/windows.c
-    archivers/dir.c
-    archivers/grp.c
-    archivers/hog.c
-    archivers/lzma.c
-    archivers/mvl.c
-    archivers/qpak.c
-    archivers/wad.c
-    archivers/zip.c
-    ${PHYSFS_BEOS_SRCS}
+set(PHYSFS_SRCS
+    src/physfs.c
+    src/physfs_byteorder.c
+    src/physfs_unicode.c
+    src/physfs_platform_posix.c
+    src/physfs_platform_unix.c
+    src/physfs_platform_windows.c
+    src/physfs_platform_os2.c
+    src/physfs_platform_qnx.c
+    src/physfs_archiver_dir.c
+    src/physfs_archiver_unpacked.c
+    src/physfs_archiver_grp.c
+    src/physfs_archiver_hog.c
+    src/physfs_archiver_7z.c
+    src/physfs_archiver_mvl.c
+    src/physfs_archiver_qpak.c
+    src/physfs_archiver_wad.c
+    src/physfs_archiver_zip.c
+    src/physfs_archiver_slb.c
+    src/physfs_archiver_iso9660.c
+    src/physfs_archiver_vdf.c
+    ${PHYSFS_CPP_SRCS}
+    ${PHYSFS_M_SRCS}
 )
-
-
-# platform layers ...
-
-IF(UNIX)
-    IF(BEOS)
-        SET(PHYSFS_HAVE_CDROM_SUPPORT TRUE)
-        SET(PHYSFS_HAVE_THREAD_SUPPORT TRUE)
-        SET(HAVE_PTHREAD_H TRUE)
-    ELSE(BEOS)
-        # !!! FIXME
-        #  AC_DEFINE([PHYSFS_HAVE_LLSEEK], 1, [define if we have llseek])
-        CHECK_INCLUDE_FILE(sys/ucred.h HAVE_UCRED_H)
-        IF(HAVE_UCRED_H)
-            ADD_DEFINITIONS(-DPHYSFS_HAVE_SYS_UCRED_H=1)
-            SET(PHYSFS_HAVE_CDROM_SUPPORT TRUE)
-        ENDIF(HAVE_UCRED_H)
-
-        CHECK_INCLUDE_FILE(mntent.h HAVE_MNTENT_H)
-        IF(HAVE_MNTENT_H)
-            ADD_DEFINITIONS(-DPHYSFS_HAVE_MNTENT_H=1)
-            SET(PHYSFS_HAVE_CDROM_SUPPORT TRUE)
-        ENDIF(HAVE_MNTENT_H)
-
-        CHECK_INCLUDE_FILE(pthread.h HAVE_PTHREAD_H)
-        IF(HAVE_PTHREAD_H)
-            SET(PHYSFS_HAVE_THREAD_SUPPORT TRUE)
-        ENDIF(HAVE_PTHREAD_H)
-    ENDIF(BEOS)
-ENDIF(UNIX)
-
-IF(WINDOWS)
-    SET(PHYSFS_HAVE_CDROM_SUPPORT TRUE)
-    SET(PHYSFS_HAVE_THREAD_SUPPORT TRUE)
-ENDIF(WINDOWS)
-
-IF(NOT PHYSFS_HAVE_CDROM_SUPPORT OR ANDROID)
-    ADD_DEFINITIONS(-DPHYSFS_NO_CDROM_SUPPORT=1)
-    MESSAGE(WARNING " ***")
-    MESSAGE(WARNING " *** There is no CD-ROM support in this build!")
-    MESSAGE(WARNING " *** PhysicsFS will just pretend there are no discs.")
-    MESSAGE(WARNING " *** This may be fine, depending on how PhysicsFS is used,")
-    MESSAGE(WARNING " ***   but is this what you REALLY wanted?")
-    MESSAGE(WARNING " *** (Maybe fix CMakeLists.txt, or write a platform driver?)")
-    MESSAGE(WARNING " ***")
-ENDIF(NOT PHYSFS_HAVE_CDROM_SUPPORT OR ANDROID)
-
-IF(PHYSFS_HAVE_THREAD_SUPPORT)
-    ADD_DEFINITIONS(-D_REENTRANT -D_THREAD_SAFE)
-ELSE(PHYSFS_HAVE_THREAD_SUPPORT)
-    ADD_DEFINITIONS(-DPHYSFS_NO_THREAD_SUPPORT=1)
-    MESSAGE(WARNING " ***")
-    MESSAGE(WARNING " *** There is no thread support in this build!")
-    MESSAGE(WARNING " *** PhysicsFS will NOT be reentrant!")
-    MESSAGE(WARNING " *** This may be fine, depending on how PhysicsFS is used,")
-    MESSAGE(WARNING " ***   but is this what you REALLY wanted?")
-    MESSAGE(WARNING " *** (Maybe fix CMakeLists.txt, or write a platform driver?)")
-    MESSAGE(WARNING " ***")
-ENDIF(PHYSFS_HAVE_THREAD_SUPPORT)
-
-CHECK_INCLUDE_FILE(assert.h HAVE_ASSERT_H)
-IF(HAVE_ASSERT_H)
-    ADD_DEFINITIONS(-DHAVE_ASSERT_H=1)
-ENDIF(HAVE_ASSERT_H)
-
 
 
 # Archivers ...
+# These are (mostly) on by default now, so these options are only useful for
+#  disabling them.
 
-OPTION(PHYSFS_ARCHIVE_ZIP "Enable ZIP support" TRUE)
-IF(PHYSFS_ARCHIVE_ZIP)
-    ADD_DEFINITIONS(-DPHYSFS_SUPPORTS_ZIP=1)
-    SET(PHYSFS_NEED_ZLIB TRUE)
-ENDIF(PHYSFS_ARCHIVE_ZIP)
+option(PHYSFS_ARCHIVE_ZIP "Enable ZIP support" TRUE)
+if(NOT PHYSFS_ARCHIVE_ZIP)
+    add_definitions(-DPHYSFS_SUPPORTS_ZIP=0)
+endif()
 
-OPTION(PHYSFS_ARCHIVE_7Z "Enable 7zip support" TRUE)
-IF(PHYSFS_ARCHIVE_7Z)
-    ADD_DEFINITIONS(-DPHYSFS_SUPPORTS_7Z=1)
-    # !!! FIXME: rename to 7z.c?
-    SET(PHYSFS_SRCS ${PHYSFS_SRCS} ${LZMA_SRCS})
-ENDIF(PHYSFS_ARCHIVE_7Z)
+option(PHYSFS_ARCHIVE_7Z "Enable 7zip support" TRUE)
+if(NOT PHYSFS_ARCHIVE_7Z)
+    add_definitions(-DPHYSFS_SUPPORTS_7Z=0)
+endif()
 
-OPTION(PHYSFS_ARCHIVE_GRP "Enable Build Engine GRP support" TRUE)
-IF(PHYSFS_ARCHIVE_GRP)
-    ADD_DEFINITIONS(-DPHYSFS_SUPPORTS_GRP=1)
-ENDIF(PHYSFS_ARCHIVE_GRP)
+option(PHYSFS_ARCHIVE_GRP "Enable Build Engine GRP support" TRUE)
+if(NOT PHYSFS_ARCHIVE_GRP)
+    add_definitions(-DPHYSFS_SUPPORTS_GRP=0)
+endif()
 
-OPTION(PHYSFS_ARCHIVE_WAD "Enable Doom WAD support" TRUE)
-IF(PHYSFS_ARCHIVE_WAD)
-    ADD_DEFINITIONS(-DPHYSFS_SUPPORTS_WAD=1)
-ENDIF(PHYSFS_ARCHIVE_WAD)
+option(PHYSFS_ARCHIVE_WAD "Enable Doom WAD support" TRUE)
+if(NOT PHYSFS_ARCHIVE_WAD)
+    add_definitions(-DPHYSFS_SUPPORTS_WAD=0)
+endif()
 
-OPTION(PHYSFS_ARCHIVE_HOG "Enable Descent I/II HOG support" TRUE)
-IF(PHYSFS_ARCHIVE_HOG)
-    ADD_DEFINITIONS(-DPHYSFS_SUPPORTS_HOG=1)
-ENDIF(PHYSFS_ARCHIVE_HOG)
+option(PHYSFS_ARCHIVE_HOG "Enable Descent I/II HOG support" TRUE)
+if(NOT PHYSFS_ARCHIVE_HOG)
+    add_definitions(-DPHYSFS_SUPPORTS_HOG=0)
+endif()
 
-OPTION(PHYSFS_ARCHIVE_MVL "Enable Descent I/II MVL support" TRUE)
-IF(PHYSFS_ARCHIVE_MVL)
-    ADD_DEFINITIONS(-DPHYSFS_SUPPORTS_MVL=1)
-ENDIF(PHYSFS_ARCHIVE_MVL)
+option(PHYSFS_ARCHIVE_MVL "Enable Descent I/II MVL support" TRUE)
+if(NOT PHYSFS_ARCHIVE_MVL)
+    add_definitions(-DPHYSFS_SUPPORTS_MVL=0)
+endif()
 
-OPTION(PHYSFS_ARCHIVE_QPAK "Enable Quake I/II QPAK support" TRUE)
-IF(PHYSFS_ARCHIVE_QPAK)
-    ADD_DEFINITIONS(-DPHYSFS_SUPPORTS_QPAK=1)
-ENDIF(PHYSFS_ARCHIVE_QPAK)
+option(PHYSFS_ARCHIVE_QPAK "Enable Quake I/II QPAK support" TRUE)
+if(NOT PHYSFS_ARCHIVE_QPAK)
+    add_definitions(-DPHYSFS_SUPPORTS_QPAK=0)
+endif()
+
+option(PHYSFS_ARCHIVE_SLB "Enable I-War / Independence War SLB support" TRUE)
+if(NOT PHYSFS_ARCHIVE_SLB)
+    add_definitions(-DPHYSFS_SUPPORTS_SLB=0)
+endif()
+
+option(PHYSFS_ARCHIVE_ISO9660 "Enable ISO9660 support" TRUE)
+if(NOT PHYSFS_ARCHIVE_ISO9660)
+    add_definitions(-DPHYSFS_SUPPORTS_ISO9660=0)
+endif()
+
+option(PHYSFS_ARCHIVE_VDF "Enable Gothic I/II VDF archive support" TRUE)
+if(NOT PHYSFS_ARCHIVE_VDF)
+    add_definitions(-DPHYSFS_SUPPORTS_VDF=0)
+endif()
 
 
-# See if some archiver required zlib, and see about using system version.
-IF(PHYSFS_NEED_ZLIB)
-    FIND_PACKAGE(ZLIB)
+option(PHYSFS_BUILD_STATIC "Build static library" TRUE)
+if(PHYSFS_BUILD_STATIC)
+    add_library(physfs-static STATIC ${PHYSFS_SRCS})
+    # Don't rename this on Windows, since DLLs will also produce an import
+    #  library named "physfs.lib" which would conflict; Unix tend to like the
+    #  same library name with a different extension for static libs, but
+    #  Windows can just have a separate name.
+    if(NOT MSVC)
+        set_target_properties(physfs-static PROPERTIES OUTPUT_NAME "physfs")
+    endif()
+    if(WINRT)
+        # Ignore LNK4264 warnings; we don't author any WinRT components, just consume them, so we're okay in a static library.
+		set_target_properties(physfs-static PROPERTIES VS_WINRT_COMPONENT True)
+        set_target_properties(physfs-static PROPERTIES STATIC_LIBRARY_FLAGS "/ignore:4264")
+    endif()
 
-    IF(ZLIB_FOUND)
-        OPTION(PHYSFS_INTERNAL_ZLIB "Link own zlib instead of system library" FALSE)
-    ELSE(HAVE_SYSTEM_ZLIB)
-        SET(PHYSFS_INTERNAL_ZLIB TRUE)
-    ENDIF(ZLIB_FOUND)
+    set(PHYSFS_LIB_TARGET physfs-static)
+    set(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";physfs-static")
+    
+	target_include_directories(physfs-static INTERFACE
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+		$<INSTALL_INTERFACE:include>)
+endif()
 
-    IF(PHYSFS_INTERNAL_ZLIB)
-        INCLUDE_DIRECTORIES(zlib123)
-        ADD_DEFINITIONS(-DZ_PREFIX=1)
-        SET(PHYSFS_SRCS ${PHYSFS_SRCS} ${ZLIB_SRCS})
-    ELSE(PHYSFS_INTERNAL_ZLIB)
-        SET(OPTIONAL_LIBRARY_LIBS ${OPTIONAL_LIBRARY_LIBS} ${ZLIB_LIBRARY})
-        INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
-    ENDIF(PHYSFS_INTERNAL_ZLIB)
-ENDIF(PHYSFS_NEED_ZLIB)
+option(PHYSFS_BUILD_SHARED "Build shared library" TRUE)
+if(PHYSFS_BUILD_SHARED)
+    add_library(physfs SHARED ${PHYSFS_SRCS})
+    set_target_properties(physfs PROPERTIES MACOSX_RPATH 1)
+    set_target_properties(physfs PROPERTIES VERSION ${PHYSFS_VERSION})
+    set_target_properties(physfs PROPERTIES SOVERSION ${PHYSFS_SOVERSION})
+    if(WINRT)
+		set_target_properties(physfs PROPERTIES VS_WINRT_COMPONENT True)
+    endif()
+    target_link_libraries(physfs ${OPTIONAL_LIBRARY_LIBS} ${OTHER_LDFLAGS})
+    set(PHYSFS_LIB_TARGET physfs)
+    set(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";physfs")
+    
+	target_include_directories(physfs INTERFACE
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+		$<INSTALL_INTERFACE:include>)
+endif()
 
-OPTION(PHYSFS_BUILD_STATIC "Build static library" TRUE)
-IF(PHYSFS_BUILD_STATIC)
-    ADD_LIBRARY(physfs-static STATIC ${PHYSFS_SRCS})
-    SET_TARGET_PROPERTIES(physfs-static PROPERTIES OUTPUT_NAME "physfs")
-    SET(PHYSFS_LIB_TARGET physfs-static)
-    SET(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";physfs-static")
-ENDIF(PHYSFS_BUILD_STATIC)
-
-OPTION(PHYSFS_BUILD_SHARED "Build shared library" TRUE)
-IF(PHYSFS_BUILD_SHARED)
-    ADD_LIBRARY(physfs SHARED ${PHYSFS_SRCS})
-    SET_TARGET_PROPERTIES(physfs PROPERTIES VERSION ${PHYSFS_VERSION})
-    SET_TARGET_PROPERTIES(physfs PROPERTIES SOVERSION ${PHYSFS_SOVERSION})
-    TARGET_LINK_LIBRARIES(physfs ${OPTIONAL_LIBRARY_LIBS} ${OTHER_LDFLAGS})
-    SET(PHYSFS_LIB_TARGET physfs)
-    SET(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";physfs")
-ENDIF(PHYSFS_BUILD_SHARED)
-
-IF(NOT PHYSFS_BUILD_SHARED AND NOT PHYSFS_BUILD_STATIC)
-    MESSAGE(FATAL "Both shared and static libraries are disabled!")
-ENDIF(NOT PHYSFS_BUILD_SHARED AND NOT PHYSFS_BUILD_STATIC)
+if(NOT PHYSFS_BUILD_SHARED AND NOT PHYSFS_BUILD_STATIC)
+    message(FATAL "Both shared and static libraries are disabled!")
+endif()
 
 # CMake FAQ says I need this...
-IF(PHYSFS_BUILD_SHARED AND PHYSFS_BUILD_STATIC)
-    SET_TARGET_PROPERTIES(physfs PROPERTIES CLEAN_DIRECT_OUTPUT 1)
-    SET_TARGET_PROPERTIES(physfs-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
-ENDIF(PHYSFS_BUILD_SHARED AND PHYSFS_BUILD_STATIC)
+if(PHYSFS_BUILD_SHARED AND PHYSFS_BUILD_STATIC AND NOT WINDOWS)
+    set_target_properties(physfs PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+    set_target_properties(physfs-static PROPERTIES CLEAN_DIRECT_OUTPUT 1)
+endif()
 
-target_include_directories(physfs-static INTERFACE
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-	$<INSTALL_INTERFACE:include>
-)
-set_target_properties(physfs-static PROPERTIES PUBLIC_HEADER "physfs.h")
-INSTALL(TARGETS ${PHYSFS_INSTALL_TARGETS} EXPORT physfs-static
+option(PHYSFS_BUILD_TEST "Build stdio test program." TRUE)
+mark_as_advanced(PHYSFS_BUILD_TEST)
+if(PHYSFS_BUILD_TEST)
+    find_path(READLINE_H readline/readline.h)
+    find_path(HISTORY_H readline/history.h)
+    if(READLINE_H AND HISTORY_H)
+        find_library(CURSES_LIBRARY NAMES curses ncurses)
+        set(CMAKE_REQUIRED_LIBRARIES ${CURSES_LIBRARY})
+        find_library(READLINE_LIBRARY readline)
+        if(READLINE_LIBRARY)
+            set(HAVE_SYSTEM_READLINE TRUE)
+            set(TEST_PHYSFS_LIBS ${TEST_PHYSFS_LIBS} ${READLINE_LIBRARY} ${CURSES_LIBRARY})
+            include_directories(SYSTEM ${READLINE_H} ${HISTORY_H})
+            add_definitions(-DPHYSFS_HAVE_READLINE=1)
+        endif()
+    endif()
+    add_executable(test_physfs test/test_physfs.c)
+    target_link_libraries(test_physfs ${PHYSFS_LIB_TARGET} ${TEST_PHYSFS_LIBS} ${OTHER_LDFLAGS})
+    set(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";test_physfs")
+endif()
+
+install(TARGETS ${PHYSFS_INSTALL_TARGETS} EXPORT physfsTargets
         RUNTIME DESTINATION bin
         LIBRARY DESTINATION lib${LIB_SUFFIX}
         ARCHIVE DESTINATION lib${LIB_SUFFIX})
-INSTALL(FILES physfs.h DESTINATION include)
-INSTALL(EXPORT physfs-static
-	FILE physfs-static.cmake
+export(
+	EXPORT physfsTargets
+	FILE "${CMAKE_CURRENT_BINARY_DIR}/physfsTargets.cmake"
+)
+install(
+	EXPORT physfsTargets FILE physfsTargets.cmake
+	NAMESPACE physfs::
 	DESTINATION lib/cmake
 )
+install(FILES src/physfs.h DESTINATION include)
 
-FIND_PACKAGE(Doxygen)
-IF(DOXYGEN_FOUND)
-    SET(PHYSFS_OUTPUT_DOXYFILE "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile")
-    CONFIGURE_FILE(
-        "${CMAKE_CURRENT_SOURCE_DIR}/Doxyfile"
+find_package(Doxygen)
+if(DOXYGEN_FOUND)
+    set(PHYSFS_OUTPUT_DOXYFILE "${CMAKE_CURRENT_BINARY_DIR}/Doxyfile")
+    configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/docs/Doxyfile"
         "${PHYSFS_OUTPUT_DOXYFILE}"
         COPYONLY
     )
-    FILE(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "\n\n# Below auto-generated by cmake...\n\n")
-    FILE(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "PROJECT_NUMBER = ${PHYSFS_VERSION}\n")
-    FILE(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "OUTPUT_DIRECTORY = ${CMAKE_CURRENT_BINARY_DIR}/docs\n")
-    FILE(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "\n# End auto-generated section.\n\n")
+    file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "\n\n# Below auto-generated by cmake...\n\n")
+    file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "PROJECT_NUMBER = \"${PHYSFS_VERSION}\"\n")
+    file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "OUTPUT_DIRECTORY = \"${CMAKE_CURRENT_BINARY_DIR}/docs\"\n")
+    file(APPEND "${PHYSFS_OUTPUT_DOXYFILE}" "\n# End auto-generated section.\n\n")
 
-    ADD_CUSTOM_TARGET(
+    add_custom_target(
         docs
         ${DOXYGEN_EXECUTABLE} "${PHYSFS_OUTPUT_DOXYFILE}"
         WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
         COMMENT "Building documentation in 'docs' directory..."
     )
-ELSE(DOXYGEN_FOUND)
-    MESSAGE(STATUS "Doxygen not found. You won't be able to build documentation.")
-ENDIF(DOXYGEN_FOUND)
+else()
+    message(STATUS "Doxygen not found. You won't be able to build documentation.")
+endif()
 
-IF(UNIX)
-    SET(PHYSFS_TARBALL "${CMAKE_CURRENT_SOURCE_DIR}/../physfs-${PHYSFS_VERSION}.tar.bz2")
-    ADD_CUSTOM_TARGET(
-        dist
-        hg archive -t tbz2 "${PHYSFS_TARBALL}"
-        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-        COMMENT "Building source tarball '${PHYSFS_TARBALL}'..."
+if(NOT MSVC)
+    configure_file(
+        "extras/physfs.pc.in"
+        "extras/physfs.pc"
+        @ONLY
     )
-ENDIF(UNIX)
+    install(
+        FILES "${CMAKE_CURRENT_BINARY_DIR}/extras/physfs.pc"
+        DESTINATION "lib${LIB_SUFFIX}/pkgconfig"
+    )
+endif()
 
-MACRO(MESSAGE_BOOL_OPTION _NAME _VALUE)
-    IF(${_VALUE})
-        MESSAGE(STATUS "  ${_NAME}: enabled")
-    ELSE(${_VALUE})
-        MESSAGE(STATUS "  ${_NAME}: disabled")
-    ENDIF(${_VALUE})
-ENDMACRO(MESSAGE_BOOL_OPTION)
+macro(message_bool_option _NAME _VALUE)
+    if(${_VALUE})
+        message(STATUS "  ${_NAME}: enabled")
+    else()
+        message(STATUS "  ${_NAME}: disabled")
+    endif()
+endmacro()
 
-MESSAGE(STATUS "PhysicsFS will build with the following options:")
-MESSAGE_BOOL_OPTION("ZIP support" PHYSFS_ARCHIVE_ZIP)
-MESSAGE_BOOL_OPTION("7zip support" PHYSFS_ARCHIVE_7Z)
-MESSAGE_BOOL_OPTION("GRP support" PHYSFS_ARCHIVE_GRP)
-MESSAGE_BOOL_OPTION("WAD support" PHYSFS_ARCHIVE_WAD)
-MESSAGE_BOOL_OPTION("HOG support" PHYSFS_ARCHIVE_HOG)
-MESSAGE_BOOL_OPTION("MVL support" PHYSFS_ARCHIVE_MVL)
-MESSAGE_BOOL_OPTION("QPAK support" PHYSFS_ARCHIVE_QPAK)
-MESSAGE_BOOL_OPTION("CD-ROM drive support" PHYSFS_HAVE_CDROM_SUPPORT)
-MESSAGE_BOOL_OPTION("Thread safety" PHYSFS_HAVE_THREAD_SUPPORT)
-MESSAGE_BOOL_OPTION("Build own zlib" PHYSFS_INTERNAL_ZLIB)
-MESSAGE_BOOL_OPTION("Build static library" PHYSFS_BUILD_STATIC)
-MESSAGE_BOOL_OPTION("Build shared library" PHYSFS_BUILD_SHARED)
+message(STATUS "PhysicsFS will build with the following options:")
+message_bool_option("ZIP support" PHYSFS_ARCHIVE_ZIP)
+message_bool_option("7zip support" PHYSFS_ARCHIVE_7Z)
+message_bool_option("GRP support" PHYSFS_ARCHIVE_GRP)
+message_bool_option("WAD support" PHYSFS_ARCHIVE_WAD)
+message_bool_option("HOG support" PHYSFS_ARCHIVE_HOG)
+message_bool_option("MVL support" PHYSFS_ARCHIVE_MVL)
+message_bool_option("QPAK support" PHYSFS_ARCHIVE_QPAK)
+message_bool_option("SLB support" PHYSFS_ARCHIVE_SLB)
+message_bool_option("VDF support" PHYSFS_ARCHIVE_VDF)
+message_bool_option("ISO9660 support" PHYSFS_ARCHIVE_ISO9660)
+message_bool_option("Build static library" PHYSFS_BUILD_STATIC)
+message_bool_option("Build shared library" PHYSFS_BUILD_SHARED)
+message_bool_option("Build stdio test program" PHYSFS_BUILD_TEST)
+if(PHYSFS_BUILD_TEST)
+    message_bool_option("  Use readline in test program" HAVE_SYSTEM_READLINE)
+endif()
 
 # end of CMakeLists.txt ...
+

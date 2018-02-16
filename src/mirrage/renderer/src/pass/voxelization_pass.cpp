@@ -45,7 +45,7 @@ namespace mirrage::renderer {
 			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
-			pipeline.add_descriptor_set_layout(renderer.model_loader().material_descriptor_set_layout());
+			pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 			pipeline.vertex<Model_vertex>(0,
 			                              false,
 			                              0,

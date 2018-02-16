@@ -15,6 +15,9 @@ namespace mirrage {
 			std::string message(int e) const override {
 				switch(static_cast<Error_type>(e)) {
 					case Error_type::asset_not_found: return "Couldn't load a required asset";
+					case Error_type::asset_io_error: return "Couldn't access filesystem.";
+					case Error_type::asset_usage_error:
+						return "Asset manager or I/O-system was used incorrectly.";
 					case Error_type::network_invalid_host:
 						return "Tried to connect to an unknown or unreachable host";
 					case Error_type::network_usage_error:
@@ -48,9 +51,10 @@ namespace mirrage {
 
 			bool equivalent(const std::error_code& code, int condition) const noexcept override {
 				const auto is_user     = code == Error_type::network_invalid_host;
-				const auto is_hardware = false;
+				const auto is_hardware = code == Error_type::asset_io_error;
 				const auto is_bug      = code == Error_type::network_usage_error
-				                    || code == Error_type::asset_not_found;
+				                    || code == Error_type::asset_not_found
+				                    || code == Error_type::asset_usage_error;
 
 				switch(static_cast<Error_source>(condition)) {
 					case Error_source::user: return is_user;

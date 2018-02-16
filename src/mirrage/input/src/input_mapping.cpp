@@ -29,7 +29,14 @@ namespace mirrage::input {
 		struct Context_map {
 			Context_id                                       initial;
 			std::unordered_map<Context_id, Context>          contexts;
-			mutable std::unordered_map<Context_id, Context>* live_contexts;
+			mutable std::unordered_map<Context_id, Context>* live_contexts = nullptr;
+
+			Context_map() = default;
+			Context_map(Context_id initial, std::unordered_map<Context_id, Context> contexts)
+			  : initial(std::move(initial)), contexts(std::move(contexts)) {}
+
+			Context_map(Context_map&& rhs) noexcept
+			  : initial(std::move(rhs.initial)), contexts(std::move(rhs.contexts)) {}
 
 			Context_map& operator=(Context_map&& rhs) noexcept {
 				initial  = std::move(rhs.initial);
@@ -56,7 +63,7 @@ namespace mirrage::input {
 		                      const std::unordered_map<Context_id, Context>& map,
 		                      Context_id                                     def) {
 
-			assets.save(mapping_aid, Context_map{def, map, nullptr});
+			assets.save(mapping_aid, Context_map{def, map});
 		}
 
 		template <class Container>

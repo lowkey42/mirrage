@@ -67,7 +67,7 @@ namespace mirrage::renderer {
 
 			auto render_pass = builder.build();
 
-			for(auto& sc_image : renderer.swapchain().get_images()) {
+			for(auto& sc_image : renderer.swapchain().get_image_views()) {
 				out_framebuffers.emplace_back(builder.build_framebuffer({*sc_image, util::Rgba{}},
 				                                                        renderer.swapchain().image_width(),
 				                                                        renderer.swapchain().image_height()));
@@ -100,7 +100,7 @@ namespace mirrage::renderer {
 	                                               vk::SamplerMipmapMode::eNearest))
 	  , _descriptor_set_layout(create_descriptor_set_layout(drenderer.device(), *_sampler))
 	  , _render_pass(build_render_pass(drenderer, *_descriptor_set_layout, _framebuffers))
-	  , _descriptor_set(drenderer.create_descriptor_set(*_descriptor_set_layout))
+	  , _descriptor_set(drenderer.create_descriptor_set(*_descriptor_set_layout, 1))
 	  , _mesh_buffer(drenderer.device(),
 	                 max_render_buffer_size,
 	                 vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer) {}
@@ -141,7 +141,7 @@ namespace mirrage::renderer {
 	                                         vk::Sampler             sampler,
 	                                         Deferred_renderer&      renderer,
 	                                         vk::DescriptorSetLayout desc_layout)
-	  : descriptor_set(renderer.create_descriptor_set(desc_layout))
+	  : descriptor_set(renderer.create_descriptor_set(desc_layout, 1))
 	  , texture(std::move(texture))
 	  , handle{nk_image_id(handle)} {
 
@@ -161,14 +161,15 @@ namespace mirrage::renderer {
 		auto dimensions = graphic::Image_dimensions_t<graphic::Image_type::single_2d>{
 		        gsl::narrow<std::uint32_t>(width), gsl::narrow<std::uint32_t>(height)};
 
-		auto texture = std::make_shared<graphic::Texture_2D>(
-		        _renderer.device(),
-		        dimensions,
-		        false,
-		        gsl::narrow<std::uint32_t>(channels),
-		        true,
-		        gsl::span<const std::uint8_t>{data, width * height * channels},
-		        _renderer.queue_family());
+		auto texture = asset::make_ready_asset(
+		        "tex:$in_memory_gui_texture$"_aid,
+		        graphic::Texture_2D(_renderer.device(),
+		                            dimensions,
+		                            false,
+		                            gsl::narrow<std::uint32_t>(channels),
+		                            true,
+		                            gsl::span<const std::uint8_t>{data, width * height * channels},
+		                            _renderer.queue_family()));
 
 		auto entry = std::make_shared<Loaded_texture>(
 		        handle, std::move(texture), *_sampler, _renderer, *_descriptor_set_layout);
@@ -190,8 +191,12 @@ namespace mirrage::renderer {
 
 		auto handle = _next_texture_handle++;
 
-		auto entry = std::make_shared<Loaded_texture>(
-		        handle, _renderer.texture_cache().load(aid), *_sampler, _renderer, *_descriptor_set_layout);
+		auto entry =
+		        std::make_shared<Loaded_texture>(handle,
+		                                         _renderer.asset_manager().load<graphic::Texture_2D>(aid),
+		                                         *_sampler,
+		                                         _renderer,
+		                                         *_descriptor_set_layout);
 
 		_loaded_textures_by_handle.emplace(handle, entry);
 
@@ -244,7 +249,7 @@ namespace mirrage::renderer {
 			auto texture = _loaded_textures_by_handle[texture_handle].lock();
 			MIRRAGE_INVARIANT(texture, "The requested texture has not been loaded or already been freed!");
 
-			_render_pass.bind_descriptor_sets(0, {&*texture->descriptor_set, 1});
+			_render_pass.bind_descriptor_sets(0, {texture->descriptor_set.get_ptr(), 1});
 			_bound_texture_handle = texture_handle;
 		}
 

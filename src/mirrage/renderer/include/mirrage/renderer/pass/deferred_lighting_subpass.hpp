@@ -27,6 +27,6 @@ namespace mirrage::renderer {
 		Directional_light_comp::Pool& _lights_directional;
 
 		vk::UniqueDescriptorSetLayout _input_attachment_descriptor_set_layout;
-		vk::UniqueDescriptorSet       _input_attachment_descriptor_set;
+		graphic::DescriptorSet        _input_attachment_descriptor_set;
 	};
 } // namespace mirrage::renderer

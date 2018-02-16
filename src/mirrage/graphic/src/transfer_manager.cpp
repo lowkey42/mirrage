@@ -5,21 +5,25 @@
 
 namespace mirrage::graphic {
 
-	Static_buffer::Static_buffer(Static_buffer&& rhs) noexcept : _buffer(std::move(rhs._buffer)) {}
+	Static_buffer::Static_buffer(Static_buffer&& rhs) noexcept
+	  : _buffer(std::move(rhs._buffer)), _transfer_task(std::move(rhs._transfer_task)) {}
 	Static_buffer& Static_buffer::operator=(Static_buffer&& rhs) noexcept {
-		_buffer = std::move(rhs._buffer);
+		_buffer        = std::move(rhs._buffer);
+		_transfer_task = std::move(rhs._transfer_task);
 		return *this;
 	}
 
 	Static_image::Static_image(Static_image&& rhs) noexcept
 	  : _image(std::move(rhs._image))
 	  , _mip_count(std::move(rhs._mip_count))
-	  , _dimensions(std::move(rhs._dimensions)) {}
+	  , _dimensions(std::move(rhs._dimensions))
+	  , _transfer_task(std::move(rhs._transfer_task)) {}
 
 	Static_image& Static_image::operator=(Static_image&& rhs) noexcept {
-		_image      = std::move(rhs._image);
-		_mip_count  = std::move(rhs._mip_count);
-		_dimensions = std::move(rhs._dimensions);
+		_image         = std::move(rhs._image);
+		_mip_count     = std::move(rhs._mip_count);
+		_dimensions    = std::move(rhs._dimensions);
+		_transfer_task = std::move(rhs._transfer_task);
 
 		return *this;
 	}
@@ -108,6 +112,8 @@ namespace mirrage::graphic {
 		}
 
 		_image_transfers.reserve(128);
+
+		_reset_transfer_event();
 	}
 	Transfer_manager::~Transfer_manager() {}
 
@@ -131,11 +137,9 @@ namespace mirrage::graphic {
 		                              true,
 		                              Memory_lifetime::temporary);
 
-		const vk::Device* dev = _device.vk_device();
-
 		// fill buffer
-		auto ptr = static_cast<char*>(
-		        dev->mapMemory(staging_buffer.memory().memory(), staging_buffer.memory().offset(), size));
+		auto ptr = staging_buffer.memory().mapped_addr().get_or_throw("Staging GPU memory is not mapped!");
+		auto begin_ptr = ptr;
 
 		write_data(ptr);
 
@@ -145,15 +149,15 @@ namespace mirrage::graphic {
 		for(auto i : util::range(stored_mip_levels)) {
 			(void) i;
 
-			auto size = *reinterpret_cast<std::uint32_t*>(ptr);
-			size += 3 - ((size + 3) % 4); // mipPadding
-			ptr += sizeof(std::uint32_t); // imageSize
-			ptr += size;                  // data
+			MIRRAGE_INVARIANT(ptr - begin_ptr < size, "buffer overflow");
 
-			mip_image_sizes.emplace_back(size);
+			auto mip_size = *reinterpret_cast<std::uint32_t*>(ptr);
+			mip_size += 3 - ((mip_size + 3) % 4); // mipPadding
+			ptr += sizeof(std::uint32_t);         // imageSize
+			ptr += mip_size;                      // data
+
+			mip_image_sizes.emplace_back(mip_size);
 		}
-
-		dev->unmapMemory(staging_buffer.memory().memory());
 
 		auto real_dimensions = Image_dimensions{std::max(1u, dimensions.width),
 		                                        std::max(1u, dimensions.height),
@@ -174,17 +178,24 @@ namespace mirrage::graphic {
 
 		auto final_image = _device.create_image(image_create_info, false, Memory_lifetime::normal, dedicated);
 
-		_image_transfers.emplace_back(std::move(staging_buffer),
-		                              *final_image,
-		                              size,
-		                              owner,
-		                              actual_mip_levels,
-		                              stored_mip_levels,
-		                              mip_levels == 0,
-		                              real_dimensions,
-		                              std::move(mip_image_sizes));
+		{
+			auto lock = std::scoped_lock{_mutex};
+			_image_transfers.emplace_back(std::move(staging_buffer),
+			                              *final_image,
+			                              size,
+			                              owner,
+			                              actual_mip_levels,
+			                              stored_mip_levels,
+			                              mip_levels == 0,
+			                              real_dimensions,
+			                              std::move(mip_image_sizes));
+		}
 
-		return {std::move(final_image), actual_mip_levels, mip_levels == 0, real_dimensions};
+		return {std::move(final_image),
+		        actual_mip_levels,
+		        mip_levels == 0,
+		        real_dimensions,
+		        _transfer_done_task};
 	}
 
 	auto Transfer_manager::upload_buffer(vk::BufferUsageFlags       usage,
@@ -215,9 +226,12 @@ namespace mirrage::graphic {
 		        Memory_lifetime::normal,
 		        dedicated);
 
-		_buffer_transfers.emplace_back(std::move(staging_buffer), *final_buffer, size, owner);
+		{
+			auto lock = std::scoped_lock{_mutex};
+			_buffer_transfers.emplace_back(std::move(staging_buffer), *final_buffer, size, owner);
+		}
 
-		return {std::move(final_buffer)};
+		return {std::move(final_buffer), _transfer_done_task};
 	}
 
 	auto Transfer_manager::_create_staging_buffer(vk::BufferUsageFlags       usage,
@@ -227,15 +241,10 @@ namespace mirrage::graphic {
 
 		auto staging_buffer = _device.create_buffer(vk::BufferCreateInfo({}, size, usage), true, lifetime);
 
-		const vk::Device* dev = _device.vk_device();
-
 		// fill buffer
-		auto ptr = static_cast<char*>(
-		        dev->mapMemory(staging_buffer.memory().memory(), staging_buffer.memory().offset(), size));
+		auto ptr = staging_buffer.memory().mapped_addr().get_or_throw("Staging GPU memory is not mapped!");
 
 		write_data(ptr);
-
-		dev->unmapMemory(staging_buffer.memory().memory());
 
 		return staging_buffer;
 	}
@@ -257,6 +266,8 @@ namespace mirrage::graphic {
 	}
 
 	auto Transfer_manager::next_frame(vk::CommandBuffer main_queue_commands) -> util::maybe<vk::Semaphore> {
+		auto lock = std::scoped_lock{_mutex};
+
 		if(_buffer_transfers.empty() && _image_transfers.empty())
 			return util::nothing;
 
@@ -383,6 +394,10 @@ namespace mirrage::graphic {
 		auto submit_info = vk::SubmitInfo{0, nullptr, nullptr, 1, &command_buffer, 1, &*_semaphore};
 		_queue.submit({submit_info}, _command_buffers.start_new_frame());
 
+		// signal waiting tasks that the transfer will be done in this frame
+		_tranfer_done_event.set();
+		_reset_transfer_event();
+
 		return *_semaphore;
 	}
 
@@ -417,4 +432,10 @@ namespace mirrage::graphic {
 
 		cb.copyBufferToImage(*t.src, t.dst, vk::ImageLayout::eTransferDstOptimal, regions);
 	}
+
+	void Transfer_manager::_reset_transfer_event() {
+		_tranfer_done_event = async::event_task<void>{};
+		_transfer_done_task = _tranfer_done_event.get_task().share();
+	}
+
 } // namespace mirrage::graphic

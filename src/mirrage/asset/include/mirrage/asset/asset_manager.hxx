@@ -1,139 +1,228 @@
 #pragma once
 
-#ifndef ASSETMANAGER_INCLUDED
+#ifndef MIRRAGE_ASSETMANAGER_INCLUDED
 #include "asset_manager.hpp"
 #endif
 
+#include <async++.h>
 
 namespace mirrage::asset {
 
-	template <class T>
-	void Asset_manager::_asset_reloader_impl(void* asset, istream in) {
-		auto newAsset           = Loader<T>::load(std::move(in));
-		*static_cast<T*>(asset) = std::move(*newAsset.get());
+	template <class R>
+	auto Ptr<R>::get_blocking() const -> const R& {
+		if(_cached_result)
+			return *_cached_result;
+
+		return *(_cached_result = &_task.get());
 	}
 
-	template <typename T>
-	Ptr<T> Asset_manager::load(const AID& id, bool cache) {
-		auto asset = load_maybe<T>(id, cache);
+	template <class R>
+	auto Ptr<R>::get_if_ready() const -> util::maybe<R&> {
+		if(_cached_result)
+			return util::justPtr(_cached_result);
 
-		if(asset.is_nothing())
-			throw Loading_failed("asset not found: " + id.str());
-
-		return asset.get_or_throw();
+		return ready() ? util::nothing : get_blocking();
 	}
 
-	template <typename T>
-	auto Asset_manager::load_maybe(const AID& id, bool cache, bool warn) -> util::maybe<Ptr<T>> {
-		auto res = _assets.find(id);
-		if(res != _assets.end())
-			return Ptr<T>{*this, id, std::static_pointer_cast<const T>(res->second.data)};
+	template <class R>
+	auto Ptr<R>::ready() const -> bool {
+		return _task.ready();
+	}
 
-		Location_type type;
-		std::string   path;
-		std::tie(type, path) = _locate(id, warn);
+	template <class R>
+	void Ptr<R>::reset() {
+		_aid           = {};
+		_task          = {};
+		_cached_result = nullptr;
+	}
 
-		auto asset = std::shared_ptr<T>{};
 
-		switch(type) {
-			case Location_type::none: return util::nothing;
+	namespace detail {
+		template <class T>
+		struct has_reload {
+		  private:
+			typedef char one;
+			typedef long two;
 
-			case Location_type::indirection:
-				asset = Interceptor<T>::on_intercept(*this, std::move(path), id);
-				break;
+			template <typename C>
+			static one test(decltype(std::declval<Loader<C>>().reload(std::declval<istream>(),
+			                                                          std::declval<C&>())) *);
+			template <typename C>
+			static two test(...);
 
-			case Location_type::file: {
-				auto stream = _open(path, id);
-				if(!stream)
-					return util::nothing;
 
-				asset = Loader<T>::load(std::move(stream.get_or_throw()));
-				break;
+		  public:
+			enum { value = sizeof(test<T>(nullptr)) == sizeof(char) };
+		};
+
+		template <class T>
+		constexpr auto has_reload_v = has_reload<T>::value;
+
+		template <class TaskType, class T>
+		constexpr auto is_task_v =
+		        std::is_same_v<T,
+		                       ::async::task<TaskType>> || std::is_same_v<T, ::async::shared_task<TaskType>>;
+
+		template <typename T>
+		auto Asset_container<T>::load(AID aid, const std::string& path, bool cache) -> Ptr<T> {
+			auto lock = std::scoped_lock{_container_mutex};
+
+			auto found = _assets.find(path);
+			if(found != _assets.end())
+				return {aid, found->second.task};
+
+			// not found => load
+			// clang-format off
+			auto loading = async::spawn([path = std::string(path), aid, this] {
+				return Loader<T>::load(_manager._open(aid, path));
+			}).share();
+			// clang-format on
+
+			if(cache)
+				_assets.try_emplace(path, Asset{aid, loading, _manager._last_modified(path)});
+
+			return {aid, loading};
+		}
+
+		template <typename T>
+		void Asset_container<T>::save(const AID& aid, const std::string& name, const T& obj) {
+			auto lock = std::scoped_lock{_container_mutex};
+
+			Loader<T>::save(_manager._open_rw(aid, name), obj);
+
+			auto found = _assets.find(name);
+			if(found != _assets.end() && &found.value().task.get() != &obj) {
+				_reload_asset(found.value(), found.key()); // replace existing value
 			}
 		}
 
-		if(cache)
-			_add_asset(id, path, &_asset_reloader_impl<T>, std::static_pointer_cast<void>(asset));
+		template <typename T>
+		void Asset_container<T>::shrink_to_fit() noexcept {
+			auto lock = std::scoped_lock{_container_mutex};
 
-		return Ptr<T>{*this, id, asset};
+			util::erase_if(_assets, [](const auto& v) { return v.second.task.refcount() <= 1; });
+		}
+
+		template <typename T>
+		void Asset_container<T>::reload() {
+			auto lock = std::scoped_lock{_container_mutex};
+
+			for(auto && [key, value] : _assets) {
+				auto last_mod = _manager._last_modified(key);
+
+				if(last_mod > value.last_modified) {
+					_reload_asset(const_cast<Asset&>(value), key);
+				}
+			}
+		}
+
+		// TODO: test if this actually works
+		template <typename T>
+		void Asset_container<T>::_reload_asset(Asset& asset, const std::string& path) {
+			auto& old_value = const_cast<T&>(asset.task.get());
+
+			asset.last_modified = _manager._last_modified(path);
+
+			if constexpr(has_reload_v<T>) {
+				Loader<T>::reload(_manager._open(asset.aid, path), old_value);
+
+			} else {
+				auto new_value = Loader<T>::load(_manager._open(asset.aid, path));
+
+				if constexpr(std::is_same_v<decltype(new_value), async::task<T>>) {
+					old_value = std::move(new_value.get());
+
+				} else if constexpr(std::is_same_v<decltype(new_value), async::shared_task<T>>) {
+					old_value = std::move(const_cast<T&>(new_value.get()));
+
+				} else {
+					old_value = std::move(new_value);
+				}
+			}
+
+			// TODO: notify other systems about change
+		}
+	} // namespace detail
+
+
+	template <typename T>
+	auto Asset_manager::load(const AID& id, bool cache) -> Ptr<T> {
+		auto a = load_maybe<T>(id, cache);
+		if(a.is_nothing())
+			throw std::system_error(Asset_error::resolve_failed, id.str());
+
+		return a.get_or_throw();
+	}
+
+	template <typename T>
+	auto Asset_manager::load_maybe(const AID& id, bool cache) -> util::maybe<Ptr<T>> {
+		auto path = resolve(id);
+		if(path.is_nothing())
+			return util::nothing;
+
+		return _find_container<T>().process([&](detail::Asset_container<T>& container) {
+			return container.load(id, path.get_or_throw(), cache);
+		});
 	}
 
 	template <typename T>
 	void Asset_manager::save(const AID& id, const T& asset) {
-		Loader<T>::store(_create(id), asset);
-		_force_reload(id);
+		auto path = resolve(id, false);
+		if(path.is_nothing())
+			throw std::system_error(Asset_error::resolve_failed, id.str());
+
+		auto container = _find_container<T>();
+		if(container.is_nothing())
+			throw std::system_error(Asset_error::stateful_loader_not_initialized, id.str());
+
+		container.get_or_throw().save(id, path.get_or_throw(), asset);
 	}
 
-
-	template <class R>
-	Ptr<R>::Ptr() : _mgr(nullptr) {}
-
-	template <class R>
-	Ptr<R>::Ptr(Asset_manager& mgr, const AID& id, std::shared_ptr<const R> res)
-	  : _mgr(&mgr), _ptr(res), _aid(id) {}
-
-	template <class R>
-	const R& Ptr<R>::operator*() {
-		load();
-		return *_ptr.get();
-	}
-	template <class R>
-	const R& Ptr<R>::operator*() const {
-		MIRRAGE_INVARIANT(*this, "Access to unloaded resource");
-		return *_ptr.get();
+	template <typename T>
+	void Asset_manager::save(const Ptr<T>& asset) {
+		save(asset.aid(), *asset);
 	}
 
-	template <class R>
-	const R* Ptr<R>::operator->() {
-		load();
-		return _ptr.get();
-	}
-	template <class R>
-	const R* Ptr<R>::operator->() const {
-		MIRRAGE_INVARIANT(*this, "Access to unloaded resource");
-		return _ptr.get();
-	}
+	template <typename T, typename... Args>
+	void Asset_manager::create_stateful_loader(Args&&... args) {
+		auto key = util::type_uid_of<T>();
 
-	template <class R>
-	bool Ptr<R>::operator==(const Ptr& o) const noexcept {
-		return _aid == o._aid;
-	}
-	template <class R>
-	bool Ptr<R>::operator<(const Ptr& o) const noexcept {
-		return _aid < o._aid;
-	}
+		auto lock = std::scoped_lock{_containers_mutex};
 
-	template <class R>
-	Ptr<R>::operator std::shared_ptr<const R>() {
-		load();
-		return _ptr;
-	}
-
-	template <class R>
-	void Ptr<R>::load() {
-		if(!_ptr) {
-			MIRRAGE_INVARIANT(_mgr, "Tried to load unintialized resource-ref");
-			MIRRAGE_INVARIANT(_aid, "Tried to load unnamed resource");
-			*this = _mgr->load<R>(_aid);
+		auto container = _containers.find(key);
+		if(container == _containers.end()) {
+			_containers.emplace(
+			        key, std::make_unique<detail::Asset_container<T>>(*this, std::forward<Args>(args)...));
 		}
 	}
 
-	template <class R>
-	bool Ptr<R>::try_load(bool cache, bool warn) {
-		if(!_ptr) {
-			MIRRAGE_INVARIANT(_mgr, "Tried to load unintialized resource-ref");
-			MIRRAGE_INVARIANT(_aid, "Tried to load unnamed resource");
-			auto loaded = _mgr->load_maybe<R>(_aid, cache, warn);
-			if(loaded.is_some()) {
-				*this = loaded.get_or_throw();
-			}
+	template <typename T>
+	void Asset_manager::remove_stateful_loader() {
+		auto lock = std::scoped_lock{_containers_mutex};
+
+		_containers.erase(util::type_uid_of<T>());
+	}
+
+	template <typename T>
+	auto Asset_manager::_find_container() -> util::maybe<detail::Asset_container<T>&> {
+		auto key = util::type_uid_of<T>();
+
+		auto lock = std::scoped_lock{_containers_mutex};
+
+		auto container = _containers.find(key);
+		if(container != _containers.end()) {
+			return util::justPtr(static_cast<detail::Asset_container<T>*>(&*container->second));
 		}
 
-		return !!_ptr;
+		// no container for T, yet
+		if constexpr(std::is_default_constructible_v<Loader<T>>) {
+			container = _containers.emplace(key, std::make_unique<detail::Asset_container<T>>(*this)).first;
+
+			return util::justPtr(static_cast<detail::Asset_container<T>*>(&*container->second));
+
+		} else {
+			return util::nothing;
+		}
 	}
 
-	template <class R>
-	void Ptr<R>::unload() {
-		_ptr.reset();
-	}
 } // namespace mirrage::asset

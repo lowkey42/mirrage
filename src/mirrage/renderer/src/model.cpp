@@ -11,11 +11,7 @@ using namespace mirrage::graphic;
 namespace mirrage::renderer {
 
 	namespace {
-		constexpr auto material_textures = 2;
-
-		auto load_or_placeholder(Texture_cache& tex_cache, const std::string& aid) {
-			return tex_cache.load(aid.empty() ? "tex:placeholder"_aid : asset::AID("tex"_strid, aid));
-		}
+		constexpr auto material_textures = std::uint32_t(2);
 	} // namespace
 
 	auto create_material_descriptor_set_layout(Device& device, vk::Sampler sampler)
@@ -33,22 +29,23 @@ namespace mirrage::renderer {
 		                                           vk::ShaderStageFlagBits::eFragment,
 		                                           samplers.data()});
 
-		for(auto i = std::size_t(0); i < material_textures; i++) {
+		for(auto i : util::range(material_textures)) {
 			bindings[i].binding = i;
 		}
 
 		return device.create_descriptor_set_layout(bindings);
 	}
 
-	Material::Material(Device&                 device,
-	                   vk::UniqueDescriptorSet descriptor_set,
-	                   vk::Sampler             sampler,
-	                   Texture_cache&          tex_cache,
-	                   const Material_data&    data)
+	Material::Material(Device&                device,
+	                   graphic::DescriptorSet descriptor_set,
+	                   vk::Sampler            sampler,
+	                   graphic::Texture_ptr   albedo,
+	                   graphic::Texture_ptr   mat_data,
+	                   util::Str_id           substance_id)
 	  : _descriptor_set(std::move(descriptor_set))
-	  , _albedo(load_or_placeholder(tex_cache, data.albedo_aid))
-	  , _mat_data(load_or_placeholder(tex_cache, data.mat_data_aid))
-	  , _material_id(data.substance_id) {
+	  , _albedo(std::move(albedo))
+	  , _mat_data(std::move(mat_data))
+	  , _material_id(substance_id) {
 
 		auto desc_images = std::array<vk::DescriptorImageInfo, material_textures>();
 		desc_images[0] =
@@ -68,48 +65,65 @@ namespace mirrage::renderer {
 		device.vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
 
-	void Material::bind(graphic::Render_pass& pass) { pass.bind_descriptor_sets(1, {&*_descriptor_set, 1}); }
+	void Material::bind(graphic::Render_pass& pass) const {
+		pass.bind_descriptor_sets(1, {_descriptor_set.get_ptr(), 1});
+	}
 
 
-	Model::Model(graphic::Device&              device,
-	             std::uint32_t                 owner_qfamily,
-	             std::uint32_t                 vertex_count,
-	             std::uint32_t                 index_count,
-	             std::function<void(char*)>    write_vertices,
-	             std::function<void(char*)>    write_indices,
-	             std::vector<Sub_mesh>         sub_meshes,
-	             util::maybe<const asset::AID> aid)
-	  : _mesh(device, owner_qfamily, vertex_count, index_count, write_vertices, write_indices)
-	  , _sub_meshes(std::move(sub_meshes))
-	  , _aid(aid) {}
+	Model::Model(graphic::Mesh mesh, std::vector<Sub_mesh> sub_meshes, util::maybe<asset::AID> aid)
+	  : _mesh(std::move(mesh)), _sub_meshes(std::move(sub_meshes)), _aid(aid) {}
 
-	void Model::bind_mesh(const graphic::Command_buffer& cb, std::uint32_t vertex_binding) {
+	void Model::bind_mesh(const graphic::Command_buffer& cb, std::uint32_t vertex_binding) const {
 		_mesh.bind(cb, vertex_binding);
 	}
 
-	auto Model::bind_sub_mesh(graphic::Render_pass& pass, std::size_t index)
+	auto Model::bind_sub_mesh(graphic::Render_pass& pass, std::size_t index) const
 	        -> std::pair<std::size_t, std::size_t> {
 		auto& sm = _sub_meshes.at(index);
 		sm.material->bind(pass);
 		return std::make_pair(sm.index_offset, sm.index_count);
 	}
 
+} // namespace mirrage::renderer
 
-	Model_loader::Model_loader(Device&        device,
-	                           std::uint32_t  owner_qfamily,
-	                           Texture_cache& tex_cache,
-	                           std::size_t    max_unique_materials)
-	  : _device(&device)
-	  , _owner_qfamily(owner_qfamily)
-	  , _texture_cache(&tex_cache)
-	  , _sampler(device.create_sampler(12))
-	  , _material_descriptor_set_layout(create_material_descriptor_set_layout(device, *_sampler))
-	  , _material_descriptor_set_pool(device.create_descriptor_pool(
-	            max_unique_materials,
-	            {{vk::DescriptorType::eCombinedImageSampler,
-	              gsl::narrow<std::uint32_t>(max_unique_materials * material_textures)}})) {}
-	Model_loader::~Model_loader() = default;
 
+namespace mirrage::asset {
+
+	Loader<renderer::Material>::Loader(graphic::Device&        device,
+	                                   asset::Asset_manager&   assets,
+	                                   vk::Sampler             sampler,
+	                                   vk::DescriptorSetLayout layout)
+	  : _device(device)
+	  , _assets(assets)
+	  , _sampler(sampler)
+	  , _descriptor_set_layout(layout)
+	  , _descriptor_set_pool(
+	            device.create_descriptor_pool(256, {vk::DescriptorType::eCombinedImageSampler})) {}
+
+	auto Loader<renderer::Material>::load(istream in) -> async::task<renderer::Material> {
+		auto data = Loader<renderer::Material_data>::load(std::move(in));
+
+		auto load_tex = [&](auto&& id) {
+			return _assets.load<graphic::Texture_2D>(id.empty() ? "tex:placeholder"_aid
+			                                                    : asset::AID("tex"_strid, id));
+		};
+
+		auto sub_id = data.substance_id;
+		auto desc_set =
+		        _descriptor_set_pool.create_descriptor(_descriptor_set_layout, renderer::material_textures);
+
+		auto albedo   = load_tex(data.albedo_aid);
+		auto mat_data = load_tex(data.mat_data_aid);
+
+		using Tex_task = decltype(albedo.internal_task());
+
+		return async::when_all(albedo.internal_task(), mat_data.internal_task()).then([
+			=,
+			desc_set = std::move(desc_set)
+		](std::tuple<Tex_task, Tex_task>) mutable {
+			return renderer::Material(_device, std::move(desc_set), _sampler, albedo, mat_data, sub_id);
+		});
+	}
 
 	namespace {
 		template <typename T>
@@ -128,28 +142,26 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	auto Model_loader::_parse_obj(const asset::AID& aid) -> Model_ptr {
-		auto in_mb = _device->context().asset_manager().load_raw(aid);
-		if(in_mb.is_nothing()) {
-			MIRRAGE_FAIL("Requested model \"" << aid.str() << "\" doesn't exist!");
-		}
-		auto& in = in_mb.get_or_throw();
+	auto Loader<renderer::Model>::load(istream in) -> async::task<renderer::Model> {
 
-		auto header = Model_file_header{};
+		auto header = renderer::Model_file_header{};
 		read(in, header);
 
-		if(header.type_tag != Model_file_header::type_tag_value) {
-			MIRRAGE_FAIL("The loaded file \"" << aid.str() << "\" is not a valid model file!");
+		if(header.type_tag != renderer::Model_file_header::type_tag_value) {
+			MIRRAGE_FAIL("The loaded file \"" << in.aid().str() << "\" is not a valid model file!");
 		}
 
-		if(header.version != Model_file_header::version_value) {
+		if(header.version != renderer::Model_file_header::version_value) {
 			MIRRAGE_FAIL("The loaded model file \""
-			             << aid.str() << "\" is not compatible with this version of the application!");
+			             << in.aid().str() << "\" is not compatible with this version of the application!");
 		}
 
-		// load sub meshes
-		auto sub_meshes = std::vector<Sub_mesh>();
+		// load sub meshes and materials
+		auto sub_meshes = std::vector<renderer::Sub_mesh>();
 		sub_meshes.reserve(header.submesh_count);
+		auto material_load_tasks = std::vector<async::shared_task<renderer::Material>>();
+		material_load_tasks.reserve(header.submesh_count);
+
 		for(auto i : util::range(header.submesh_count)) {
 			(void) i;
 
@@ -165,57 +177,32 @@ namespace mirrage::renderer {
 			material_id.resize(material_id_length);
 			in.read(material_id.data(), material_id_length);
 
-			sub_mesh.material = _load_material(asset::AID("mat"_strid, material_id));
+			sub_mesh.material = _assets.load<renderer::Material>(asset::AID("mat"_strid, material_id));
+			material_load_tasks.emplace_back(sub_mesh.material.internal_task());
 		}
 
-		// load data
-		auto model = std::make_shared<Model>(*_device,
-		                                     _owner_qfamily,
-		                                     header.vertex_count,
-		                                     header.index_count,
-		                                     [&](char* dest) { in.read_direct(dest, header.vertex_count); },
-		                                     [&](char* dest) { in.read_direct(dest, header.index_count); },
-		                                     std::move(sub_meshes),
-		                                     aid);
+		// transfer mesh data to gpu
+		auto mesh = graphic::Mesh(_device,
+		                          _owner_qfamily,
+		                          header.vertex_count,
+		                          header.index_count,
+		                          [&](char* dest) { in.read_direct(dest, header.vertex_count); },
+		                          [&](char* dest) { in.read_direct(dest, header.index_count); });
 
 		auto footer = std::uint32_t(0);
 		read(in, footer);
 
-		if(footer != Model_file_header::type_tag_value) {
-			MIRRAGE_WARN("Invalid footer in model file \"" << aid.str()
+		if(footer != renderer::Model_file_header::type_tag_value) {
+			MIRRAGE_WARN("Invalid footer in model file \"" << in.aid().str()
 			                                               << "\"! The file is probably corrupted!");
 		}
 
-		return model;
+		auto all_materials_loaded = async::when_all(material_load_tasks);
+		auto all_loaded = async::when_all(all_materials_loaded, mesh.internal_buffer().transfer_task());
+		using Task_type = decltype(all_loaded)::result_type;
+
+		return all_loaded.then([model = renderer::Model(std::move(mesh), std::move(sub_meshes), in.aid())](
+		        const Task_type&) mutable { return std::move(model); });
 	}
 
-	auto Model_loader::load(const asset::AID& aid) -> future<Model_ptr> {
-		auto& model = _models[aid];
-
-		if(!model) {
-			model = _parse_obj(aid);
-		}
-
-		return model;
-	}
-
-	auto Model_loader::_load_material(const asset::AID& aid) -> Material_ptr {
-		auto& mat = _materials[aid];
-
-		if(!mat) {
-			auto material_data = _device->context().asset_manager().load<Material_data>(aid, false);
-
-			auto descriptor_set =
-			        _material_descriptor_set_pool.create_descriptor(*_material_descriptor_set_layout);
-			mat = std::make_shared<Material>(
-			        *_device, std::move(descriptor_set), *_sampler, *_texture_cache, *material_data);
-		}
-
-		return mat;
-	}
-
-	void Model_loader::shrink_to_fit() {
-		util::erase_if(_models, [](const auto& v) { return v.second.use_count() <= 1; });
-		util::erase_if(_materials, [](const auto& v) { return v.second.use_count() <= 1; });
-	}
-} // namespace mirrage::renderer
+} // namespace mirrage::asset

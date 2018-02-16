@@ -6,11 +6,13 @@
 #include <mirrage/asset/asset_manager.hpp>
 #include <mirrage/utils/ring_buffer.hpp>
 
+#include <async++.h>
 #include <gsl/gsl>
 #include <vulkan/vulkan.hpp>
 
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <tuple>
 
 
@@ -21,14 +23,20 @@ namespace mirrage::graphic {
 
 	class Static_buffer {
 	  public:
-		Static_buffer(Backed_buffer buffer) : _buffer(std::move(buffer)) {}
+		Static_buffer(Backed_buffer buffer)
+		  : _buffer(std::move(buffer)), _transfer_task(async::make_task().share()) {}
+		Static_buffer(Backed_buffer buffer, async::shared_task<void> transfer_task)
+		  : _buffer(std::move(buffer)), _transfer_task(std::move(transfer_task)) {}
 		Static_buffer(Static_buffer&&) noexcept;
 		Static_buffer& operator=(Static_buffer&&) noexcept;
 
 		auto buffer() const noexcept { return *_buffer; }
 
+		auto transfer_task() const { return _transfer_task; }
+
 	  private:
-		Backed_buffer _buffer;
+		Backed_buffer            _buffer;
+		async::shared_task<void> _transfer_task;
 	};
 	class Static_image {
 	  public:
@@ -39,7 +47,18 @@ namespace mirrage::graphic {
 		  : _image(std::move(image))
 		  , _mip_count(mip_count)
 		  , _generate_mips(generate_mips)
-		  , _dimensions(dimensions) {}
+		  , _dimensions(dimensions)
+		  , _transfer_task(async::make_task().share()) {}
+		Static_image(Backed_image             image,
+		             std::uint32_t            mip_count,
+		             bool                     generate_mips,
+		             Image_dimensions         dimensions,
+		             async::shared_task<void> transfer_task)
+		  : _image(std::move(image))
+		  , _mip_count(mip_count)
+		  , _generate_mips(generate_mips)
+		  , _dimensions(dimensions)
+		  , _transfer_task(std::move(transfer_task)) {}
 		Static_image(Static_image&&) noexcept;
 		Static_image& operator=(Static_image&&) noexcept;
 
@@ -51,11 +70,14 @@ namespace mirrage::graphic {
 		auto depth() const noexcept { return _dimensions.depth; }
 		auto layers() const noexcept { return _dimensions.layers; }
 
+		auto transfer_task() const { return _transfer_task; }
+
 	  private:
-		Backed_image     _image;
-		std::uint32_t    _mip_count;
-		bool             _generate_mips;
-		Image_dimensions _dimensions;
+		Backed_image             _image;
+		std::uint32_t            _mip_count;
+		bool                     _generate_mips;
+		Image_dimensions         _dimensions;
+		async::shared_task<void> _transfer_task;
 	};
 
 	class Dynamic_buffer {
@@ -253,11 +275,17 @@ namespace mirrage::graphic {
 		vk::Queue           _queue;
 		vk::UniqueSemaphore _semaphore;
 		Command_buffer_pool _command_buffer_pool;
+		mutable std::mutex  _mutex;
 
 		Per_frame_queue<vk::UniqueCommandBuffer> _command_buffers;
 
 		std::vector<Transfer_buffer_req> _buffer_transfers;
 		std::vector<Transfer_image_req>  _image_transfers;
+
+		async::event_task<void>  _tranfer_done_event;
+		async::shared_task<void> _transfer_done_task;
+
+		void _reset_transfer_event();
 
 		auto _get_next_fence() -> vk::Fence;
 

@@ -79,7 +79,8 @@ namespace mirrage {
 	Engine::Sdl_wrapper::~Sdl_wrapper() { SDL_Quit(); }
 
 
-	Engine::Engine(const std::string& title,
+	Engine::Engine(const std::string& org,
+	               const std::string& title,
 	               std::uint32_t      version_major,
 	               std::uint32_t      version_minor,
 	               bool               debug,
@@ -88,18 +89,17 @@ namespace mirrage {
 	               char**             argv,
 	               char**)
 	  : _screens(*this)
-	  , _asset_manager(std::make_unique<asset::Asset_manager>(argc > 0 ? argv[0] : "", title))
+	  , _asset_manager(std::make_unique<asset::Asset_manager>(argc > 0 ? argv[0] : "", org, title))
 	  , _translator(std::make_unique<Translator>(*_asset_manager))
 	  , _sdl(headless)
-	  , _graphics_context(
-	            headless ? std::unique_ptr<graphic::Context>()
-	                     : std::make_unique<graphic::Context>(
-	                               title,
-	                               graphic::make_version_number(version_major, version_minor, 0),
-	                               "No Engine",
-	                               graphic::make_version_number(0, 0, 0),
-	                               debug,
-	                               *_asset_manager))
+	  , _graphics_context(headless ? std::unique_ptr<graphic::Context>()
+	                               : std::make_unique<graphic::Context>(
+	                                         title,
+	                                         graphic::make_version_number(version_major, version_minor, 0),
+	                                         "No Engine",
+	                                         graphic::make_version_number(0, 0, 0),
+	                                         debug,
+	                                         *_asset_manager))
 	  , _graphics_main_window(headless ? util::nothing : _graphics_context->find_window("Main"))
 	  , _input_manager(headless ? std::unique_ptr<input::Input_manager>()
 	                            : std::make_unique<input::Input_manager>(_bus, *_asset_manager))

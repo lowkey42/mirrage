@@ -25,6 +25,7 @@ namespace mirrage::ecs {
 		class Blueprint {
 		  public:
 			Blueprint(std::string id, std::string content, asset::Asset_manager* asset_mgr);
+			Blueprint(Blueprint&&) noexcept;
 			Blueprint(const Blueprint&) = delete;
 			~Blueprint() noexcept;
 			Blueprint& operator=(Blueprint&&) noexcept;
@@ -51,7 +52,8 @@ namespace mirrage::ecs {
 				if(key == import_key) {
 					auto value = std::string{};
 					deserializer.read_value(value);
-					parent = asset_mgr->load<Blueprint>(AID{"blueprint"_strid, value});
+					parent = asset_mgr->load<Blueprint>(
+					        AID{"blueprint"_strid, value}); // TODO: could/should be async
 					parent->children.push_back(this);
 
 				} else {
@@ -59,6 +61,18 @@ namespace mirrage::ecs {
 				}
 				return true;
 			});
+		}
+		Blueprint::Blueprint(Blueprint&& rhs) noexcept
+		  : id(rhs.id)
+		  , content(std::move(rhs.content))
+		  , parent(std::move(rhs.parent))
+		  , asset_mgr(rhs.asset_mgr)
+		  , entity_manager(rhs.entity_manager) {
+
+			if(parent) {
+				util::erase_fast(parent->children, &rhs);
+				parent->children.push_back(this);
+			}
 		}
 		Blueprint::~Blueprint() noexcept {
 			if(parent) {
@@ -105,11 +119,11 @@ namespace mirrage::ecs {
 namespace mirrage::asset {
 	template <>
 	struct Loader<ecs::Blueprint> {
-		static auto load(istream in) -> std::shared_ptr<ecs::Blueprint> {
-			return std::make_shared<ecs::Blueprint>(in.aid().str(), in.content(), &in.manager());
+		static auto load(istream in) -> ecs::Blueprint {
+			return ecs::Blueprint(in.aid().str(), in.content(), &in.manager());
 		}
 
-		static void store(ostream, ecs::Blueprint&) { MIRRAGE_FAIL("NOT IMPLEMENTED, YET!"); }
+		static void save(ostream, const ecs::Blueprint&) { MIRRAGE_FAIL("NOT IMPLEMENTED, YET!"); }
 	};
 } // namespace mirrage::asset
 
@@ -153,7 +167,8 @@ namespace mirrage::ecs {
 			std::string blueprintName;
 			state.read_virtual(sf2::vmember("name", blueprintName));
 
-			auto blueprint = state.assets.load<Blueprint>(AID{"blueprint"_strid, blueprintName});
+			auto blueprint = state.assets.load<Blueprint>(
+			        AID{"blueprint"_strid, blueprintName}); // TODO: could/should be async
 			comp.set(blueprint);
 			blueprint->users.push_back(comp.owner_handle());
 			blueprint->entity_manager = &comp.manager();
@@ -213,7 +228,7 @@ namespace mirrage::ecs {
 			MIRRAGE_ERROR("Failed to load blueprint \"" << blueprint << "\"");
 			return;
 		}
-		auto b = mb.get_or_throw();
+		auto b = mb.get_or_throw(); // TODO: could/should be async
 
 		if(!e.has<Blueprint_component>())
 			e.emplace<Blueprint_component>(b);

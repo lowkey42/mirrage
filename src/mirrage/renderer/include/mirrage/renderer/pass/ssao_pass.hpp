@@ -31,10 +31,10 @@ namespace mirrage::renderer {
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
 		graphic::Render_pass                 _ssao_render_pass;
-		vk::UniqueDescriptorSet              _ssao_descriptor_set;
+		graphic::DescriptorSet               _ssao_descriptor_set;
 		graphic::Render_pass                 _blur_render_pass;
-		vk::UniqueDescriptorSet              _blur_descriptor_set_horizontal;
-		vk::UniqueDescriptorSet              _blur_descriptor_set_vertical;
+		graphic::DescriptorSet               _blur_descriptor_set_horizontal;
+		graphic::DescriptorSet               _blur_descriptor_set_vertical;
 	};
 
 	class Ssao_pass_factory : public Pass_factory {

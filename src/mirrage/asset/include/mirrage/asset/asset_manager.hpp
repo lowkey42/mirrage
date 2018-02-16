@@ -8,27 +8,40 @@
 #pragma once
 
 #include <mirrage/asset/aid.hpp>
+#include <mirrage/asset/error.hpp>
 #include <mirrage/asset/stream.hpp>
 
 #include <mirrage/utils/maybe.hpp>
+#include <mirrage/utils/reflection.hpp>
 #include <mirrage/utils/stacktrace.hpp>
 #include <mirrage/utils/string_utils.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
+#include <async++.h>
+#include <tsl/robin_map.h>
+
 #include <iostream>
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+
 /**
  * void example(asset::Manager& assetMgr) {
- *		asset::Ptr<Texture> itemTex = assetMgr.load<Texture>("tex:items/health/small"_aid);
+ *		asset::Loading<Texture> itemTex = assetMgr.load<Texture>("tex:items/health/small"_aid);
+ *		Ptr<Texture> loaded = itemTex.get();
  * }
  */
 namespace mirrage::asset {
 	class Asset_manager;
+	namespace detail {
+		template <typename T>
+		class Asset_container;
+	}
 
 	extern std::string pwd();
 
@@ -38,121 +51,149 @@ namespace mirrage::asset {
 	template <class R>
 	class Ptr {
 	  public:
-		Ptr();
-		Ptr(Asset_manager& mgr, const AID& id, std::shared_ptr<const R> res = std::shared_ptr<const R>());
+		Ptr() = default;
+		Ptr(const AID& aid, async::shared_task<R> task) : _aid(aid), _task(std::move(task)) {}
 
-		bool operator==(const Ptr& o) const noexcept;
-		bool operator<(const Ptr& o) const noexcept;
+		bool operator==(const Ptr& o) const noexcept { return _aid == o._aid; }
+		bool operator!=(const Ptr& o) const noexcept { return _aid != o._aid; }
+		bool operator<(const Ptr& o) const noexcept { return _aid < o._aid; }
 
-		auto operator*() -> const R&;
-		auto operator*() const -> const R&;
-
-		auto operator-> () -> const R*;
-		auto operator-> () const -> const R*;
-
-		operator bool() const noexcept { return !!_ptr; }
-		operator std::shared_ptr<const R>();
+		auto     operator*() const -> const R& { return get_blocking(); }
+		auto     operator-> () const -> const R* { return &get_blocking(); }
+		explicit operator bool() const noexcept { return !!aid(); }
 
 		auto aid() const noexcept -> const AID& { return _aid; }
-		auto mgr() const noexcept -> Asset_manager& { return *_mgr; }
-		void load();
-		auto try_load(bool cache = true, bool warn = true) -> bool;
-		void unload();
-
-		void reset() { _ptr.reset(); }
+		auto get_blocking() const -> const R&;
+		auto get_if_ready() const -> util::maybe<R&>;
+		auto ready() const -> bool;
+		auto internal_task() const -> auto& { return _task; }
+		void reset();
 
 	  private:
-		Asset_manager*           _mgr;
-		std::shared_ptr<const R> _ptr;
-		AID                      _aid;
+		AID                   _aid;
+		async::shared_task<R> _task;
+		mutable const R*      _cached_result = nullptr;
 	};
 
-	extern auto get_asset_manager() -> Asset_manager&;
+
+	template <typename T>
+	auto make_ready_asset(const AID& id, T&& val) -> Ptr<std::remove_cv_t<std::remove_reference_t<T>>> {
+		return {id, async::make_task(std::forward<T>(val)).share()};
+	}
+
+	namespace detail {
+		template <typename K, typename V>
+		using Map =
+		        tsl::robin_map<K, V, std::hash<K>, std::equal_to<>, std::allocator<std::pair<K, V>>, true>;
+
+
+		class Asset_container_base {
+		  public:
+			virtual ~Asset_container_base() = default;
+
+			virtual void shrink_to_fit() noexcept = 0;
+			virtual void reload()                 = 0;
+		};
+
+		template <typename T>
+		class Asset_container : public Asset_container_base, Loader<T> {
+		  public:
+			template <typename... Args>
+			explicit Asset_container(Asset_manager& manager, Args&&... args)
+			  : Loader<T>(std::forward<Args>(args)...), _manager(manager) {}
+
+			using Loader<T>::load;
+			using Loader<T>::save;
+
+			auto load(AID aid, const std::string& name, bool cache) -> Ptr<T>;
+
+			void save(const AID& aid, const std::string& name, const T&);
+
+			void shrink_to_fit() noexcept override;
+			void reload() override;
+
+		  private:
+			struct Asset {
+				AID                   aid;
+				async::shared_task<T> task;
+				int64_t               last_modified;
+			};
+
+			Asset_manager&          _manager;
+			Map<std::string, Asset> _assets;
+			std::mutex              _container_mutex;
+
+			void _reload_asset(Asset&, const std::string& path);
+		};
+	} // namespace detail
+
 
 	class Asset_manager : util::no_copy_move {
 	  public:
-		Asset_manager(const std::string& exe_name, const std::string& app_name);
+		Asset_manager(const std::string& exe_name, const std::string& org_name, const std::string& app_name);
 		~Asset_manager();
 
+		void reload();
 		void shrink_to_fit() noexcept;
+
 
 		template <typename T>
 		auto load(const AID& id, bool cache = true) -> Ptr<T>;
 
 		template <typename T>
-		auto load_maybe(const AID& id, bool cache = true, bool warn = true) -> util::maybe<Ptr<T>>;
-
-		auto load_raw(const AID& id) -> util::maybe<istream>;
-
-		auto list(Asset_type type) -> std::vector<AID>;
-
-		auto find_by_path(const std::string&) -> util::maybe<AID>;
+		auto load_maybe(const AID& id, bool cache = true) -> util::maybe<Ptr<T>>;
 
 		template <typename T>
 		void save(const AID& id, const T& asset);
 
-		auto save_raw(const AID& id) -> ostream;
+		template <typename T>
+		void save(const Ptr<T>& asset);
 
-		bool exists(const AID& id) const noexcept;
 
+		auto exists(const AID& id) const noexcept -> bool;
 		auto try_delete(const AID& id) -> bool;
 
-		auto physical_location(const AID& id, bool warn = true) const noexcept -> util::maybe<std::string>;
+		auto open(const AID& id) -> util::maybe<istream>;
+		auto open_rw(const AID& id) -> ostream;
 
+		auto list(Asset_type type) -> std::vector<AID>;
 		auto last_modified(const AID& id) const noexcept -> util::maybe<std::int64_t>;
 
-		void reload();
+		auto resolve(const AID& id, bool only_preexisting = true) const noexcept -> util::maybe<std::string>;
+		auto resolve_reverse(std::string_view) -> util::maybe<AID>;
 
-		auto watch(AID aid, std::function<void(const AID&)> on_mod) -> uint32_t;
-		void unwatch(uint32_t id);
+		template <typename T, typename... Args>
+		void create_stateful_loader(Args&&... args);
 
+		template <typename T>
+		void remove_stateful_loader();
 
 	  private:
 		friend class ostream;
 
-		using Reloader = void (*)(void*, istream);
+		template <typename T>
+		friend class detail::Asset_container;
 
-		template <class T>
-		static void _asset_reloader_impl(void* asset, istream in);
+	  private:
+		mutable std::mutex        _containers_mutex;
+		mutable std::shared_mutex _dispatchers_mutex;
 
-		struct Asset {
-			std::shared_ptr<void> data;
-			Reloader              reloader;
-			int64_t               last_modified;
+		detail::Map<util::type_uid_t, std::unique_ptr<detail::Asset_container_base>> _containers;
+		detail::Map<AID, std::string>                                                _dispatchers;
 
-			Asset(std::shared_ptr<void> data, Reloader reloader, int64_t last_modified);
-		};
-		enum class Location_type { none, file, indirection };
-		struct Watch_entry {
-			uint32_t                        id;
-			AID                             aid;
-			std::function<void(const AID&)> on_mod;
-			int64_t                         last_modified = 0;
 
-			Watch_entry(uint32_t id, AID aid, std::function<void(const AID&)> l)
-			  : id(id), aid(aid), on_mod(l) {}
-		};
-
-		std::unordered_map<AID, Asset>       _assets;
-		std::unordered_map<AID, std::string> _dispatcher;
-		std::vector<Watch_entry>             _watchlist;
-		uint32_t                             _next_watch_id = 0;
-
-		void _add_asset(const AID&            id,
-		                const std::string&    path,
-		                Reloader              reloader,
-		                std::shared_ptr<void> asset);
+		void _post_write();
 
 		auto _base_dir(Asset_type type) const -> util::maybe<std::string>;
-		auto _open(const std::string& path) -> util::maybe<istream>;
-		auto _open(const std::string& path, const AID& aid) -> util::maybe<istream>;
-		auto _locate(const AID& id, bool warn = true) const -> std::tuple<Location_type, std::string>;
 
-		auto _create(const AID& id) -> ostream;
-		void _post_write();
 		void _reload_dispatchers();
-		void _force_reload(const AID& aid);
-		void _check_watch_entry(Watch_entry&);
+
+		auto _last_modified(const std::string& path) const -> int64_t;
+		auto _open(const asset::AID& id, const std::string& path) -> istream;
+		auto _open_rw(const asset::AID& id, const std::string& path) -> ostream;
+
+		template <typename T>
+		auto _find_container() -> util::maybe<detail::Asset_container<T>&>;
 	};
 
 	template <class T>
@@ -161,5 +202,5 @@ namespace mirrage::asset {
 	}
 } // namespace mirrage::asset
 
-#define ASSETMANAGER_INCLUDED
+#define MIRRAGE_ASSETMANAGER_INCLUDED
 #include "asset_manager.hxx"

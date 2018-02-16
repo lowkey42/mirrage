@@ -1,5 +1,7 @@
 #include <mirrage/graphic/render_pass.hpp>
 
+#include <mirrage/graphic/device.hpp>
+
 #include <gsl/gsl>
 
 
@@ -153,7 +155,7 @@ namespace mirrage::graphic {
 			                                          s.constant_buffer.data()};
 			stage_create_infos.emplace_back(vk::PipelineShaderStageCreateFlags{},
 			                                vk_stage,
-			                                *s.shader,
+			                                **s.shader,
 			                                s.entry_point.c_str(),
 			                                s.constants.empty() ? nullptr : &s.constants_info);
 		}
@@ -198,17 +200,10 @@ namespace mirrage::graphic {
 
 	auto Stage_builder::shader(const asset::AID& id, Shader_stage stage, std::string entry_point)
 	        -> Stage_builder& {
-		auto in = _builder._assets.load_raw(id);
-		if(in.is_nothing()) {
-			MIRRAGE_FAIL("Unable to load shader \"" << id.str() << "\" file not found");
-		}
-
-		auto code = in.get_or_throw().bytes();
-		auto module_info =
-		        vk::ShaderModuleCreateInfo{{}, code.size(), reinterpret_cast<const uint32_t*>(code.data())};
+		auto in = _builder._assets.load<Shader_module>(id);
 
 		pipeline().stages.emplace_back(
-		        stage, _builder._device.createShaderModuleUnique(module_info), std::move(entry_point));
+		        stage, _builder._assets.load<Shader_module>(id), std::move(entry_point));
 
 		return *this;
 	}
@@ -558,3 +553,15 @@ namespace mirrage::graphic {
 		_current_command_buffer = util::nothing;
 	}
 } // namespace mirrage::graphic
+
+namespace mirrage::asset {
+
+	auto Loader<graphic::Shader_module>::load(istream in) -> graphic::Shader_module {
+		auto code = in.bytes();
+		auto module_info =
+		        vk::ShaderModuleCreateInfo{{}, code.size(), reinterpret_cast<const uint32_t*>(code.data())};
+
+		return _device.vk_device()->createShaderModuleUnique(module_info);
+	}
+
+} // namespace mirrage::asset

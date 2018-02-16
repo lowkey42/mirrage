@@ -2,12 +2,14 @@
 
 #include <mirrage/graphic/context.hpp>
 #include <mirrage/graphic/device_memory.hpp>
+#include <mirrage/graphic/pipeline_cache.hpp>
 #include <mirrage/graphic/settings.hpp>
+#include <mirrage/graphic/swapchain.hpp>
 #include <mirrage/graphic/transfer_manager.hpp>
 #include <mirrage/graphic/vk_wrapper.hpp>
 #include <mirrage/graphic/window.hpp>
 
-#include <mirrage/asset/aid.hpp>
+#include <mirrage/asset/asset_manager.hpp>
 #include <mirrage/utils/purgatory.hpp>
 #include <mirrage/utils/ring_buffer.hpp>
 #include <mirrage/utils/template_utils.hpp>
@@ -21,43 +23,6 @@
 
 namespace mirrage::graphic {
 
-	class Swapchain : public Window_modification_handler {
-	  public:
-		Swapchain() = default;
-		Swapchain(const vk::Device& dev, vk::PhysicalDevice, Window&, vk::SwapchainCreateInfoKHR);
-		Swapchain(Swapchain&&) = default;
-		Swapchain& operator=(Swapchain&&) = default;
-		~Swapchain()                      = default;
-
-		auto get_images() const -> auto& { return _image_views; }
-		auto acquireNextImage(vk::Semaphore, vk::Fence) const -> std::size_t;
-
-		bool present(vk::Queue&, std::size_t img_index, vk::Semaphore);
-
-		void recreate();
-
-		void on_window_modified(Window&) override;
-
-		auto image_width() const noexcept { return _image_width; }
-		auto image_height() const noexcept { return _image_height; }
-		auto image_format() const noexcept { return _image_format; }
-
-	  private:
-		const vk::Device&                _device;
-		vk::PhysicalDevice               _gpu;
-		Window&                          _window;
-		vk::SwapchainCreateInfoKHR       _info;
-		vk::UniqueSwapchainKHR           _swapchain;
-		std::vector<vk::Image>           _images;
-		std::vector<vk::UniqueImageView> _image_views;
-		int                              _image_width;
-		int                              _image_height;
-		vk::Format                       _image_format;
-		bool                             _recreate_pending = false;
-
-		void _create_image_views();
-	};
-
 	enum class Format_usage { buffer, image_linear, image_optimal };
 
 	class Device : public util::Registered<Device, Context> {
@@ -67,6 +32,7 @@ namespace mirrage::graphic {
 		       vk::UniqueDevice,
 		       vk::PhysicalDevice,
 		       Queue_tag            transfer_queue,
+		       Queue_tag            default_draw_queue,
 		       Queue_family_mapping queue_mapping,
 		       Swapchain_create_infos,
 		       bool dedicated_alloc_supported);
@@ -93,7 +59,7 @@ namespace mirrage::graphic {
 		                                bool      resetable   = true,
 		                                bool      short_lived = false) -> Command_buffer_pool;
 
-		auto create_descriptor_pool(std::uint32_t maxSets, std::vector<vk::DescriptorPoolSize> pool_sizes)
+		auto create_descriptor_pool(std::uint32_t chunk_size, std::initializer_list<vk::DescriptorType> types)
 		        -> Descriptor_pool;
 
 		auto create_descriptor_set_layout(gsl::span<const vk::DescriptorSetLayoutBinding> bindings)
@@ -177,16 +143,14 @@ namespace mirrage::graphic {
 		auto vk_device() const noexcept { return &*_device; }
 
 	  private:
-		// has to be const, because moving/destroing the vk::Device breaks the deleters
-		//   of all object (Swapchain, Sampler, RenderPass, ...) created through it
-		//   (the deleters store a Device const* that is not updated => segfault)
-		const vk::UniqueDevice                     _device;
+		struct Asset_loaders;
+
+		vk::UniqueDevice                           _device;
 		vk::PhysicalDevice                         _gpu;
 		asset::Asset_manager&                      _assets;
 		vk::PhysicalDeviceProperties               _gpu_properties;
 		std::unordered_map<std::string, Swapchain> _swapchains;
-		asset::AID                                 _pipeline_cache_id;
-		vk::UniquePipelineCache                    _pipeline_cache;
+		asset::Ptr<Pipeline_cache>                 _pipeline_cache;
 		Queue_family_mapping                       _queue_family_mappings;
 		Device_memory_allocator                    _memory_allocator;
 		Transfer_manager                           _transfer_manager;
@@ -202,5 +166,7 @@ namespace mirrage::graphic {
 		util::maybe<vk::Format> _srg_format;
 		util::maybe<vk::Format> _srgb_format;
 		util::maybe<vk::Format> _srgba_format;
+
+		std::unique_ptr<Asset_loaders> _device_specific_asset_loaders;
 	};
 } // namespace mirrage::graphic

@@ -65,8 +65,7 @@ namespace mirrage::renderer {
 
 
 			auto model_pipeline = pipeline;
-			model_pipeline.add_descriptor_set_layout(
-			        renderer.model_loader().material_descriptor_set_layout());
+			model_pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 			model_pipeline.vertex<Model_vertex>(0,
 			                                    false,
 			                                    0,
@@ -205,7 +204,8 @@ namespace mirrage::renderer {
 		                  "More than one shadowmapping implementation active!");
 		renderer.gbuffer().shadowmaps_layout =
 		        renderer.device().create_descriptor_set_layout(shadowmap_bindings);
-		renderer.gbuffer().shadowmaps = renderer.create_descriptor_set(*renderer.gbuffer().shadowmaps_layout);
+		renderer.gbuffer().shadowmaps = renderer.create_descriptor_set(*renderer.gbuffer().shadowmaps_layout,
+		                                                               shadowmap_bindings.size());
 
 
 		auto shadowmap_infos = std::vector<vk::DescriptorImageInfo>();

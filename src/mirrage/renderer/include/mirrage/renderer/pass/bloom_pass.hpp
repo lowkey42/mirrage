@@ -37,7 +37,7 @@ namespace mirrage::renderer {
 		graphic::Render_target_2D _bloom_buffer;
 		graphic::Framebuffer      _filter_framebuffer;
 		graphic::Render_pass      _filter_renderpass;
-		vk::UniqueDescriptorSet   _filter_descriptor_set;
+		graphic::DescriptorSet    _filter_descriptor_set;
 
 		// blur the bloom buffer
 		graphic::Render_target_2D _blur_buffer;
@@ -45,9 +45,9 @@ namespace mirrage::renderer {
 		Blur_framebuffers         _blur_framebuffer_horizontal;
 		Blur_framebuffers         _blur_framebuffer_vertical;
 		graphic::Render_pass      _blur_renderpass;
-		vk::UniqueDescriptorSet   _blur_descriptor_set_horizontal;
-		vk::UniqueDescriptorSet   _blur_descriptor_set_vertical;
-		vk::UniqueDescriptorSet   _blur_descriptor_set_vertical_final;
+		graphic::DescriptorSet    _blur_descriptor_set_horizontal;
+		graphic::DescriptorSet    _blur_descriptor_set_vertical;
+		graphic::DescriptorSet    _blur_descriptor_set_vertical_final;
 	};
 
 	class Bloom_pass_factory : public Pass_factory {

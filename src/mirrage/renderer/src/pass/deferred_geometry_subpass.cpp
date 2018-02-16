@@ -17,7 +17,7 @@ namespace mirrage::renderer {
 	                                                   graphic::Pipeline_description& p) {
 
 		p.rasterization.cullMode = vk::CullModeFlagBits::eNone;
-		p.add_descriptor_set_layout(renderer.model_loader().material_descriptor_set_layout());
+		p.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 		p.vertex<Model_vertex>(
 		        0, false, 0, &Model_vertex::position, 1, &Model_vertex::normal, 2, &Model_vertex::tex_coords);
 	}

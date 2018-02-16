@@ -34,14 +34,14 @@ namespace mirrage::renderer {
 		graphic::Render_target_2D _luminance_buffer;
 		graphic::Framebuffer      _calc_luminance_framebuffer;
 		graphic::Render_pass      _calc_luminance_renderpass;
-		vk::UniqueDescriptorSet   _calc_luminance_desc_set;
+		graphic::DescriptorSet    _calc_luminance_desc_set;
 
 		// calculate and adapt avg luminance over time
 		graphic::Render_target_2D _prev_avg_luminance;
 		graphic::Render_target_2D _curr_avg_luminance;
 		graphic::Framebuffer      _adapt_luminance_framebuffer;
 		graphic::Render_pass      _adapt_luminance_renderpass;
-		vk::UniqueDescriptorSet   _adapt_luminance_desc_set;
+		graphic::DescriptorSet    _adapt_luminance_desc_set;
 	};
 
 	class Tone_mapping_pass_factory : public Pass_factory {

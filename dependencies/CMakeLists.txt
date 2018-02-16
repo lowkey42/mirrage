@@ -10,6 +10,7 @@ if(MIRRAGE_BUILD_MESH_CONVERTER)
 	add_subdirectory(stb_image)
 endif()
 
+add_subdirectory(asyncplusplus)
 add_subdirectory(enet)
 add_subdirectory(glm)
 include(gsl_interface.cmake)
@@ -18,10 +19,11 @@ include(nuklear_interface.cmake)
 
 add_subdirectory(magic_get)
 
-SET(PHYSFS_INTERNAL_ZLIB TRUE CACHE BOOL "" FORCE)
 SET(PHYSFS_ARCHIVE_7Z FALSE CACHE BOOL "" FORCE)
 SET(PHYSFS_BUILD_SHARED FALSE CACHE BOOL "" FORCE)
 add_subdirectory(physfs)
+
+include(robin-map_interface.cmake)
 
 add_subdirectory(sf2)
 

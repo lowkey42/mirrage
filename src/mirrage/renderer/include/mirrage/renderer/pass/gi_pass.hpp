@@ -9,9 +9,7 @@ namespace mirrage::renderer {
 
 	class Gi_pass : public Pass {
 	  public:
-		Gi_pass(Deferred_renderer&,
-		        graphic::Render_target_2D& in_out,
-		        graphic::Render_target_2D& diffuse_in);
+		Gi_pass(Deferred_renderer&, graphic::Render_target_2D& in_out, graphic::Render_target_2D& diffuse_in);
 
 
 		void update(util::Time dt) override;
@@ -59,31 +57,31 @@ namespace mirrage::renderer {
 		graphic::Render_pass      _brdf_integration_renderpass;
 
 		// blend reprojected history into current current frame to simulate multiple bounces
-		graphic::Framebuffer    _reproject_framebuffer;
-		graphic::Render_pass    _reproject_renderpass;
-		vk::UniqueDescriptorSet _reproject_descriptor_set;
+		graphic::Framebuffer   _reproject_framebuffer;
+		graphic::Render_pass   _reproject_renderpass;
+		graphic::DescriptorSet _reproject_descriptor_set;
 
 		// GI sampling for diffuse illumination
-		std::vector<graphic::Framebuffer>    _sample_framebuffers;
-		graphic::Render_pass                 _sample_renderpass;
-		std::vector<vk::UniqueDescriptorSet> _sample_descriptor_sets;
+		std::vector<graphic::Framebuffer>   _sample_framebuffers;
+		graphic::Render_pass                _sample_renderpass;
+		std::vector<graphic::DescriptorSet> _sample_descriptor_sets;
 
 		// SS cone tracing for specular illumination
-		graphic::Framebuffer    _sample_spec_framebuffer;
-		graphic::Render_pass    _sample_spec_renderpass;
-		vk::UniqueDescriptorSet _sample_spec_descriptor_set;
+		graphic::Framebuffer   _sample_spec_framebuffer;
+		graphic::Render_pass   _sample_spec_renderpass;
+		graphic::DescriptorSet _sample_spec_descriptor_set;
 
 		// blur pass for specular illumination
-		graphic::Framebuffer    _blur_horizonal_framebuffer;
-		graphic::Framebuffer    _blur_vertical_framebuffer;
-		graphic::Render_pass    _blur_render_pass;
-		vk::UniqueDescriptorSet _blur_descriptor_set_horizontal;
-		vk::UniqueDescriptorSet _blur_descriptor_set_vertical;
+		graphic::Framebuffer   _blur_horizonal_framebuffer;
+		graphic::Framebuffer   _blur_vertical_framebuffer;
+		graphic::Render_pass   _blur_render_pass;
+		graphic::DescriptorSet _blur_descriptor_set_horizontal;
+		graphic::DescriptorSet _blur_descriptor_set_vertical;
 
 		// write back GI results
-		graphic::Framebuffer    _blend_framebuffer;
-		graphic::Render_pass    _blend_renderpass;
-		vk::UniqueDescriptorSet _blend_descriptor_set;
+		graphic::Framebuffer   _blend_framebuffer;
+		graphic::Render_pass   _blend_renderpass;
+		graphic::DescriptorSet _blend_descriptor_set;
 
 
 		// calculates the texture with the preintegrated BRDF
@@ -113,9 +111,8 @@ namespace mirrage::renderer {
 		                 util::maybe<Meta_system&>,
 		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
 
-		auto rank_device(vk::PhysicalDevice,
-		                 util::maybe<std::uint32_t> graphics_queue,
-		                 int                        current_score) -> int override;
+		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
+		        -> int override;
 
 		void configure_device(vk::PhysicalDevice,
 		                      util::maybe<std::uint32_t> graphics_queue,

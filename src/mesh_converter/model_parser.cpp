@@ -26,8 +26,12 @@ namespace mirrage {
 			std::string   material_id;
 
 			Sub_mesh_data() = default;
-			Sub_mesh_data(std::uint32_t index_offset, std::uint32_t index_count, std::string material_id)
-			  : index_offset(index_offset), index_count(index_count), material_id(std::move(material_id)) {}
+			Sub_mesh_data(std::uint32_t index_offset,
+			              std::uint32_t index_count,
+			              std::string   material_id)
+			  : index_offset(index_offset)
+			  , index_count(index_count)
+			  , material_id(std::move(material_id)) {}
 		};
 
 		auto last_of(const std::string& str, char c) {
@@ -36,7 +40,7 @@ namespace mirrage {
 		}
 
 		auto extract_file_name(const std::string& path) {
-			auto filename_delim_begin = last_of(path, '/').get_or_other(last_of(path, '\\').get_or_other(0));
+			auto filename_delim_begin = last_of(path, '/').get_or(last_of(path, '\\').get_or(0));
 
 			auto filename_delim_end = path.find_last_of('.');
 
@@ -44,7 +48,7 @@ namespace mirrage {
 		}
 
 		auto extract_dir(const std::string& path) {
-			auto filename_delim_end = last_of(path, '/').get_or_other(last_of(path, '\\').get_or_other(0));
+			auto filename_delim_end = last_of(path, '/').get_or(last_of(path, '\\').get_or(0));
 
 			return path.substr(0, filename_delim_end - 1);
 		}
@@ -79,12 +83,15 @@ namespace mirrage {
 		        aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals | aiProcess_Triangulate
 		                | aiProcess_PreTransformVertices | aiProcess_ImproveCacheLocality
 		                | aiProcess_RemoveRedundantMaterials | aiProcess_OptimizeMeshes
-		                | aiProcess_ValidateDataStructure | aiProcess_FlipUVs | aiProcess_FixInfacingNormals);
+		                | aiProcess_ValidateDataStructure | aiProcess_FlipUVs
+		                | aiProcess_FixInfacingNormals);
 
-		MIRRAGE_INVARIANT(scene, "Unable to load model '" << path << "': " << importer.GetErrorString());
+		MIRRAGE_INVARIANT(scene,
+		                  "Unable to load model '" << path << "': " << importer.GetErrorString());
 
 		// load materials
-		auto materials = gsl::span<const aiMaterial* const>(scene->mMaterials, scene->mNumMaterials);
+		auto materials =
+		        gsl::span<const aiMaterial* const>(scene->mMaterials, scene->mNumMaterials);
 		auto loaded_material_ids = std::vector<util::maybe<std::string>>();
 		loaded_material_ids.reserve(materials.size());
 		for(auto& mat : materials) {
@@ -137,7 +144,8 @@ namespace mirrage {
 			if(mesh->mNumFaces > 0) {
 				auto& mat = loaded_material_ids.at(mesh->mMaterialIndex);
 				if(mat.is_some()) {
-					sub_meshes.emplace_back(indices.size(), mesh->mNumFaces * 3, mat.get_or_throw());
+					sub_meshes.emplace_back(
+					        indices.size(), mesh->mNumFaces * 3, mat.get_or_throw());
 				} else {
 					MIRRAGE_WARN("Required material is missing/defect!");
 				}
@@ -153,13 +161,15 @@ namespace mirrage {
 
 		// write file
 		auto model_out_filename = output + "/models/" + model_name + ".mmf";
-		auto model_out_file = std::ofstream(model_out_filename, std::ostream::binary | std::ostream::trunc);
+		auto model_out_file =
+		        std::ofstream(model_out_filename, std::ostream::binary | std::ostream::trunc);
 
 		MIRRAGE_INVARIANT(model_out_file.is_open(),
 		                  "Unable to open output file \"" << model_out_filename << "\"!");
 
-		auto header          = renderer::Model_file_header();
-		header.vertex_count  = gsl::narrow<std::uint32_t>(vertices.size() * sizeof(renderer::Model_vertex));
+		auto header = renderer::Model_file_header();
+		header.vertex_count =
+		        gsl::narrow<std::uint32_t>(vertices.size() * sizeof(renderer::Model_vertex));
 		header.index_count   = gsl::narrow<std::uint32_t>(indices.size() * sizeof(std::uint32_t));
 		header.submesh_count = gsl::narrow<std::uint32_t>(sub_meshes.size());
 

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mirrage/graphic/descriptor_sets.hpp>
+
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/purgatory.hpp>
 #include <mirrage/utils/ring_buffer.hpp>
@@ -10,6 +12,7 @@
 
 #include <initializer_list>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -25,7 +28,6 @@ namespace mirrage::graphic {
 	// fwd:
 	class Device;
 	class Render_pass_builder;
-	class Device;
 	class Render_pass;
 	class Render_pass_builder;
 	class Subpass_builder;
@@ -104,51 +106,6 @@ namespace mirrage::graphic {
 		Command_buffer_pool(const vk::Device& device, vk::UniqueCommandPool pool);
 	};
 
-	class Descriptor_pool {
-	  public:
-		Descriptor_pool(Descriptor_pool&& rhs) : _device(rhs._device), _pool(std::move(rhs._pool)) {}
-		Descriptor_pool& operator=(Descriptor_pool&& rhs) {
-			_pool = std::move(rhs._pool);
-			return *this;
-		}
-		~Descriptor_pool() = default;
-
-		auto create_descriptor(vk::DescriptorSetLayout) -> vk::UniqueDescriptorSet;
-
-	  private:
-		friend class Device;
-
-		const vk::Device&        _device;
-		vk::UniqueDescriptorPool _pool;
-
-		Descriptor_pool(const vk::Device& device, vk::UniqueDescriptorPool pool);
-	};
-
-	class Image_descriptor_set_layout {
-	  public:
-		Image_descriptor_set_layout(graphic::Device& device,
-		                            vk::Sampler      sampler,
-		                            std::uint32_t    image_number,
-		                            vk::ShaderStageFlags = vk::ShaderStageFlagBits::eFragment);
-
-		auto layout() const noexcept { return *_layout; }
-		auto operator*() const noexcept { return *_layout; }
-
-		auto create_set(Descriptor_pool& pool, std::initializer_list<vk::ImageView> images)
-		        -> vk::UniqueDescriptorSet {
-			auto set = pool.create_descriptor(layout());
-			update_set(*set, images);
-			return set;
-		}
-
-		void update_set(vk::DescriptorSet, std::initializer_list<vk::ImageView>);
-
-	  private:
-		graphic::Device&              _device;
-		vk::Sampler                   _sampler;
-		std::uint32_t                 _image_number;
-		vk::UniqueDescriptorSetLayout _layout;
-	};
 
 	class Fence {
 	  public:
@@ -323,10 +280,20 @@ namespace mirrage::graphic {
 	                         vk::ImageLayout             final_dst_layout);
 
 	extern void clear_texture(vk::CommandBuffer           cb,
-	                          const detail::Base_texture& src,
+	                          const detail::Base_texture& img,
 	                          util::Rgba                  color,
 	                          vk::ImageLayout             initial_layout,
 	                          vk::ImageLayout             final_layout,
 	                          std::uint32_t               initial_mip_level = 0,
 	                          std::uint32_t               mip_levels        = 0);
+
+	extern void clear_texture(vk::CommandBuffer cb,
+	                          vk::Image         img,
+	                          std::uint32_t     width,
+	                          std::uint32_t     height,
+	                          util::Rgba        color,
+	                          vk::ImageLayout   initial_layout,
+	                          vk::ImageLayout   final_layout,
+	                          std::uint32_t     initial_mip_level = 0,
+	                          std::uint32_t     mip_levels        = 0);
 } // namespace mirrage::graphic

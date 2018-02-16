@@ -46,7 +46,8 @@ namespace mirrage {
 
 	class Engine {
 	  public:
-		Engine(const std::string& title,
+		Engine(const std::string& org,
+		       const std::string& title,
 		       std::uint32_t      version_major,
 		       std::uint32_t      version_minor,
 		       bool               debug,
@@ -64,9 +65,7 @@ namespace mirrage {
 		auto& graphics_context() noexcept { return *_graphics_context; }
 		auto& graphics_context() const noexcept { return *_graphics_context; }
 		auto& window() noexcept { return _graphics_main_window.get_or_throw("No window created!"); }
-		auto& window() const noexcept {
-			return _graphics_main_window.get_or_throw("No window created!");
-		}
+		auto& window() const noexcept { return _graphics_main_window.get_or_throw("No window created!"); }
 		auto& assets() noexcept { return *_asset_manager; }
 		auto& assets() const noexcept { return *_asset_manager; }
 		auto& input() noexcept { return *_input_manager; }

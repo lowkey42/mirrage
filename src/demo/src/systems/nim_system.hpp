@@ -85,7 +85,7 @@ namespace mirrage::systems {
 	extern void load(sf2::JsonDeserializer& s, Nim_sequence& e);
 	extern void save(sf2::JsonSerializer& s, const Nim_sequence& e);
 
-	using Nim_sequence_ptr = std::shared_ptr<const Nim_sequence>;
+	using Nim_sequence_ptr = asset::Ptr<Nim_sequence>;
 
 
 	// Manages recording and playback of non-interactive-movies

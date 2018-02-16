@@ -28,7 +28,8 @@ namespace mirrage::asset {
 		bool operator==(const AID& o) const noexcept;
 		bool operator!=(const AID& o) const noexcept;
 		bool operator<(const AID& o) const noexcept;
-		     operator bool() const noexcept;
+
+		operator bool() const noexcept;
 
 		auto str() const noexcept -> std::string;
 		auto type() const noexcept { return _type; }
