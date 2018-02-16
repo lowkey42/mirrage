@@ -204,7 +204,8 @@ namespace mirrage::renderer {
 		                  "More than one shadowmapping implementation active!");
 		renderer.gbuffer().shadowmaps_layout =
 		        renderer.device().create_descriptor_set_layout(shadowmap_bindings);
-		renderer.gbuffer().shadowmaps = renderer.create_descriptor_set(*renderer.gbuffer().shadowmaps_layout);
+		renderer.gbuffer().shadowmaps = renderer.create_descriptor_set(*renderer.gbuffer().shadowmaps_layout,
+		                                                               shadowmap_bindings.size());
 
 
 		auto shadowmap_infos = std::vector<vk::DescriptorImageInfo>();

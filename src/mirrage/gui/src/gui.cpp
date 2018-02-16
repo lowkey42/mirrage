@@ -302,7 +302,7 @@ namespace mirrage::gui {
 					}
 				}
 
-				nk_clear(&ctx);
+				//nk_clear(&ctx);
 			}
 		};
 	} // namespace detail

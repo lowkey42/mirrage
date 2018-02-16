@@ -204,7 +204,7 @@ namespace mirrage::renderer {
 		auto swapchain() noexcept -> auto& { return _factory->_swapchain; }
 		auto queue_family() const noexcept { return _factory->_queue_family; }
 
-		auto create_descriptor_set(vk::DescriptorSetLayout) -> graphic::DescriptorSet;
+		auto create_descriptor_set(vk::DescriptorSetLayout, std::uint32_t bindings) -> graphic::DescriptorSet;
 		auto descriptor_pool() noexcept -> auto& { return _descriptor_set_pool; }
 
 		auto noise_descriptor_set_layout() const noexcept { return *_noise_descriptor_set_layout; }

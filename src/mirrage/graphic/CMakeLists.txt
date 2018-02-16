@@ -18,6 +18,7 @@ file(GLOB_RECURSE HEADER_FILES
 
 add_library(mirrage_graphic STATIC
 	src/context.cpp
+	src/descriptor_sets.cpp
 	src/device.cpp
 	src/device_memory.cpp
 	src/ktx_parser.cpp

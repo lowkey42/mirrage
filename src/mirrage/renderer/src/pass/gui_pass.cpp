@@ -100,7 +100,7 @@ namespace mirrage::renderer {
 	                                               vk::SamplerMipmapMode::eNearest))
 	  , _descriptor_set_layout(create_descriptor_set_layout(drenderer.device(), *_sampler))
 	  , _render_pass(build_render_pass(drenderer, *_descriptor_set_layout, _framebuffers))
-	  , _descriptor_set(drenderer.create_descriptor_set(*_descriptor_set_layout))
+	  , _descriptor_set(drenderer.create_descriptor_set(*_descriptor_set_layout, 1))
 	  , _mesh_buffer(drenderer.device(),
 	                 max_render_buffer_size,
 	                 vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer) {}
@@ -141,7 +141,7 @@ namespace mirrage::renderer {
 	                                         vk::Sampler             sampler,
 	                                         Deferred_renderer&      renderer,
 	                                         vk::DescriptorSetLayout desc_layout)
-	  : descriptor_set(renderer.create_descriptor_set(desc_layout))
+	  : descriptor_set(renderer.create_descriptor_set(desc_layout, 1))
 	  , texture(std::move(texture))
 	  , handle{nk_image_id(handle)} {
 

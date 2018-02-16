@@ -233,11 +233,14 @@ namespace mirrage::graphic {
 
 		auto image = _device->createImageUnique(info);
 		auto mem   = [&] {
+            // called first because bindImageMemory without getImageMemoryRequirements is a warning
+            //   in the validation layers
+            auto mem_req = _device->getImageMemoryRequirements(*image);
+
             if(dedicated) {
                 return _memory_allocator.alloc_dedicated(*image, host_visible).get_or_throw();
             }
 
-            auto mem_req = _device->getImageMemoryRequirements(*image);
             return _memory_allocator
                     .alloc(mem_req.size, mem_req.alignment, mem_req.memoryTypeBits, host_visible, lifetime)
                     .get_or_throw();

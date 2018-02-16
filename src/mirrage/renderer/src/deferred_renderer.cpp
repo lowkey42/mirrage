@@ -19,7 +19,7 @@ namespace mirrage::renderer {
 	  : _factory(&factory)
 	  , _entity_manager(&ecs)
 	  , _meta_system(userdata)
-	  , _descriptor_set_pool(device().create_descriptor_pool(512,
+	  , _descriptor_set_pool(device().create_descriptor_pool(128,
 	                                                         {vk::DescriptorType::eUniformBuffer,
 	                                                          vk::DescriptorType::eCombinedImageSampler,
 	                                                          vk::DescriptorType::eInputAttachment,
@@ -35,7 +35,7 @@ namespace mirrage::renderer {
 	                    1,
 	                    vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment}))
 	  , _global_uniform_descriptor_set(
-	            _descriptor_set_pool.create_descriptor(*_global_uniform_descriptor_set_layout))
+	            _descriptor_set_pool.create_descriptor(*_global_uniform_descriptor_set_layout, 1))
 	  , _global_uniform_buffer(
 	            device().transfer().create_dynamic_buffer(sizeof(Global_uniforms),
 	                                                      vk::BufferUsageFlagBits::eUniformBuffer,
@@ -219,8 +219,9 @@ namespace mirrage::renderer {
 		}
 	}
 
-	auto Deferred_renderer::create_descriptor_set(vk::DescriptorSetLayout layout) -> graphic::DescriptorSet {
-		return _descriptor_set_pool.create_descriptor(layout);
+	auto Deferred_renderer::create_descriptor_set(vk::DescriptorSetLayout layout, std::uint32_t bindings)
+	        -> graphic::DescriptorSet {
+		return _descriptor_set_pool.create_descriptor(layout, bindings);
 	}
 
 

@@ -40,8 +40,8 @@ namespace mirrage::renderer {
 	  , _lights_directional(entities.list<Directional_light_comp>())
 	  , _input_attachment_descriptor_set_layout(
 	            create_input_attachment_descriptor_set_layout(renderer.device()))
-	  , _input_attachment_descriptor_set(
-	            renderer.create_descriptor_set(*_input_attachment_descriptor_set_layout)) {
+	  , _input_attachment_descriptor_set(renderer.create_descriptor_set(
+	            *_input_attachment_descriptor_set_layout, num_input_attachments)) {
 
 		auto& gbuffer    = renderer.gbuffer();
 		auto  depth_info = vk::DescriptorImageInfo(

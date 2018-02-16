@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mirrage/graphic/descriptor_sets.hpp>
+
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/purgatory.hpp>
 #include <mirrage/utils/ring_buffer.hpp>
@@ -26,7 +28,6 @@ namespace mirrage::graphic {
 	// fwd:
 	class Device;
 	class Render_pass_builder;
-	class Device;
 	class Render_pass;
 	class Render_pass_builder;
 	class Subpass_builder;
@@ -105,83 +106,6 @@ namespace mirrage::graphic {
 		Command_buffer_pool(const vk::Device& device, vk::UniqueCommandPool pool);
 	};
 
-	class DescriptorSet {
-	  public:
-		DescriptorSet() = default;
-		DescriptorSet(vk::Device, vk::DescriptorPool, vk::DescriptorSet, std::mutex&);
-		DescriptorSet(DescriptorSet&&) noexcept;
-		DescriptorSet& operator=(DescriptorSet&&) noexcept;
-		~DescriptorSet();
-
-		DescriptorSet(const DescriptorSet&) = delete;
-		DescriptorSet& operator=(const DescriptorSet&) = delete;
-
-		auto get() const noexcept { return _set; }
-		auto get_ptr() const noexcept { return &_set; }
-		auto operator*() const noexcept { return get(); }
-
-		explicit operator bool() const noexcept { return get(); }
-
-	  private:
-		vk::Device         _device;
-		vk::DescriptorPool _pool;
-		vk::DescriptorSet  _set;
-		std::mutex*        _deletion_mutex = nullptr;
-
-		void _destroy();
-	};
-
-	// TODO: actual management of DescriptorSet-Objects
-	class Descriptor_pool {
-	  public:
-		auto create_descriptor(vk::DescriptorSetLayout) -> DescriptorSet;
-
-	  private:
-		friend class Device;
-
-		vk::Device                            _device;
-		std::uint32_t                         _chunk_size;
-		std::vector<vk::DescriptorPoolSize>   _pool_sizes;
-		std::vector<vk::UniqueDescriptorPool> _pools;
-		std::vector<std::uint32_t>            _free;
-		mutable std::mutex                    _mutex;
-
-		Descriptor_pool(vk::Device                                device,
-		                std::uint32_t                             chunk_size,
-		                std::initializer_list<vk::DescriptorType> types);
-
-		Descriptor_pool(const Descriptor_pool&) = delete;
-		Descriptor_pool(Descriptor_pool&&)      = delete;
-		Descriptor_pool& operator=(const Descriptor_pool&) = delete;
-		Descriptor_pool& operator=(Descriptor_pool&&) = delete;
-
-		auto create_descriptor_pool() -> vk::DescriptorPool;
-	};
-
-	class Image_descriptor_set_layout {
-	  public:
-		Image_descriptor_set_layout(graphic::Device& device,
-		                            vk::Sampler      sampler,
-		                            std::uint32_t    image_number,
-		                            vk::ShaderStageFlags = vk::ShaderStageFlagBits::eFragment);
-
-		auto layout() const noexcept { return *_layout; }
-		auto operator*() const noexcept { return *_layout; }
-
-		auto create_set(Descriptor_pool& pool, std::initializer_list<vk::ImageView> images) -> DescriptorSet {
-			auto set = pool.create_descriptor(layout());
-			update_set(*set, images);
-			return set;
-		}
-
-		void update_set(vk::DescriptorSet, std::initializer_list<vk::ImageView>);
-
-	  private:
-		graphic::Device&              _device;
-		vk::Sampler                   _sampler;
-		std::uint32_t                 _image_number;
-		vk::UniqueDescriptorSetLayout _layout;
-	};
 
 	class Fence {
 	  public:

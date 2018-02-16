@@ -108,8 +108,9 @@ namespace mirrage::asset {
 			                                                    : asset::AID("tex"_strid, id));
 		};
 
-		auto sub_id   = data.substance_id;
-		auto desc_set = _descriptor_set_pool.create_descriptor(_descriptor_set_layout);
+		auto sub_id = data.substance_id;
+		auto desc_set =
+		        _descriptor_set_pool.create_descriptor(_descriptor_set_layout, renderer::material_textures);
 
 		auto albedo   = load_tex(data.albedo_aid);
 		auto mat_data = load_tex(data.mat_data_aid);
