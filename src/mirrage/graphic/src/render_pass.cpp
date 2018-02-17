@@ -411,11 +411,11 @@ namespace mirrage::graphic {
 			push_constants.emplace_back(std::move(p.push_constant_table));
 		}
 
-		return {std::move(render_pass),
-		        _device.createGraphicsPipelinesUnique(_pipeline_cache, pipeline_create_infos),
-		        std::move(pipeline_layouts),
-		        std::move(stages),
-		        std::move(push_constants)};
+		return Render_pass{std::move(render_pass),
+		                   _device.createGraphicsPipelinesUnique(_pipeline_cache, pipeline_create_infos),
+		                   std::move(pipeline_layouts),
+		                   std::move(stages),
+		                   std::move(push_constants)};
 	}
 
 	auto Render_pass_builder::build_framebuffer(gsl::span<Framebuffer_attachment_desc> attachments,

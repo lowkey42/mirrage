@@ -998,8 +998,8 @@ namespace mirrage::renderer {
 
 				auto screen_size = glm::vec2{_color_diffuse_in.width(pcs.prev_projection[0][3]),
 				                             _color_diffuse_in.height(pcs.prev_projection[0][3])};
-				auto ndc_to_uv   = glm::translate({}, glm::vec3(screen_size / 2.f, 0.f))
-				                 * glm::scale({}, glm::vec3(screen_size / 2.f, 1.f));
+				auto ndc_to_uv   = glm::translate(glm::mat4(1.f), glm::vec3(screen_size / 2.f, 0.f))
+				                 * glm::scale(glm::mat4(1.f), glm::vec3(screen_size / 2.f, 1.f));
 				pcs.reprojection = ndc_to_uv * _renderer.global_uniforms().proj_mat;
 
 				_sample_spec_renderpass.push_constant("pcs"_strid, pcs);

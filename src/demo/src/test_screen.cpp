@@ -303,9 +303,9 @@ namespace mirrage {
 
 
 	void Test_screen::_draw() {
-		if(_show_ui) {
-			_gui.start_frame();
+		_gui.start_frame();
 
+		if(_show_ui) {
 			_draw_settings_window();
 
 			if(_show_profiler) {

@@ -24,6 +24,7 @@ target_compile_options(mirrage_utils PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 
 target_compile_definitions(mirrage_utils PUBLIC GLM_FORCE_RADIANS)
 target_compile_definitions(mirrage_utils PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
+target_compile_definitions(mirrage_utils PUBLIC GLM_ENABLE_EXPERIMENTAL)
 target_compile_definitions(mirrage_utils PUBLIC ENABLE_SF2_ASSETS)
 # target_compile_definitions(mirrage_utils PUBLIC STACKTRACE)
 

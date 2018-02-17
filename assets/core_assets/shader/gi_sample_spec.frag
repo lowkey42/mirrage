@@ -106,7 +106,7 @@ void main() {
 
 	// calculate max distance based on roughness
 	float max_distance = min(32, 4 / (tan(coneTheta)*2));
-	float max_steps = max_distance*16;
+	float max_steps = max_distance*8;
 
 	vec3 jitter = PDnrand3(vertex_out.tex_coords);
 
@@ -115,7 +115,7 @@ void main() {
 	if(spec_visible &&
 	   traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
 							depthSize, 1.0, global_uniforms.proj_planes.x,
-							10, 0.5*jitter.z, max_distance, max_steps, int(startLod + 0.5),
+							10, 0.5*jitter.z, max_steps, max_distance, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 
 		vec3 L = raycast_hit_point - P;

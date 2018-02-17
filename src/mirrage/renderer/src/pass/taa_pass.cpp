@@ -203,7 +203,7 @@ namespace mirrage::renderer {
 		_constants.reprojection = _prev_view_proj * cam.inv_view;
 		_prev_view_proj         = cam.view_projection;
 
-		cam.projection      = glm::translate(glm::mat4(), glm::vec3(-offset, 0.f)) * cam.projection;
+		cam.projection      = glm::translate(glm::mat4(1.f), glm::vec3(-offset, 0.f)) * cam.projection;
 		cam.view_projection = cam.projection * cam.view;
 	}
 	auto Taa_pass::_calc_offset(const Camera_state& cam) const -> glm::vec2 {
