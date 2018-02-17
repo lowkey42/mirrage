@@ -107,11 +107,11 @@ namespace mirrage::asset {
 		void Asset_container<T>::reload() {
 			auto lock = std::scoped_lock{_container_mutex};
 
-			for(auto && [key, value] : _assets) {
-				auto last_mod = _manager._last_modified(key);
+			for(auto&& entry : _assets) {
+				auto last_mod = _manager._last_modified(entry.first);
 
-				if(last_mod > value.last_modified) {
-					_reload_asset(const_cast<Asset&>(value), key);
+				if(last_mod > entry.second.last_modified) {
+					_reload_asset(const_cast<Asset&>(entry.second), entry.first);
 				}
 			}
 		}
