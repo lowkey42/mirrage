@@ -41,7 +41,7 @@ float luminance_norm(vec3 c) {
 
 float roughness_to_spec_lobe_angle(float roughness) {
 	// see: http://graphicrants.blogspot.de/2013/08/specular-brdf-reference.html
-	float power = clamp(2/max(0.0001, roughness*roughness) - 2, 4.0, 1024*16);
+	float power = 2/max(0.0001, roughness*roughness) - 2;
 
 	return acos(pow(0.244, 1.0/(power + 1.0)));
 }
@@ -98,11 +98,11 @@ void main() {
 	vec3 dir = -reflect(V, N);
 	P += dir*0.1;
 
-	bool spec_visible = metallic>0.01 || (max(0, dot(normalize(V+dir), dir))<0.6);
-
 	// convert to cone angle (maximum extent of the specular lobe aperture)
 	// only want half the full cone angle since we're slicing the isosceles triangle in half to get a right triangle
 	float coneTheta = roughness_to_spec_lobe_angle(roughness) * 0.5f;
+
+	bool spec_visible = metallic>0.01 || (max(0, dot(normalize(V+dir), dir))<0.6 && coneTheta<0.2*PI);
 
 	// calculate max distance based on roughness
 	float max_distance = min(32, 4 / (tan(coneTheta)*2));
