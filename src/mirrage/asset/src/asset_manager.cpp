@@ -142,7 +142,9 @@ namespace mirrage::asset {
 #ifdef WINDOWS
 		_getcwd(cCurrentPath, sizeof(cCurrentPath));
 #else
-		getcwd(cCurrentPath, sizeof(cCurrentPath));
+		if(getcwd(cCurrentPath, sizeof(cCurrentPath)) == nullptr) {
+			MIRRAGE_FAIL("getcwd with max length " << FILENAME_MAX << " failed with error code " << errno);
+		}
 #endif
 
 		return cCurrentPath;
