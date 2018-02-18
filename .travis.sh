@@ -13,7 +13,7 @@ if [ $ANALYZE = "true" ]; then
           cmake --build /build
     fi
 else
-  docker exec build cmake -GNinja -DCMAKE_BUILD_TYPE=Release -H/repo -B/build
+  docker exec build cmake -DCMAKE_BUILD_TYPE=Release -H/repo -B/build
   docker exec build cmake --build /build
 fi
 
