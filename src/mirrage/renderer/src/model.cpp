@@ -115,12 +115,10 @@ namespace mirrage::asset {
 		auto albedo   = load_tex(data.albedo_aid);
 		auto mat_data = load_tex(data.mat_data_aid);
 
-		using Tex_task = decltype(albedo.internal_task());
+		auto all_loaded = async::when_all(albedo.internal_task(), mat_data.internal_task());
+		using Task_type = decltype(all_loaded)::result_type;
 
-		return async::when_all(albedo.internal_task(), mat_data.internal_task()).then([
-			=,
-			desc_set = std::move(desc_set)
-		](std::tuple<Tex_task, Tex_task>) mutable {
+		return all_loaded.then([=, desc_set = std::move(desc_set)](const Task_type&) mutable {
 			return renderer::Material(_device, std::move(desc_set), _sampler, albedo, mat_data, sub_id);
 		});
 	}
