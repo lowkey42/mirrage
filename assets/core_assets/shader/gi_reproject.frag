@@ -80,7 +80,7 @@ void main() {
 		vec3 gi = calculate_gi(vertex_out.tex_coords, radiance, specular,
 		                       albedo_sampler, mat_data_sampler, brdf_sampler, diffuse);
 
-		out_input = vec4(diffuse, 0.0);
+		out_input = vec4(gi, 0.0);
 
 		float proj_prev_depth = abs(prev_pos.z);
 		float prev_depth = textureLod(prev_depth_sampler, prev_uv.xy, 0.0).r;

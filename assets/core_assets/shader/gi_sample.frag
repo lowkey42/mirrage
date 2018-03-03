@@ -138,11 +138,30 @@ vec3 gi_sample(int lod, int base_mip) {
 	float inner_radius = LAST_SAMPLE==0 ? outer_radius / 2.0 - 4.0 : 0.0;
 	float angle_step = PI * 2.0 / pow((sqrt(5.0) + 1.0) / 2.0, 2.0);
 
+	float normal_dir = 0.5*PI;
+	float normal_weight = abs(N.z);
+	if(normal_weight<=0.999) {
+		vec2 N_2d = normalize(N.xy);
+		normal_dir += atan(N_2d.y, N_2d.x);
+	}
+
 	for(int i=0; i<SAMPLES; i++) {
 		float r = max(
 				4.0,
 				mix(inner_radius, outer_radius, sqrt(float(i) / float(SAMPLES))));
 		float a = i * angle_step + angle;
+
+		a = mod(a, 2.0*PI);
+		float a_rel = a / (2.0*PI);
+
+		float d = a_rel<=0.5 ? 2*a_rel : (1-a_rel)*2;
+		d = 2.5*d - 5.42*d*d + 3.6*d*d*d + 0.1;
+		d += (1-d) * normal_weight;
+
+		if(a_rel<0.5) a = mix(0, a, d);
+		else          a = mix(a, 2*PI, 1-d);
+
+		a += normal_dir;
 
 		float sin_angle = sin(a);
 		float cos_angle = cos(a);
@@ -190,7 +209,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	float ds = pcs.prev_projection[2][3] * depth*depth * clamp(cos_alpha / cos_beta, 0.001, 1000.0);
 
 	// multiply all factors, that modulate the light transfer
-	float weight = visibility * NdotL_dst * NdotL_src * ds / (0.1+r2);
+	float weight = visibility * NdotL_dst * NdotL_src * ds / (0.001+r2);
 
 	if(weight<0.001) {
 		return vec3(0);
