@@ -194,6 +194,7 @@ namespace mirrage::renderer {
 		                              int                       min_mip_level,
 		                              int                       max_mip_level,
 		                              int                       sample_count,
+		                              int                       first_level_sample_count,
 		                              Render_target_2D&         gi_buffer,
 		                              std::vector<Framebuffer>& out_framebuffers) {
 
@@ -233,7 +234,7 @@ namespace mirrage::renderer {
 			                graphic::Shader_stage::fragment,
 			                "main",
 			                2,
-			                sample_count,
+			                first_level_sample_count,
 			                3,
 			                0)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
@@ -660,6 +661,7 @@ namespace mirrage::renderer {
 	                                                _min_mip_level,
 	                                                _max_mip_level,
 	                                                to_2prod(renderer.settings().gi_samples),
+	                                                to_2prod(renderer.settings().gi_lowres_samples),
 	                                                _gi_diffuse,
 	                                                _sample_framebuffers))
 
@@ -944,6 +946,8 @@ namespace mirrage::renderer {
 				}
 
 				_sample_renderpass.execute(command_buffer, fb, [&] {
+					auto sample_count = to_2prod(_renderer.settings().gi_samples);
+
 					if(i == last_i) {
 						if(i < begin) {
 							_sample_renderpass.set_stage("upsample_fin"_strid);
@@ -957,6 +961,7 @@ namespace mirrage::renderer {
 						_sample_renderpass.set_stage("upsample"_strid);
 					} else if(i == end - 1) {
 						_sample_renderpass.set_stage("sample_first"_strid);
+						sample_count = to_2prod(_renderer.settings().gi_lowres_samples);
 					} else {
 						_sample_renderpass.set_stage("sample"_strid);
 					}
@@ -972,7 +977,7 @@ namespace mirrage::renderer {
 					auto fov_v                = _renderer.global_uniforms().proj_planes.w;
 
 					pcs.prev_projection[2][3] = calc_ds_factor(i == begin,
-					                                           to_2prod(_renderer.settings().gi_samples),
+					                                           sample_count,
 					                                           fov_h,
 					                                           fov_v,
 					                                           _color_in_out.width(i),

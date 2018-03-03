@@ -440,7 +440,9 @@ namespace mirrage {
 
 			nk_property_int(ctx, "Diffuse GI MIP", 0, &renderer_settings.gi_diffuse_mip_level, 4, 1, 1);
 
-			nk_property_int(ctx, "Sample Count", 8, &renderer_settings.gi_samples, 256, 1, 1);
+			nk_property_int(ctx, "Low-Res Sample Count", 8, &renderer_settings.gi_lowres_samples, 1024, 1, 1);
+
+			nk_property_int(ctx, "Sample Count", 8, &renderer_settings.gi_samples, 1024, 1, 1);
 
 			//			bool_nk_wrapper = renderer_settings.gi_jitter_samples ? 1 : 0;
 			//			nk_checkbox_label(ctx, "Jitter GI Samples", &bool_nk_wrapper);
