@@ -436,6 +436,10 @@ namespace mirrage {
 			nk_checkbox_label(ctx, "High-Resolution GI", &bool_nk_wrapper);
 			renderer_settings.gi_highres = bool_nk_wrapper == 1;
 
+			bool_nk_wrapper = renderer_settings.gi_visibility ? 1 : 0;
+			nk_checkbox_label(ctx, "GI Visiblity-Check", &bool_nk_wrapper);
+			renderer_settings.gi_visibility = bool_nk_wrapper == 1;
+
 			nk_property_int(ctx, "Minimum GI MIP", 0, &renderer_settings.gi_min_mip_level, 4, 1, 1);
 
 			nk_property_int(ctx, "Diffuse GI MIP", 0, &renderer_settings.gi_diffuse_mip_level, 4, 1, 1);
@@ -444,17 +448,13 @@ namespace mirrage {
 
 			nk_property_int(ctx, "Sample Count", 8, &renderer_settings.gi_samples, 1024, 1, 1);
 
-			//			bool_nk_wrapper = renderer_settings.gi_jitter_samples ? 1 : 0;
-			//			nk_checkbox_label(ctx, "Jitter GI Samples", &bool_nk_wrapper);
-			//			renderer_settings.gi_jitter_samples = bool_nk_wrapper == 1;
-
 			nk_property_int(
 			        ctx, "Low-Quality MIP-Levels", 0, &renderer_settings.gi_low_quality_mip_levels, 8, 1, 1);
 
-			nk_property_float(ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.01, 0.1);
+			nk_property_float(ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.01f, 0.1f);
 
 			nk_property_float(
-			        ctx, "Background Brightness", 0.f, &renderer_settings.background_intensity, 10.f, 1, 0.1);
+			        ctx, "Background Brightness", 0.f, &renderer_settings.background_intensity, 10.f, 1, 0.1f);
 
 			bool_nk_wrapper = renderer_settings.ssao ? 1 : 0;
 			nk_checkbox_label(ctx, "Ambient Occlusion", &bool_nk_wrapper);

@@ -72,8 +72,10 @@ namespace mirrage::graphic {
 		extern auto format_from_channels(Device& device, std::uint32_t channels, bool srgb) -> vk::Format;
 		extern auto build_mip_views(Device&              device,
 		                            std::uint32_t        mip_levels,
+		                            std::uint32_t        array_layers,
 		                            vk::Image            image,
 		                            vk::Format           format,
+		                            Image_type           type,
 		                            vk::ImageAspectFlags aspects) -> std::vector<vk::UniqueImageView>;
 	} // namespace detail
 
@@ -120,8 +122,10 @@ namespace mirrage::graphic {
 		  , _single_mip_level_views(
 		            detail::build_mip_views(device,
 		                                    detail::clamp_mip_levels(dim.width, dim.height, mip_levels),
+		                                    dim.layers,
 		                                    this->image(),
 		                                    format,
+		                                    Type,
 		                                    aspects)) {}
 		Render_target(Render_target&& rhs) noexcept
 		  : Texture<Type>(std::move(rhs)), _single_mip_level_views(std::move(rhs._single_mip_level_views)) {}
@@ -159,7 +163,34 @@ namespace mirrage::graphic {
 	namespace detail {
 		extern auto load_image_data(Device& device, std::uint32_t owner_qfamily, asset::istream)
 		        -> std::tuple<Static_image, vk::Format, Image_type>;
+
+		extern auto load_image_data(Device&       device,
+		                            std::uint32_t owner_qfamily,
+		                            Image_type,
+		                            Image_dimensions,
+		                            std::uint32_t texel_size,
+		                            vk::Format,
+		                            std::function<void(char*)>) -> Static_image;
+	} // namespace detail
+
+	template <Image_type Type, class DataSource /* void(char*) */>
+	auto create_texture(Device&                  device,
+	                    Image_dimensions_t<Type> dim,
+	                    std::uint32_t            texel_size,
+	                    vk::Format               format,
+	                    std::uint32_t            owner_qfamily,
+	                    DataSource&&             write_data) -> asset::Ptr<Texture<Type>> {
+		auto image =
+		        detail::load_image_data(device, owner_qfamily, Type, dim, texel_size, format, write_data);
+
+		return {"tex:_mem_"_aid,
+		        image.transfer_task()
+		                .then([=, &device, image{std::move(image)}]() mutable {
+			                return graphic::Texture<Type>{device, std::move(image), format};
+		                })
+		                .share()};
 	}
+
 } // namespace mirrage::graphic
 
 

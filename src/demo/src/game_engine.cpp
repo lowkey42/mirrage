@@ -11,6 +11,7 @@
 #include <mirrage/renderer/pass/ssao_pass.hpp>
 #include <mirrage/renderer/pass/taa_pass.hpp>
 #include <mirrage/renderer/pass/tone_mapping_pass.hpp>
+#include <mirrage/renderer/pass/voxelization_pass.hpp>
 
 
 namespace mirrage {
@@ -28,6 +29,7 @@ namespace mirrage {
 	            window(),
 	            assets(),
 	            util::make_vector(renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Voxelization_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Deferred_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Gen_mipmap_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Ssao_pass_factory>(),

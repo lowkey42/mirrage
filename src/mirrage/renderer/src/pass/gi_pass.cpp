@@ -195,6 +195,7 @@ namespace mirrage::renderer {
 		                              int                       max_mip_level,
 		                              int                       sample_count,
 		                              int                       first_level_sample_count,
+		                              bool                      visibility,
 		                              Render_target_2D&         gi_buffer,
 		                              std::vector<Framebuffer>& out_framebuffers) {
 
@@ -236,7 +237,9 @@ namespace mirrage::renderer {
 			                2,
 			                first_level_sample_count,
 			                3,
-			                0)
+			                0,
+			                6,
+			                visibility ? 1 : 0)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			// "normal" sample (+ upsampling)
@@ -247,7 +250,9 @@ namespace mirrage::renderer {
 			                2,
 			                sample_count,
 			                3,
-			                1)
+			                1,
+			                6,
+			                visibility ? 1 : 0)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			// circle instead of ring sample-pattern
@@ -258,7 +263,9 @@ namespace mirrage::renderer {
 			                0,
 			                1,
 			                2,
-			                sample_count)
+			                sample_count,
+			                6,
+			                visibility ? 1 : 0)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			// circle instead of ring sample-pattern AND blend with history
@@ -271,7 +278,9 @@ namespace mirrage::renderer {
 			                2,
 			                sample_count,
 			                5,
-			                1)
+			                1,
+			                6,
+			                visibility ? 1 : 0)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			// only upsample the previous level
@@ -662,6 +671,7 @@ namespace mirrage::renderer {
 	                                                _max_mip_level,
 	                                                to_2prod(renderer.settings().gi_samples),
 	                                                to_2prod(renderer.settings().gi_lowres_samples),
+	                                                renderer.settings().gi_visibility,
 	                                                _gi_diffuse,
 	                                                _sample_framebuffers))
 
@@ -908,12 +918,6 @@ namespace mirrage::renderer {
 		pcs.prev_projection[1][3] = _max_mip_level - 1;
 		pcs.prev_projection[3][3] = _min_mip_level;
 
-		if(_renderer.gbuffer().ambient_occlusion.is_some()) {
-			pcs.reprojection[3][3] = 1.0;
-		} else {
-			pcs.reprojection[3][3] = 0.0;
-		}
-
 		{
 			auto _               = _renderer.profiler().push("Sample (diffuse)");
 			auto first_iteration = true;
@@ -983,6 +987,20 @@ namespace mirrage::renderer {
 					                                           _color_in_out.width(i),
 					                                           _color_in_out.height(i),
 					                                           _renderer.global_uniforms().proj_planes.y);
+
+					auto screen_size = glm::vec2{_color_in_out.width(i), _color_in_out.height(i)};
+					auto ndc_to_uv   = glm::translate(glm::mat4(1.f), glm::vec3(screen_size / 2.f, 0.f))
+					                 * glm::scale(glm::mat4(1.f), glm::vec3(screen_size / 2.f, 1.f));
+					pcs.reprojection = ndc_to_uv * _renderer.global_uniforms().proj_mat;
+
+					MIRRAGE_INVARIANT(pcs.reprojection[3][3] > -0.00001f && pcs.reprojection[3][3] < 0.00001f,
+					                  "pcs.reprojection[3][3]!=0");
+
+					if(_renderer.gbuffer().ambient_occlusion.is_some()) {
+						pcs.reprojection[3][3] = 1.0;
+					} else {
+						pcs.reprojection[3][3] = 0.0;
+					}
 
 					_sample_renderpass.push_constant("pcs"_strid, pcs);
 

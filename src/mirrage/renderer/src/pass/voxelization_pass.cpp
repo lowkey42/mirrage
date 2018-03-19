@@ -13,13 +13,18 @@
 
 namespace mirrage::renderer {
 
+	using namespace graphic;
+
 	namespace {
 		struct Push_constants {
 			glm::mat4 model;
 		};
 
+		constexpr auto texture_count = 2u;
+
 		auto build_render_pass(Deferred_renderer&               renderer,
 		                       vk::Format                       data_format,
+		                       vk::DescriptorSetLayout          mask_desc_layout,
 		                       graphic::Render_target_2D_array& data,
 		                       graphic::Framebuffer&            out_framebuffer) {
 
@@ -45,7 +50,7 @@ namespace mirrage::renderer {
 			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
-			pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
+			pipeline.add_descriptor_set_layout(mask_desc_layout);
 			pipeline.vertex<Model_vertex>(0,
 			                              false,
 			                              0,
@@ -99,25 +104,60 @@ namespace mirrage::renderer {
 
 			return format.get_or_throw("No RGB32UInt format support on the device!");
 		}
+
+		auto create_bit_mask(std::uint32_t count) -> glm::u32vec4 {
+			constexpr auto comp_bits = std::uint32_t(32);
+
+			auto mask = glm::u32vec4(~std::uint32_t(0));
+
+			for(auto i : util::range(count)) {
+				mask[i / comp_bits] &= ~(std::uint32_t(1) << (i % comp_bits));
+			}
+			return mask; // TODO: check
+		}
+
+		auto create_mask_texture(Deferred_renderer& renderer, vk::Format data_format) {
+			constexpr auto width = 32u * 4u;
+
+			auto write_data = [](char* addr) {
+				auto comp_addr = reinterpret_cast<glm::u32vec4*>(addr);
+				for(auto i : util::range(width)) {
+					*comp_addr = create_bit_mask(i);
+					comp_addr++;
+				}
+			};
+
+			return create_texture<Image_type::single_1d>(renderer.device(),
+			                                             {width},
+			                                             4 * sizeof(std::uint32_t),
+			                                             data_format,
+			                                             renderer.queue_family(),
+			                                             write_data);
+		}
 	} // namespace
 
 
 	Voxelization_pass::Voxelization_pass(Deferred_renderer& renderer, ecs::Entity_manager& entities)
 	  : _renderer(renderer)
+	  , _sampler(renderer.device().create_sampler(1,
+	                                              vk::SamplerAddressMode::eClampToEdge,
+	                                              vk::BorderColor::eIntOpaqueBlack,
+	                                              vk::Filter::eNearest,
+	                                              vk::SamplerMipmapMode::eNearest))
+	  , _descriptor_set_layout(renderer.device(), *_sampler, 1)
 	  , _data_format(get_voxel_format(renderer.device()))
 	  , _voxel_data(renderer.device(),
-	                {renderer.gbuffer().colorA.width() / 2u, renderer.gbuffer().colorA.height() / 2u, 2u},
+	                {renderer.gbuffer().colorA.width() / 2u,
+	                 renderer.gbuffer().colorA.height() / 2u,
+	                 texture_count},
 	                renderer.gbuffer().mip_levels - 1,
 	                _data_format,
 	                vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
 	                vk::ImageAspectFlagBits::eColor)
-	  , _sampler(renderer.device().create_sampler(12,
-	                                              vk::SamplerAddressMode::eClampToEdge,
-	                                              vk::BorderColor::eIntOpaqueBlack,
-	                                              vk::Filter::eLinear,
-	                                              vk::SamplerMipmapMode::eLinear))
-	  , _render_pass(build_render_pass(renderer, _data_format, _voxel_data, _framebuffer))
-	  , _shadowcasters(entities.list<Shadowcaster_comp>()) {
+	  , _render_pass(build_render_pass(
+	            renderer, _data_format, _descriptor_set_layout.layout(), _voxel_data, _framebuffer))
+	  , _models(entities.list<Model_comp>())
+	  , _mask_texture(create_mask_texture(renderer, _data_format)) {
 
 		MIRRAGE_INVARIANT(renderer.gbuffer().voxels.is_nothing(),
 		                  "More than one voxelization implementation active!");
@@ -125,49 +165,70 @@ namespace mirrage::renderer {
 	}
 
 
-	void Voxelization_pass::update(util::Time dt) {}
+	void Voxelization_pass::update(util::Time) {}
 
 	void Voxelization_pass::draw(vk::CommandBuffer& command_buffer,
 	                             Command_buffer_source&,
 	                             vk::DescriptorSet global_uniform_set,
 	                             std::size_t) {
 
+		if(!_descriptor_set) {
+			if(_mask_texture.ready()) {
+				_descriptor_set = _descriptor_set_layout.create_set(_renderer.descriptor_pool(),
+				                                                    {_mask_texture->view()});
+
+			} else {
+				// TODO: clear voxel data?
+				return;
+			}
+		}
+
 		_render_pass.execute(command_buffer, _framebuffer, [&] {
-			auto descriptor_sets = std::array<vk::DescriptorSet, 1>{global_uniform_set};
+			auto descriptor_sets =
+			        std::array<vk::DescriptorSet, 2>{{global_uniform_set, _descriptor_set.get()}};
 			_render_pass.bind_descriptor_sets(0, descriptor_sets);
 
-			for(auto& caster : _shadowcasters) {
-				caster.owner().get<Model_comp>().process([&](Model_comp& model) {
-					auto& transform = model.owner().get<ecs::components::Transform_comp>().get_or_throw(
-					        "Required Transform_comp missing");
+			for(auto& model : _models) {
+				auto& transform = model.owner().get<ecs::components::Transform_comp>().get_or_throw(
+				        "Required Transform_comp missing");
 
-					Push_constants pcs;
-					pcs.model = transform.to_mat4();
-					_render_pass.push_constant("pcs"_strid, pcs);
+				Push_constants pcs;
+				pcs.model = transform.to_mat4();
+				_render_pass.push_constant("pcs"_strid, pcs);
 
-					model.model()->bind(command_buffer, _render_pass, 0, [&](auto&, auto offset, auto count) {
-						command_buffer.drawIndexed(count, 1, offset, 0, 0);
-					});
+				model.model()->bind_untextured(command_buffer, 0, [&](auto offset, auto count) {
+					command_buffer.drawIndexed(count, 1, offset, 0, 0);
 				});
 			}
 		});
 	}
 
 
-	auto Voxelization_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                            ecs::Entity_manager&      entities,
-	                                            util::maybe<Meta_system&> meta_system,
-	                                            bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
+	auto Voxelization_pass_factory::create_pass(Deferred_renderer&   renderer,
+	                                            ecs::Entity_manager& entities,
+	                                            util::maybe<Meta_system&>,
+	                                            bool&) -> std::unique_ptr<Pass> {
 		return std::make_unique<Voxelization_pass>(renderer, entities);
 	}
 
 	auto Voxelization_pass_factory::rank_device(vk::PhysicalDevice,
-	                                            util::maybe<std::uint32_t> graphics_queue,
-	                                            int                        current_score) -> int {
+	                                            util::maybe<std::uint32_t>,
+	                                            int current_score) -> int {
 		return current_score;
 	}
 
-	void Voxelization_pass_factory::configure_device(vk::PhysicalDevice,
+	void Voxelization_pass_factory::configure_device(vk::PhysicalDevice gpu,
 	                                                 util::maybe<std::uint32_t>,
-	                                                 graphic::Device_create_info&) {}
+	                                                 graphic::Device_create_info& create_info) {
+
+		auto supported_features = gpu.getFeatures();
+		MIRRAGE_INVARIANT(supported_features.logicOp, "LogicOp feature is not supported by device!");
+		MIRRAGE_INVARIANT(supported_features.depthClamp, "depthClamp feature is not supported by device!");
+		MIRRAGE_INVARIANT(supported_features.depthClamp,
+		                  "geometryShader feature is not supported by device!");
+
+		create_info.features.logicOp        = true;
+		create_info.features.depthClamp     = true;
+		create_info.features.geometryShader = true;
+	}
 } // namespace mirrage::renderer

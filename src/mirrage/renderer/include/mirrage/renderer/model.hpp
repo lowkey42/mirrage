@@ -147,6 +147,15 @@ namespace mirrage::renderer {
 			}
 		}
 
+		// identical to bind(...) but doesn't bind the materials
+		template <typename F>
+		auto bind_untextured(const graphic::Command_buffer& cb,
+		                     std::uint32_t                  vertex_binding,
+		                     F&&                            on_mesh) const {
+			bind_mesh(cb, vertex_binding);
+			on_mesh(std::uint32_t(0), std::uint32_t(_mesh.index_count()));
+		}
+
 
 	  private:
 		graphic::Mesh           _mesh;

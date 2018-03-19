@@ -77,9 +77,27 @@ namespace mirrage::graphic {
 		  : Image_dimensions(width, height, 1, 1) {}
 	};
 	template <>
+	struct Image_dimensions_t<Image_type::single_3d> : Image_dimensions {
+		Image_dimensions_t(std::uint32_t width, std::uint32_t height, std::uint32_t depth)
+		  : Image_dimensions(width, height, depth, 1) {}
+	};
+	template <>
+	struct Image_dimensions_t<Image_type::array_1d> : Image_dimensions {
+		Image_dimensions_t(std::uint32_t width, std::uint32_t layers)
+		  : Image_dimensions(width, 1, 1, layers) {}
+	};
+	template <>
 	struct Image_dimensions_t<Image_type::array_2d> : Image_dimensions {
 		Image_dimensions_t(std::uint32_t width, std::uint32_t height, std::uint32_t layers)
 		  : Image_dimensions(width, height, 1, layers) {}
+	};
+	template <>
+	struct Image_dimensions_t<Image_type::array_3d> : Image_dimensions {
+		Image_dimensions_t(std::uint32_t width,
+		                   std::uint32_t height,
+		                   std::uint32_t depth,
+		                   std::uint32_t layers)
+		  : Image_dimensions(width, height, depth, layers) {}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::cubemap> : Image_dimensions {

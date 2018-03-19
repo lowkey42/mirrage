@@ -27,6 +27,24 @@ namespace mirrage::graphic::detail {
 
 			MIRRAGE_FAIL("Unreachable");
 		}
+
+		auto vk_view_type(Image_type type) {
+			switch(type) {
+				case Image_type::single_1d: return vk::ImageViewType::e1D;
+				case Image_type::array_1d: return vk::ImageViewType::e1DArray;
+
+				case Image_type::cubemap: return vk::ImageViewType::eCube;
+				case Image_type::array_cubemap: return vk::ImageViewType::eCubeArray;
+
+				case Image_type::single_2d: return vk::ImageViewType::e2D;
+				case Image_type::array_2d: return vk::ImageViewType::e2DArray;
+
+				case Image_type::single_3d: return vk::ImageViewType::e3D;
+				case Image_type::array_3d: MIRRAGE_FAIL("3D ImageViews don't seem to be supported!");
+			}
+
+			MIRRAGE_FAIL("Unreachable");
+		}
 	} // namespace
 
 
@@ -34,7 +52,8 @@ namespace mirrage::graphic::detail {
 		if(mipmaps <= 0)
 			mipmaps = 9999;
 
-		mipmaps = glm::clamp<std::uint32_t>(mipmaps, 1.f, std::floor(std::log2(std::min(width, height))) + 1);
+		mipmaps = glm::clamp<std::uint32_t>(
+		        mipmaps, 1, std::uint32_t(std::floor(std::log2(std::min(width, height))) + 1));
 		return mipmaps;
 	}
 
@@ -79,7 +98,14 @@ namespace mirrage::graphic::detail {
 	           clamp_mip_levels(dim.width, dim.height, mip_levels),
 	           false,
 	           dim)
-	  , _image_view(device.create_image_view(_image.image(), format, 0, _image.mip_level_count(), aspects)) {}
+	  , _image_view(device.create_image_view(_image.image(),
+	                                         format,
+	                                         0,
+	                                         _image.mip_level_count(),
+	                                         0,
+	                                         dim.layers,
+	                                         aspects,
+	                                         vk_view_type(type))) {}
 
 	Base_texture::Base_texture(Device&                       device,
 	                           Image_type                    type,
@@ -99,22 +125,33 @@ namespace mirrage::graphic::detail {
 		                                          dest += 4;
 		                                          std::memcpy(dest, data.data(), data.size_bytes());
 	                                          }))
-	  , _image_view(device.create_image_view(image(), format, 0, _image.mip_level_count())) {}
+	  , _image_view(device.create_image_view(image(),
+	                                         format,
+	                                         0,
+	                                         _image.mip_level_count(),
+	                                         0,
+	                                         dim.layers,
+	                                         vk::ImageAspectFlagBits::eColor,
+	                                         vk_view_type(type))) {}
 
 	Base_texture::Base_texture(Device& device, Static_image image, vk::Format format)
 	  : _image(std::move(image))
-	  , _image_view(device.create_image_view(this->image(), format, 0, _image.mip_level_count())) {}
+	  , _image_view(device.create_image_view(
+	            this->image(), format, 0, _image.mip_level_count(), 0, _image.layers())) {}
 
 	auto build_mip_views(Device&              device,
 	                     std::uint32_t        mip_levels,
+	                     std::uint32_t        array_layers,
 	                     vk::Image            image,
 	                     vk::Format           format,
+	                     Image_type           type,
 	                     vk::ImageAspectFlags aspects) -> std::vector<vk::UniqueImageView> {
 		auto views = std::vector<vk::UniqueImageView>();
 		views.reserve(mip_levels);
 
 		for(auto i : util::range(mip_levels)) {
-			views.emplace_back(device.create_image_view(image, format, i, 1, aspects));
+			views.emplace_back(device.create_image_view(
+			        image, format, i, 1, 0, array_layers, aspects, vk_view_type(type)));
 		}
 
 		return views;
@@ -134,6 +171,19 @@ namespace mirrage::graphic::detail {
 		                                            [&](char* dest) { in.read_direct(dest, header.size); });
 
 		return {std::move(image), header.format, header.type};
+	}
+
+	auto load_image_data(Device&                    device,
+	                     std::uint32_t              owner_qfamily,
+	                     Image_type                 type,
+	                     Image_dimensions           dim,
+	                     std::uint32_t              texel_size,
+	                     vk::Format                 format,
+	                     std::function<void(char*)> write_data) -> Static_image {
+
+		auto size = dim.width * dim.height * dim.depth * dim.layers * texel_size;
+
+		return device.transfer().upload_image(vk_type(type), owner_qfamily, dim, format, 1, size, write_data);
 	}
 
 } // namespace mirrage::graphic::detail

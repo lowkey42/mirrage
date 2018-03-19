@@ -1,7 +1,7 @@
 #pragma once
 
 #include <mirrage/renderer/deferred_renderer.hpp>
-#include <mirrage/renderer/light_comp.hpp>
+#include <mirrage/renderer/model_comp.hpp>
 
 #include <mirrage/graphic/render_pass.hpp>
 
@@ -23,13 +23,16 @@ namespace mirrage::renderer {
 		auto name() const noexcept -> const char* override { return "Voxelization"; }
 
 	  private:
-		Deferred_renderer&              _renderer;
-		vk::Format                      _data_format;
-		graphic::Render_target_2D_array _voxel_data;
-		graphic::Framebuffer            _framebuffer;
-		vk::UniqueSampler               _sampler;
-		graphic::Render_pass            _render_pass;
-		Shadowcaster_comp::Pool&        _shadowcasters;
+		Deferred_renderer&                   _renderer;
+		vk::UniqueSampler                    _sampler;
+		graphic::Image_descriptor_set_layout _descriptor_set_layout;
+		vk::Format                           _data_format;
+		graphic::Render_target_2D_array      _voxel_data;
+		graphic::Framebuffer                 _framebuffer;
+		graphic::Render_pass                 _render_pass;
+		Model_comp::Pool&                    _models;
+		asset::Ptr<graphic::Texture_1D>      _mask_texture;
+		graphic::DescriptorSet               _descriptor_set;
 	};
 
 	class Voxelization_pass_factory : public Pass_factory {

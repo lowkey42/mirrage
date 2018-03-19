@@ -36,7 +36,7 @@ namespace mirrage::renderer {
 		int   gi_min_mip_level          = 0;
 		int   gi_samples                = 64;
 		int   gi_lowres_samples         = 1024;
-		bool  gi_jitter_samples         = false;
+		bool  gi_visibility             = true;
 		int   gi_low_quality_mip_levels = 0;
 		float exposure_override         = 0.f;
 

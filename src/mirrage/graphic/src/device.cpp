@@ -255,10 +255,13 @@ namespace mirrage::graphic {
 	                               vk::Format           format,
 	                               std::uint32_t        base_mipmap,
 	                               std::uint32_t        mipmap_levels,
+	                               std::uint32_t        base_array_layer,
+	                               std::uint32_t        array_layers,
 	                               vk::ImageAspectFlags aspect,
 	                               vk::ImageViewType    type,
 	                               vk::ComponentMapping mapping) -> vk::UniqueImageView {
-		auto range = vk::ImageSubresourceRange{aspect, base_mipmap, mipmap_levels, 0, 1};
+		auto range =
+		        vk::ImageSubresourceRange{aspect, base_mipmap, mipmap_levels, base_array_layer, array_layers};
 		return _device->createImageViewUnique(
 		        vk::ImageViewCreateInfo{vk::ImageViewCreateFlags{}, image, type, format, mapping, range});
 	}

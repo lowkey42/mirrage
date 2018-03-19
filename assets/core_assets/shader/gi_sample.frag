@@ -28,6 +28,7 @@ layout (constant_id = 4) const int UPSAMPLE_ONLY = 0;// 1 if only the previous r
                                                      //   upsampled but no new samples calculated
 layout (constant_id = 5) const int BLEND_HISTORY = 0;// 1 if this is the last call and should blend
                                                      //   with the history buffer
+layout (constant_id = 6) const int VISIBILTY = 0;
 
 
 // arguments are packet into the matrices to keep the pipeline layouts compatible between GI passes
@@ -174,6 +175,35 @@ vec3 gi_sample(int lod, int base_mip) {
 	return c;
 }
 
+float calc_visibility(int lod, vec3 p1, vec3 p2, vec2 p1_uv, vec2 p2_uv) {
+	vec3 dir = p2-p1;
+	float max_distance = length(dir);
+	float max_steps = max_distance*16;
+	dir /= max_distance;
+	max_distance-=0.5;
+
+	if(max_distance<=0)
+		return 0;
+
+	vec2 depthSize = textureSize(depth_sampler, 0);
+
+	mat4 proj = pcs.projection;
+	proj[3][3] = 0;
+
+	vec3 jitter = PDnrand3(p1_uv);
+
+	vec2 raycast_hit_uv;
+	vec3 raycast_hit_point;
+	if(traceScreenSpaceRay1(p1+dir*0.25, dir, proj, depth_sampler,
+	                        depthSize, 50.0, global_uniforms.proj_planes.x,
+							1, 0.5*jitter.z, max_steps, max_distance, 0,
+	                        raycast_hit_uv, raycast_hit_point)) {
+		return 0;
+	}
+
+	return 1;
+}
+
 // calculate the light transfer between two pixel of the current level
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal) {
@@ -194,7 +224,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	vec3 dir = normalize(diff);
 	float r2 = dot(diff, diff);
 
-	float visibility = 1.0; // v(x, x_i); currently not implemented
+	float visibility = VISIBILTY==0 ? 1.0 : calc_visibility(lod, shaded_point, P, shaded_uv, src_uv); // v(x, x_i); currently not implemented
 
 	float NdotL_src = clamp(dot(N, dir),              0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)

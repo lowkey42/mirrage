@@ -20,6 +20,8 @@ vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
 	radiance /= max(1, 1 - luminance_norm(radiance));
 	specular /= max(1, 1 - luminance_norm(specular));
 
+	specular *= clamp(length(radiance)*10, 0.1, 1.0);
+
 	// load / calculate material properties and factors
 	vec3 albedo = textureLod(albedo_sampler, uv, 0.0).rgb;
 

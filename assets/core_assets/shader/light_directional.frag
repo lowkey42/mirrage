@@ -78,7 +78,7 @@ void main() {
 		out_color_diff = vec4(diffuse * shadow, 1.0);
 	}
 
-//	out_color.rgb += albedo * vec3(0.92, 0.95, 1) * 0.001;
+//	out_color.rgb += albedo * vec3(0.92, 0.95, 1) * 0.002;
 }
 
 

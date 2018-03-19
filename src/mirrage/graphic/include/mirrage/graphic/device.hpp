@@ -80,9 +80,11 @@ namespace mirrage::graphic {
 		                       vk::Format,
 		                       std::uint32_t base_mipmap,
 		                       std::uint32_t mipmap_levels,
-		                       vk::ImageAspectFlags = vk::ImageAspectFlagBits::eColor,
-		                       vk::ImageViewType    = vk::ImageViewType::e2D,
-		                       vk::ComponentMapping = {}) -> vk::UniqueImageView;
+		                       std::uint32_t base_array_layer = 0,
+		                       std::uint32_t array_layers     = 1,
+		                       vk::ImageAspectFlags           = vk::ImageAspectFlagBits::eColor,
+		                       vk::ImageViewType              = vk::ImageViewType::e2D,
+		                       vk::ComponentMapping           = {}) -> vk::UniqueImageView;
 
 		auto create_sampler(std::uint32_t max_mip_levels,
 		                    vk::SamplerAddressMode         = vk::SamplerAddressMode::eRepeat,
