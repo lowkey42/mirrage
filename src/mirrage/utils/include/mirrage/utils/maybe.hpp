@@ -325,14 +325,14 @@ namespace mirrage::util {
 	};
 
 	namespace details {
-		template <int...>
+		template <std::size_t...>
 		struct seq {};
 
-		template <int N, int... S>
-		struct gens : gens<N - 1, N - 1, S...> {};
+		template <std::size_t N, std::size_t... S>
+		struct gens : gens<N - 1u, N - 1u, S...> {};
 
-		template <int... S>
-		struct gens<0, S...> {
+		template <std::size_t... S>
+		struct gens<0u, S...> {
 			typedef seq<S...> type;
 		};
 

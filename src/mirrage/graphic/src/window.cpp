@@ -80,7 +80,7 @@ namespace mirrage::graphic {
 
 		auto surface = VkSurfaceKHR{};
 		SDL_Vulkan_CreateSurface(_window.get(), context.instance(), &surface);
-		_surface = vk::UniqueSurfaceKHR(surface, vk::SurfaceKHRDeleter{context.instance()});
+		_surface = vk::UniqueSurfaceKHR(surface, {context.instance()});
 		sdl_error_check();
 	}
 
@@ -128,7 +128,7 @@ namespace mirrage::graphic {
 		target.h            = height;
 		target.format       = 0;
 		target.refresh_rate = 0;
-		target.driverdata   = 0;
+		target.driverdata   = nullptr;
 
 		if(fullscreen == Fullscreen::yes) { // check capabilities
 			if(!SDL_GetClosestDisplayMode(_display, &target, &closest)) {

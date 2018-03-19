@@ -134,14 +134,14 @@ namespace format {
 			}
 			_on_error(msg);
 		}
-		return c;
+		return static_cast<char>(c);
 	}
 	inline void Json_reader::_unget() {
 		_stream.unget();
 		auto c = _stream.peek();
 		_column--;
 		if(c=='\n') {
-			_column=-1;
+			_column = static_cast<std::uint32_t>(-1);
 			_row--;
 		}
 	}
@@ -189,20 +189,20 @@ namespace format {
 
 	template<typename T>
 	T Json_reader::_read_decimal() {
-		T val = 0;
+		auto val = 0.0;
 
 		char c=_next();
-		for(double dec=10; c>='0' && c<='9'; c=_get(), dec*=10.f)
-			val+= (c-'0') / dec;
+		for(double dec=10; c>='0' && c<='9'; c=_get(), dec*=10.0)
+			val += (c-'0') / dec;
 
 		_unget();
 
-		return val;
+		return static_cast<T>(val);
 	}
 
 	template<typename T>
 	T Json_reader::_read_int() {
-		T val=0;
+		auto val = std::uint64_t(0);
 		bool negativ = false;
 
 		char c = _next();
@@ -213,14 +213,27 @@ namespace format {
 		}
 
 		for(; c>='0' && c<='9'; c=_get())
-			val= (10*val)+ (c-'0');
+			val = (10u*val) + static_cast<std::uint64_t>((c-'0'));
 
 		_unget();
 
-		if( negativ )
-			val*=-1;
+		if constexpr(std::numeric_limits<T>::is_signed) {
+			if( negativ && val<=static_cast<std::uint64_t>(-std::numeric_limits<T>::min()))
+				return static_cast<T>( -static_cast<T>(val) );
+			else if(val<=std::numeric_limits<T>::max())
+				return static_cast<T>(val);
 
-		return val;
+		} else {
+			if(negativ) {
+				_on_error("Negative value -"+std::to_string(val)+" for signed type "+typeid(T).name());
+				return static_cast<T>(std::numeric_limits<T>::max() - static_cast<T>(val));
+
+			} else if(val<=std::numeric_limits<T>::max())
+				return static_cast<T>(val);
+		}
+
+		_on_error("Overflow! Value -"+std::to_string(val)+" doesn't fit in type "+typeid(T).name());
+		return static_cast<T>(val);
 	}
 
 	template<typename T>
@@ -234,7 +247,7 @@ namespace format {
 			_rewind();
 
 
-		T val = _read_int<T>();
+		auto val = static_cast<T>(_read_int<std::uint64_t>());
 
 		char c = _get();
 
@@ -246,7 +259,7 @@ namespace format {
 		if(c=='e' || c=='E') {
 			int64_t exp = _read_int<int64_t>();
 
-			val *= (T) std::pow(exp>0 ? 10.0 : 0.1, static_cast<double>(std::abs(exp)));
+			val *= static_cast<T>(std::pow(exp>0 ? 10.0 : 0.1, static_cast<double>(std::abs(exp))));
 		}else
 			_unget();
 
