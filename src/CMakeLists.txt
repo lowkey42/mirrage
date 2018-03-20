@@ -22,7 +22,7 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic -Wunsafe-loop-optimizations
 		-Wzero-as-null-pointer-constant -Wlogical-op -Werror -Wno-unused-parameter
-		-Wno-unused-private-field -Wno-missing-braces
+		-Wno-missing-braces
 		-Wno-error=unsafe-loop-optimizations)
 
 elseif(MSVC)
