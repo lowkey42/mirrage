@@ -1,4 +1,4 @@
-/* GUUID for all assets used in the project
+/** GUUID for all assets used in the project
  * \internal                                                                 *
  *                                                                           *
  * Copyright (c) 2014 Florian Oetke                                          *

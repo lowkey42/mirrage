@@ -1,5 +1,6 @@
 PROJECT_NAME = Mirrage
-PROJECT_BRIEF = A Vulkan based deferred renderer and simple game engine/framework
+PROJECT_BRIEF = "A Vulkan based deferred renderer and simple game engine/framework"
+STRIP_CODE_COMMENTS = NO
 ALPHABETICAL_INDEX = YES
 BUILTIN_STL_SUPPORT = YES
 DIRECTORY_GRAPH = YES
