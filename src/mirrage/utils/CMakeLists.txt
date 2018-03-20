@@ -15,6 +15,7 @@ add_library(mirrage_utils STATIC
 	src/purgatory.cpp
 	src/reflection.cpp
 	src/stacktrace.cpp
+	src/types.cpp
 	${HEADER_FILES}
 )
 add_library(mirrage::utils ALIAS mirrage_utils)
