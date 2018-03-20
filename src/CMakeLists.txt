@@ -20,10 +20,9 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		-Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic -Wunsafe-loop-optimizations
+	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic
 		-Wzero-as-null-pointer-constant -Wlogical-op -Werror -Wno-unused-parameter
-		-Wno-missing-braces
-		-Wno-error=unsafe-loop-optimizations)
+		-Wno-missing-braces)
 
 elseif(MSVC)
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS /Za)
