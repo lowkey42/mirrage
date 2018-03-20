@@ -167,7 +167,7 @@ if(PHYSFS_BUILD_STATIC)
     set(PHYSFS_LIB_TARGET physfs-static)
     set(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";physfs-static")
     
-	target_include_directories(physfs-static INTERFACE
+	target_include_directories(physfs-static SYSTEM INTERFACE
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 		$<INSTALL_INTERFACE:include>)
 endif()
@@ -185,7 +185,7 @@ if(PHYSFS_BUILD_SHARED)
     set(PHYSFS_LIB_TARGET physfs)
     set(PHYSFS_INSTALL_TARGETS ${PHYSFS_INSTALL_TARGETS} ";physfs")
     
-	target_include_directories(physfs INTERFACE
+	target_include_directories(physfs SYSTEM INTERFACE
 		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 		$<INSTALL_INTERFACE:include>)
 endif()

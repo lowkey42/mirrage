@@ -190,7 +190,7 @@ if(GLM_INSTALL_ENABLE)
 endif()
 
 add_library(glm INTERFACE)
-target_include_directories(glm INTERFACE
+target_include_directories(glm SYSTEM INTERFACE
 	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
 install(TARGETS glm EXPORT glmTargets)

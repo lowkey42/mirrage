@@ -287,7 +287,9 @@ namespace mirrage::gui {
 
 					auto cmd    = static_cast<const nk_draw_command*>(nullptr);
 					int  offset = 0;
-					nk_draw_foreach(cmd, &ctx, &commands.buffer) {
+					for(cmd = nk__draw_begin(&ctx, &commands.buffer); cmd;
+					    cmd = nk__draw_next(cmd, &commands.buffer, &ctx)) {
+
 						if(cmd->elem_count == 0)
 							continue;
 

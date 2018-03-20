@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 project(gsl)
 
 add_library(gsl INTERFACE)
-target_include_directories(gsl INTERFACE
+target_include_directories(gsl SYSTEM INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gsl/include>
 	$<INSTALL_INTERFACE:include>)
 install(TARGETS gsl EXPORT gslTargets)

@@ -47,7 +47,7 @@ namespace sf2 {
 
 
 			public:
-				enum { value = sizeof(test<T>(0)) == sizeof(char) };
+				enum { value = sizeof(test<T>(nullptr)) == sizeof(char) };
 		};
 		template<class Reader, class T>
 		struct has_load {
@@ -60,7 +60,7 @@ namespace sf2 {
 
 
 			public:
-				enum { value = sizeof(test<T>(0)) == sizeof(char) };
+				enum { value = sizeof(test<T>(nullptr)) == sizeof(char) };
 		};
 		template<class T>
 		struct has_post_load {
@@ -73,7 +73,7 @@ namespace sf2 {
 
 
 			public:
-				enum { value = sizeof(test<T>(0)) == sizeof(char) };
+				enum { value = sizeof(test<T>(nullptr)) == sizeof(char) };
 		};
 		template<class T>
 		void call_post_load(T&, typename std::enable_if_t<!has_post_load<T>::value>* = nullptr) {
@@ -94,7 +94,7 @@ namespace sf2 {
 
 
 			public:
-				enum { value = sizeof(test<T>(0, 0)) == sizeof(char) };
+				enum { value = sizeof(test<T>(nullptr, nullptr)) == sizeof(char) };
 		};
 
 		template<class T>
@@ -108,7 +108,7 @@ namespace sf2 {
 
 
 			public:
-				enum { value = sizeof(test<T>(0)) == sizeof(char) };
+				enum { value = sizeof(test<T>(nullptr)) == sizeof(char) };
 		};
 
 		template<class T>
@@ -122,7 +122,7 @@ namespace sf2 {
 
 
 			public:
-				enum { value = sizeof(test<T>(0)) == sizeof(char) };
+				enum { value = sizeof(test<T>(nullptr)) == sizeof(char) };
 		};
 
 		template<class T>

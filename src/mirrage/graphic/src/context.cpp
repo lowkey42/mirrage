@@ -24,8 +24,8 @@ VkResult vkCreateDebugReportCallbackEXT(VkInstance                              
                                         const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
                                         const VkAllocationCallbacks*              pAllocator,
                                         VkDebugReportCallbackEXT*                 pCallback) {
-	auto func = (PFN_vkCreateDebugReportCallbackEXT) vkGetInstanceProcAddr(instance,
-	                                                                       "vkCreateDebugReportCallbackEXT");
+	auto func = reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>(
+	        vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT"));
 	if(func != nullptr) {
 		return func(instance, pCreateInfo, pAllocator, pCallback);
 	} else {
@@ -36,8 +36,8 @@ VkResult vkCreateDebugReportCallbackEXT(VkInstance                              
 void vkDestroyDebugReportCallbackEXT(VkInstance                   instance,
                                      VkDebugReportCallbackEXT     callback,
                                      const VkAllocationCallbacks* pAllocator) {
-	auto func = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(
-	        instance, "vkDestroyDebugReportCallbackEXT");
+	auto func = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(
+	        vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"));
 	if(func != nullptr) {
 		func(instance, callback, pAllocator);
 	}
