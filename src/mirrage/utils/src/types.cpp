@@ -7,13 +7,13 @@ namespace mirrage::util {
 
 	namespace detail {
 
-		std::ostream& operator<<(std::ostream& os, Out_wrapper<std::int64_t> v) { return os << v; }
+		std::ostream& operator<<(std::ostream& os, Out_wrapper<std::int64_t> v) { return os << v.value; }
 
-		std::ostream& operator<<(std::ostream& os, Out_wrapper<std::uint64_t> v) { return os << v; }
+		std::ostream& operator<<(std::ostream& os, Out_wrapper<std::uint64_t> v) { return os << v.value; }
 
-		std::ostream& operator<<(std::ostream& os, Out_wrapper<float> v) { return os << v; }
+		std::ostream& operator<<(std::ostream& os, Out_wrapper<float> v) { return os << v.value; }
 
-		std::ostream& operator<<(std::ostream& os, Out_wrapper<double> v) { return os << v; }
+		std::ostream& operator<<(std::ostream& os, Out_wrapper<double> v) { return os << v.value; }
 
 	} // namespace detail
 
