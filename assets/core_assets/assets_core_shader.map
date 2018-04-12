@@ -29,6 +29,9 @@ frag_shader:ssao = shader/bin/ssao.frag.spv
 vert_shader:gi_blend = shader/bin/fullscreen.vert.spv
 frag_shader:gi_blend = shader/bin/gi_blend.frag.spv
 
+vert_shader:gi_diffuse_reproject = shader/bin/fullscreen.vert.spv
+frag_shader:gi_diffuse_reproject = shader/bin/gi_diffuse_reproject.frag.spv
+
 vert_shader:gi_integrate_brdf = shader/bin/gi_integrate_brdf.vert.spv
 frag_shader:gi_integrate_brdf = shader/bin/gi_integrate_brdf.frag.spv
 
@@ -37,6 +40,12 @@ frag_shader:gi_mipgen = shader/bin/gi_mipgen.frag.spv
 
 vert_shader:gi_sample = shader/bin/fullscreen.vert.spv
 frag_shader:gi_sample = shader/bin/gi_sample.frag.spv
+
+vert_shader:gi_sample_upsample = shader/bin/fullscreen.vert.spv
+frag_shader:gi_sample_upsample = shader/bin/gi_sample_upsample.frag.spv
+
+vert_shader:gi_sample_blend = shader/bin/fullscreen.vert.spv
+frag_shader:gi_sample_blend = shader/bin/gi_sample_blend.frag.spv
 
 vert_shader:gi_sample_spec = shader/bin/fullscreen.vert.spv
 frag_shader:gi_sample_spec = shader/bin/gi_sample_spec.frag.spv

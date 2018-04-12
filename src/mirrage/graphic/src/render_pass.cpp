@@ -146,7 +146,7 @@ namespace mirrage::graphic {
 					case Shader_stage::geometry: return vk::ShaderStageFlagBits::eGeometry;
 					case Shader_stage::fragment: return vk::ShaderStageFlagBits::eFragment;
 				}
-				MIRRAGE_FAIL("Unecpected Shader_stage " << ((int) s.stage));
+				MIRRAGE_FAIL("Unecpected Shader_stage " << static_cast<int>(s.stage));
 			}();
 
 			s.constants_info = vk::SpecializationInfo{gsl::narrow<std::uint32_t>(s.constants.size()),

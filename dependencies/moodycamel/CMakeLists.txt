@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 project(moodycamel LANGUAGES CXX)
 
 add_library(moodycamel INTERFACE)
-target_include_directories(moodycamel INTERFACE
+target_include_directories(moodycamel SYSTEM INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:include>)
 

@@ -193,7 +193,7 @@ namespace format {
 
 		_stream.put('"');
 
-		_stream.write(v, len);
+		_stream.write(v, static_cast<std::streamsize>(len));
 
 		_stream.put('"');
 
@@ -217,11 +217,11 @@ namespace format {
 	}
 
 	inline void Json_writer::write(uint8_t v) {
-		_write((uint16_t) v);
+		_write(static_cast<uint16_t>(v));
 	}
 
 	inline void Json_writer::write(int8_t v) {
-		_write((int16_t) v);
+		_write(static_cast<int16_t>(v));
 	}
 
 	inline void Json_writer::write(uint16_t v) {

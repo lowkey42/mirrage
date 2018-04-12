@@ -83,6 +83,9 @@ namespace mirrage::util {
 #endif
 
 #ifndef _MSC_VER
+
+/// logs the given error message and ends the program with a stacktrace without unwinding the stack.
+/// $foo_{{bar} over {baz}}$
 #define MIRRAGE_FAIL(M)                                                          \
 	do {                                                                         \
 		(::mirrage::util::fail(__func__, __FILE__, __LINE__) << M) << std::endl; \

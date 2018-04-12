@@ -41,12 +41,8 @@ namespace mirrage::graphic {
 		}
 	} // namespace
 
-	Window::Window(std::string name,
-	               std::string title,
-	               int         display,
-	               int         width,
-	               int         height,
-	               Fullscreen  fullscreen)
+	Window::Window(
+	        std::string name, std::string title, int display, int width, int height, Fullscreen fullscreen)
 	  : _name(name)
 	  , _title(title)
 	  , _display(display)
@@ -80,7 +76,7 @@ namespace mirrage::graphic {
 
 		auto surface = VkSurfaceKHR{};
 		SDL_Vulkan_CreateSurface(_window.get(), context.instance(), &surface);
-		_surface = vk::UniqueSurfaceKHR(surface, vk::SurfaceKHRDeleter{context.instance()});
+		_surface = vk::UniqueSurfaceKHR(surface, {context.instance()});
 		sdl_error_check();
 	}
 
@@ -94,9 +90,8 @@ namespace mirrage::graphic {
 	void Window::_update_fps_timer(double present_started) {
 		auto delta_time = static_cast<float>(util::current_time_sec() - _frame_start_time);
 
-		float smooth_factor = 0.1f;
-		_delta_time_smoothed =
-		        (1.0f - smooth_factor) * _delta_time_smoothed + smooth_factor * delta_time;
+		float smooth_factor  = 0.1f;
+		_delta_time_smoothed = (1.0f - smooth_factor) * _delta_time_smoothed + smooth_factor * delta_time;
 
 		auto cpu_delta_time = static_cast<float>(present_started - _frame_start_time);
 		_cpu_delta_time_smoothed =
@@ -106,8 +101,7 @@ namespace mirrage::graphic {
 		if(_time_since_last_FPS_output >= 1.0f) {
 			_time_since_last_FPS_output = 0.0f;
 			std::ostringstream osstr;
-			osstr << _title << " (" << (int((1.0f / _delta_time_smoothed) * 10.0f) / 10.0f)
-			      << " FPS, ";
+			osstr << _title << " (" << (int((1.0f / _delta_time_smoothed) * 10.0f) / 10.0f) << " FPS, ";
 			osstr << (int(_delta_time_smoothed * 10000.0f) / 10.0f) << " ms/frame, ";
 			osstr << (int(_cpu_delta_time_smoothed * 10000.0f) / 10.0f) << " ms/frame [cpu])";
 
@@ -128,7 +122,7 @@ namespace mirrage::graphic {
 		target.h            = height;
 		target.format       = 0;
 		target.refresh_rate = 0;
-		target.driverdata   = 0;
+		target.driverdata   = nullptr;
 
 		if(fullscreen == Fullscreen::yes) { // check capabilities
 			if(!SDL_GetClosestDisplayMode(_display, &target, &closest)) {
@@ -150,7 +144,7 @@ namespace mirrage::graphic {
 					case Fullscreen::yes: return SDL_WINDOW_FULLSCREEN;
 					case Fullscreen::yes_borderless: return SDL_WINDOW_FULLSCREEN_DESKTOP;
 				}
-				MIRRAGE_FAIL("Unexpected fullscreen enum value: " << (int) fullscreen);
+				MIRRAGE_FAIL("Unexpected fullscreen enum value: " << static_cast<int>(fullscreen));
 			}();
 			SDL_SetWindowFullscreen(_window.get(), fs_type);
 

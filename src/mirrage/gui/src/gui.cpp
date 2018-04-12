@@ -76,7 +76,7 @@ namespace mirrage::gui {
 			void post_input_events() override { nk_input_end(_ctx); }
 
 			bool handle_key(bool down, SDL_Keycode key) {
-				const auto state = SDL_GetKeyboardState(0);
+				const auto state = SDL_GetKeyboardState(nullptr);
 				const auto ctrl  = state[SDL_SCANCODE_LCTRL] || state[SDL_SCANCODE_RCTRL];
 
 				switch(key) {
@@ -202,7 +202,7 @@ namespace mirrage::gui {
 				nk_init_default(&ctx, nullptr);
 				ctx.clip.copy     = nk_sdl_clipbard_copy;
 				ctx.clip.paste    = nk_sdl_clipbard_paste;
-				ctx.clip.userdata = nk_handle_ptr(0);
+				ctx.clip.userdata = nk_handle_ptr(nullptr);
 			}
 			~Wnk_Context() { nk_free(&ctx); }
 		};
@@ -287,7 +287,9 @@ namespace mirrage::gui {
 
 					auto cmd    = static_cast<const nk_draw_command*>(nullptr);
 					int  offset = 0;
-					nk_draw_foreach(cmd, &ctx, &commands.buffer) {
+					for(cmd = nk__draw_begin(&ctx, &commands.buffer); cmd;
+					    cmd = nk__draw_next(cmd, &commands.buffer, &ctx)) {
+
 						if(cmd->elem_count == 0)
 							continue;
 

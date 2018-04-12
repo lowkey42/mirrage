@@ -50,6 +50,12 @@ namespace mirrage::util {
 		using arg_t = typename arg<i>::type;
 	};
 
+	template <typename Return, typename... Arg>
+	constexpr func_type func_trait<Return (*)(Arg...)>::type;
+	template <typename Return, typename... Arg>
+	constexpr std::size_t func_trait<Return (*)(Arg...)>::argument_count;
+
+
 	template <typename T, std::size_t i>
 	using nth_func_arg_t = typename func_trait<std::decay_t<T>>::template arg_t<i>;
 

@@ -13,7 +13,7 @@ namespace mirrage::util {
 		// format: YYYYMMDD_HHmmss
 		// Visit http://en.cppreference.com/w/cpp/chrono/c/strftime
 		std::string get_now_short() {
-			time_t    now = time(0);
+			time_t    now = time(nullptr);
 			struct tm tstruct;
 			char      buf[80];
 			tstruct = *localtime(&now);
@@ -22,7 +22,7 @@ namespace mirrage::util {
 			return buf;
 		}
 		std::string get_now() {
-			time_t    now = time(0);
+			time_t    now = time(nullptr);
 			struct tm tstruct;
 			char      buf[80];
 			tstruct = *localtime(&now);

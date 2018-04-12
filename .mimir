@@ -1,0 +1,27 @@
+define = GLM_FORCE_CXX14
+define = ENABLE_SF2_ASSETS
+define = GLM_ENABLE_EXPERIMENTAL
+define = GLM_FORCE_DEPTH_ZERO_TO_ONE
+define = GLM_FORCE_RADIANS
+define = LIBASYNC_STATIC
+
+include_dir = **/include
+include_dir = dependencies/glm
+include_dir = dependencies/physfs/src
+include_dir = dependencies/robin-map
+include_dir = dependencies/nuklear
+include_dir = dependencies/stb_image
+
+exclude = **/test/**
+exclude = **/tests/**
+exclude = **/example/**
+exclude = **/glm/**
+exclude = **/boost/**
+exclude = **/assimp/**
+
+# input = src/**.cpp
+input = **.hpp
+input = **.h
+
+project_name = Mirrage
+target_namespace = mirrage.*

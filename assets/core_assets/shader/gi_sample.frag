@@ -14,21 +14,18 @@ layout(set=1, binding = 0) uniform sampler2D noise_sampler;
 layout(set=2, binding = 0) uniform sampler2D color_sampler;
 layout(set=2, binding = 1) uniform sampler2D depth_sampler;
 layout(set=2, binding = 2) uniform sampler2D mat_data_sampler;
-layout(set=2, binding = 3) uniform sampler2D result_sampler;
-layout(set=2, binding = 4) uniform sampler2D history_weight_sampler;
-layout(set=2, binding = 5) uniform sampler2D prev_depth_sampler;
-layout(set=2, binding = 6) uniform sampler2D prev_mat_data_sampler;
-layout(set=2, binding = 7) uniform sampler2D ao_sampler;
+layout(set=2, binding = 3) uniform sampler2D prev_level_result_sampler;
+layout(set=2, binding = 4) uniform sampler2D result_sampler;
+layout(set=2, binding = 5) uniform sampler2D history_result_sampler;
+layout(set=2, binding = 6) uniform sampler2D history_weight_sampler;
+layout(set=2, binding = 7) uniform sampler2D prev_depth_sampler;
+layout(set=2, binding = 8) uniform sampler2D prev_mat_data_sampler;
+layout(set=2, binding = 9) uniform sampler2D ao_sampler;
 
 layout (constant_id = 0) const int LAST_SAMPLE = 0;  // 1 if this is the last MIP level to sample
 layout (constant_id = 1) const float R = 40;         // the radius to fetch samples from
 layout (constant_id = 2) const int SAMPLES = 128;    // the number of samples to fetch
-layout (constant_id = 3) const int UPSAMPLE = 1;     // 1 if there is a previous frame that should be upsampled
-layout (constant_id = 4) const int UPSAMPLE_ONLY = 0;// 1 if only the previous result should be
-                                                     //   upsampled but no new samples calculated
-layout (constant_id = 5) const int BLEND_HISTORY = 0;// 1 if this is the last call and should blend
-                                                     //   with the history buffer
-layout (constant_id = 6) const int VISIBILTY = 0;
+layout (constant_id = 3) const int VISIBILTY = 0;
 
 
 // arguments are packet into the matrices to keep the pipeline layouts compatible between GI passes
@@ -68,47 +65,16 @@ void main() {
 	float max_mip     = pcs.prev_projection[1][3];
 	float base_mip    = pcs.prev_projection[3][3];
 
-	// upsample the previous result (if there is one)
-	if(UPSAMPLE==1)
-		out_color = vec4(upsampled_result(depth_sampler, mat_data_sampler,
-		                                  prev_depth_sampler, prev_mat_data_sampler,
-		                                  result_sampler, vertex_out.tex_coords), 1.0);
-	else
-		out_color = vec4(0,0,0, 1);
+	out_color = vec4(0,0,0, 1);
 
-	// calculate contribution from this level (if we haven't reached the target level, yet)
-	if(UPSAMPLE_ONLY==0)
-		out_color.rgb += gi_sample(int(current_mip+0.5), int(base_mip+0.5));
-
-	// reached the last MIP level => blend with history
-	if(BLEND_HISTORY==1) {
-		// calculate interpolation factor based on the depth-error in its surrounding during reporjection
-		vec2 hws_step = 1.0 / textureSize(history_weight_sampler, 0);
-
-		float history_sample_count = dot(textureGather(history_weight_sampler, vertex_out.tex_coords-hws_step, 1), vec4(1));
-		history_sample_count += texture(history_weight_sampler, vertex_out.tex_coords+hws_step*vec2(1,-1)).g;
-		history_sample_count += texture(history_weight_sampler, vertex_out.tex_coords+hws_step*vec2(1, 0)).g;
-		history_sample_count += texture(history_weight_sampler, vertex_out.tex_coords+hws_step*vec2(1, 1)).g;
-		history_sample_count += texture(history_weight_sampler, vertex_out.tex_coords+hws_step*vec2(-1,1)).g;
-		history_sample_count += texture(history_weight_sampler, vertex_out.tex_coords+hws_step*vec2( 0,1)).g;
-		history_sample_count = history_sample_count / 9.0;
-
-		// modulate diffuse GI by ambient occlusion
-		if(pcs.projection[3][3]>0.0) {
-			float ao = texture(ao_sampler, vertex_out.tex_coords).r;
-			ao = mix(1.0, ao, pcs.projection[3][3]);
-			out_color.rgb *= ao;
-		}
-
-		// normalize diffuse GI by its luminance to reduce fire-flies
-		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
-
-		// scale by calculated weight to alpha-blend with the reprojected result of the previous frame
-		out_color *= 1.0 - history_sample_count;
-	}
+	// calculate contribution from this level
+	out_color = vec4(gi_sample(int(current_mip+0.5), int(base_mip+0.5)), 1);
 
 	// clamp the result to a reasonable range to reduce artefacts
-	out_color = clamp(out_color, vec4(0), vec4(20));
+	out_color.rgb = clamp(out_color.rgb, vec3(0), vec3(20));
+
+	// normalize diffuse GI by its luminance to reduce fire-flies
+	out_color.rgb /= (1 + luminance_norm(out_color.rgb));
 }
 
 const float PI     = 3.14159265359;

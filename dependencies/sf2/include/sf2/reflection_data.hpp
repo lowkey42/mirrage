@@ -28,16 +28,11 @@ namespace sf2 {
 
 	namespace details {
 		constexpr auto calc_hash(const char* data, std::size_t len)noexcept -> std::size_t {
-			return len==0 ? std::size_t(0) :
-			                (len==1 ? std::size_t(0) : calc_hash(data+1, len-1)*101u) + std::size_t(data[0]);
-			/*
-			// requires N3652 (Relaxing constraints on constexpr-functions), that is not supported by gcc < 5.0 (mingw & ndk)
 			std::size_t h = 0;
 			for(std::size_t i=0; i<len; ++i)
 				h = h*101 + data[i];
 
 			return h;
-			*/
 		}
 	}
 
@@ -175,13 +170,13 @@ namespace sf2 {
 
 
 	template<typename T>
-	auto get_enum_info() -> decltype(sf2_enum_info_factory((T*)nullptr)) {
-		return sf2_enum_info_factory((T*)nullptr);
+	auto get_enum_info() -> decltype(sf2_enum_info_factory(static_cast<T*>(nullptr))) {
+		return sf2_enum_info_factory(static_cast<T*>(nullptr));
 	}
 
 	template<typename T>
-	auto get_struct_info() -> decltype(sf2_struct_info_factory((T*)nullptr)) {
-		return sf2_struct_info_factory((T*)nullptr);
+	auto get_struct_info() -> decltype(sf2_struct_info_factory(static_cast<T*>(nullptr))) {
+		return sf2_struct_info_factory(static_cast<T*>(nullptr));
 	}
 
 
@@ -191,12 +186,12 @@ namespace sf2 {
 			typedef char one;
 			typedef long two;
 
-			template <typename C> static one test( std::remove_reference_t<decltype(sf2_struct_info_factory((C*)nullptr))>* ) ;
+			template <typename C> static one test( std::remove_reference_t<decltype(sf2_struct_info_factory(static_cast<C*>(nullptr)))>* ) ;
 			template <typename C> static two test(...);
 
 
 		public:
-			enum { value = sizeof(test<T>(0)) == sizeof(char) };
+			enum { value = sizeof(test<T>(nullptr)) == sizeof(char) };
 	};
 
 	template<class T>
@@ -205,12 +200,12 @@ namespace sf2 {
 			typedef char one;
 			typedef long two;
 
-			template <typename C> static one test( std::remove_reference_t<decltype(sf2_enum_info_factory((C*)nullptr))>* ) ;
+			template <typename C> static one test( std::remove_reference_t<decltype(sf2_enum_info_factory(static_cast<C*>(nullptr)))>* ) ;
 			template <typename C> static two test(...);
 
 
 		public:
-			enum { value = sizeof(test<T>(0)) == sizeof(char) };
+			enum { value = sizeof(test<T>(nullptr)) == sizeof(char) };
 	};
 
 	template<class T>
