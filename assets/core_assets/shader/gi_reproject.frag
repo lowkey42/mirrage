@@ -89,20 +89,13 @@ void main() {
 		        * prev_depth * -global_uniforms.proj_planes.y;
 
 		vec3 pos_error = real_prev_pos - prev_pos.xyz;
+		out_weight.r = 0.98 * (1.0-smoothstep(0.05, 0.07, length(pos_error)));
 
 		out_diffuse.rgb  = radiance;
 		out_specular.rgb = specular;
-		out_weight.r     = (1.0 - smoothstep(0.1, 0.4, dot(pos_error,pos_error)));
-		out_input *= out_weight.r;
-
-		// calculate the min/max interpolation weights based on the delta time
-		float weight_measure = smoothstep(1.0/120.0, 1.0/30.0, global_uniforms.time.z);
-		float weight_min = mix(0.85, 0.5, weight_measure);
-		float weight_max = mix(0.98, 0.85, weight_measure);
-
+		out_input *= (1.0 - smoothstep(0.1, 0.4, dot(pos_error,pos_error)));
 
 		vec2 hws_step = 1.0 / textureSize(prev_weight_sampler, 0);
-
 		float history_sample_count = dot(textureGather(prev_weight_sampler, prev_uv.xy-hws_step, 1), vec4(1));
 		history_sample_count += texture(prev_weight_sampler, prev_uv.xy+hws_step*vec2(1,-1)).g;
 		history_sample_count += texture(prev_weight_sampler, prev_uv.xy+hws_step*vec2(1, 0)).g;
@@ -111,7 +104,7 @@ void main() {
 		history_sample_count += texture(prev_weight_sampler, prev_uv.xy+hws_step*vec2( 0,1)).g;
 		history_sample_count = history_sample_count / 9.0;
 
-		float sample_incr = global_uniforms.time.z * 4.0;
-		out_weight.g = out_weight.r * clamp((history_sample_count + sample_incr), weight_min, weight_max);
+		float sample_incr = global_uniforms.time.z * 6.0;
+		out_weight.g = out_weight.r * clamp((history_sample_count + sample_incr), 0, 1);
 	}
 }

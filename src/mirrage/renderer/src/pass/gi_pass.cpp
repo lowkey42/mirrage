@@ -179,12 +179,79 @@ namespace mirrage::renderer {
 			auto render_pass = builder.build();
 
 			auto attachments = std::array<Framebuffer_attachment_desc, 4>{
-			        {{input.view(min_mip_level), util::Rgba{}},
+			        {{input.view(gsl::narrow<std::uint32_t>(min_mip_level)), util::Rgba{}},
 			         {diffuse.view(0), util::Rgba{}},
 			         {specular.view(0), util::Rgba{0, 0, 0, 0}},
 			         {history_weight.view(0), util::Rgba{0, 0, 0, 0}}}};
 
 			out_framebuffer = builder.build_framebuffer(attachments, diffuse.width(0), diffuse.height(0));
+
+			return render_pass;
+		}
+
+		auto build_diffuse_reproject_pass(Deferred_renderer&        renderer,
+		                                  vk::DescriptorSetLayout   desc_set_layout,
+		                                  Render_target_2D&         diffuse,
+		                                  std::vector<Framebuffer>& out_framebuffers) {
+
+			auto builder = renderer.device().create_render_pass_builder();
+
+			auto color_diffuse = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  renderer.gbuffer().color_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+
+			auto pipeline                    = graphic::Pipeline_description{};
+			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
+			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
+
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+			pipeline.add_push_constant("pcs"_strid,
+			                           sizeof(Gi_constants),
+			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+
+			auto& pass = builder.add_subpass(pipeline).color_attachment(
+			        color_diffuse, graphic::all_color_components, graphic::blend_premultiplied_alpha);
+
+			pass.stage("reproject"_strid)
+			        .shader("frag_shader:gi_diffuse_reproject"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:gi_diffuse_reproject"_aid, graphic::Shader_stage::vertex);
+
+			builder.add_dependency(
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlags{},
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+
+			builder.add_dependency(
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eBottomOfPipe,
+			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                | vk::AccessFlagBits::eTransferRead);
+
+
+			auto render_pass = builder.build();
+
+			for(auto j : util::range(diffuse.mip_levels())) {
+				out_framebuffers.emplace_back(
+				        builder.build_framebuffer(Framebuffer_attachment_desc{diffuse.view(j), util::Rgba{}},
+				                                  gsl::narrow<int>(diffuse.width(j)),
+				                                  gsl::narrow<int>(diffuse.height(j))));
+			}
 
 			return render_pass;
 		}
@@ -195,11 +262,14 @@ namespace mirrage::renderer {
 		                              int                       max_mip_level,
 		                              int                       sample_count,
 		                              int                       first_level_sample_count,
-		                              Render_target_2D&         gi_buffer,
-		                              std::vector<Framebuffer>& out_framebuffers) {
+		                              Render_target_2D&         gi_buffer_samples,
+		                              Render_target_2D&         gi_buffer_result,
+		                              std::vector<Framebuffer>& out_framebuffers_samples,
+		                              std::vector<Framebuffer>& out_framebuffers_result) {
 
 			auto builder = renderer.device().create_render_pass_builder();
 
+			// TODO: loadOp could be Don't-Care for all passes, except upsample!
 			auto color = builder.add_attachment(
 			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
 			                                  renderer.gbuffer().color_format,
@@ -228,26 +298,21 @@ namespace mirrage::renderer {
 			auto& pass = builder.add_subpass(pipeline).color_attachment(
 			        color, graphic::all_color_components, graphic::blend_premultiplied_alpha);
 
-			// first sample (no upsampling of previous level)
+			// diffuse sample
 			pass.stage("sample_first"_strid)
 			        .shader("frag_shader:gi_sample"_aid,
 			                graphic::Shader_stage::fragment,
 			                "main",
 			                2,
-			                first_level_sample_count,
-			                3,
-			                0)
+			                first_level_sample_count)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
-			// "normal" sample (+ upsampling)
 			pass.stage("sample"_strid)
 			        .shader("frag_shader:gi_sample"_aid,
 			                graphic::Shader_stage::fragment,
 			                "main",
 			                2,
-			                sample_count,
-			                3,
-			                1)
+			                sample_count)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			// circle instead of ring sample-pattern
@@ -261,28 +326,28 @@ namespace mirrage::renderer {
 			                sample_count)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
-			// circle instead of ring sample-pattern AND blend with history
-			pass.stage("sample_fin"_strid)
-			        .shader("frag_shader:gi_sample"_aid,
+			// upsample the previous level
+			pass.stage("upsample"_strid)
+			        .shader("frag_shader:gi_sample_upsample"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:gi_sample_upsample"_aid, graphic::Shader_stage::vertex);
+			pass.stage("upsample_only"_strid)
+			        .shader("frag_shader:gi_sample_upsample"_aid,
 			                graphic::Shader_stage::fragment,
 			                "main",
 			                0,
-			                1,
-			                2,
-			                sample_count,
-			                5,
 			                1)
-			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
+			        .shader("vert_shader:gi_sample_upsample"_aid, graphic::Shader_stage::vertex);
 
-			// only upsample the previous level
-			pass.stage("upsample"_strid)
-			        .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 4, 1)
-			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
+			// upsample the previous level
+			pass.stage("blend"_strid)
+			        .shader("frag_shader:gi_sample_blend"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:gi_sample_blend"_aid, graphic::Shader_stage::vertex);
 
-			// only upsample the previous level AND blend with history
-			pass.stage("upsample_fin"_strid)
-			        .shader("frag_shader:gi_sample"_aid, graphic::Shader_stage::fragment, "main", 4, 1, 5, 1)
-			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
+			// upsample the previous level
+			pass.stage("blend_last"_strid)
+			        .shader("frag_shader:gi_sample_blend"_aid, graphic::Shader_stage::fragment, "main", 0, 1)
+			        .shader("vert_shader:gi_sample_blend"_aid, graphic::Shader_stage::vertex);
+
 
 			builder.add_dependency(
 			        util::nothing,
@@ -305,9 +370,16 @@ namespace mirrage::renderer {
 			auto render_pass = builder.build();
 
 			auto end = max_mip_level;
-			for(auto i = 0; i < end - min_mip_level; i++) {
-				out_framebuffers.emplace_back(builder.build_framebuffer(
-				        {gi_buffer.view(i), util::Rgba{}}, gi_buffer.width(i), gi_buffer.height(i)));
+			for(auto j = 0u; j < static_cast<std::uint32_t>(end - min_mip_level); j++) {
+				out_framebuffers_samples.emplace_back(
+				        builder.build_framebuffer({gi_buffer_samples.view(j), util::Rgba{}},
+				                                  gsl::narrow<int>(gi_buffer_samples.width(j)),
+				                                  gsl::narrow<int>(gi_buffer_samples.height(j))));
+
+				out_framebuffers_result.emplace_back(
+				        builder.build_framebuffer({gi_buffer_result.view(j), util::Rgba{}},
+				                                  gsl::narrow<int>(gi_buffer_result.width(j)),
+				                                  gsl::narrow<int>(gi_buffer_result.height(j))));
 			}
 
 			return render_pass;
@@ -370,8 +442,9 @@ namespace mirrage::renderer {
 
 			auto render_pass = builder.build();
 
-			out_framebuffer = builder.build_framebuffer(
-			        {gi_spec_buffer.view(0), util::Rgba{}}, gi_spec_buffer.width(), gi_spec_buffer.height());
+			out_framebuffer = builder.build_framebuffer({gi_spec_buffer.view(0), util::Rgba{}},
+			                                            gsl::narrow<int>(gi_spec_buffer.width()),
+			                                            gsl::narrow<int>(gi_spec_buffer.height()));
 
 			return render_pass;
 		}
@@ -505,8 +578,9 @@ namespace mirrage::renderer {
 
 			auto render_pass = builder.build();
 
-			out_framebuffer = builder.build_framebuffer(
-			        {color_in_out.view(0), util::Rgba{}}, color_in_out.width(), color_in_out.height());
+			out_framebuffer = builder.build_framebuffer({color_in_out.view(0), util::Rgba{}},
+			                                            gsl::narrow<int>(color_in_out.width()),
+			                                            gsl::narrow<int>(color_in_out.height()));
 
 			return render_pass;
 		}
@@ -540,14 +614,14 @@ namespace mirrage::renderer {
 
 			auto mip = highres ? util::min(x_mip, y_mip) : util::max(x_mip, y_mip);
 
-			return util::max(0, static_cast<int>(std::round(mip)));
+			return static_cast<std::uint32_t>(util::max(0, static_cast<int>(std::round(mip))));
 		}
 		auto calc_max_mip_level(std::uint32_t width, std::uint32_t height) {
 			auto w        = static_cast<float>(width);
 			auto h        = static_cast<float>(height);
 			auto diagonal = std::sqrt(w * w + h * h);
 
-			return static_cast<int>(std::ceil(glm::log2(diagonal / 40.f)));
+			return static_cast<std::uint32_t>(std::ceil(glm::log2(diagonal / 40.f)));
 		}
 
 		template <class T>
@@ -564,8 +638,9 @@ namespace mirrage::renderer {
 	  , _highres_base_mip_level(calc_base_mip_level(in_out.width(), in_out.height(), true))
 	  , _base_mip_level(calc_base_mip_level(in_out.width(), in_out.height(), renderer.settings().gi_highres))
 	  , _max_mip_level(calc_max_mip_level(in_out.width(), in_out.height()))
-	  , _diffuse_mip_level(_base_mip_level + renderer.settings().gi_diffuse_mip_level)
-	  , _min_mip_level(std::min(_diffuse_mip_level, _base_mip_level + renderer.settings().gi_min_mip_level))
+	  , _diffuse_mip_level(_base_mip_level + std::uint32_t(renderer.settings().gi_diffuse_mip_level))
+	  , _min_mip_level(std::min(_diffuse_mip_level,
+	                            _base_mip_level + std::uint32_t(renderer.settings().gi_min_mip_level)))
 	  , _gbuffer_sampler(renderer.device().create_sampler(12,
 	                                                      vk::SamplerAddressMode::eClampToEdge,
 	                                                      vk::BorderColor::eIntOpaqueBlack,
@@ -573,26 +648,35 @@ namespace mirrage::renderer {
 	                                                      vk::SamplerMipmapMode::eLinear))
 	  , _descriptor_set_layout(renderer.device(),
 	                           *_gbuffer_sampler,
-	                           9,
+	                           11,
 	                           vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex)
 	  , _color_in_out(in_out)
 	  , _color_diffuse_in(diffuse_in)
 
-	  , _gi_diffuse(renderer.device(),
-	                {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
-	                0,
-	                renderer.gbuffer().color_format,
-	                vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
-	                        | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eColorAttachment,
-	                vk::ImageAspectFlagBits::eColor)
-
-	  , _gi_diffuse_history(renderer.device(),
-	                        {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
-	                        1,
-	                        renderer.gbuffer().color_format,
-	                        vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
-	                                | vk::ImageUsageFlagBits::eColorAttachment,
-	                        vk::ImageAspectFlagBits::eColor)
+	  , _gi_diffuse_history(graphic::Render_target_2D{
+	            renderer.device(),
+	            {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
+	            0,
+	            renderer.gbuffer().color_format,
+	            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
+	                    | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eColorAttachment,
+	            vk::ImageAspectFlagBits::eColor})
+	  , _gi_diffuse_samples(graphic::Render_target_2D{
+	            renderer.device(),
+	            {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
+	            0,
+	            renderer.gbuffer().color_format,
+	            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
+	                    | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eColorAttachment,
+	            vk::ImageAspectFlagBits::eColor})
+	  , _gi_diffuse_result(graphic::Render_target_2D{
+	            renderer.device(),
+	            {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
+	            0,
+	            renderer.gbuffer().color_format,
+	            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
+	                    | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eColorAttachment,
+	            vk::ImageAspectFlagBits::eColor})
 
 	  , _gi_specular(renderer.device(),
 	                 {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
@@ -642,19 +726,22 @@ namespace mirrage::renderer {
 	                                               _history_weight_format,
 	                                               _min_mip_level,
 	                                               _color_diffuse_in,
-	                                               _gi_diffuse,
-	                                               _gi_specular,
+	                                               _gi_diffuse_history,
+	                                               _gi_specular_history,
 	                                               _history_weight,
 	                                               _reproject_framebuffer))
 	  , _reproject_descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
 	                                                                {renderer.gbuffer().depth.view(),
 	                                                                 renderer.gbuffer().mat_data.view(),
 	                                                                 renderer.gbuffer().albedo_mat_id.view(0),
-	                                                                 _gi_diffuse_history.view(),
-	                                                                 _gi_specular_history.view(),
+	                                                                 _gi_diffuse_result.view(),
+	                                                                 _gi_specular.view(),
 	                                                                 renderer.gbuffer().prev_depth.view(),
 	                                                                 _integrated_brdf.view(),
 	                                                                 _history_weight_prev.view()}))
+
+	  , _diffuse_reproject_renderpass(build_diffuse_reproject_pass(
+	            renderer, *_descriptor_set_layout, _gi_diffuse_history, _diffuse_reproject_framebuffers))
 
 	  , _sample_renderpass(build_sample_render_pass(renderer,
 	                                                *_descriptor_set_layout,
@@ -662,8 +749,10 @@ namespace mirrage::renderer {
 	                                                _max_mip_level,
 	                                                to_2prod(renderer.settings().gi_samples),
 	                                                to_2prod(renderer.settings().gi_lowres_samples),
-	                                                _gi_diffuse,
-	                                                _sample_framebuffers))
+	                                                _gi_diffuse_samples,
+	                                                _gi_diffuse_result,
+	                                                _sample_framebuffers,
+	                                                _sample_framebuffers_blend))
 
 	  , _sample_spec_renderpass(build_sample_spec_render_pass(
 	            renderer, *_descriptor_set_layout, _gi_specular, _sample_spec_framebuffer))
@@ -671,8 +760,8 @@ namespace mirrage::renderer {
 	                                                                  {_color_diffuse_in.view(),
 	                                                                   renderer.gbuffer().depth.view(),
 	                                                                   renderer.gbuffer().mat_data.view(),
-	                                                                   _gi_diffuse.view(),
-	                                                                   _history_weight.view()}))
+	                                                                   _history_weight.view(),
+	                                                                   _gi_diffuse_history.view(0)}))
 
 	  , _blur_render_pass(build_blur_render_pass(renderer,
 	                                             *_descriptor_set_layout,
@@ -693,25 +782,28 @@ namespace mirrage::renderer {
 	                                               renderer.gbuffer().mat_data.view(0),
 	                                               renderer.gbuffer().depth.view(_base_mip_level),
 	                                               renderer.gbuffer().mat_data.view(_base_mip_level),
-	                                               _gi_diffuse.view(),
+	                                               _gi_diffuse_result.view(),
 	                                               _gi_specular.view(),
 	                                               renderer.gbuffer().albedo_mat_id.view(0),
 	                                               _integrated_brdf.view()})) {
 
 		auto end = _max_mip_level;
 		_sample_descriptor_sets.reserve(end - _min_mip_level);
-		for(auto i = 0; i < end - _min_mip_level; i++) {
+
+		for(auto i = 0u; i < end - _min_mip_level; i++) {
 			auto curr_mip = i + _min_mip_level;
 			auto prev_mip = util::min(curr_mip + 1, renderer.gbuffer().depth.mip_levels());
 
 			auto images = {_color_diffuse_in.view(curr_mip),
 			               renderer.gbuffer().depth.view(curr_mip),
 			               renderer.gbuffer().mat_data.view(curr_mip),
-			               _gi_diffuse.view(i + 1),
+			               _gi_diffuse_result.view(i + 1),
+			               _gi_diffuse_samples.view(i),
+			               _gi_diffuse_history.view(i),
 			               _history_weight.view(),
 			               renderer.gbuffer().depth.view(prev_mip),
 			               renderer.gbuffer().mat_data.view(prev_mip),
-			               renderer.gbuffer().ambient_occlusion.get_or(_gi_diffuse_history).view()};
+			               renderer.gbuffer().ambient_occlusion.get_or(_color_diffuse_in).view()};
 
 			_sample_descriptor_sets.emplace_back(
 			        _descriptor_set_layout.create_set(renderer.descriptor_pool(), images));
@@ -744,16 +836,23 @@ namespace mirrage::renderer {
 			MIRRAGE_DEBUG("Teleport detected");
 
 			graphic::clear_texture(command_buffer,
-			                       _gi_diffuse,
+			                       _gi_diffuse_history,
+			                       util::Rgba{0, 0, 0, 0},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal);
+			graphic::clear_texture(command_buffer,
+			                       _gi_diffuse_result,
+			                       util::Rgba{0, 0, 0, 0},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal);
+			graphic::clear_texture(command_buffer,
+			                       _gi_diffuse_samples,
 			                       util::Rgba{0, 0, 0, 0},
 			                       vk::ImageLayout::eUndefined,
 			                       vk::ImageLayout::eShaderReadOnlyOptimal);
 
-			for(auto rt : {&_gi_specular,
-			               &_gi_diffuse_history,
-			               &_gi_specular_history,
-			               &_history_weight,
-			               &_history_weight_prev}) {
+
+			for(auto rt : {&_gi_specular, &_gi_specular_history, &_history_weight, &_history_weight_prev}) {
 				graphic::clear_texture(command_buffer,
 				                       *rt,
 				                       util::Rgba{0, 0, 0, 0},
@@ -785,22 +884,7 @@ namespace mirrage::renderer {
 		_draw_gi(command_buffer);
 
 
-		// copy results into history_buffer
-		graphic::blit_texture(command_buffer,
-		                      _gi_diffuse,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      _gi_diffuse_history,
-		                      vk::ImageLayout::eUndefined,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal);
-		graphic::blit_texture(command_buffer,
-		                      _gi_specular,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      _gi_specular_history,
-		                      vk::ImageLayout::eUndefined,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal);
-
+		// copy results into history_buffer (TODO: re-evaluate)
 		graphic::blit_texture(command_buffer,
 		                      _history_weight,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -818,33 +902,46 @@ namespace mirrage::renderer {
 	void Gi_pass::_reproject_history(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals) {
 		auto _ = _renderer.profiler().push("Reproject");
 
+		auto pcs         = Gi_constants{};
+		pcs.reprojection = _prev_view * glm::inverse(_renderer.global_uniforms().view_mat);
+		MIRRAGE_INVARIANT(pcs.reprojection[0][3] == 0 && pcs.reprojection[1][3] == 0
+		                          && pcs.reprojection[2][3] == 0 && pcs.reprojection[3][3] == 1,
+		                  "m[0][3]!=0 or m[1][3]!=0 or m[2][3]!=0 or m[3][3]!=1");
+
+		pcs.reprojection[0][3] = -2.f / _prev_proj[0][0];
+		pcs.reprojection[1][3] = -2.f / _prev_proj[1][1];
+		pcs.reprojection[2][3] = (1.f - _prev_proj[0][2]) / _prev_proj[0][0];
+		pcs.reprojection[3][3] = (1.f + _prev_proj[1][2]) / _prev_proj[1][1];
+
+		pcs.prev_projection = _prev_proj;
+		MIRRAGE_INVARIANT(pcs.prev_projection[0][3] == 0 && pcs.prev_projection[1][3] == 0
+		                          && pcs.prev_projection[3][3] == 0,
+		                  "m[0][3]!=0 or m[1][3]!=0 or m[3][3]!=0");
+
+		pcs.prev_projection[0][3] = _min_mip_level;
+		pcs.prev_projection[1][3] = _max_mip_level - 1;
+
+		// reproject MIP 0
 		_reproject_renderpass.execute(command_buffer, _reproject_framebuffer, [&] {
 			auto descriptor_sets = std::array<vk::DescriptorSet, 2>{globals, *_reproject_descriptor_set};
 			_reproject_renderpass.bind_descriptor_sets(0, descriptor_sets);
-
-			auto pcs         = Gi_constants{};
-			pcs.reprojection = _prev_view * glm::inverse(_renderer.global_uniforms().view_mat);
-			MIRRAGE_INVARIANT(pcs.reprojection[0][3] == 0 && pcs.reprojection[1][3] == 0
-			                          && pcs.reprojection[2][3] == 0 && pcs.reprojection[3][3] == 1,
-			                  "m[0][3]!=0 or m[1][3]!=0 or m[2][3]!=0 or m[3][3]!=1");
-
-			pcs.reprojection[0][3] = -2.f / _prev_proj[0][0];
-			pcs.reprojection[1][3] = -2.f / _prev_proj[1][1];
-			pcs.reprojection[2][3] = (1.f - _prev_proj[0][2]) / _prev_proj[0][0];
-			pcs.reprojection[3][3] = (1.f + _prev_proj[1][2]) / _prev_proj[1][1];
-
-			pcs.prev_projection = _prev_proj;
-			MIRRAGE_INVARIANT(pcs.prev_projection[0][3] == 0 && pcs.prev_projection[1][3] == 0
-			                          && pcs.prev_projection[3][3] == 0,
-			                  "m[0][3]!=0 or m[1][3]!=0 or m[3][3]!=0");
-
-			pcs.prev_projection[0][3] = _min_mip_level;
-			pcs.prev_projection[1][3] = _max_mip_level - 1;
 
 			_reproject_renderpass.push_constant("pcs"_strid, pcs);
 
 			command_buffer.draw(3, 1, 0, 0);
 		});
+
+		// reproject MIP 1-N
+		for(auto i = 1u; i < _gi_diffuse_history.mip_levels(); i++) {
+			auto& fb = _diffuse_reproject_framebuffers[i];
+
+			_diffuse_reproject_renderpass.execute(command_buffer, fb, [&] {
+				pcs.prev_projection[0][3] = i;
+				_diffuse_reproject_renderpass.push_constant("pcs"_strid, pcs);
+
+				command_buffer.draw(3, 1, 0, 0);
+			});
+		}
 
 		_prev_view = _renderer.global_uniforms().view_mat;
 		_prev_proj = _renderer.global_uniforms().proj_mat;
@@ -896,15 +993,16 @@ namespace mirrage::renderer {
 	} // namespace
 
 	void Gi_pass::_generate_gi_samples(vk::CommandBuffer& command_buffer) {
-		auto begin = _diffuse_mip_level;
-		auto end   = _max_mip_level;
+		auto base_mip = static_cast<int>(_min_mip_level);
+		auto begin    = static_cast<int>(_diffuse_mip_level);
+		auto end      = static_cast<int>(_max_mip_level);
+		auto last_i   = std::min(base_mip, begin);
 
 
 		auto pcs                  = Gi_constants{};
 		pcs.prev_projection[0][0] = _highres_base_mip_level;
 		pcs.prev_projection[1][0] = end - 1;
-		pcs.prev_projection[2][0] =
-		        std::max(1.f, (end - 1) - std::min(_min_mip_level, _diffuse_mip_level) - 0.8f);
+		pcs.prev_projection[2][0] = std::max(1.f, (end - 1) - last_i - 0.8f);
 		pcs.prev_projection[1][3] = _max_mip_level - 1;
 		pcs.prev_projection[3][3] = _min_mip_level;
 
@@ -917,60 +1015,26 @@ namespace mirrage::renderer {
 		{
 			auto _               = _renderer.profiler().push("Sample (diffuse)");
 			auto first_iteration = true;
-			auto last_i          = std::min(_min_mip_level, begin);
-			for(auto i = end - 1; i >= last_i; i--) {
-				auto& fb = _sample_framebuffers.at(i - _min_mip_level);
-
-				if(i < end - 1) {
-					// barrier against write to previous mipmap level
-					auto subresource =
-					        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor,
-					                                  gsl::narrow<std::uint32_t>(i - _min_mip_level + 1),
-					                                  1,
-					                                  0,
-					                                  1};
-					auto barrier = vk::ImageMemoryBarrier{vk::AccessFlagBits::eColorAttachmentWrite,
-					                                      vk::AccessFlagBits::eShaderRead,
-					                                      vk::ImageLayout::eShaderReadOnlyOptimal,
-					                                      vk::ImageLayout::eShaderReadOnlyOptimal,
-					                                      VK_QUEUE_FAMILY_IGNORED,
-					                                      VK_QUEUE_FAMILY_IGNORED,
-					                                      _gi_diffuse.image(),
-					                                      subresource};
-					command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
-					                               vk::PipelineStageFlagBits::eFragmentShader,
-					                               vk::DependencyFlags{},
-					                               {},
-					                               {},
-					                               {barrier});
-				}
+			for(auto i = end - 1; i >= begin; i--) {
+				// render highest MIP to blend buffer, because there is nothing to upsample, yet
+				auto& fb = _sample_framebuffers.at(i - base_mip);
 
 				_sample_renderpass.execute(command_buffer, fb, [&] {
 					auto sample_count = to_2prod(_renderer.settings().gi_samples);
 
-					if(i == last_i) {
-						if(i < begin) {
-							_sample_renderpass.set_stage("upsample_fin"_strid);
-						} else {
-							_sample_renderpass.set_stage("sample_fin"_strid);
-						}
-
-					} else if(i == begin) {
-						_sample_renderpass.set_stage("sample_last"_strid);
-					} else if(i < begin) {
-						_sample_renderpass.set_stage("upsample"_strid);
-					} else if(i == end - 1) {
+					if(i == end - 1) {
 						_sample_renderpass.set_stage("sample_first"_strid);
 						sample_count = to_2prod(_renderer.settings().gi_lowres_samples);
-					} else {
+					} else if(i == begin)
+						_sample_renderpass.set_stage("sample_last"_strid);
+					else
 						_sample_renderpass.set_stage("sample"_strid);
-					}
 
 					if(first_iteration) {
 						_sample_renderpass.bind_descriptor_set(1, _renderer.noise_descriptor_set());
 					}
 
-					_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[i - _min_mip_level]);
+					_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[i - base_mip]);
 
 					pcs.prev_projection[0][3] = i;
 					auto fov_h                = _renderer.global_uniforms().proj_planes.z;
@@ -990,6 +1054,41 @@ namespace mirrage::renderer {
 				});
 
 				first_iteration = false;
+			}
+		}
+
+		{
+			auto _ = _renderer.profiler().push("Sample (blend");
+
+			for(auto i = int(_sample_framebuffers.size() - 1); i >= 0; i--) {
+				auto& fb_upsample = _sample_framebuffers.at(i);
+				auto& fb_final    = _sample_framebuffers_blend.at(i);
+
+				// upsample
+				if(i < int(_sample_framebuffers.size() - 1)) {
+					_sample_renderpass.execute(command_buffer, fb_upsample, [&] {
+						if(i + base_mip > begin)
+							_sample_renderpass.set_stage("upsample"_strid);
+						else
+							_sample_renderpass.set_stage("upsample_only"_strid);
+
+						_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[i]);
+
+						command_buffer.draw(3, 1, 0, 0);
+					});
+				}
+
+				// blend history
+				_sample_renderpass.execute(command_buffer, fb_final, [&] {
+					if(i > 0)
+						_sample_renderpass.set_stage("blend"_strid);
+					else
+						_sample_renderpass.set_stage("blend_last"_strid);
+
+					_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[i]);
+
+					command_buffer.draw(3, 1, 0, 0);
+				});
 			}
 		}
 

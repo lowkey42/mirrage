@@ -30,8 +30,8 @@ namespace mirrage {
 		unknown   // everyone screwed up
 	};
 
-	std::error_condition make_error_condition(Error_type e);
-	std::error_condition make_error_condition(Error_source e);
+	extern std::error_condition make_error_condition(Error_type e);
+	extern std::error_condition make_error_condition(Error_source e);
 
 } // namespace mirrage
 
