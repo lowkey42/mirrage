@@ -108,12 +108,12 @@ void main() {
 	float max_distance = min(32, 4 / (tan(coneTheta)*2));
 	float max_steps = max_distance*8;
 
-	vec3 jitter = PDnrand3(vertex_out.tex_coords);
+	vec3 jitter = PDnrand3(vertex_out.tex_coords + global_uniforms.time.x);
 
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
 	if(spec_visible &&
-	   traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
+	   traceScreenSpaceRay1(P+(dir*0.25+jitter*0.1), dir, pcs.projection, depth_sampler,
 							depthSize, 1.0, global_uniforms.proj_planes.x,
 							10, 0.5*jitter.z, max_steps, max_distance, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
@@ -136,7 +136,7 @@ void main() {
 		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
 
 	} else {
-		out_color.rgb = textureLod(diffuse_sampler, vertex_out.tex_coords, pcs.prev_projection[0][3]).rgb / (PI*PI*4);
+		out_color.rgb = textureLod(diffuse_sampler, vertex_out.tex_coords, pcs.prev_projection[0][3]).rgb / (PI*PI*2);
 	}
 
 	float history_weight = texelFetch(history_weight_sampler,

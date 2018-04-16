@@ -38,5 +38,5 @@ void main() {
 
 	color_out = vec4(result / weight_sum, 1.0);
 
-//	color_out.rgb = read(vertex_out.uv_center, center_depth, weight_sum, 1.0).rgb;
+	color_out.rgb = mix(color_out.rgb, read(vertex_out.uv_center, center_depth, weight_sum, 1.0).rgb, 0.5);
 }

@@ -734,7 +734,7 @@ namespace mirrage::renderer {
 	                                               _min_mip_level,
 	                                               _color_diffuse_in,
 	                                               _gi_diffuse_history,
-	                                               _gi_specular_history,
+	                                               _gi_specular,
 	                                               _history_weight,
 	                                               _reproject_framebuffer))
 	  , _reproject_descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
@@ -742,7 +742,7 @@ namespace mirrage::renderer {
 	                                                                 renderer.gbuffer().mat_data.view(),
 	                                                                 renderer.gbuffer().albedo_mat_id.view(0),
 	                                                                 _gi_diffuse_result.view(),
-	                                                                 _gi_specular.view(),
+	                                                                 _gi_specular_history.view(),
 	                                                                 renderer.gbuffer().prev_depth.view(),
 	                                                                 _integrated_brdf.view(),
 	                                                                 _history_weight_prev.view()}))
@@ -898,6 +898,14 @@ namespace mirrage::renderer {
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      _history_weight_prev,
+		                      vk::ImageLayout::eUndefined,
+		                      vk::ImageLayout::eShaderReadOnlyOptimal);
+
+		graphic::blit_texture(command_buffer,
+		                      _gi_specular,
+		                      vk::ImageLayout::eShaderReadOnlyOptimal,
+		                      vk::ImageLayout::eShaderReadOnlyOptimal,
+		                      _gi_specular_history,
 		                      vk::ImageLayout::eUndefined,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
