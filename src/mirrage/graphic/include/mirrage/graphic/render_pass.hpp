@@ -233,6 +233,10 @@ namespace mirrage::graphic {
 		Framebuffer_attachment_desc(vk::ImageView v, util::Rgba color)
 		  : image_view(v)
 		  , clear_value(vk::ClearColorValue(std::array<float, 4>{color.r, color.g, color.b, color.a})) {}
+		Framebuffer_attachment_desc(vk::ImageView v, std::array<uint32_t, 4> color)
+		  : image_view(v), clear_value(vk::ClearColorValue(color)) {}
+		Framebuffer_attachment_desc(vk::ImageView v, std::array<int32_t, 4> color)
+		  : image_view(v), clear_value(vk::ClearColorValue(color)) {}
 		Framebuffer_attachment_desc(vk::ImageView v, float depth, std::uint32_t stencil = 0)
 		  : image_view(v), clear_value(vk::ClearDepthStencilValue(depth, stencil)) {}
 	};

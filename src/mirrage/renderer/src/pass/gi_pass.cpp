@@ -802,16 +802,18 @@ namespace mirrage::renderer {
 			auto curr_mip = i + _min_mip_level;
 			auto prev_mip = util::min(curr_mip + 1, renderer.gbuffer().depth.mip_levels());
 
-			auto images = {_color_diffuse_in.view(curr_mip),
-			               renderer.gbuffer().depth.view(curr_mip),
-			               renderer.gbuffer().mat_data.view(curr_mip),
-			               _gi_diffuse_result.view(i + 1),
-			               _gi_diffuse_samples.view(i),
-			               _gi_diffuse_history.view(i),
-			               _history_weight.view(),
-			               renderer.gbuffer().depth.view(prev_mip),
-			               renderer.gbuffer().mat_data.view(prev_mip),
-			               renderer.gbuffer().ambient_occlusion.get_or(_color_diffuse_in).view()};
+			auto images = {
+			        _color_diffuse_in.view(curr_mip),
+			        renderer.gbuffer().depth.view(curr_mip),
+			        renderer.gbuffer().mat_data.view(curr_mip),
+			        _gi_diffuse_result.view(i + 1),
+			        _gi_diffuse_samples.view(i),
+			        _gi_diffuse_history.view(i),
+			        _history_weight.view(),
+			        renderer.gbuffer().depth.view(prev_mip),
+			        renderer.gbuffer().mat_data.view(prev_mip),
+			        renderer.gbuffer().ambient_occlusion.get_or(_color_diffuse_in).view(),
+			        renderer.gbuffer().voxels.get_or_throw().view()}; // renderer.gbuffer().depth.view(0)};
 
 			_sample_descriptor_sets.emplace_back(
 			        _descriptor_set_layout.create_set(renderer.descriptor_pool(), images));
@@ -1058,7 +1060,7 @@ namespace mirrage::renderer {
 					                                           _color_in_out.height(i),
 					                                           _renderer.global_uniforms().proj_planes.y);
 
-					auto screen_size = glm::vec2{_color_in_out.width(i), _color_in_out.height(i)};
+					auto screen_size = glm::vec2{_color_in_out.width(0), _color_in_out.height(0)};
 					auto ndc_to_uv   = glm::translate(glm::mat4(1.f), glm::vec3(screen_size / 2.f, 0.f))
 					                 * glm::scale(glm::mat4(1.f), glm::vec3(screen_size / 2.f, 1.f));
 					pcs.reprojection = ndc_to_uv * _renderer.global_uniforms().proj_mat;

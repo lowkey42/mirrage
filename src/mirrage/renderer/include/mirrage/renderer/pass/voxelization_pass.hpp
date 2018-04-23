@@ -28,11 +28,16 @@ namespace mirrage::renderer {
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
 		vk::Format                           _data_format;
 		graphic::Render_target_2D_array      _voxel_data;
+		std::vector<vk::UniqueImageView>     _voxel_data_views;
 		graphic::Framebuffer                 _framebuffer;
 		graphic::Render_pass                 _render_pass;
 		Model_comp::Pool&                    _models;
-		asset::Ptr<graphic::Texture_1D>      _mask_texture;
+		asset::Ptr<graphic::Texture_2D>      _mask_texture;
 		graphic::DescriptorSet               _descriptor_set;
+
+		std::vector<graphic::Framebuffer>   _mip_map_framebuffers;
+		graphic::Render_pass                _mip_map_render_pass;
+		std::vector<graphic::DescriptorSet> _mip_map_descriptor_sets;
 	};
 
 	class Voxelization_pass_factory : public Pass_factory {

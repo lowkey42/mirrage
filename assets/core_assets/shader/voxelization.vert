@@ -27,5 +27,5 @@ void main() {
 
 	gl_Position = global_uniforms.view_proj_mat * world_pos;
 
-	vertex_out.z = (global_uniforms.view_mat * world_pos).z / global_uniforms.proj_planes.y;
+	vertex_out.z = abs((global_uniforms.view_mat * world_pos).z / global_uniforms.proj_planes.y);
 }

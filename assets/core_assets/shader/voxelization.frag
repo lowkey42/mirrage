@@ -11,10 +11,16 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out uvec4 voxel_data[2];
 
-layout(set=1, binding = 0) uniform usampler1D mask_sampler;
+layout(set=1, binding = 0) uniform usampler2D mask_sampler;
 
 
 void main() {
-	voxel_data[0] = texelFetch(mask_sampler, int(vertex_out.z/(32.0*4.0)), 0);
-	voxel_data[1] = texelFetch(mask_sampler, 0, 0);
+	if(vertex_out.z<0.5) {
+		voxel_data[0] = texelFetch(mask_sampler, ivec2(int(clamp(vertex_out.z*2*32*4, 0, 32*4)), 0), 0);
+		voxel_data[1]  = uvec4(0);
+
+	} else {
+		voxel_data[0] = ~uvec4(0);
+		voxel_data[1] = texelFetch(mask_sampler, ivec2(int(clamp((vertex_out.z-0.5)*2*32*4, 0, 32*4)), 0), 0);
+	}
 }

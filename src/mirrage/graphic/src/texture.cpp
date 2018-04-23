@@ -45,6 +45,14 @@ namespace mirrage::graphic::detail {
 
 			MIRRAGE_FAIL("Unreachable");
 		}
+
+		template <class T>
+		T align_int(T n, T base) {
+			if(base <= 0)
+				base = 1;
+
+			return ((n + base - 1) / base) * base;
+		}
 	} // namespace
 
 
@@ -181,7 +189,8 @@ namespace mirrage::graphic::detail {
 	                     vk::Format                 format,
 	                     std::function<void(char*)> write_data) -> Static_image {
 
-		auto size = dim.width * dim.height * dim.depth * dim.layers * texel_size;
+		auto size_size = align_int<std::uint32_t>(sizeof(std::uint32_t), texel_size);
+		auto size      = dim.width * dim.height * dim.depth * dim.layers * texel_size + size_size;
 
 		return device.transfer().upload_image(vk_type(type), owner_qfamily, dim, format, 1, size, write_data);
 	}

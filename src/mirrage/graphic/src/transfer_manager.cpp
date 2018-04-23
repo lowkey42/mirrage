@@ -5,6 +5,17 @@
 
 namespace mirrage::graphic {
 
+	namespace {
+		template <class T>
+		T align_int(T n, T base) {
+			if(base <= 0)
+				base = 1;
+
+			return ((n + base - 1) / base) * base;
+		}
+	} // namespace
+
+
 	Static_buffer::Static_buffer(Static_buffer&& rhs) noexcept
 	  : _buffer(std::move(rhs._buffer)), _transfer_task(std::move(rhs._transfer_task)) {}
 	Static_buffer& Static_buffer::operator=(Static_buffer&& rhs) noexcept {
@@ -152,9 +163,14 @@ namespace mirrage::graphic {
 			MIRRAGE_INVARIANT(ptr - begin_ptr < size, "buffer overflow");
 
 			auto mip_size = *reinterpret_cast<std::uint32_t*>(ptr);
-			mip_size += 3 - ((mip_size + 3) % 4); // mipPadding
-			ptr += sizeof(std::uint32_t);         // imageSize
-			ptr += mip_size;                      // data
+			auto texel_size =
+			        mip_size
+			        / (std::max(1u, dimensions.width >> i)
+			           * (std::max(1u, dimensions.height >> i) * (std::max(1u, dimensions.depth >> i))));
+
+			auto padded_size = align_int<std::uint32_t>(sizeof(std::uint32_t), texel_size);
+			ptr += padded_size; // imageSize
+			ptr += mip_size;    // data
 
 			mip_image_sizes.emplace_back(mip_size);
 		}
@@ -401,7 +417,6 @@ namespace mirrage::graphic {
 		return *_semaphore;
 	}
 
-
 	void Transfer_manager::_transfer_image(vk::CommandBuffer cb, const Transfer_image_req& t) {
 		image_layout_transition(cb,
 		                        t.dst,
@@ -416,16 +431,18 @@ namespace mirrage::graphic {
 		auto offset = std::uint32_t(0);
 
 		for(auto i : util::range(t.mip_count_loaded)) {
-			auto size = t.mip_image_sizes[i];
-			offset += sizeof(std::uint32_t); // imageSize
-
-			MIRRAGE_INVARIANT(offset + size <= t.size, "Overflow in _transfer_image");
-
 			auto subresource =
 			        vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, i, 0, t.dimensions.layers};
 			auto extent = vk::Extent3D{std::max(1u, t.dimensions.width >> i),
 			                           std::max(1u, t.dimensions.height >> i),
 			                           std::max(1u, t.dimensions.depth >> i)};
+
+			auto size       = t.mip_image_sizes[i];
+			auto texel_size = size / (extent.width * extent.height * extent.depth);
+			offset += align_int<std::uint32_t>(sizeof(std::uint32_t), texel_size); // imageSize
+
+			MIRRAGE_INVARIANT(offset + size <= t.size, "Overflow in _transfer_image");
+
 			regions.emplace_back(offset, 0, 0, subresource, vk::Offset3D{}, extent);
 			offset += size;
 		}

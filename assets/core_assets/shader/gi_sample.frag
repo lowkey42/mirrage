@@ -21,6 +21,7 @@ layout(set=2, binding = 6) uniform sampler2D history_weight_sampler;
 layout(set=2, binding = 7) uniform sampler2D prev_depth_sampler;
 layout(set=2, binding = 8) uniform sampler2D prev_mat_data_sampler;
 layout(set=2, binding = 9) uniform sampler2D ao_sampler;
+layout(set=2, binding = 10) uniform usampler2DArray voxel_sampler;
 
 layout (constant_id = 0) const int LAST_SAMPLE = 0;  // 1 if this is the last MIP level to sample
 layout (constant_id = 1) const float R = 40;         // the radius to fetch samples from
@@ -141,17 +142,44 @@ vec3 gi_sample(int lod, int base_mip) {
 	return c;
 }
 
-float calc_visibility(int lod, vec3 p1, vec3 p2, vec2 p1_uv, vec2 p2_uv) {
+float calc_visibility(int lod, vec3 p1, vec3 p2, vec2 p1_uv, vec2 p2_uv, float depth1, float depth2) {
+	lod = 4;
+	vec2 voxel_tex_size = textureSize(voxel_sampler, lod).xy;
+	vec3 voxel1 = vec3(p1_uv/textureSize(color_sampler, 0)*voxel_tex_size, depth1*32*4*2);
+	vec3 voxel2 = vec3(p2_uv/textureSize(color_sampler, 0)*voxel_tex_size, depth2*32*4*2);
+
+	vec3 dir = vec3(voxel2) - vec3(voxel1);
+	vec3 dir_norm = dir / max(max(abs(dir.x), abs(dir.y)), abs(dir.z));
+
+	float steps = min(16, length(dir) / length(dir_norm));
+
+	vec3 step_size = dir / steps; // TODO: try larger steps
+
+	for(int i=1; i<steps-2; i++) {
+		ivec3 p = ivec3(voxel1 + step_size*i);
+
+		uint layer = uint(p.z);
+		uint bit = layer % 32;
+		uint comp = (layer % (32*4))/32;
+		uint data = texelFetch(voxel_sampler, ivec3(p.x, p.y, step(32*4, layer)), 3)[comp];
+		if((data & (1<< bit)) !=0)
+			return 0;
+	}
+
+	return 1;
+	/*
 	vec3 dir = p2-p1;
 	float max_distance = length(dir);
 	float max_steps = max_distance*16;
 	dir /= max_distance;
-	max_distance-=0.5;
+
+	float offset = 0.2 + 0.1*lod;
+	max_distance-=offset*2;
 
 	if(max_distance<=0)
 		return 0;
 
-	vec2 depthSize = textureSize(depth_sampler, 0);
+	vec2 depthSize = textureSize(hr_depth_sampler, 0);
 
 	mat4 proj = pcs.projection;
 	proj[3][3] = 0;
@@ -160,14 +188,15 @@ float calc_visibility(int lod, vec3 p1, vec3 p2, vec2 p1_uv, vec2 p2_uv) {
 
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
-	if(traceScreenSpaceRay1(p1+dir*0.25, dir, proj, depth_sampler,
-	                        depthSize, 50.0, global_uniforms.proj_planes.x,
-							1, 0.5*jitter.z, max_steps, max_distance, 0,
+	if(traceScreenSpaceRay1(p1+dir*offset, dir, proj, hr_depth_sampler,
+	                        depthSize, 1.0, global_uniforms.proj_planes.x,
+							10, 0.0, max_steps, max_distance, 0,
 	                        raycast_hit_uv, raycast_hit_point)) {
 		return 0;
 	}
 
 	return 1;
+	*/
 }
 
 // calculate the light transfer between two pixel of the current level
@@ -190,7 +219,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	vec3 dir = normalize(diff);
 	float r2 = dot(diff, diff);
 
-	float visibility = VISIBILTY==0 ? 1.0 : calc_visibility(lod, shaded_point, P, shaded_uv, src_uv); // v(x, x_i); currently not implemented
+	float visibility = VISIBILTY==0 ? 1.0 : calc_visibility(lod, shaded_point, P, shaded_uv, src_uv, shaded_depth, depth); // v(x, x_i); currently not implemented
 
 	float NdotL_src = clamp(dot(N, dir),              0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
