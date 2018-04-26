@@ -33,12 +33,17 @@ namespace mirrage::input {
 
 			Context_map() = default;
 			Context_map(Context_id initial, std::unordered_map<Context_id, Context> contexts)
-			  : initial(std::move(initial)), contexts(std::move(contexts)) {}
+			  : initial(std::move(initial)), contexts(std::move(contexts))
+			{
+			}
 
 			Context_map(Context_map&& rhs) noexcept
-			  : initial(std::move(rhs.initial)), contexts(std::move(rhs.contexts)) {}
+			  : initial(std::move(rhs.initial)), contexts(std::move(rhs.contexts))
+			{
+			}
 
-			Context_map& operator=(Context_map&& rhs) noexcept {
+			Context_map& operator=(Context_map&& rhs) noexcept
+			{
 				initial  = std::move(rhs.initial);
 				contexts = std::move(rhs.contexts);
 				if(live_contexts)
@@ -51,7 +56,8 @@ namespace mirrage::input {
 		sf2_structDef(Context_map, initial, contexts);
 
 		std::tuple<std::unordered_map<Context_id, Context>, Context_id> load_context_map(
-		        asset::Asset_manager& assets, std::unordered_map<Context_id, Context>& map) {
+		        asset::Asset_manager& assets, std::unordered_map<Context_id, Context>& map)
+		{
 			auto cm = assets.load<Context_map>(mapping_aid);
 
 			cm->live_contexts = &map;
@@ -61,25 +67,29 @@ namespace mirrage::input {
 
 		void save_context_map(asset::Asset_manager&                          assets,
 		                      const std::unordered_map<Context_id, Context>& map,
-		                      Context_id                                     def) {
+		                      Context_id                                     def)
+		{
 
 			assets.save(mapping_aid, Context_map{def, map});
 		}
 
 		template <class Container>
-		auto find_maybe(Container& c, typename Container::key_type k) {
+		auto find_maybe(Container& c, typename Container::key_type k)
+		{
 			auto iter = c.find(k);
 			return iter != c.end() ? util::justPtr(&iter->second) : util::nothing;
 		}
 	} // namespace
 
-	Input_mapper::Input_mapper(util::Message_bus& bus, asset::Asset_manager& assets) : _bus(bus) {
+	Input_mapper::Input_mapper(util::Message_bus& bus, asset::Asset_manager& assets) : _bus(bus)
+	{
 
 		std::tie(_context, _default_context_id) = load_context_map(assets, _context);
 		enable_context(_default_context_id);
 	}
 
-	void Input_mapper::enable_context(Context_id id) {
+	void Input_mapper::enable_context(Context_id id)
+	{
 		_active_context_id = id;
 
 		auto def_ctx = _context.find(_active_context_id);
@@ -92,7 +102,8 @@ namespace mirrage::input {
 		void process_pressed(util::Message_bus& bus,
 		                     const Reaction&    action,
 		                     Input_source       src       = 0,
-		                     float              intensity = 1.f) {
+		                     float              intensity = 1.f)
+		{
 			switch(action.type) {
 				case Reaction_type::continuous: bus.send<Continuous_action>(action.action, src, true); break;
 
@@ -105,7 +116,8 @@ namespace mirrage::input {
 			}
 		}
 
-		void process_release(util::Message_bus& bus, const Reaction& action, Input_source src = 0) {
+		void process_release(util::Message_bus& bus, const Reaction& action, Input_source src = 0)
+		{
 			switch(action.type) {
 				case Reaction_type::continuous: bus.send<Continuous_action>(action.action, src, false); break;
 
@@ -122,7 +134,8 @@ namespace mirrage::input {
 		                      const Reaction&    action,
 		                      Input_source       src,
 		                      glm::vec2          rel,
-		                      glm::vec2          abs) {
+		                      glm::vec2          abs)
+		{
 			switch(action.type) {
 				case Reaction_type::continuous:
 					bus.send<Continuous_action>(action.action, src, true);
@@ -138,15 +151,18 @@ namespace mirrage::input {
 		}
 	} // namespace
 
-	void Input_mapper::on_key_pressed(Key k) {
+	void Input_mapper::on_key_pressed(Key k)
+	{
 		find_maybe(_active_context->keys, k).process([&](auto& action) { process_pressed(_bus, action); });
 	}
 
-	void Input_mapper::on_key_released(Key k) {
+	void Input_mapper::on_key_released(Key k)
+	{
 		find_maybe(_active_context->keys, k).process([&](auto& action) { process_release(_bus, action); });
 	}
 
-	void Input_mapper::on_mouse_pos_change(glm::vec2 rel, glm::vec2 abs) {
+	void Input_mapper::on_mouse_pos_change(glm::vec2 rel, glm::vec2 abs)
+	{
 		process_movement(_bus, _active_context->mouse_movement, Input_source(0), rel, abs);
 
 		if(_primary_mouse_button_down && (_is_mouse_drag || glm::length2(rel) >= min_mouse_drag_movement)) {
@@ -155,7 +171,8 @@ namespace mirrage::input {
 		}
 	}
 
-	void Input_mapper::on_mouse_wheel_change(glm::vec2 rel) {
+	void Input_mapper::on_mouse_wheel_change(glm::vec2 rel)
+	{
 		auto& action = rel.y > 0 ? _active_context->mouse_wheel_up : _active_context->mouse_wheel_down;
 
 		switch(action.type) {
@@ -172,26 +189,30 @@ namespace mirrage::input {
 		}
 	}
 
-	void Input_mapper::on_pad_button_pressed(Input_source src, Pad_button b, float intensity) {
+	void Input_mapper::on_pad_button_pressed(Input_source src, Pad_button b, float intensity)
+	{
 		find_maybe(_active_context->pad_buttons, b).process([&](auto& action) {
 			process_pressed(_bus, action, src, intensity);
 		});
 	}
 
-	void Input_mapper::on_pad_button_changed(Input_source src, Pad_button b, float intensity) {
+	void Input_mapper::on_pad_button_changed(Input_source src, Pad_button b, float intensity)
+	{
 		find_maybe(_active_context->pad_buttons, b).process([&](auto& action) {
 			if(action.type == Reaction_type::range)
 				_bus.send<Range_action>(action.action, src, glm::vec2{intensity, 0}, glm::vec2{intensity, 0});
 		});
 	}
 
-	void Input_mapper::on_pad_button_released(Input_source src, Pad_button b) {
+	void Input_mapper::on_pad_button_released(Input_source src, Pad_button b)
+	{
 		find_maybe(_active_context->pad_buttons, b).process([&](auto& action) {
 			process_release(_bus, action, src);
 		});
 	}
 
-	void Input_mapper::on_mouse_button_pressed(Mouse_button b, float pressure) {
+	void Input_mapper::on_mouse_button_pressed(Mouse_button b, float pressure)
+	{
 		find_maybe(_active_context->mouse_buttons, {b, 0}).process([&](auto& action) {
 			process_pressed(_bus, action, Input_source{0}, pressure);
 		});
@@ -200,7 +221,8 @@ namespace mirrage::input {
 			_primary_mouse_button_down = true;
 	}
 
-	void Input_mapper::on_mouse_button_released(Mouse_button b, int8_t clicks) {
+	void Input_mapper::on_mouse_button_released(Mouse_button b, int8_t clicks)
+	{
 		if(b != 1 || !_is_mouse_drag) {
 			find_maybe(_active_context->mouse_buttons, {b, clicks}).process([&](auto& action) {
 				process_release(_bus, action);
@@ -223,7 +245,8 @@ namespace mirrage::input {
 		}
 	}
 
-	void Input_mapper::on_pad_stick_change(Input_source src, Pad_stick s, glm::vec2 rel, glm::vec2 abs) {
+	void Input_mapper::on_pad_stick_change(Input_source src, Pad_stick s, glm::vec2 rel, glm::vec2 abs)
+	{
 		find_maybe(_active_context->pad_sticks, s).process([&](auto& action) {
 			process_movement(_bus, action, src, rel, abs);
 		});
@@ -232,13 +255,15 @@ namespace mirrage::input {
 
 	const Mapped_inputs Input_mapping_updater::no_mapped_input = {};
 
-	Input_mapping_updater::Input_mapping_updater(asset::Asset_manager& assets) : _assets(assets) {
+	Input_mapping_updater::Input_mapping_updater(asset::Asset_manager& assets) : _assets(assets)
+	{
 
 		std::tie(_context, _default_context_id) = load_context_map(assets, _context);
 		set_context(_default_context_id);
 	}
 
-	void Input_mapping_updater::set_context(Context_id id) {
+	void Input_mapping_updater::set_context(Context_id id)
+	{
 		_active_context_id = id;
 
 		auto def_ctx = _context.find(_active_context_id);
@@ -279,19 +304,22 @@ namespace mirrage::input {
 		                               _active_context->mouse_wheel_down.type);
 	}
 
-	auto Input_mapping_updater::get(Action_id id) const -> const Mapped_inputs& {
+	auto Input_mapping_updater::get(Action_id id) const -> const Mapped_inputs&
+	{
 		auto iter = _cached_actions.find(id);
 		return iter != _cached_actions.end() ? iter->second : no_mapped_input;
 	}
 
-	auto Input_mapping_updater::reaction_type_for(Action_id a) const -> Reaction_type {
+	auto Input_mapping_updater::reaction_type_for(Action_id a) const -> Reaction_type
+	{
 		auto type = _cached_reaction_types.find(a);
 		MIRRAGE_INVARIANT(type != _cached_reaction_types.end(), "Unknown action");
 
 		return type->second;
 	}
 
-	void Input_mapping_updater::add(Action_id action, Key k) {
+	void Input_mapping_updater::add(Action_id action, Key k)
+	{
 		auto type = reaction_type_for(action);
 
 		auto& mapped_action = _active_context->keys[k];
@@ -303,7 +331,8 @@ namespace mirrage::input {
 		_cached_actions[action].keys.push_back(k);
 	}
 
-	void Input_mapping_updater::add(Action_id action, Pad_button b) {
+	void Input_mapping_updater::add(Action_id action, Pad_button b)
+	{
 		auto type = reaction_type_for(action);
 
 		auto& mapped_action = _active_context->pad_buttons[b];
@@ -315,7 +344,8 @@ namespace mirrage::input {
 		_cached_actions[action].pad_buttons.push_back(b);
 	}
 
-	void Input_mapping_updater::add(Action_id action, Pad_stick s) {
+	void Input_mapping_updater::add(Action_id action, Pad_stick s)
+	{
 		auto type = reaction_type_for(action);
 
 		auto& mapped_action = _active_context->pad_sticks[s];
@@ -327,7 +357,8 @@ namespace mirrage::input {
 		_cached_actions[action].sticks.push_back(s);
 	}
 
-	void Input_mapping_updater::add(Action_id action, Mouse_button m, int8_t clicks) {
+	void Input_mapping_updater::add(Action_id action, Mouse_button m, int8_t clicks)
+	{
 		auto type = reaction_type_for(action);
 
 		auto click = Mouse_click{m, clicks};
@@ -340,7 +371,8 @@ namespace mirrage::input {
 		mapped_action = {action, type};
 		_cached_actions[action].mouse_buttons.push_back(click);
 	}
-	void Input_mapping_updater::add_mwheel(Action_id action, bool up) {
+	void Input_mapping_updater::add_mwheel(Action_id action, bool up)
+	{
 		auto type = reaction_type_for(action);
 
 		if(up) {
@@ -349,7 +381,6 @@ namespace mirrage::input {
 
 			_active_context->mouse_wheel_up        = {action, type};
 			_cached_actions[action].mouse_wheel_up = true;
-
 		} else {
 			auto old_action                            = _active_context->mouse_wheel_up.action;
 			_cached_actions[old_action].mouse_wheel_up = false;
@@ -359,7 +390,8 @@ namespace mirrage::input {
 		}
 	}
 
-	void Input_mapping_updater::add_move(Action_id action) {
+	void Input_mapping_updater::add_move(Action_id action)
+	{
 		auto type = reaction_type_for(action);
 
 		auto old_action                            = _active_context->mouse_movement.action;
@@ -368,7 +400,8 @@ namespace mirrage::input {
 		_active_context->mouse_movement        = {action, type};
 		_cached_actions[action].mouse_movement = true;
 	}
-	void Input_mapping_updater::add_drag(Action_id action) {
+	void Input_mapping_updater::add_drag(Action_id action)
+	{
 		auto type = reaction_type_for(action);
 
 		auto old_action                        = _active_context->mouse_drag.action;
@@ -378,7 +411,8 @@ namespace mirrage::input {
 		_cached_actions[action].mouse_drag = true;
 	}
 
-	void Input_mapping_updater::clear(Action_id action) {
+	void Input_mapping_updater::clear(Action_id action)
+	{
 		auto& inputs = _cached_actions[action];
 
 		for(const auto& k : inputs.keys)

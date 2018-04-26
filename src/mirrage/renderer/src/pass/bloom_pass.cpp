@@ -11,7 +11,8 @@ namespace mirrage::renderer {
 		auto build_filter_render_pass(Deferred_renderer&         renderer,
 		                              vk::DescriptorSetLayout    desc_set_layout,
 		                              graphic::Render_target_2D& target,
-		                              graphic::Framebuffer&      out_framebuffer) {
+		                              graphic::Framebuffer&      out_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -76,7 +77,8 @@ namespace mirrage::renderer {
 		                            graphic::Render_target_2D&                   target_horizontal,
 		                            graphic::Render_target_2D&                   target_vertical,
 		                            std::array<graphic::Framebuffer, MipLevels>& out_framebuffer_horizontal,
-		                            std::array<graphic::Framebuffer, MipLevels>& out_framebuffer_vertical) {
+		                            std::array<graphic::Framebuffer, MipLevels>& out_framebuffer_vertical)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -214,7 +216,8 @@ namespace mirrage::renderer {
 	  , _blur_descriptor_set_vertical(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
 	                                                                    {_blur_buffer.view(), src.view(0)}))
 	  , _blur_descriptor_set_vertical_final(_descriptor_set_layout.create_set(
-	            renderer.descriptor_pool(), {_blur_buffer.view(), *_downsampled_blur_view})) {
+	            renderer.descriptor_pool(), {_blur_buffer.view(), *_downsampled_blur_view}))
+	{
 
 		renderer.gbuffer().bloom = _bloom_buffer;
 	}
@@ -225,7 +228,8 @@ namespace mirrage::renderer {
 	void Bloom_pass::draw(vk::CommandBuffer& command_buffer,
 	                      Command_buffer_source&,
 	                      vk::DescriptorSet global_uniform_set,
-	                      std::size_t) {
+	                      std::size_t)
+	{
 
 		auto pcs         = Push_constants{};
 		pcs.parameters.x = 8.0f; // bloom threshold
@@ -284,7 +288,8 @@ namespace mirrage::renderer {
 	auto Bloom_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                     ecs::Entity_manager&      entities,
 	                                     util::maybe<Meta_system&> meta_system,
-	                                     bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
+	                                     bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	{
 		auto& color_src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		return std::make_unique<Bloom_pass>(renderer, entities, meta_system, color_src);
@@ -292,11 +297,14 @@ namespace mirrage::renderer {
 
 	auto Bloom_pass_factory::rank_device(vk::PhysicalDevice,
 	                                     util::maybe<std::uint32_t> graphics_queue,
-	                                     int                        current_score) -> int {
+	                                     int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Bloom_pass_factory::configure_device(vk::PhysicalDevice,
 	                                          util::maybe<std::uint32_t>,
-	                                          graphic::Device_create_info&) {}
+	                                          graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

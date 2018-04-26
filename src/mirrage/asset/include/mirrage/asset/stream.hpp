@@ -92,7 +92,8 @@ namespace mirrage::asset {
 		static_assert(sf2::is_loadable<T, sf2::format::Json_reader>::value,
 		              "Required AssetLoader specialization not provided.");
 
-		static auto load(istream in) -> T {
+		static auto load(istream in) -> T
+		{
 			auto r = T();
 
 			sf2::deserialize_json(in,
@@ -133,8 +134,9 @@ namespace mirrage::asset {
 	template <>
 	struct Loader<Bytes> {
 		static auto load(istream in) -> Bytes { return in.bytes(); }
-		void        save(ostream out, const Bytes& data) {
-            out.write(data.data(), gsl::narrow<std::streamsize>(data.size()));
+		void        save(ostream out, const Bytes& data)
+		{
+			out.write(data.data(), gsl::narrow<std::streamsize>(data.size()));
 		}
 	};
 

@@ -172,10 +172,12 @@ namespace mirrage::input {
 		Mouse_button button;
 		int8_t       clicks = -1;
 
-		bool operator<(Mouse_click rhs) const noexcept {
+		bool operator<(Mouse_click rhs) const noexcept
+		{
 			return std::tie(button, clicks) < std::tie(rhs.button, rhs.clicks);
 		}
-		bool operator==(Mouse_click rhs) const noexcept {
+		bool operator==(Mouse_click rhs) const noexcept
+		{
 			return button == rhs.button && clicks == rhs.clicks;
 		}
 	};
@@ -349,7 +351,8 @@ namespace std {
 	};
 	template <>
 	struct hash<mirrage::input::Mouse_click> {
-		size_t operator()(mirrage::input::Mouse_click b) const noexcept {
+		size_t operator()(mirrage::input::Mouse_click b) const noexcept
+		{
 			return static_cast<size_t>(b.button) + 101 * static_cast<std::size_t>(b.clicks + 128);
 		}
 	};

@@ -12,7 +12,8 @@ namespace mirrage::graphic {
 	        | vk::ColorComponentFlagBits::eA;
 
 
-	void Pipeline_stage::add_constant(std::uint32_t id, gsl::span<const char> data) {
+	void Pipeline_stage::add_constant(std::uint32_t id, gsl::span<const char> data)
+	{
 		constants.emplace_back(id, gsl::narrow<std::uint32_t>(constant_buffer.size()), data.size());
 		constant_buffer.insert(constant_buffer.end(), data.begin(), data.end());
 	}
@@ -39,8 +40,11 @@ namespace mirrage::graphic {
 	  , push_constants(std::move(rhs.push_constants))
 	  , push_constant_table(std::move(rhs.push_constant_table))
 	  , descriptor_set_layouts(std::move(rhs.descriptor_set_layouts))
-	  , pipeline_layout(std::move(rhs.pipeline_layout)) {}
-	Pipeline_description& Pipeline_description::operator=(Pipeline_description&& rhs) noexcept {
+	  , pipeline_layout(std::move(rhs.pipeline_layout))
+	{
+	}
+	Pipeline_description& Pipeline_description::operator=(Pipeline_description&& rhs) noexcept
+	{
 		vertex_input              = std::move(rhs.vertex_input);
 		input_assembly            = std::move(rhs.input_assembly);
 		rasterization             = std::move(rhs.rasterization);
@@ -83,12 +87,14 @@ namespace mirrage::graphic {
 	  , push_constants(rhs.push_constants)
 	  , push_constant_table(rhs.push_constant_table)
 	  , descriptor_set_layouts(rhs.descriptor_set_layouts)
-	  , pipeline_layout(rhs.pipeline_layout) {
+	  , pipeline_layout(rhs.pipeline_layout)
+	{
 
 		MIRRAGE_INVARIANT(stages.empty(), "Copied already used Pipeline_description");
 	}
 
-	Pipeline_description& Pipeline_description::operator=(const Pipeline_description& rhs) {
+	Pipeline_description& Pipeline_description::operator=(const Pipeline_description& rhs)
+	{
 		auto rhs_copy = rhs;
 		*this         = std::move(rhs_copy);
 
@@ -98,18 +104,21 @@ namespace mirrage::graphic {
 	void Pipeline_description::add_push_constant(util::Str_id         id,
 	                                             std::uint32_t        offset,
 	                                             std::uint32_t        size,
-	                                             vk::ShaderStageFlags stage) {
+	                                             vk::ShaderStageFlags stage)
+	{
 		push_constants.emplace_back(stage, offset, size);
 		push_constant_table.emplace(id, push_constants.back());
 		next_push_constant_offset = std::max(next_push_constant_offset, offset + size);
 	}
 	void Pipeline_description::add_push_constant(util::Str_id         id,
 	                                             std::uint32_t        size,
-	                                             vk::ShaderStageFlags stage) {
+	                                             vk::ShaderStageFlags stage)
+	{
 		add_push_constant(id, next_push_constant_offset, size, stage);
 	}
 
-	void Pipeline_description::add_descriptor_set_layout(vk::DescriptorSetLayout layout) {
+	void Pipeline_description::add_descriptor_set_layout(vk::DescriptorSetLayout layout)
+	{
 		descriptor_set_layouts.emplace_back(layout);
 	}
 
@@ -125,7 +134,8 @@ namespace mirrage::graphic {
 	} // namespace
 	void Pipeline_description::build_create_info(const vk::Device&               device,
 	                                             vk::GraphicsPipelineCreateInfo& cinfo,
-	                                             vk::UniquePipelineLayout&       layout) {
+	                                             vk::UniquePipelineLayout&       layout)
+	{
 
 		pipeline_layout.setLayoutCount         = descriptor_set_layouts.size();
 		pipeline_layout.pSetLayouts            = descriptor_set_layouts.data();
@@ -199,7 +209,8 @@ namespace mirrage::graphic {
 
 
 	auto Stage_builder::shader(const asset::AID& id, Shader_stage stage, std::string entry_point)
-	        -> Stage_builder& {
+	        -> Stage_builder&
+	{
 		auto in = _builder._assets.load<Shader_module>(id);
 
 		pipeline().stages.emplace_back(
@@ -211,31 +222,37 @@ namespace mirrage::graphic {
 	auto Stage_builder::add_push_constant(util::Str_id         id,
 	                                      std::uint32_t        offset,
 	                                      std::uint32_t        size,
-	                                      vk::ShaderStageFlags shader_stages) -> Stage_builder& {
+	                                      vk::ShaderStageFlags shader_stages) -> Stage_builder&
+	{
 		pipeline().add_push_constant(id, offset, size, shader_stages);
 		return *this;
 	}
 
-	auto Stage_builder::pipeline() -> Pipeline_description& {
+	auto Stage_builder::pipeline() -> Pipeline_description&
+	{
 		return _builder._pipelines.at(_pipeline_index);
 	}
 
 	Stage_builder::Stage_builder(Render_pass_builder& builder, std::size_t pipeline)
-	  : _builder(builder), _pipeline_index(pipeline) {}
+	  : _builder(builder), _pipeline_index(pipeline)
+	{
+	}
 
 
 	Subpass_builder::Subpass_builder(std::size_t          index,
 	                                 Render_pass_builder& builder,
 	                                 std::size_t          pipeline_index)
-	  : _index(index), _builder(builder), _pipeline_index(pipeline_index) {}
+	  : _index(index), _builder(builder), _pipeline_index(pipeline_index)
+	{
+	}
 
-	auto Subpass_builder::stage(Stage_id id) -> Stage_builder& {
+	auto Subpass_builder::stage(Stage_id id) -> Stage_builder&
+	{
 		auto& stage = _stages[id];
 		if(!stage) {
 			if(_stages.size() == 1) {
 				// first stage uses pipeline created with subpass
 				stage.reset(new Stage_builder(_builder, _pipeline_index));
-
 			} else {
 				_builder._pipelines.emplace_back(
 				        Pipeline_description(_builder._pipelines.at(_pipeline_index))); // copy pipeline
@@ -255,7 +272,8 @@ namespace mirrage::graphic {
 
 	auto Subpass_builder::color_attachment(Attachment_ref                attachment,
 	                                       vk::ColorComponentFlags       colorWriteMask,
-	                                       util::maybe<Attachment_blend> blend) -> Subpass_builder& {
+	                                       util::maybe<Attachment_blend> blend) -> Subpass_builder&
+	{
 
 		auto attachment_idx = gsl::narrow_cast<uint32_t>(reinterpret_cast<std::intptr_t>(attachment));
 		_color_attachments.emplace_back(attachment_idx, vk::ImageLayout::eColorAttachmentOptimal);
@@ -276,7 +294,6 @@ namespace mirrage::graphic {
 
 		if(_stages.empty()) {
 			_builder._pipelines[_pipeline_index].color_blend_attachments.emplace_back(blend_state);
-
 		} else {
 			for(auto& stage : _stages) {
 				stage.second->pipeline().color_blend_attachments.emplace_back(blend_state);
@@ -286,25 +303,29 @@ namespace mirrage::graphic {
 		return *this;
 	}
 
-	auto Subpass_builder::input_attachment(Attachment_ref attachment) -> Subpass_builder& {
+	auto Subpass_builder::input_attachment(Attachment_ref attachment) -> Subpass_builder&
+	{
 		auto attachment_idx = gsl::narrow_cast<uint32_t>(reinterpret_cast<std::intptr_t>(attachment));
 		_input_attachments.emplace_back(attachment_idx, vk::ImageLayout::eShaderReadOnlyOptimal);
 
 		return *this;
 	}
-	auto Subpass_builder::depth_stencil_attachment(Attachment_ref attachment) -> Subpass_builder& {
+	auto Subpass_builder::depth_stencil_attachment(Attachment_ref attachment) -> Subpass_builder&
+	{
 		auto attachment_idx = gsl::narrow_cast<uint32_t>(reinterpret_cast<std::intptr_t>(attachment));
 		_depth_stencil_attachment =
 		        vk::AttachmentReference{attachment_idx, vk::ImageLayout::eDepthStencilAttachmentOptimal};
 		return *this;
 	}
-	auto Subpass_builder::preserve_attachment(Attachment_ref) -> Subpass_builder& {
+	auto Subpass_builder::preserve_attachment(Attachment_ref) -> Subpass_builder&
+	{
 		// TODO
 		MIRRAGE_FAIL("TODO");
 		return *this;
 	}
 
-	auto Subpass_builder::build_description() -> vk::SubpassDescription {
+	auto Subpass_builder::build_description() -> vk::SubpassDescription
+	{
 		auto desc                 = vk::SubpassDescription{};
 		desc.colorAttachmentCount = _color_attachments.size();
 		desc.pColorAttachments    = _color_attachments.data();
@@ -320,15 +341,19 @@ namespace mirrage::graphic {
 	Render_pass_builder::Render_pass_builder(const vk::Device&     device,
 	                                         vk::PipelineCache     cache,
 	                                         asset::Asset_manager& assets)
-	  : _device(device), _pipeline_cache(cache), _assets(assets) {}
+	  : _device(device), _pipeline_cache(cache), _assets(assets)
+	{
+	}
 
-	auto Render_pass_builder::add_attachment(vk::AttachmentDescription desc) -> Attachment_ref {
+	auto Render_pass_builder::add_attachment(vk::AttachmentDescription desc) -> Attachment_ref
+	{
 		_attachments.emplace_back(desc);
 
 		return reinterpret_cast<Attachment_ref>(_attachments.size() - 1);
 	}
 
-	auto Render_pass_builder::add_subpass(Pipeline_description& pipeline) -> Subpass_builder& {
+	auto Render_pass_builder::add_subpass(Pipeline_description& pipeline) -> Subpass_builder&
+	{
 		if(pipeline.index >= 0) { // already added => use prev as base
 			_pipelines.at(pipeline.index).used_as_base = true;
 		}
@@ -356,7 +381,8 @@ namespace mirrage::graphic {
 	                                         util::maybe<Subpass_builder&> dst,
 	                                         vk::PipelineStageFlags        dstStageMask,
 	                                         vk::AccessFlags               dstAccessMask,
-	                                         vk::DependencyFlags           flags) -> Render_pass_builder& {
+	                                         vk::DependencyFlags           flags) -> Render_pass_builder&
+	{
 
 		auto src_id = src.process(VK_SUBPASS_EXTERNAL, [](auto& s) { return s._index; });
 		auto dst_id = dst.process(VK_SUBPASS_EXTERNAL, [](auto& s) { return s._index; });
@@ -367,7 +393,8 @@ namespace mirrage::graphic {
 		return *this;
 	}
 
-	auto Render_pass_builder::build() -> Render_pass {
+	auto Render_pass_builder::build() -> Render_pass
+	{
 		MIRRAGE_INVARIANT(!_created_render_pass, "Multiple calls to Render_pass_builder::build()");
 
 		auto stages = std::unordered_map<Stage_id, std::size_t>();
@@ -421,7 +448,8 @@ namespace mirrage::graphic {
 	auto Render_pass_builder::build_framebuffer(gsl::span<Framebuffer_attachment_desc> attachments,
 	                                            int                                    width,
 	                                            int                                    height,
-	                                            int layers) -> Framebuffer {
+	                                            int                                    layers) -> Framebuffer
+	{
 		MIRRAGE_INVARIANT(_created_render_pass, "build_framebuffer() must be called after build().");
 
 		MIRRAGE_INVARIANT(gsl::narrow<std::size_t>(attachments.size()) == _attachments.size(),
@@ -478,10 +506,13 @@ namespace mirrage::graphic {
 	  , _pipelines(std::move(pipelines))
 	  , _pipeline_layouts(std::move(pipeline_layouts))
 	  , _stages(stages)
-	  , _push_constants(std::move(push_constants)) {}
+	  , _push_constants(std::move(push_constants))
+	{
+	}
 
 
-	void Render_pass::next_subpass(bool inline_contents) {
+	void Render_pass::next_subpass(bool inline_contents)
+	{
 		auto& cmb =
 		        _current_command_buffer.get_or_throw("next_pass can only be called inside an execute block!");
 
@@ -489,7 +520,8 @@ namespace mirrage::graphic {
 		                                : vk::SubpassContents::eSecondaryCommandBuffers);
 	}
 
-	void Render_pass::set_stage(util::Str_id stage_id) {
+	void Render_pass::set_stage(util::Str_id stage_id)
+	{
 		auto& cmb =
 		        _current_command_buffer.get_or_throw("set_stage can only be called inside an execute block!");
 
@@ -500,7 +532,8 @@ namespace mirrage::graphic {
 		cmb.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipelines.at(pipeline_idx->second));
 	}
 
-	void Render_pass::push_constant(util::Str_id id, gsl::span<const char> data) {
+	void Render_pass::push_constant(util::Str_id id, gsl::span<const char> data)
+	{
 		auto& cmb = _current_command_buffer.get_or_throw(
 		        "push_constant can only be called inside an execute block!");
 
@@ -518,7 +551,8 @@ namespace mirrage::graphic {
 		                  vk::ArrayProxy<const char>(data.size(), data.data()));
 	}
 
-	void Render_pass::bind_descriptor_sets(std::uint32_t first_set, gsl::span<const vk::DescriptorSet> sets) {
+	void Render_pass::bind_descriptor_sets(std::uint32_t first_set, gsl::span<const vk::DescriptorSet> sets)
+	{
 		auto& cmb = _current_command_buffer.get_or_throw(
 		        "bind_descriptor_sets can only be called inside an execute block!");
 
@@ -531,7 +565,8 @@ namespace mirrage::graphic {
 		                       nullptr);
 	}
 
-	void Render_pass::_pre(const Command_buffer& cb, const Framebuffer& fb) {
+	void Render_pass::_pre(const Command_buffer& cb, const Framebuffer& fb)
+	{
 		MIRRAGE_INVARIANT(_current_command_buffer.is_nothing(), "execute blocks can not be nested!");
 		_current_command_buffer = cb;
 		_bound_pipeline         = 0;
@@ -546,7 +581,8 @@ namespace mirrage::graphic {
 		cb.setScissor(0, {fb._scissor});
 	}
 
-	void Render_pass::_post() {
+	void Render_pass::_post()
+	{
 		MIRRAGE_INVARIANT(_current_command_buffer.is_some(), "execute block closed without being opened!");
 		_current_command_buffer.get_or_throw().endRenderPass();
 
@@ -556,7 +592,8 @@ namespace mirrage::graphic {
 
 namespace mirrage::asset {
 
-	auto Loader<graphic::Shader_module>::load(istream in) -> graphic::Shader_module {
+	auto Loader<graphic::Shader_module>::load(istream in) -> graphic::Shader_module
+	{
 		auto code = in.bytes();
 		auto module_info =
 		        vk::ShaderModuleCreateInfo{{}, code.size(), reinterpret_cast<const uint32_t*>(code.data())};

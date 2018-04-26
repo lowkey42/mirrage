@@ -6,7 +6,8 @@ namespace mirrage::renderer {
 	namespace {
 		auto build_render_pass(Deferred_renderer&                 renderer,
 		                       vk::DescriptorSetLayout            desc_set_layout,
-		                       std::vector<graphic::Framebuffer>& out_framebuffers) {
+		                       std::vector<graphic::Framebuffer>& out_framebuffers)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -77,7 +78,8 @@ namespace mirrage::renderer {
 		}
 
 		auto create_descriptor_set_layout(graphic::Device& device, vk::Sampler sampler)
-		        -> vk::UniqueDescriptorSetLayout {
+		        -> vk::UniqueDescriptorSetLayout
+		{
 			auto binding = vk::DescriptorSetLayoutBinding{0,
 			                                              vk::DescriptorType::eCombinedImageSampler,
 			                                              1,
@@ -103,7 +105,9 @@ namespace mirrage::renderer {
 	  , _descriptor_set(drenderer.create_descriptor_set(*_descriptor_set_layout, 1))
 	  , _mesh_buffer(drenderer.device(),
 	                 max_render_buffer_size,
-	                 vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer) {}
+	                 vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer)
+	{
+	}
 
 
 	void Gui_pass::update(util::Time dt) {}
@@ -111,7 +115,8 @@ namespace mirrage::renderer {
 	void Gui_pass::draw(vk::CommandBuffer& command_buffer,
 	                    Command_buffer_source&,
 	                    vk::DescriptorSet,
-	                    std::size_t swapchain_image) {
+	                    std::size_t swapchain_image)
+	{
 
 		MIRRAGE_INVARIANT(_current_command_buffer.is_nothing(), "Gui_pass::draw calls cannot be nested!");
 
@@ -143,7 +148,8 @@ namespace mirrage::renderer {
 	                                         vk::DescriptorSetLayout desc_layout)
 	  : descriptor_set(renderer.create_descriptor_set(desc_layout, 1))
 	  , texture(std::move(texture))
-	  , handle{nk_image_id(handle)} {
+	  , handle{nk_image_id(handle)}
+	{
 
 		auto desc_image = vk::DescriptorImageInfo{
 		        sampler, this->texture->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
@@ -155,7 +161,8 @@ namespace mirrage::renderer {
 	}
 
 	auto Gui_pass::load_texture(int width, int height, int channels, const std::uint8_t* data)
-	        -> std::shared_ptr<struct nk_image> {
+	        -> std::shared_ptr<struct nk_image>
+	{
 		auto handle = _next_texture_handle++;
 
 		auto dimensions = graphic::Image_dimensions_t<graphic::Image_type::single_2d>{
@@ -183,7 +190,8 @@ namespace mirrage::renderer {
 		return return_value;
 	}
 
-	auto Gui_pass::load_texture(const asset::AID& aid) -> std::shared_ptr<struct nk_image> {
+	auto Gui_pass::load_texture(const asset::AID& aid) -> std::shared_ptr<struct nk_image>
+	{
 		auto cache_entry = _loaded_textures_by_aid[aid];
 		if(auto sp = cache_entry.lock()) {
 			return sp;
@@ -211,7 +219,8 @@ namespace mirrage::renderer {
 
 	void Gui_pass::prepare_draw(gsl::span<const std::uint16_t>   indices,
 	                            gsl::span<const gui::Gui_vertex> vertices,
-	                            glm::mat4                        view_proj) {
+	                            glm::mat4                        view_proj)
+	{
 
 		auto& cb = _current_command_buffer.get_or_throw(
 		        "Gui_pass::prepare_draw ha to be "
@@ -240,7 +249,8 @@ namespace mirrage::renderer {
 	void Gui_pass::draw_elements(int           texture_handle,
 	                             glm::vec4     clip_rect,
 	                             std::uint32_t offset,
-	                             std::uint32_t count) {
+	                             std::uint32_t count)
+	{
 		auto& cb = _current_command_buffer.get_or_throw(
 		        "Gui_pass::prepare_draw ha to be "
 		        "called inside a draw call!");
@@ -266,17 +276,21 @@ namespace mirrage::renderer {
 	auto Gui_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                   ecs::Entity_manager&      entities,
 	                                   util::maybe<Meta_system&> meta_system,
-	                                   bool&) -> std::unique_ptr<Pass> {
+	                                   bool&) -> std::unique_ptr<Pass>
+	{
 		return std::make_unique<Gui_pass>(renderer, entities, meta_system);
 	}
 
 	auto Gui_pass_factory::rank_device(vk::PhysicalDevice,
 	                                   util::maybe<std::uint32_t> graphics_queue,
-	                                   int                        current_score) -> int {
+	                                   int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Gui_pass_factory::configure_device(vk::PhysicalDevice,
 	                                        util::maybe<std::uint32_t>,
-	                                        graphic::Device_create_info&) {}
+	                                        graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

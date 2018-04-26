@@ -13,15 +13,19 @@ namespace mirrage::graphic {
 	                             Descriptor_pool_chunk_index chunk_index,
 	                             vk::DescriptorSet           set,
 	                             std::uint32_t               reserved_bindings)
-	  : _pool(pool), _chunk(chunk_index), _set(set), _reserved_bindings(reserved_bindings) {}
+	  : _pool(pool), _chunk(chunk_index), _set(set), _reserved_bindings(reserved_bindings)
+	{
+	}
 	DescriptorSet::DescriptorSet(DescriptorSet&& rhs) noexcept
 	  : _pool(rhs._pool)
 	  , _chunk(rhs._chunk)
 	  , _set(std::move(rhs._set))
-	  , _reserved_bindings(std::move(rhs._reserved_bindings)) {
+	  , _reserved_bindings(std::move(rhs._reserved_bindings))
+	{
 		rhs._pool = nullptr;
 	}
-	DescriptorSet& DescriptorSet::operator=(DescriptorSet&& rhs) noexcept {
+	DescriptorSet& DescriptorSet::operator=(DescriptorSet&& rhs) noexcept
+	{
 		MIRRAGE_INVARIANT(this != &rhs, "move to self");
 
 		if(_pool) {
@@ -36,7 +40,8 @@ namespace mirrage::graphic {
 
 		return *this;
 	}
-	DescriptorSet::~DescriptorSet() {
+	DescriptorSet::~DescriptorSet()
+	{
 		if(_pool) {
 			_pool->_free_descriptor_set(_set, _chunk, _reserved_bindings);
 		}
@@ -44,7 +49,8 @@ namespace mirrage::graphic {
 
 
 	auto Descriptor_pool::create_descriptor(vk::DescriptorSetLayout layout, std::uint32_t bindings)
-	        -> DescriptorSet {
+	        -> DescriptorSet
+	{
 		MIRRAGE_INVARIANT(bindings > 0, "No bindings required, really?!?!");
 		MIRRAGE_INVARIANT(bindings < _chunk_size,
 		                  "Requested number of bindings is higher than chunk size ("
@@ -76,7 +82,6 @@ namespace mirrage::graphic {
 
 			if(ret == VK_SUCCESS) {
 				return DescriptorSet(this, pool_idx, desc_set, bindings);
-
 			} else {
 				LOG(plog::warning) << "Allocated a new descriptorSetPool (shouldn't happen too often!).";
 				*free_iter = 0;
@@ -90,7 +95,8 @@ namespace mirrage::graphic {
 	Descriptor_pool::Descriptor_pool(vk::Device                                device,
 	                                 std::uint32_t                             chunk_size,
 	                                 std::initializer_list<vk::DescriptorType> types)
-	  : _device(device), _chunk_size(chunk_size) {
+	  : _device(device), _chunk_size(chunk_size)
+	{
 		_pool_sizes.reserve(types.size());
 		for(auto type : types) {
 			_pool_sizes.emplace_back(type, chunk_size);
@@ -99,7 +105,8 @@ namespace mirrage::graphic {
 		_create_descriptor_pool();
 	}
 
-	auto Descriptor_pool::_create_descriptor_pool() -> vk::DescriptorPool {
+	auto Descriptor_pool::_create_descriptor_pool() -> vk::DescriptorPool
+	{
 		auto pool = _device.createDescriptorPoolUnique(
 		        vk::DescriptorPoolCreateInfo{vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
 		                                     _chunk_size,
@@ -113,7 +120,8 @@ namespace mirrage::graphic {
 
 	void Descriptor_pool::_free_descriptor_set(vk::DescriptorSet&          set,
 	                                           Descriptor_pool_chunk_index chunk,
-	                                           std::uint32_t               reserved_bindings) {
+	                                           std::uint32_t               reserved_bindings)
+	{
 		auto lock = std::scoped_lock{_mutex};
 
 		auto idx   = gsl::narrow<std::size_t>(chunk);
@@ -135,7 +143,8 @@ namespace mirrage::graphic {
 		auto create_layout(graphic::Device&     device,
 		                   vk::Sampler          sampler,
 		                   std::uint32_t        image_number,
-		                   vk::ShaderStageFlags stages) {
+		                   vk::ShaderStageFlags stages)
+		{
 			auto bindings = std::vector<vk::DescriptorSetLayoutBinding>();
 			bindings.reserve(image_number);
 
@@ -157,10 +166,13 @@ namespace mirrage::graphic {
 	  : _device(device)
 	  , _sampler(sampler)
 	  , _image_number(image_number)
-	  , _layout(create_layout(device, sampler, image_number, stages)) {}
+	  , _layout(create_layout(device, sampler, image_number, stages))
+	{
+	}
 
 	void Image_descriptor_set_layout::update_set(vk::DescriptorSet                    set,
-	                                             std::initializer_list<vk::ImageView> images) {
+	                                             std::initializer_list<vk::ImageView> images)
+	{
 
 		MIRRAGE_INVARIANT(images.size() <= _image_number,
 		                  "Number of images (" << images.size() << ") doesn't match size of descriptor set ("
@@ -189,8 +201,8 @@ namespace mirrage::graphic {
 	}
 
 	auto Image_descriptor_set_layout::create_set(Descriptor_pool&                     pool,
-	                                             std::initializer_list<vk::ImageView> images)
-	        -> DescriptorSet {
+	                                             std::initializer_list<vk::ImageView> images) -> DescriptorSet
+	{
 		auto set = pool.create_descriptor(layout(), _image_number);
 		update_set(*set, images);
 		return set;

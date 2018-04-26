@@ -36,7 +36,8 @@ namespace mirrage::graphic {
 		auto memory() const noexcept { return _memory; }
 		auto offset() const noexcept { return _offset; }
 
-		auto mapped_addr() const noexcept -> util::maybe<char*> {
+		auto mapped_addr() const noexcept -> util::maybe<char*>
+		{
 			return _mapped_addr ? _mapped_addr : util::maybe<char*>::nothing();
 		}
 
@@ -92,7 +93,8 @@ namespace mirrage::graphic {
 		auto shrink_to_fit() -> std::size_t;
 		auto usage_statistic() const -> Device_memory_usage;
 
-		auto is_dedicated_allocations_supported() const noexcept {
+		auto is_dedicated_allocations_supported() const noexcept
+		{
 			return _is_dedicated_allocations_supported;
 		}
 
@@ -116,7 +118,9 @@ namespace mirrage::graphic {
 	  public:
 		Memory_backed() = default;
 		Memory_backed(vk::UniqueHandle<T>&& instance, Device_memory&& memory)
-		  : _instance(std::move(instance)), _memory(std::move(memory)) {}
+		  : _instance(std::move(instance)), _memory(std::move(memory))
+		{
+		}
 
 		const T& operator*() const noexcept { return *_instance; }
 		const T* operator->() const noexcept { return &*_instance; }

@@ -12,7 +12,8 @@ namespace mirrage {
 		  public:
 			const char* name() const noexcept override { return "mirrage-error"; }
 
-			std::string message(int e) const override {
+			std::string message(int e) const override
+			{
 				switch(static_cast<Error_type>(e)) {
 					case Error_type::asset_not_found: return "Couldn't load a required asset";
 					case Error_type::asset_io_error: return "Couldn't access filesystem.";
@@ -35,7 +36,8 @@ namespace mirrage {
 		  public:
 			const char* name() const noexcept override { return "mirrage-error-source"; }
 
-			std::string message(int e) const override {
+			std::string message(int e) const override
+			{
 				switch(static_cast<Error_source>(e)) {
 					case Error_source::user: return "Error caused by user input";
 					case Error_source::hardware: return "Error caused by system/hardware";
@@ -48,7 +50,8 @@ namespace mirrage {
 				return "[unexpected error_source " + std::to_string(e) + "]";
 			}
 
-			bool equivalent(const std::error_code& code, int condition) const noexcept override {
+			bool equivalent(const std::error_code& code, int condition) const noexcept override
+			{
 				const auto is_user     = code == Error_type::network_invalid_host;
 				const auto is_hardware = code == Error_type::asset_io_error;
 				const auto is_bug      = code == Error_type::network_usage_error
@@ -70,7 +73,8 @@ namespace mirrage {
 	} // namespace
 
 	std::error_condition make_error_condition(Error_type e) { return {static_cast<int>(e), error_type_cat}; }
-	std::error_condition make_error_condition(Error_source e) {
+	std::error_condition make_error_condition(Error_source e)
+	{
 		return {static_cast<int>(e), error_source_cat};
 	}
 

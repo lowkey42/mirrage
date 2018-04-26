@@ -40,7 +40,8 @@ namespace mirrage::ecs {
 		using Marker_type                                   = Entity_handle;
 		static constexpr Marker_type free_mark              = invalid_entity;
 
-		static constexpr const Marker_type* marker_addr(const T* inst) {
+		static constexpr const Marker_type* marker_addr(const T* inst)
+		{
 			return T::component_base_t::marker_addr(inst);
 		}
 	};
@@ -61,21 +62,24 @@ namespace mirrage::ecs {
 		using iterator = typename pool_t::iterator;
 
 		template <class... Args>
-		auto emplace(Args&&... args) -> std::tuple<T&, Component_index> {
+		auto emplace(Args&&... args) -> std::tuple<T&, Component_index>
+		{
 			return _pool.emplace_back(std::forward<Args>(args)...);
 		}
 
 		void replace(Component_index idx, T&& new_element) { _pool.replace(idx, std::move(new_element)); }
 
 		template <typename F>
-		void erase(Component_index idx, F&& relocate) {
+		void erase(Component_index idx, F&& relocate)
+		{
 			_pool.erase(idx, std::forward<F>(relocate));
 		}
 
 		void clear() { _pool.clear(); }
 
 		template <typename F>
-		void shrink_to_fit(F&& relocate) {
+		void shrink_to_fit(F&& relocate)
+		{
 			_pool.shrink_to_fit(std::forward<F>(relocate));
 		}
 
@@ -99,7 +103,8 @@ namespace mirrage::ecs {
 		friend void save(sf2::JsonSerializer& s, const Entity_handle& e);
 
 	  public:
-		Component_container(Entity_manager& m) : _manager(m) {
+		Component_container(Entity_manager& m) : _manager(m)
+		{
 			T::_validate_type_helper();
 			_index.clear();
 		}
@@ -107,7 +112,8 @@ namespace mirrage::ecs {
 		auto value_type() const noexcept -> Component_type override { return component_type_id<T>(); }
 
 	  protected:
-		void restore(Entity_handle owner, Deserializer& deserializer) override {
+		void restore(Entity_handle owner, Deserializer& deserializer) override
+		{
 			auto entity_id = get_entity_id(owner, _manager);
 			if(entity_id == invalid_entity_id) {
 				MIRRAGE_FAIL("emplace_or_find_now of component from invalid/deleted entity");
@@ -127,7 +133,8 @@ namespace mirrage::ecs {
 			load_component(deserializer, comp);
 		}
 
-		bool save(Entity_handle owner, Serializer& serializer) override {
+		bool save(Entity_handle owner, Serializer& serializer) override
+		{
 			return find(owner).process(false, [&](T& comp) {
 				serializer.write_value(T::name_save_as());
 				save_component(serializer, comp);
@@ -135,7 +142,8 @@ namespace mirrage::ecs {
 			});
 		}
 
-		void clear() override {
+		void clear() override
+		{
 			_queued_deletions  = Queue<Entity_handle>{}; // clear by moving a new queue into the old
 			_queued_insertions = Queue<Insertion>{};     // clear by moving a new queue into the old
 			_index.clear();
@@ -147,7 +155,8 @@ namespace mirrage::ecs {
 			});
 		}
 
-		void process_queued_actions() override {
+		void process_queued_actions() override
+		{
 			process_deletions();
 			process_insertions();
 
@@ -160,7 +169,8 @@ namespace mirrage::ecs {
 			}
 		}
 
-		void process_deletions() {
+		void process_deletions()
+		{
 			std::array<Entity_handle, 16> deletions_buffer;
 
 			do {
@@ -191,7 +201,6 @@ namespace mirrage::ecs {
 								_storage.erase(comp_idx, [&](auto, auto& comp, auto new_idx) {
 									_index.attach(comp.owner_handle().id(), new_idx);
 								});
-
 							} else {
 								_storage.replace(comp_idx, std::move(std::get<0>(insertion)));
 								_index.attach(std::get<1>(insertion).id(), comp_idx);
@@ -209,7 +218,8 @@ namespace mirrage::ecs {
 				}
 			} while(true);
 		}
-		void process_insertions() {
+		void process_insertions()
+		{
 			std::array<Insertion, 8> insertions_buffer;
 
 			do {
@@ -236,7 +246,8 @@ namespace mirrage::ecs {
 
 	  public:
 		template <typename F, typename... Args>
-		void emplace(F&& init, Entity_handle owner, Args&&... args) {
+		void emplace(F&& init, Entity_handle owner, Args&&... args)
+		{
 			MIRRAGE_INVARIANT(owner != invalid_entity, "emplace on invalid entity");
 
 			// construct T inplace inside the pair to avoid additional move
@@ -247,18 +258,21 @@ namespace mirrage::ecs {
 			_queued_insertions.enqueue(std::move(inst));
 		}
 
-		void erase(Entity_handle owner) override {
+		void erase(Entity_handle owner) override
+		{
 			MIRRAGE_INVARIANT(owner, "erase on invalid entity");
 			_queued_deletions.enqueue(owner);
 		}
 
-		auto find(Entity_handle owner) -> util::maybe<T&> {
+		auto find(Entity_handle owner) -> util::maybe<T&>
+		{
 			auto entity_id = get_entity_id(owner, _manager);
 
 			return _index.find(entity_id).process(
 			        util::maybe<T&>(), [&](auto comp_idx) { return util::justPtr(&_storage.get(comp_idx)); });
 		}
-		auto has(Entity_handle owner) const -> bool {
+		auto has(Entity_handle owner) const -> bool
+		{
 			auto entity_id = get_entity_id(owner, _manager);
 
 			return _index.find(entity_id).is_some();

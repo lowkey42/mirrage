@@ -33,7 +33,8 @@ namespace mirrage {
 		Translator(asset::Asset_manager&);
 		~Translator();
 
-		void language(const Language_id& l) {
+		void language(const Language_id& l)
+		{
 			auto changed = _language != l;
 			_language    = l;
 			if(changed) {
@@ -50,7 +51,8 @@ namespace mirrage {
 
 	  private:
 		struct string_pair_hash {
-			inline std::size_t operator()(const std::pair<std::string, std::string>& v) const {
+			inline std::size_t operator()(const std::pair<std::string, std::string>& v) const
+			{
 				std::hash<std::string> h{};
 				return h(v.first) * 31 + h(v.second);
 			}
@@ -83,7 +85,8 @@ namespace mirrage::asset {
 	template <>
 	struct Loader<Localisation_data> {
 		static auto              load(istream in) -> Localisation_data;
-		[[noreturn]] static void save(ostream, const Localisation_data&) {
+		[[noreturn]] static void save(ostream, const Localisation_data&)
+		{
 			MIRRAGE_FAIL("store<Localisation_data>(...) not supported!");
 		}
 	};

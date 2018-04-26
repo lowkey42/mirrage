@@ -23,9 +23,12 @@ namespace mirrage::graphic {
 		class Base_texture {
 		  public:
 			Base_texture(Base_texture&& rhs) noexcept
-			  : _image(std::move(rhs._image)), _image_view(std::move(rhs._image_view)) {}
+			  : _image(std::move(rhs._image)), _image_view(std::move(rhs._image_view))
+			{
+			}
 
-			Base_texture& operator=(Base_texture&& rhs) noexcept {
+			Base_texture& operator=(Base_texture&& rhs) noexcept
+			{
 				_image      = std::move(rhs._image);
 				_image_view = std::move(rhs._image_view);
 				return *this;
@@ -81,14 +84,18 @@ namespace mirrage::graphic {
 	class Texture : public detail::Base_texture {
 	  public:
 		Texture(Device& device, Static_image image, vk::Format format)
-		  : Base_texture(device, std::move(image), format) {}
+		  : Base_texture(device, std::move(image), format)
+		{
+		}
 		Texture(Device&                  device,
 		        Image_dimensions_t<Type> dim,
 		        bool                     generate_mipmaps,
 		        vk::Format               format,
 		        gsl::span<gsl::byte>     data,
 		        std::uint32_t            owner_qfamily)
-		  : Base_texture(device, Type, dim, generate_mipmaps, format, data, owner_qfamily) {}
+		  : Base_texture(device, Type, dim, generate_mipmaps, format, data, owner_qfamily)
+		{
+		}
 		Texture(Device&                       device,
 		        Image_dimensions_t<Type>      dim,
 		        bool                          generate_mipmaps,
@@ -102,7 +109,9 @@ namespace mirrage::graphic {
 		            generate_mipmaps,
 		            detail::format_from_channels(device, channels, srgb),
 		            data,
-		            owner_qfamily) {}
+		            owner_qfamily)
+		{
+		}
 
 	  protected:
 		using detail::Base_texture::Base_texture;
@@ -122,9 +131,13 @@ namespace mirrage::graphic {
 		                                    detail::clamp_mip_levels(dim.width, dim.height, mip_levels),
 		                                    this->image(),
 		                                    format,
-		                                    aspects)) {}
+		                                    aspects))
+		{
+		}
 		Render_target(Render_target&& rhs) noexcept
-		  : Texture<Type>(std::move(rhs)), _single_mip_level_views(std::move(rhs._single_mip_level_views)) {}
+		  : Texture<Type>(std::move(rhs)), _single_mip_level_views(std::move(rhs._single_mip_level_views))
+		{
+		}
 
 		Render_target& operator=(Render_target&&) = default;
 
@@ -134,10 +147,12 @@ namespace mirrage::graphic {
 
 		auto view(std::uint32_t level) const noexcept { return *_single_mip_level_views.at(level); }
 		auto width(std::uint32_t level) const noexcept { return this->width() / (std::uint32_t(1) << level); }
-		auto height(std::uint32_t level) const noexcept {
+		auto height(std::uint32_t level) const noexcept
+		{
 			return this->height() / (std::uint32_t(1) << level);
 		}
-		auto mip_levels() const noexcept {
+		auto mip_levels() const noexcept
+		{
 			return gsl::narrow<std::uint32_t>(_single_mip_level_views.size());
 		}
 
@@ -169,11 +184,14 @@ namespace mirrage::asset {
 	struct Loader<graphic::Texture<Type>> {
 	  public:
 		Loader(graphic::Device& device, std::uint32_t owner_qfamily)
-		  : _device(device), _owner_qfamily(owner_qfamily) {}
+		  : _device(device), _owner_qfamily(owner_qfamily)
+		{
+		}
 
-		auto load(istream in) {
+		auto load(istream in)
+		{
 			auto data = graphic::detail::load_image_data(_device, _owner_qfamily, std::move(in));
-			auto && [image, format, real_type] = data;
+			auto&& [image, format, real_type] = data;
 			(void) format;
 
 			if(real_type != Type)

@@ -24,7 +24,8 @@ namespace mirrage::util {
 		signal_source() = default;
 		signal_source(slot<ET...>& s);
 
-		void inform(ET... e) {
+		void inform(ET... e)
+		{
 			for(auto&& s : _slots)
 				if(s->func)
 					s->func(e...);
@@ -33,7 +34,8 @@ namespace mirrage::util {
 	  private:
 		void register_slot(slot<ET...>* s) { _slots.push_back(s); }
 
-		void unregister_slot(slot<ET...>* s) {
+		void unregister_slot(slot<ET...>* s)
+		{
 			auto e = std::find(_slots.begin(), _slots.end(), s);
 			*e     = _slots.back();
 			_slots.pop_back();
@@ -48,18 +50,23 @@ namespace mirrage::util {
 
 	  public:
 		template <typename Base>
-		slot(void (Base::*f)(ET...), Base* inst) : func([f, inst](ET... arg) { (inst->*f)(arg...); }) {}
+		slot(void (Base::*f)(ET...), Base* inst) : func([f, inst](ET... arg) { (inst->*f)(arg...); })
+		{
+		}
 		slot(std::function<void(ET...)> f) : func(f) {}
-		~slot() {
+		~slot()
+		{
 			for(auto&& s : connections)
 				s->unregister_slot(this);
 		}
 
-		void connect(signal_source<ET...>& source) {
+		void connect(signal_source<ET...>& source)
+		{
 			source.register_slot(this);
 			connections.push_back(&source);
 		}
-		void disconnect(signal_source<ET...>& source) {
+		void disconnect(signal_source<ET...>& source)
+		{
 			source.unregister_slot(this);
 
 			auto e = std::find(connections.begin(), connections.end(), &source);
@@ -74,7 +81,8 @@ namespace mirrage::util {
 
 
 	template <typename... ET>
-	signal_source<ET...>::signal_source(slot<ET...>& s) {
+	signal_source<ET...>::signal_source(slot<ET...>& s)
+	{
 		s.connect(*this);
 	}
 } // namespace mirrage::util

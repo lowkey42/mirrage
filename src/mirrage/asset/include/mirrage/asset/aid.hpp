@@ -45,14 +45,16 @@ namespace mirrage::asset {
 
 } // namespace mirrage::asset
 
-inline mirrage::asset::AID operator"" _aid(const char* str, std::size_t) {
+inline mirrage::asset::AID operator"" _aid(const char* str, std::size_t)
+{
 	return mirrage::asset::AID(str);
 }
 
 namespace std {
 	template <>
 	struct hash<mirrage::asset::AID> {
-		size_t operator()(const mirrage::asset::AID& aid) const noexcept {
+		size_t operator()(const mirrage::asset::AID& aid) const noexcept
+		{
 			return 71 * hash<mirrage::asset::Asset_type>()(aid.type()) + hash<string>()(aid.name());
 		}
 	};

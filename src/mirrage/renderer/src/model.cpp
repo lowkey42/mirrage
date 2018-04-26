@@ -15,7 +15,8 @@ namespace mirrage::renderer {
 	} // namespace
 
 	auto create_material_descriptor_set_layout(Device& device, vk::Sampler sampler)
-	        -> vk::UniqueDescriptorSetLayout {
+	        -> vk::UniqueDescriptorSetLayout
+	{
 		auto bindings = std::array<vk::DescriptorSetLayoutBinding, material_textures>();
 		auto samplers = std::array<vk::Sampler, material_textures>();
 
@@ -45,7 +46,8 @@ namespace mirrage::renderer {
 	  : _descriptor_set(std::move(descriptor_set))
 	  , _albedo(std::move(albedo))
 	  , _mat_data(std::move(mat_data))
-	  , _material_id(substance_id) {
+	  , _material_id(substance_id)
+	{
 
 		auto desc_images = std::array<vk::DescriptorImageInfo, material_textures>();
 		desc_images[0] =
@@ -65,20 +67,25 @@ namespace mirrage::renderer {
 		device.vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
 
-	void Material::bind(graphic::Render_pass& pass) const {
+	void Material::bind(graphic::Render_pass& pass) const
+	{
 		pass.bind_descriptor_sets(1, {_descriptor_set.get_ptr(), 1});
 	}
 
 
 	Model::Model(graphic::Mesh mesh, std::vector<Sub_mesh> sub_meshes, util::maybe<asset::AID> aid)
-	  : _mesh(std::move(mesh)), _sub_meshes(std::move(sub_meshes)), _aid(aid) {}
+	  : _mesh(std::move(mesh)), _sub_meshes(std::move(sub_meshes)), _aid(aid)
+	{
+	}
 
-	void Model::bind_mesh(const graphic::Command_buffer& cb, std::uint32_t vertex_binding) const {
+	void Model::bind_mesh(const graphic::Command_buffer& cb, std::uint32_t vertex_binding) const
+	{
 		_mesh.bind(cb, vertex_binding);
 	}
 
 	auto Model::bind_sub_mesh(graphic::Render_pass& pass, std::size_t index) const
-	        -> std::pair<std::size_t, std::size_t> {
+	        -> std::pair<std::size_t, std::size_t>
+	{
 		auto& sm = _sub_meshes.at(index);
 		sm.material->bind(pass);
 		return std::make_pair(sm.index_offset, sm.index_count);
@@ -97,10 +104,12 @@ namespace mirrage::asset {
 	  , _assets(assets)
 	  , _sampler(sampler)
 	  , _descriptor_set_layout(layout)
-	  , _descriptor_set_pool(
-	            device.create_descriptor_pool(256, {vk::DescriptorType::eCombinedImageSampler})) {}
+	  , _descriptor_set_pool(device.create_descriptor_pool(256, {vk::DescriptorType::eCombinedImageSampler}))
+	{
+	}
 
-	auto Loader<renderer::Material>::load(istream in) -> async::task<renderer::Material> {
+	auto Loader<renderer::Material>::load(istream in) -> async::task<renderer::Material>
+	{
 		auto data = Loader<renderer::Material_data>::load(std::move(in));
 
 		auto load_tex = [&](auto&& id) {
@@ -125,14 +134,16 @@ namespace mirrage::asset {
 
 	namespace {
 		template <typename T>
-		void read(std::istream& in, T& value) {
+		void read(std::istream& in, T& value)
+		{
 			static_assert(!std::is_pointer<T>::value,
 			              "T is a pointer. That is DEFINITLY not what you wanted!");
 			in.read(reinterpret_cast<char*>(&value), sizeof(T));
 		}
 
 		template <typename T>
-		void read(std::istream& in, std::vector<T>& value) {
+		void read(std::istream& in, std::vector<T>& value)
+		{
 			static_assert(!std::is_pointer<T>::value,
 			              "T is a pointer. That is DEFINITLY not what you wanted!");
 
@@ -140,7 +151,8 @@ namespace mirrage::asset {
 		}
 	} // namespace
 
-	auto Loader<renderer::Model>::load(istream in) -> async::task<renderer::Model> {
+	auto Loader<renderer::Model>::load(istream in) -> async::task<renderer::Model>
+	{
 
 		auto header = renderer::Model_file_header{};
 		read(in, header);

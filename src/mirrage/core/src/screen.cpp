@@ -9,7 +9,8 @@ namespace mirrage {
 
 	Screen_manager::~Screen_manager() noexcept { clear(); }
 
-	auto Screen_manager::enter(std::unique_ptr<Screen> screen) -> Screen& {
+	auto Screen_manager::enter(std::unique_ptr<Screen> screen) -> Screen&
+	{
 		if(!_next_screens.empty()) {
 			LOG(plog::warning) << "multiple screen enters per frame.";
 		}
@@ -19,7 +20,8 @@ namespace mirrage {
 		return *_next_screens.back().get();
 	}
 
-	void Screen_manager::leave(uint8_t depth) {
+	void Screen_manager::leave(uint8_t depth)
+	{
 		if(depth <= 0)
 			return;
 
@@ -32,7 +34,8 @@ namespace mirrage {
 
 	auto Screen_manager::current() -> Screen& { return *_screen_stack.back(); }
 
-	void Screen_manager::on_frame(util::Time delta_time) {
+	void Screen_manager::on_frame(util::Time delta_time)
+	{
 		auto screen_stack = _screen_stack;
 
 		const int screen_stack_size = int(screen_stack.size());
@@ -60,7 +63,8 @@ namespace mirrage {
 			screen_stack.at(size_t(screen_index))->_draw();
 	}
 
-	void Screen_manager::do_queued_actions() {
+	void Screen_manager::do_queued_actions()
+	{
 		// leave screen if requested
 		if(_leave > 0) {
 			auto last = std::shared_ptr<Screen>{};
@@ -76,7 +80,6 @@ namespace mirrage {
 				_engine.exit();
 				if(last)
 					last->_on_leave(util::nothing);
-
 			} else if(last) {
 				last->_on_leave(util::justPtr(_screen_stack.back().get()));
 				_screen_stack.back()->_on_enter(util::justPtr(last.get()));
@@ -102,7 +105,8 @@ namespace mirrage {
 		}
 	}
 
-	void Screen_manager::clear() {
+	void Screen_manager::clear()
+	{
 		// unwind screen-stack
 		if(!_screen_stack.empty())
 			_screen_stack.back()->_on_leave(util::nothing);

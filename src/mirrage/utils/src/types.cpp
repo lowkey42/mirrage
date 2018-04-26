@@ -18,7 +18,8 @@ namespace mirrage::util {
 	} // namespace detail
 
 
-	std::ostream& operator<<(std::ostream& os, const Flag& v) {
+	std::ostream& operator<<(std::ostream& os, const Flag& v)
+	{
 		if(v)
 			return os << "true";
 		else

@@ -59,7 +59,9 @@ namespace mirrage::renderer {
 
 		Model_vertex() = default;
 		Model_vertex(float px, float py, float pz, float nx, float ny, float nz, float u, float v)
-		  : position(px, py, pz), normal(nx, ny, nz), tex_coords(u, v) {}
+		  : position(px, py, pz), normal(nx, ny, nz), tex_coords(u, v)
+		{
+		}
 	};
 	static_assert(sizeof(Model_vertex) == 4 * (3 + 3 + 2), "Model_vertex has unexpected alignment!");
 
@@ -115,7 +117,9 @@ namespace mirrage::renderer {
 
 		Sub_mesh() = default;
 		Sub_mesh(Material_ptr m, std::uint32_t o, std::uint32_t c)
-		  : material(std::move(m)), index_offset(o), index_count(c) {}
+		  : material(std::move(m)), index_offset(o), index_count(c)
+		{
+		}
 	};
 
 	class Model {
@@ -138,7 +142,8 @@ namespace mirrage::renderer {
 		void bind(const graphic::Command_buffer& cb,
 		          graphic::Render_pass&          pass,
 		          std::uint32_t                  vertex_binding,
-		          F&&                            on_sub_mesh) const {
+		          F&&                            on_sub_mesh) const
+		{
 			bind_mesh(cb, vertex_binding);
 
 			for(auto& sm : _sub_meshes) {
@@ -180,7 +185,9 @@ namespace mirrage::asset {
 	struct Loader<renderer::Model> {
 	  public:
 		Loader(graphic::Device& device, asset::Asset_manager& assets, std::uint32_t owner_qfamily)
-		  : _device(device), _assets(assets), _owner_qfamily(owner_qfamily) {}
+		  : _device(device), _assets(assets), _owner_qfamily(owner_qfamily)
+		{
+		}
 
 		auto load(istream in) -> async::task<renderer::Model>;
 		void save(ostream, const renderer::Material&) { MIRRAGE_FAIL("Save of materials is not supported!"); }

@@ -20,7 +20,8 @@
 #include <sstream>
 
 namespace mirrage::util {
-	std::string print_stacktrace() {
+	std::string print_stacktrace()
+	{
 		auto str = std::stringstream{};
 
 		using namespace backward;

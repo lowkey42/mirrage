@@ -84,7 +84,8 @@ static inline void vkGetFormatSize( const VkFormat format, VkFormatSize * pForma
 
 #include "gl_format.h"
 
-static inline VkFormat vkGetFormatFromOpenGLFormat(const GLenum format, const GLenum type) {
+static inline VkFormat vkGetFormatFromOpenGLFormat(const GLenum format, const GLenum type)
+{
 	switch(type) {
 		//
 		// 8 bits per component
@@ -393,7 +394,8 @@ static inline VkFormat vkGetFormatFromOpenGLFormat(const GLenum format, const GL
 
 static inline VkFormat vkGetFormatFromOpenGLType(const GLenum    type,
                                                  const GLuint    numComponents,
-                                                 const GLboolean normalized) {
+                                                 const GLboolean normalized)
+{
 	switch(type) {
 		//
 		// 8 bits per component
@@ -538,155 +540,99 @@ static inline VkFormat vkGetFormatFromOpenGLType(const GLenum    type,
 	return VK_FORMAT_UNDEFINED;
 }
 
-static inline VkFormat vkGetFormatFromOpenGLInternalFormat(const GLenum internalFormat) {
+static inline VkFormat vkGetFormatFromOpenGLInternalFormat(const GLenum internalFormat)
+{
 	switch(internalFormat) {
 		//
 		// 8 bits per component
 		//
-		case GL_R8:
-			return VK_FORMAT_R8_UNORM; // 1-component, 8-bit unsigned normalized
-		case GL_RG8:
-			return VK_FORMAT_R8G8_UNORM; // 2-component, 8-bit unsigned normalized
-		case GL_RGB8:
-			return VK_FORMAT_R8G8B8_UNORM; // 3-component, 8-bit unsigned normalized
-		case GL_RGBA8:
-			return VK_FORMAT_R8G8B8A8_UNORM; // 4-component, 8-bit unsigned normalized
+		case GL_R8: return VK_FORMAT_R8_UNORM;          // 1-component, 8-bit unsigned normalized
+		case GL_RG8: return VK_FORMAT_R8G8_UNORM;       // 2-component, 8-bit unsigned normalized
+		case GL_RGB8: return VK_FORMAT_R8G8B8_UNORM;    // 3-component, 8-bit unsigned normalized
+		case GL_RGBA8: return VK_FORMAT_R8G8B8A8_UNORM; // 4-component, 8-bit unsigned normalized
 
-		case GL_R8_SNORM:
-			return VK_FORMAT_R8_SNORM; // 1-component, 8-bit signed normalized
-		case GL_RG8_SNORM:
-			return VK_FORMAT_R8G8_SNORM; // 2-component, 8-bit signed normalized
-		case GL_RGB8_SNORM:
-			return VK_FORMAT_R8G8B8_SNORM; // 3-component, 8-bit signed normalized
-		case GL_RGBA8_SNORM:
-			return VK_FORMAT_R8G8B8A8_SNORM; // 4-component, 8-bit signed normalized
+		case GL_R8_SNORM: return VK_FORMAT_R8_SNORM;          // 1-component, 8-bit signed normalized
+		case GL_RG8_SNORM: return VK_FORMAT_R8G8_SNORM;       // 2-component, 8-bit signed normalized
+		case GL_RGB8_SNORM: return VK_FORMAT_R8G8B8_SNORM;    // 3-component, 8-bit signed normalized
+		case GL_RGBA8_SNORM: return VK_FORMAT_R8G8B8A8_SNORM; // 4-component, 8-bit signed normalized
 
-		case GL_R8UI:
-			return VK_FORMAT_R8_UINT; // 1-component, 8-bit unsigned integer
-		case GL_RG8UI:
-			return VK_FORMAT_R8G8_UINT; // 2-component, 8-bit unsigned integer
-		case GL_RGB8UI:
-			return VK_FORMAT_R8G8B8_UINT; // 3-component, 8-bit unsigned integer
-		case GL_RGBA8UI:
-			return VK_FORMAT_R8G8B8A8_UINT; // 4-component, 8-bit unsigned integer
+		case GL_R8UI: return VK_FORMAT_R8_UINT;          // 1-component, 8-bit unsigned integer
+		case GL_RG8UI: return VK_FORMAT_R8G8_UINT;       // 2-component, 8-bit unsigned integer
+		case GL_RGB8UI: return VK_FORMAT_R8G8B8_UINT;    // 3-component, 8-bit unsigned integer
+		case GL_RGBA8UI: return VK_FORMAT_R8G8B8A8_UINT; // 4-component, 8-bit unsigned integer
 
-		case GL_R8I:
-			return VK_FORMAT_R8_SINT; // 1-component, 8-bit signed integer
-		case GL_RG8I:
-			return VK_FORMAT_R8G8_SINT; // 2-component, 8-bit signed integer
-		case GL_RGB8I:
-			return VK_FORMAT_R8G8B8_SINT; // 3-component, 8-bit signed integer
-		case GL_RGBA8I:
-			return VK_FORMAT_R8G8B8A8_SINT; // 4-component, 8-bit signed integer
+		case GL_R8I: return VK_FORMAT_R8_SINT;          // 1-component, 8-bit signed integer
+		case GL_RG8I: return VK_FORMAT_R8G8_SINT;       // 2-component, 8-bit signed integer
+		case GL_RGB8I: return VK_FORMAT_R8G8B8_SINT;    // 3-component, 8-bit signed integer
+		case GL_RGBA8I: return VK_FORMAT_R8G8B8A8_SINT; // 4-component, 8-bit signed integer
 
-		case GL_SR8:
-			return VK_FORMAT_R8_SRGB; // 1-component, 8-bit sRGB
-		case GL_SRG8:
-			return VK_FORMAT_R8G8_SRGB; // 2-component, 8-bit sRGB
-		case GL_SRGB8:
-			return VK_FORMAT_R8G8B8_SRGB; // 3-component, 8-bit sRGB
+		case GL_SR8: return VK_FORMAT_R8_SRGB;       // 1-component, 8-bit sRGB
+		case GL_SRG8: return VK_FORMAT_R8G8_SRGB;    // 2-component, 8-bit sRGB
+		case GL_SRGB8: return VK_FORMAT_R8G8B8_SRGB; // 3-component, 8-bit sRGB
 		case GL_SRGB8_ALPHA8:
 			return VK_FORMAT_R8G8B8A8_SRGB; // 4-component, 8-bit sRGB
 
 		//
 		// 16 bits per component
 		//
-		case GL_R16:
-			return VK_FORMAT_R16_UNORM; // 1-component, 16-bit unsigned normalized
-		case GL_RG16:
-			return VK_FORMAT_R16G16_UNORM; // 2-component, 16-bit unsigned normalized
-		case GL_RGB16:
-			return VK_FORMAT_R16G16B16_UNORM; // 3-component, 16-bit unsigned normalized
-		case GL_RGBA16:
-			return VK_FORMAT_R16G16B16A16_UNORM; // 4-component, 16-bit unsigned normalized
+		case GL_R16: return VK_FORMAT_R16_UNORM;             // 1-component, 16-bit unsigned normalized
+		case GL_RG16: return VK_FORMAT_R16G16_UNORM;         // 2-component, 16-bit unsigned normalized
+		case GL_RGB16: return VK_FORMAT_R16G16B16_UNORM;     // 3-component, 16-bit unsigned normalized
+		case GL_RGBA16: return VK_FORMAT_R16G16B16A16_UNORM; // 4-component, 16-bit unsigned normalized
 
-		case GL_R16_SNORM:
-			return VK_FORMAT_R16_SNORM; // 1-component, 16-bit signed normalized
-		case GL_RG16_SNORM:
-			return VK_FORMAT_R16G16_SNORM; // 2-component, 16-bit signed normalized
-		case GL_RGB16_SNORM:
-			return VK_FORMAT_R16G16B16_SNORM; // 3-component, 16-bit signed normalized
-		case GL_RGBA16_SNORM:
-			return VK_FORMAT_R16G16B16A16_SNORM; // 4-component, 16-bit signed normalized
+		case GL_R16_SNORM: return VK_FORMAT_R16_SNORM;             // 1-component, 16-bit signed normalized
+		case GL_RG16_SNORM: return VK_FORMAT_R16G16_SNORM;         // 2-component, 16-bit signed normalized
+		case GL_RGB16_SNORM: return VK_FORMAT_R16G16B16_SNORM;     // 3-component, 16-bit signed normalized
+		case GL_RGBA16_SNORM: return VK_FORMAT_R16G16B16A16_SNORM; // 4-component, 16-bit signed normalized
 
-		case GL_R16UI:
-			return VK_FORMAT_R16_UINT; // 1-component, 16-bit unsigned integer
-		case GL_RG16UI:
-			return VK_FORMAT_R16G16_UINT; // 2-component, 16-bit unsigned integer
-		case GL_RGB16UI:
-			return VK_FORMAT_R16G16B16_UINT; // 3-component, 16-bit unsigned integer
-		case GL_RGBA16UI:
-			return VK_FORMAT_R16G16B16A16_UINT; // 4-component, 16-bit unsigned integer
+		case GL_R16UI: return VK_FORMAT_R16_UINT;             // 1-component, 16-bit unsigned integer
+		case GL_RG16UI: return VK_FORMAT_R16G16_UINT;         // 2-component, 16-bit unsigned integer
+		case GL_RGB16UI: return VK_FORMAT_R16G16B16_UINT;     // 3-component, 16-bit unsigned integer
+		case GL_RGBA16UI: return VK_FORMAT_R16G16B16A16_UINT; // 4-component, 16-bit unsigned integer
 
-		case GL_R16I:
-			return VK_FORMAT_R16_SINT; // 1-component, 16-bit signed integer
-		case GL_RG16I:
-			return VK_FORMAT_R16G16_SINT; // 2-component, 16-bit signed integer
-		case GL_RGB16I:
-			return VK_FORMAT_R16G16B16_SINT; // 3-component, 16-bit signed integer
-		case GL_RGBA16I:
-			return VK_FORMAT_R16G16B16A16_SINT; // 4-component, 16-bit signed integer
+		case GL_R16I: return VK_FORMAT_R16_SINT;             // 1-component, 16-bit signed integer
+		case GL_RG16I: return VK_FORMAT_R16G16_SINT;         // 2-component, 16-bit signed integer
+		case GL_RGB16I: return VK_FORMAT_R16G16B16_SINT;     // 3-component, 16-bit signed integer
+		case GL_RGBA16I: return VK_FORMAT_R16G16B16A16_SINT; // 4-component, 16-bit signed integer
 
-		case GL_R16F:
-			return VK_FORMAT_R16_SFLOAT; // 1-component, 16-bit floating-point
-		case GL_RG16F:
-			return VK_FORMAT_R16G16_SFLOAT; // 2-component, 16-bit floating-point
-		case GL_RGB16F:
-			return VK_FORMAT_R16G16B16_SFLOAT; // 3-component, 16-bit floating-point
+		case GL_R16F: return VK_FORMAT_R16_SFLOAT;         // 1-component, 16-bit floating-point
+		case GL_RG16F: return VK_FORMAT_R16G16_SFLOAT;     // 2-component, 16-bit floating-point
+		case GL_RGB16F: return VK_FORMAT_R16G16B16_SFLOAT; // 3-component, 16-bit floating-point
 		case GL_RGBA16F:
 			return VK_FORMAT_R16G16B16A16_SFLOAT; // 4-component, 16-bit floating-point
 
 		//
 		// 32 bits per component
 		//
-		case GL_R32UI:
-			return VK_FORMAT_R32_UINT; // 1-component, 32-bit unsigned integer
-		case GL_RG32UI:
-			return VK_FORMAT_R32G32_UINT; // 2-component, 32-bit unsigned integer
-		case GL_RGB32UI:
-			return VK_FORMAT_R32G32B32_UINT; // 3-component, 32-bit unsigned integer
-		case GL_RGBA32UI:
-			return VK_FORMAT_R32G32B32A32_UINT; // 4-component, 32-bit unsigned integer
+		case GL_R32UI: return VK_FORMAT_R32_UINT;             // 1-component, 32-bit unsigned integer
+		case GL_RG32UI: return VK_FORMAT_R32G32_UINT;         // 2-component, 32-bit unsigned integer
+		case GL_RGB32UI: return VK_FORMAT_R32G32B32_UINT;     // 3-component, 32-bit unsigned integer
+		case GL_RGBA32UI: return VK_FORMAT_R32G32B32A32_UINT; // 4-component, 32-bit unsigned integer
 
-		case GL_R32I:
-			return VK_FORMAT_R32_SINT; // 1-component, 32-bit signed integer
-		case GL_RG32I:
-			return VK_FORMAT_R32G32_SINT; // 2-component, 32-bit signed integer
-		case GL_RGB32I:
-			return VK_FORMAT_R32G32B32_SINT; // 3-component, 32-bit signed integer
-		case GL_RGBA32I:
-			return VK_FORMAT_R32G32B32A32_SINT; // 4-component, 32-bit signed integer
+		case GL_R32I: return VK_FORMAT_R32_SINT;             // 1-component, 32-bit signed integer
+		case GL_RG32I: return VK_FORMAT_R32G32_SINT;         // 2-component, 32-bit signed integer
+		case GL_RGB32I: return VK_FORMAT_R32G32B32_SINT;     // 3-component, 32-bit signed integer
+		case GL_RGBA32I: return VK_FORMAT_R32G32B32A32_SINT; // 4-component, 32-bit signed integer
 
-		case GL_R32F:
-			return VK_FORMAT_R32_SFLOAT; // 1-component, 32-bit floating-point
-		case GL_RG32F:
-			return VK_FORMAT_R32G32_SFLOAT; // 2-component, 32-bit floating-point
-		case GL_RGB32F:
-			return VK_FORMAT_R32G32B32_SFLOAT; // 3-component, 32-bit floating-point
+		case GL_R32F: return VK_FORMAT_R32_SFLOAT;         // 1-component, 32-bit floating-point
+		case GL_RG32F: return VK_FORMAT_R32G32_SFLOAT;     // 2-component, 32-bit floating-point
+		case GL_RGB32F: return VK_FORMAT_R32G32B32_SFLOAT; // 3-component, 32-bit floating-point
 		case GL_RGBA32F:
 			return VK_FORMAT_R32G32B32A32_SFLOAT; // 4-component, 32-bit floating-point
 
 		//
 		// Packed
 		//
-		case GL_R3_G3_B2:
-			return VK_FORMAT_UNDEFINED; // 3-component 3:3:2,       unsigned normalized
-		case GL_RGB4:
-			return VK_FORMAT_UNDEFINED; // 3-component 4:4:4,       unsigned normalized
-		case GL_RGB5:
-			return VK_FORMAT_R5G5B5A1_UNORM_PACK16; // 3-component 5:5:5,       unsigned normalized
-		case GL_RGB565:
-			return VK_FORMAT_R5G6B5_UNORM_PACK16; // 3-component 5:6:5,       unsigned normalized
+		case GL_R3_G3_B2: return VK_FORMAT_UNDEFINED;         // 3-component 3:3:2,       unsigned normalized
+		case GL_RGB4: return VK_FORMAT_UNDEFINED;             // 3-component 4:4:4,       unsigned normalized
+		case GL_RGB5: return VK_FORMAT_R5G5B5A1_UNORM_PACK16; // 3-component 5:5:5,       unsigned normalized
+		case GL_RGB565: return VK_FORMAT_R5G6B5_UNORM_PACK16; // 3-component 5:6:5,       unsigned normalized
 		case GL_RGB10:
-			return VK_FORMAT_A2R10G10B10_UNORM_PACK32; // 3-component 10:10:10,    unsigned normalized
-		case GL_RGB12:
-			return VK_FORMAT_UNDEFINED; // 3-component 12:12:12,    unsigned normalized
-		case GL_RGBA2:
-			return VK_FORMAT_UNDEFINED; // 4-component 2:2:2:2,     unsigned normalized
-		case GL_RGBA4:
-			return VK_FORMAT_R4G4B4A4_UNORM_PACK16; // 4-component 4:4:4:4,     unsigned normalized
-		case GL_RGBA12:
-			return VK_FORMAT_UNDEFINED; // 4-component 12:12:12:12, unsigned normalized
+			return VK_FORMAT_A2R10G10B10_UNORM_PACK32;         // 3-component 10:10:10,    unsigned normalized
+		case GL_RGB12: return VK_FORMAT_UNDEFINED;             // 3-component 12:12:12,    unsigned normalized
+		case GL_RGBA2: return VK_FORMAT_UNDEFINED;             // 4-component 2:2:2:2,     unsigned normalized
+		case GL_RGBA4: return VK_FORMAT_R4G4B4A4_UNORM_PACK16; // 4-component 4:4:4:4,     unsigned normalized
+		case GL_RGBA12: return VK_FORMAT_UNDEFINED;            // 4-component 12:12:12:12, unsigned normalized
 		case GL_RGB5_A1:
 			return VK_FORMAT_A1R5G5B5_UNORM_PACK16; // 4-component 5:5:5:1,     unsigned normalized
 		case GL_RGB10_A2:
@@ -760,8 +706,7 @@ static inline VkFormat vkGetFormatFromOpenGLInternalFormat(const GLenum internal
 		case GL_COMPRESSED_RGBA8_ETC2_EAC:
 			return VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK; // 4-component ETC2, unsigned normalized
 
-		case GL_COMPRESSED_SRGB8_ETC2:
-			return VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK; // 3-component ETC2, sRGB
+		case GL_COMPRESSED_SRGB8_ETC2: return VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK; // 3-component ETC2, sRGB
 		case GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2:
 			return VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK; // 4-component ETC2 with 1-bit alpha, sRGB
 		case GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC:
@@ -792,16 +737,11 @@ static inline VkFormat vkGetFormatFromOpenGLInternalFormat(const GLenum internal
 		case GL_COMPRESSED_RGBA_PVRTC_4BPPV2_IMG:
 			return VK_FORMAT_UNDEFINED; // 4-component PVRTC, unsigned normalized
 
-		case GL_COMPRESSED_SRGB_PVRTC_2BPPV1_EXT:
-			return VK_FORMAT_UNDEFINED; // 3-component PVRTC, sRGB
-		case GL_COMPRESSED_SRGB_PVRTC_4BPPV1_EXT:
-			return VK_FORMAT_UNDEFINED; // 3-component PVRTC, sRGB
-		case GL_COMPRESSED_SRGB_ALPHA_PVRTC_2BPPV1_EXT:
-			return VK_FORMAT_UNDEFINED; // 4-component PVRTC, sRGB
-		case GL_COMPRESSED_SRGB_ALPHA_PVRTC_4BPPV1_EXT:
-			return VK_FORMAT_UNDEFINED; // 4-component PVRTC, sRGB
-		case GL_COMPRESSED_SRGB_ALPHA_PVRTC_2BPPV2_IMG:
-			return VK_FORMAT_UNDEFINED; // 4-component PVRTC, sRGB
+		case GL_COMPRESSED_SRGB_PVRTC_2BPPV1_EXT: return VK_FORMAT_UNDEFINED;       // 3-component PVRTC, sRGB
+		case GL_COMPRESSED_SRGB_PVRTC_4BPPV1_EXT: return VK_FORMAT_UNDEFINED;       // 3-component PVRTC, sRGB
+		case GL_COMPRESSED_SRGB_ALPHA_PVRTC_2BPPV1_EXT: return VK_FORMAT_UNDEFINED; // 4-component PVRTC, sRGB
+		case GL_COMPRESSED_SRGB_ALPHA_PVRTC_4BPPV1_EXT: return VK_FORMAT_UNDEFINED; // 4-component PVRTC, sRGB
+		case GL_COMPRESSED_SRGB_ALPHA_PVRTC_2BPPV2_IMG: return VK_FORMAT_UNDEFINED; // 4-component PVRTC, sRGB
 		case GL_COMPRESSED_SRGB_ALPHA_PVRTC_4BPPV2_IMG:
 			return VK_FORMAT_UNDEFINED; // 4-component PVRTC, sRGB
 
@@ -911,10 +851,8 @@ static inline VkFormat vkGetFormatFromOpenGLInternalFormat(const GLenum internal
 		//
 		// ATC
 		//
-		case GL_ATC_RGB_AMD:
-			return VK_FORMAT_UNDEFINED; // 3-component, unsigned normalized
-		case GL_ATC_RGBA_EXPLICIT_ALPHA_AMD:
-			return VK_FORMAT_UNDEFINED; // 4-component, unsigned normalized
+		case GL_ATC_RGB_AMD: return VK_FORMAT_UNDEFINED;                 // 3-component, unsigned normalized
+		case GL_ATC_RGBA_EXPLICIT_ALPHA_AMD: return VK_FORMAT_UNDEFINED; // 4-component, unsigned normalized
 		case GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD:
 			return VK_FORMAT_UNDEFINED; // 4-component, unsigned normalized
 
@@ -981,7 +919,8 @@ typedef struct VkFormatSize {
 	unsigned int      blockDepth;  // in texels
 } VkFormatSize;
 
-static inline void vkGetFormatSize(const VkFormat format, VkFormatSize* pFormatSize) {
+static inline void vkGetFormatSize(const VkFormat format, VkFormatSize* pFormatSize)
+{
 	switch(format) {
 		case VK_FORMAT_R4G4_UNORM_PACK8:
 			pFormatSize->flags             = VK_FORMAT_SIZE_PACKED_BIT;

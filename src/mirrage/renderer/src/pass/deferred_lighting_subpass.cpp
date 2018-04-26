@@ -16,7 +16,8 @@ namespace mirrage::renderer {
 		constexpr auto num_input_attachments = 3;
 
 		auto create_input_attachment_descriptor_set_layout(graphic::Device& device)
-		        -> vk::UniqueDescriptorSetLayout {
+		        -> vk::UniqueDescriptorSetLayout
+		{
 			auto bindings = std::array<vk::DescriptorSetLayoutBinding, num_input_attachments>();
 			std::fill_n(
 			        bindings.begin(),
@@ -41,7 +42,8 @@ namespace mirrage::renderer {
 	  , _input_attachment_descriptor_set_layout(
 	            create_input_attachment_descriptor_set_layout(renderer.device()))
 	  , _input_attachment_descriptor_set(renderer.create_descriptor_set(
-	            *_input_attachment_descriptor_set_layout, num_input_attachments)) {
+	            *_input_attachment_descriptor_set_layout, num_input_attachments))
+	{
 
 		auto& gbuffer    = renderer.gbuffer();
 		auto  depth_info = vk::DescriptorImageInfo(
@@ -72,7 +74,8 @@ namespace mirrage::renderer {
 	}
 
 	void Deferred_lighting_subpass::configure_pipeline(Deferred_renderer&             renderer,
-	                                                   graphic::Pipeline_description& p) {
+	                                                   graphic::Pipeline_description& p)
+	{
 		p.add_descriptor_set_layout(*_input_attachment_descriptor_set_layout);
 		if(renderer.gbuffer().shadowmaps_layout) {
 			p.add_descriptor_set_layout(*renderer.gbuffer().shadowmaps_layout);
@@ -80,7 +83,8 @@ namespace mirrage::renderer {
 	}
 
 	void Deferred_lighting_subpass::configure_subpass(Deferred_renderer&        renderer,
-	                                                  graphic::Subpass_builder& pass) {
+	                                                  graphic::Subpass_builder& pass)
+	{
 		pass.stage("light_dir"_strid)
 		        .shader("frag_shader:light_directional"_aid,
 		                graphic::Shader_stage::fragment,
@@ -92,8 +96,8 @@ namespace mirrage::renderer {
 
 	void Deferred_lighting_subpass::update(util::Time dt) {}
 
-	void Deferred_lighting_subpass::draw(vk::CommandBuffer&    command_buffer,
-	                                     graphic::Render_pass& render_pass) {
+	void Deferred_lighting_subpass::draw(vk::CommandBuffer& command_buffer, graphic::Render_pass& render_pass)
+	{
 		auto _ = _renderer.profiler().push("Lighting");
 
 		render_pass.set_stage("light_dir"_strid);

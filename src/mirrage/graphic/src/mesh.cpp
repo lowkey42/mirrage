@@ -20,9 +20,12 @@ namespace mirrage::graphic {
 		            write_indices(dest + vertex_count);
 	            }))
 	  , _index_offset(vertex_count)
-	  , _indices(index_count / sizeof(std::uint32_t)) {}
+	  , _indices(index_count / sizeof(std::uint32_t))
+	{
+	}
 
-	void Mesh::bind(vk::CommandBuffer cb, std::uint32_t vertex_binding) const {
+	void Mesh::bind(vk::CommandBuffer cb, std::uint32_t vertex_binding) const
+	{
 		cb.bindVertexBuffers(vertex_binding, {_buffer.buffer()}, {0});
 		cb.bindIndexBuffer(_buffer.buffer(), _index_offset, vk::IndexType::eUint32);
 	}

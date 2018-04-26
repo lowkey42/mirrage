@@ -100,13 +100,17 @@ namespace mirrage::ecs {
 		typedef int                       difference_type;
 
 		Entity_iterator(const Entity_handle_generator& gen, Entity_handle handle) noexcept
-		  : _gen(gen), _handle(handle) {}
+		  : _gen(gen), _handle(handle)
+		{
+		}
 
-		auto operator++(int) {
+		auto operator++(int)
+		{
 			_handle = _gen.next(_handle);
 			return *this;
 		}
-		auto operator++() {
+		auto operator++()
+		{
 			auto i  = *this;
 			_handle = _gen.next(_handle);
 			return i;
@@ -130,7 +134,8 @@ namespace mirrage::ecs {
 		Entity_iterator begin() const;
 		Entity_iterator end() const;
 
-		void emplace_back(Entity_handle h) {
+		void emplace_back(Entity_handle h)
+		{
 			MIRRAGE_INVARIANT(_manager.validate(h),
 			                  "invalid entity in Entity_collection_facet.emplace_back()");
 		}

@@ -55,13 +55,15 @@ namespace mirrage::renderer {
 		                      return util::trackable<Pass>(
 		                              factory->create_pass(*this, ecs, userdata, write_first_pp_buffer));
 	                      }))
-	  , _cameras(&ecs.list<Camera_comp>()) {
+	  , _cameras(&ecs.list<Camera_comp>())
+	{
 
 		_write_global_uniform_descriptor_set();
 
 		factory._renderer_instances.emplace_back(this);
 	}
-	Deferred_renderer::~Deferred_renderer() {
+	Deferred_renderer::~Deferred_renderer()
+	{
 		util::erase_fast(_factory->_renderer_instances, this);
 
 		device().print_memory_usage(std::cout);
@@ -69,7 +71,8 @@ namespace mirrage::renderer {
 		_passes.clear();
 	}
 
-	void Deferred_renderer::recreate() {
+	void Deferred_renderer::recreate()
+	{
 		LOG(plog::warning) << "--recreate";
 		device().wait_idle();
 
@@ -93,7 +96,8 @@ namespace mirrage::renderer {
 		device().wait_idle();
 	}
 
-	void Deferred_renderer::_write_global_uniform_descriptor_set() {
+	void Deferred_renderer::_write_global_uniform_descriptor_set()
+	{
 		auto buffer_info =
 		        vk::DescriptorBufferInfo(_global_uniform_buffer.buffer(), 0, sizeof(Global_uniforms));
 
@@ -109,7 +113,8 @@ namespace mirrage::renderer {
 		device().vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
 
-	void Deferred_renderer::update(util::Time dt) {
+	void Deferred_renderer::update(util::Time dt)
+	{
 		_time_acc += dt.value();
 		_delta_time    = dt.value();
 		_frame_counter = (_frame_counter + 1) % 1000000;
@@ -118,13 +123,13 @@ namespace mirrage::renderer {
 			pass->update(dt);
 		}
 	}
-	void Deferred_renderer::draw() {
+	void Deferred_renderer::draw()
+	{
 		if(!_noise_descriptor_set) {
 			if(_blue_noise.ready()) {
 				LOG(plog::debug) << "Noise texture loaded";
 				_noise_descriptor_set =
 				        _noise_descriptor_set_layout.create_set(descriptor_pool(), {_blue_noise->view()});
-
 			} else {
 				// texture not loaded, skip frame
 				return;
@@ -137,7 +142,8 @@ namespace mirrage::renderer {
 		auto main_command_buffer = _factory->queue_temporary_command_buffer();
 		main_command_buffer.begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 		_profiler.start(main_command_buffer);
-		ON_EXIT {
+		ON_EXIT
+		{
 			_profiler.end();
 			main_command_buffer.end();
 		};
@@ -163,7 +169,8 @@ namespace mirrage::renderer {
 		_active_camera = util::nothing;
 	}
 
-	void Deferred_renderer::shrink_to_fit() {
+	void Deferred_renderer::shrink_to_fit()
+	{
 		for(auto& pass : _passes) {
 			pass->shrink_to_fit();
 		}
@@ -172,7 +179,8 @@ namespace mirrage::renderer {
 		device().print_memory_usage(std::cout);
 	}
 
-	void Deferred_renderer::_update_global_uniforms(vk::CommandBuffer cb, const Camera_state& camera) {
+	void Deferred_renderer::_update_global_uniforms(vk::CommandBuffer cb, const Camera_state& camera)
+	{
 		_global_uniforms.eye_pos       = glm::vec4(camera.eye_position, 1.f);
 		_global_uniforms.view_proj_mat = camera.view_projection;
 		_global_uniforms.view_mat      = camera.view;
@@ -191,7 +199,8 @@ namespace mirrage::renderer {
 		_global_uniform_buffer.update_obj(cb, _global_uniforms);
 	}
 
-	auto Deferred_renderer::active_camera() noexcept -> util::maybe<Camera_state&> {
+	auto Deferred_renderer::active_camera() noexcept -> util::maybe<Camera_state&>
+	{
 		if(_active_camera.is_some())
 			return _active_camera.get_or_throw();
 
@@ -214,7 +223,6 @@ namespace mirrage::renderer {
 			}
 
 			return _active_camera.get_or_throw();
-
 		} else {
 			_active_camera = util::nothing;
 			return util::nothing;
@@ -222,7 +230,8 @@ namespace mirrage::renderer {
 	}
 
 	auto Deferred_renderer::create_descriptor_set(vk::DescriptorSetLayout layout, std::uint32_t bindings)
-	        -> graphic::DescriptorSet {
+	        -> graphic::DescriptorSet
+	{
 		return _descriptor_set_pool.create_descriptor(layout, bindings);
 	}
 
@@ -235,12 +244,14 @@ namespace mirrage::renderer {
 		              vk::Sampler             material_sampler,
 		              vk::DescriptorSetLayout material_layout,
 		              std::uint32_t           draw_queue)
-		  : assets(assets) {
+		  : assets(assets)
+		{
 
 			assets.create_stateful_loader<Material>(device, assets, material_sampler, material_layout);
 			assets.create_stateful_loader<Model>(device, assets, draw_queue);
 		}
-		~Asset_loaders() {
+		~Asset_loaders()
+		{
 			assets.remove_stateful_loader<Model>();
 			assets.remove_stateful_loader<Material>();
 		}
@@ -263,36 +274,40 @@ namespace mirrage::renderer {
 	  , _model_material_sampler(_device->create_sampler(12))
 	  , _model_desc_set_layout(create_material_descriptor_set_layout(*_device, *_model_material_sampler))
 	  , _asset_loaders(std::make_unique<Asset_loaders>(
-	            _assets, *_device, *_model_material_sampler, *_model_desc_set_layout, _queue_family)) {
+	            _assets, *_device, *_model_material_sampler, *_model_desc_set_layout, _queue_family))
+	{
 
 		auto maybe_settings = _assets.load_maybe<Renderer_settings>("cfg:renderer"_aid);
 		if(maybe_settings.is_nothing()) {
 			_settings = asset::make_ready_asset("cfg:renderer"_aid, Renderer_settings{});
 			save_settings();
-
 		} else {
 			_settings = maybe_settings.get_or_throw();
 		}
 	}
 	Deferred_renderer_factory::~Deferred_renderer_factory() = default;
 
-	void Deferred_renderer_factory::settings(const Renderer_settings& s, bool apply) {
+	void Deferred_renderer_factory::settings(const Renderer_settings& s, bool apply)
+	{
 		_settings = asset::make_ready_asset("cfg:renderer"_aid, s);
 
 		_recreation_pending |= apply;
 	}
-	void Deferred_renderer_factory::save_settings() {
+	void Deferred_renderer_factory::save_settings()
+	{
 		_assets.save<Renderer_settings>("cfg:renderer"_aid, *_settings);
 		_settings = _assets.load<Renderer_settings>("cfg:renderer"_aid);
 	}
 
 	auto Deferred_renderer_factory::create_renderer(ecs::Entity_manager&      ecs,
 	                                                util::maybe<Meta_system&> userdata)
-	        -> std::unique_ptr<Deferred_renderer> {
+	        -> std::unique_ptr<Deferred_renderer>
+	{
 		return std::make_unique<Deferred_renderer>(*this, _pass_factories, ecs, userdata);
 	}
 
-	void Deferred_renderer_factory::finish_frame() {
+	void Deferred_renderer_factory::finish_frame()
+	{
 		_present();
 
 		if(_recreation_pending) {
@@ -304,7 +319,8 @@ namespace mirrage::renderer {
 		}
 		_device->wait_idle();
 	}
-	void Deferred_renderer_factory::_present() {
+	void Deferred_renderer_factory::_present()
+	{
 		if(_aquired_swapchain_image.is_nothing()) {
 			auto& image = _swapchain.get_images().at(_aquire_next_image());
 			auto  cb    = queue_temporary_command_buffer();
@@ -364,7 +380,8 @@ namespace mirrage::renderer {
 	}
 
 	auto Deferred_renderer_factory::_rank_device(vk::PhysicalDevice gpu, util::maybe<std::uint32_t> gqueue)
-	        -> int {
+	        -> int
+	{
 		auto properties = gpu.getProperties();
 		auto features   = gpu.getFeatures();
 
@@ -392,7 +409,8 @@ namespace mirrage::renderer {
 	}
 
 	auto Deferred_renderer_factory::_init_device(vk::PhysicalDevice gpu, util::maybe<std::uint32_t> gqueue)
-	        -> graphic::Device_create_info {
+	        -> graphic::Device_create_info
+	{
 		auto ret_val = Device_create_info{};
 
 		MIRRAGE_INVARIANT(gqueue.is_some(), "No useable queue family");
@@ -410,7 +428,8 @@ namespace mirrage::renderer {
 		return ret_val;
 	}
 
-	auto Deferred_renderer_factory::_aquire_next_image() -> std::size_t {
+	auto Deferred_renderer_factory::_aquire_next_image() -> std::size_t
+	{
 		if(_aquired_swapchain_image.is_some())
 			return _aquired_swapchain_image.get_or_throw();
 
@@ -419,10 +438,12 @@ namespace mirrage::renderer {
 		return _aquired_swapchain_image.get_or_throw();
 	}
 
-	void Deferred_renderer_factory::queue_commands(vk::CommandBuffer cmd) {
+	void Deferred_renderer_factory::queue_commands(vk::CommandBuffer cmd)
+	{
 		_queued_commands.emplace_back(cmd);
 	}
-	auto Deferred_renderer_factory::queue_temporary_command_buffer() -> vk::CommandBuffer {
+	auto Deferred_renderer_factory::queue_temporary_command_buffer() -> vk::CommandBuffer
+	{
 		auto cb = *_device->destroy_after_frame(std::move(_command_buffer_pool.create_primary()[0]));
 		queue_commands(cb);
 

@@ -35,11 +35,13 @@ namespace {
 
 
 #ifdef main
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
 	char*  noEnv = nullptr;
 	char** env   = &noEnv;
 #else
-int main(int argc, char** argv, char** env) {
+int main(int argc, char** argv, char** env)
+{
 #endif
 
 	init_env(argc, argv, env);
@@ -62,7 +64,8 @@ namespace {
 	char**         env;
 
 
-	void init_env(int argc, char** argv, char** env) {
+	void init_env(int argc, char** argv, char** env)
+	{
 		auto write_dir = asset::write_dir(argv[0], org_name, app_name);
 
 		static auto fileAppender = plog::RollingFileAppender<plog::TxtFormatter>(
@@ -84,7 +87,8 @@ namespace {
 		                 << "Version-Subject: " << version_info::subject << "\n";
 	}
 
-	void init_engine() {
+	void init_engine()
+	{
 		bool debug = false;
 #ifndef NDEBUG
 		debug = true;

@@ -39,7 +39,9 @@ namespace mirrage::systems {
 
 		Nim_sequence() = default;
 		Nim_sequence(std::vector<util::Str_id> affected_entities)
-		  : _affected_entities(std::move(affected_entities)), _entity_states(_affected_entities.size()) {}
+		  : _affected_entities(std::move(affected_entities)), _entity_states(_affected_entities.size())
+		{
+		}
 
 		auto affected_entities() const noexcept -> auto& { return _affected_entities; }
 
@@ -49,7 +51,8 @@ namespace mirrage::systems {
 
 		// F = void(Str_id, vector<vec3>, vector<quat>, vector<Rgba>)
 		template <typename F>
-		void apply(F&& callback) const {
+		void apply(F&& callback) const
+		{
 			for(auto i : util::range(_affected_entities.size())) {
 				callback(_affected_entities[i],
 				         _entity_states[i].positions,
@@ -60,7 +63,8 @@ namespace mirrage::systems {
 
 		// source = std::tuple<vec3, quat, Rgba>(Str_id)
 		template <typename F>
-		void push_back(util::Time length, F&& source) {
+		void push_back(util::Time length, F&& source)
+		{
 			_frame_lengths.emplace_back(length);
 
 			for(auto i : util::range(_affected_entities.size())) {

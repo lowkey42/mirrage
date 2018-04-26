@@ -20,7 +20,8 @@ auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util
 
 // ./mesh_converter sponza.obj
 // ./mesh_converter --output=/foo/bar sponza.obj
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
 	static auto fileAppender =
 	        plog::RollingFileAppender<plog::TxtFormatter>("mesh_converter.log", 4L * 1024L, 4);
 	static auto consoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>();
@@ -46,7 +47,8 @@ int main(int argc, char** argv) {
 	}
 }
 
-auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string> {
+auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string>
+{
 	auto found =
 	        std::find_if(args.begin(), args.end(), [&](auto& str) { return util::starts_with(str, key); });
 

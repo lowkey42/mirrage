@@ -27,15 +27,19 @@ namespace mirrage {
 
 			Sub_mesh_data() = default;
 			Sub_mesh_data(std::uint32_t index_offset, std::uint32_t index_count, std::string material_id)
-			  : index_offset(index_offset), index_count(index_count), material_id(std::move(material_id)) {}
+			  : index_offset(index_offset), index_count(index_count), material_id(std::move(material_id))
+			{
+			}
 		};
 
-		auto last_of(const std::string& str, char c) {
+		auto last_of(const std::string& str, char c)
+		{
 			auto idx = str.find_last_of(c);
 			return idx != std::string::npos ? util::just(idx + 1) : util::nothing;
 		}
 
-		auto extract_file_name(const std::string& path) {
+		auto extract_file_name(const std::string& path)
+		{
 			auto filename_delim_begin = last_of(path, '/').get_or(last_of(path, '\\').get_or(0));
 
 			auto filename_delim_end = path.find_last_of('.');
@@ -43,21 +47,24 @@ namespace mirrage {
 			return path.substr(filename_delim_begin, filename_delim_end - filename_delim_begin);
 		}
 
-		auto extract_dir(const std::string& path) {
+		auto extract_dir(const std::string& path)
+		{
 			auto filename_delim_end = last_of(path, '/').get_or(last_of(path, '\\').get_or(0));
 
 			return path.substr(0, filename_delim_end - 1);
 		}
 
 		template <typename T>
-		void write(std::ostream& out, const T& value) {
+		void write(std::ostream& out, const T& value)
+		{
 			static_assert(!std::is_pointer<T>::value,
 			              "T is a pointer. That is DEFINITLY not what you wanted!");
 			out.write(reinterpret_cast<const char*>(&value), sizeof(T));
 		}
 
 		template <typename T>
-		void write(std::ostream& out, const std::vector<T>& value) {
+		void write(std::ostream& out, const std::vector<T>& value)
+		{
 			static_assert(!std::is_pointer<T>::value,
 			              "T is a pointer. That is DEFINITLY not what you wanted!");
 
@@ -66,7 +73,8 @@ namespace mirrage {
 	} // namespace
 
 
-	void convert_model(const std::string& path, const std::string& output) {
+	void convert_model(const std::string& path, const std::string& output)
+	{
 		LOG(plog::info) << "Convert model \"" << path << "\" with output directory \"" << output << "\"";
 
 		auto base_dir   = extract_dir(path);

@@ -13,16 +13,19 @@ namespace mirrage {
 	  : _entities(engine.assets(), this)
 	  , _renderer(engine.renderer_factory().create_renderer(_entities, *this))
 	  , _model_loading(std::make_unique<renderer::Loading_system>(_entities, engine.assets()))
-	  , _nims(std::make_unique<systems::Nim_system>(_entities)) {
+	  , _nims(std::make_unique<systems::Nim_system>(_entities))
+	{
 		_entities.register_component_type<ecs::components::Transform_comp>();
 	}
 
-	Meta_system::~Meta_system() {
+	Meta_system::~Meta_system()
+	{
 		_renderer->device().wait_idle();
 		_entities.clear();
 	}
 
-	void Meta_system::update(util::Time dt) {
+	void Meta_system::update(util::Time dt)
+	{
 		_entities.process_queued_actions();
 
 		_nims->update(dt);

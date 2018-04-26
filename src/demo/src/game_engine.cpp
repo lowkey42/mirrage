@@ -37,9 +37,12 @@ namespace mirrage {
 	                              renderer::make_pass_factory<renderer::Tone_mapping_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Bloom_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Blit_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Gui_pass_factory>()))) {}
+	                              renderer::make_pass_factory<renderer::Gui_pass_factory>())))
+	{
+	}
 
-	Game_engine::~Game_engine() {
+	Game_engine::~Game_engine()
+	{
 		screens().clear(); // destroy all screens before the engine
 	}
 

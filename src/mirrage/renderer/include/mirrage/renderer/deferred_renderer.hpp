@@ -96,17 +96,21 @@ namespace mirrage::renderer {
 
 		virtual auto rank_device(vk::PhysicalDevice,
 		                         util::maybe<std::uint32_t> graphics_queue,
-		                         int                        current_score) -> int {
+		                         int                        current_score) -> int
+		{
 			return current_score;
 		}
 
 		virtual void configure_device(vk::PhysicalDevice,
 		                              util::maybe<std::uint32_t> graphics_queue,
-		                              graphic::Device_create_info&) {}
+		                              graphic::Device_create_info&)
+		{
+		}
 	};
 
 	template <class T, class... Args>
-	auto make_pass_factory(Args&&... args) {
+	auto make_pass_factory(Args&&... args)
+	{
 		return std::unique_ptr<Pass_factory>(new T(std::forward<Args>(args)...));
 	}
 
@@ -181,7 +185,8 @@ namespace mirrage::renderer {
 		void recreate();
 
 		template <class T>
-		auto find_pass() -> util::tracking_ptr<T> {
+		auto find_pass() -> util::tracking_ptr<T>
+		{
 			auto pass = std::find_if(
 			        _passes.begin(), _passes.end(), [](auto& p) { return dynamic_cast<T*>(&*p) != nullptr; });
 

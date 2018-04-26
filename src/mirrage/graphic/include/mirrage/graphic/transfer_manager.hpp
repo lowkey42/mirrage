@@ -24,9 +24,13 @@ namespace mirrage::graphic {
 	class Static_buffer {
 	  public:
 		Static_buffer(Backed_buffer buffer)
-		  : _buffer(std::move(buffer)), _transfer_task(async::make_task().share()) {}
+		  : _buffer(std::move(buffer)), _transfer_task(async::make_task().share())
+		{
+		}
 		Static_buffer(Backed_buffer buffer, async::shared_task<void> transfer_task)
-		  : _buffer(std::move(buffer)), _transfer_task(std::move(transfer_task)) {}
+		  : _buffer(std::move(buffer)), _transfer_task(std::move(transfer_task))
+		{
+		}
 		Static_buffer(Static_buffer&&) noexcept;
 		Static_buffer& operator=(Static_buffer&&) noexcept;
 
@@ -48,7 +52,9 @@ namespace mirrage::graphic {
 		  , _mip_count(mip_count)
 		  , _generate_mips(generate_mips)
 		  , _dimensions(dimensions)
-		  , _transfer_task(async::make_task().share()) {}
+		  , _transfer_task(async::make_task().share())
+		{
+		}
 		Static_image(Backed_image             image,
 		             std::uint32_t            mip_count,
 		             bool                     generate_mips,
@@ -58,7 +64,9 @@ namespace mirrage::graphic {
 		  , _mip_count(mip_count)
 		  , _generate_mips(generate_mips)
 		  , _dimensions(dimensions)
-		  , _transfer_task(std::move(transfer_task)) {}
+		  , _transfer_task(std::move(transfer_task))
+		{
+		}
 		Static_image(Static_image&&) noexcept;
 		Static_image& operator=(Static_image&&) noexcept;
 
@@ -93,15 +101,19 @@ namespace mirrage::graphic {
 		  , _earliest_usage(earliest_usage)
 		  , _earliest_usage_access(earliest_usage_access)
 		  , _latest_usage(latest_usage)
-		  , _latest_usage_access(latest_usage_access) {}
+		  , _latest_usage_access(latest_usage_access)
+		{
+		}
 
 		template <class T>
-		void update_obj(const Command_buffer& cb, const T& obj) {
+		void update_obj(const Command_buffer& cb, const T& obj)
+		{
 			static_assert(std::is_standard_layout<T>::value, "");
 			update(cb, 0, gsl::span<const char>(reinterpret_cast<const char*>(&obj), sizeof(T)));
 		}
 		template <class T>
-		void update_objs(const Command_buffer& cb, gsl::span<T> obj) {
+		void update_objs(const Command_buffer& cb, gsl::span<T> obj)
+		{
 			static_assert(std::is_standard_layout<T>::value, "");
 			update(cb, 0, gsl::span<const char>(reinterpret_cast<const char*>(obj.data()), obj.size_bytes()));
 		}
@@ -110,7 +122,8 @@ namespace mirrage::graphic {
 
 		/// F = void(void(tuple<vk::DiviceOffset, gsl::span<const char>))
 		template <class F>
-		void update_bulk(const Command_buffer& cb, F&& f) {
+		void update_bulk(const Command_buffer& cb, F&& f)
+		{
 			_pre_update(cb);
 			f([&](auto offset, auto&& data) { _do_update(cb, offset, std::forward<decltype(data)>(data)); });
 			_post_update(cb);
@@ -178,14 +191,16 @@ namespace mirrage::graphic {
 		auto upload_buffer(vk::BufferUsageFlags  usage,
 		                   std::uint32_t         owner,
 		                   gsl::span<const char> data,
-		                   bool                  dedicated = false) -> Static_buffer {
+		                   bool                  dedicated = false) -> Static_buffer
+		{
 			return upload_buffer(usage, owner, std::initializer_list<gsl::span<const char>>{data}, dedicated);
 		}
 
 		auto upload_buffer(vk::BufferUsageFlags                         usage,
 		                   std::uint32_t                                owner,
 		                   std::initializer_list<gsl::span<const char>> data,
-		                   bool                                         dedicated = false) -> Static_buffer {
+		                   bool                                         dedicated = false) -> Static_buffer
+		{
 			auto size = std::uint32_t(0);
 			for(auto&& subdata : data) {
 				size += subdata.size_bytes();
@@ -236,7 +251,9 @@ namespace mirrage::graphic {
 
 			Transfer_buffer_req() = default;
 			Transfer_buffer_req(Backed_buffer src, vk::Buffer dst, vk::DeviceSize size, std::uint32_t owner)
-			  : src(std::move(src)), dst(dst), size(size), owner(owner) {}
+			  : src(std::move(src)), dst(dst), size(size), owner(owner)
+			{
+			}
 		};
 		struct Transfer_image_req {
 			Backed_buffer              src;
@@ -267,7 +284,9 @@ namespace mirrage::graphic {
 			  , mip_count_loaded(mip_count_loaded)
 			  , generate_mips(generate_mips)
 			  , dimensions(dimensions)
-			  , mip_image_sizes(std::move(mip_image_sizes)) {}
+			  , mip_image_sizes(std::move(mip_image_sizes))
+			{
+			}
 		};
 
 		Device&             _device;

@@ -13,7 +13,8 @@ namespace mirrage::graphic {
 
 	namespace {
 		template <typename T>
-		constexpr T log2(T n) {
+		constexpr T log2(T n)
+		{
 			return (n < 2) ? 0 : 1 + log2(n / 2);
 		}
 
@@ -25,7 +26,8 @@ namespace mirrage::graphic {
 			Buddy_block_alloc(Buddy_block_alloc&&)      = delete;
 			Buddy_block_alloc& operator=(const Buddy_block_alloc&) = delete;
 			Buddy_block_alloc& operator=(Buddy_block_alloc&&) = delete;
-			~Buddy_block_alloc() {
+			~Buddy_block_alloc()
+			{
 				MIRRAGE_INVARIANT(_allocation_count == 0,
 				                  "Unfree memory: " << _allocation_count << " allocations left!");
 			}
@@ -34,7 +36,8 @@ namespace mirrage::graphic {
 
 			void free(std::uint32_t index, std::uint32_t layer);
 
-			auto free_memory() const -> std::uint32_t {
+			auto free_memory() const -> std::uint32_t
+			{
 				auto free_memory = std::size_t(0);
 				for(auto i = std::size_t(0); i < layers; i++) {
 					auto free   = _free_blocks[i].size();
@@ -69,7 +72,8 @@ namespace mirrage::graphic {
 			/// tries to merge the given block with its buddy
 			auto _merge(std::uint32_t layer, std::uint32_t idx) -> bool;
 
-			auto _buddies_different(std::uint32_t layer, std::uint32_t idx) {
+			auto _buddies_different(std::uint32_t layer, std::uint32_t idx)
+			{
 				auto abs_idx = (1L << layer) - 1 + idx;
 
 				MIRRAGE_INVARIANT(abs_idx > 0, "_buddies_different() called for layer 0!");
@@ -86,7 +90,8 @@ namespace mirrage::graphic {
 
 		auto alloc(std::uint32_t size, std::uint32_t alignment) -> util::maybe<Device_memory>;
 
-		auto shrink_to_fit() -> std::size_t {
+		auto shrink_to_fit() -> std::size_t
+		{
 			auto lock = std::scoped_lock{_mutex};
 
 			auto new_end = std::remove_if(
@@ -102,7 +107,8 @@ namespace mirrage::graphic {
 			return gsl::narrow<std::size_t>(deleted);
 		}
 
-		auto usage_statistic() const -> Device_memory_pool_usage {
+		auto usage_statistic() const -> Device_memory_pool_usage
+		{
 			auto lock = std::scoped_lock{_mutex};
 
 			auto usage = Device_memory_pool_usage{0, 0, _blocks.size()};
@@ -132,14 +138,17 @@ namespace mirrage::graphic {
 		  , _mapable(mapable)
 		  , _temporary_pool(device, type, mapable)
 		  , _normal_pool(device, type, mapable)
-		  , _persistent_pool(device, type, mapable) {}
+		  , _persistent_pool(device, type, mapable)
+		{
+		}
 		Device_heap(const Device_heap&) = delete;
 		Device_heap(Device_heap&&)      = delete;
 		Device_heap& operator=(const Device_heap&) = delete;
 		Device_heap& operator=(Device_heap&&) = delete;
 
 		auto alloc(std::uint32_t size, std::uint32_t alignment, Memory_lifetime lifetime)
-		        -> util::maybe<Device_memory> {
+		        -> util::maybe<Device_memory>
+		{
 
 			auto memory = [&] {
 				switch(lifetime) {
@@ -168,12 +177,14 @@ namespace mirrage::graphic {
 			                     mem_addr};
 		}
 
-		auto shrink_to_fit() -> std::size_t {
+		auto shrink_to_fit() -> std::size_t
+		{
 			return _temporary_pool.shrink_to_fit() + _normal_pool.shrink_to_fit()
 			       + _persistent_pool.shrink_to_fit();
 		}
 
-		auto usage_statistic() const -> Device_memory_type_usage {
+		auto usage_statistic() const -> Device_memory_type_usage
+		{
 			auto temporary_usage  = _temporary_pool.usage_statistic();
 			auto normal_usage     = _normal_pool.usage_statistic();
 			auto persistent_usage = _persistent_pool.usage_statistic();
@@ -207,11 +218,13 @@ namespace mirrage::graphic {
 	  , _layer(rhs._layer)
 	  , _memory(std::move(rhs._memory))
 	  , _offset(rhs._offset)
-	  , _mapped_addr(rhs._mapped_addr) {
+	  , _mapped_addr(rhs._mapped_addr)
+	{
 
 		rhs._owner = nullptr;
 	}
-	Device_memory& Device_memory::operator=(Device_memory&& rhs) noexcept {
+	Device_memory& Device_memory::operator=(Device_memory&& rhs) noexcept
+	{
 		if(&rhs == this)
 			return *this;
 
@@ -231,7 +244,8 @@ namespace mirrage::graphic {
 
 		return *this;
 	}
-	Device_memory::~Device_memory() {
+	Device_memory::~Device_memory()
+	{
 		if(_owner) {
 			_deleter(_owner, _index, _layer, _memory);
 		}
@@ -250,7 +264,9 @@ namespace mirrage::graphic {
 	  , _layer(layer)
 	  , _memory(m)
 	  , _offset(o)
-	  , _mapped_addr(mapped_addr) {}
+	  , _mapped_addr(mapped_addr)
+	{
+	}
 
 
 	Device_memory_allocator::Device_memory_allocator(const vk::Device&  device,
@@ -258,7 +274,8 @@ namespace mirrage::graphic {
 	                                                 bool               dedicated_alloc_supported)
 	  : _device(device)
 	  , _is_unified_memory_architecture(true)
-	  , _is_dedicated_allocations_supported(dedicated_alloc_supported) {
+	  , _is_dedicated_allocations_supported(dedicated_alloc_supported)
+	{
 
 		auto memory_properties = gpu.getMemoryProperties();
 
@@ -307,7 +324,8 @@ namespace mirrage::graphic {
 	                                    std::size_t     alignment,
 	                                    std::uint32_t   type_mask,
 	                                    bool            host_visible,
-	                                    Memory_lifetime lifetime) -> util::maybe<Device_memory> {
+	                                    Memory_lifetime lifetime) -> util::maybe<Device_memory>
+	{
 
 		const auto& pool_ids = host_visible ? _host_visible_pools : _device_local_pools;
 
@@ -317,7 +335,6 @@ namespace mirrage::graphic {
 
 				try {
 					return pool->alloc(size, alignment, lifetime);
-
 				} catch(std::system_error& e) {
 					auto usage = usage_statistic();
 					LOG(plog::error) << "Couldn't allocate block of size " << size
@@ -335,17 +352,20 @@ namespace mirrage::graphic {
 	}
 
 	auto Device_memory_allocator::alloc_dedicated(vk::Image image, bool host_visible)
-	        -> util::maybe<Device_memory> {
+	        -> util::maybe<Device_memory>
+	{
 		return alloc_dedicated({}, image, host_visible);
 	}
 
 	auto Device_memory_allocator::alloc_dedicated(vk::Buffer buffer, bool host_visible)
-	        -> util::maybe<Device_memory> {
+	        -> util::maybe<Device_memory>
+	{
 		return alloc_dedicated(buffer, {}, host_visible);
 	}
 
 	auto Device_memory_allocator::alloc_dedicated(vk::Buffer buffer, vk::Image image, bool host_visible)
-	        -> util::maybe<Device_memory> {
+	        -> util::maybe<Device_memory>
+	{
 
 		const auto& pool_ids = host_visible ? _host_visible_pools : _device_local_pools;
 
@@ -385,7 +405,8 @@ namespace mirrage::graphic {
 		             << requirements.memoryTypeBits << ", host visible=" << host_visible);
 	}
 
-	auto Device_memory_allocator::shrink_to_fit() -> std::size_t {
+	auto Device_memory_allocator::shrink_to_fit() -> std::size_t
+	{
 		auto sum = std::size_t(0);
 
 		for(auto& heap : _pools) {
@@ -396,7 +417,8 @@ namespace mirrage::graphic {
 
 		return sum;
 	}
-	auto Device_memory_allocator::usage_statistic() const -> Device_memory_usage {
+	auto Device_memory_allocator::usage_statistic() const -> Device_memory_usage
+	{
 		auto types    = std::unordered_map<std::uint32_t, Device_memory_type_usage>();
 		auto reserved = std::size_t(0);
 		auto used     = std::size_t(0);
@@ -421,11 +443,14 @@ namespace mirrage::graphic {
 	Device_memory_pool<MinSize, MaxSize>::Device_memory_pool(const vk::Device& device,
 	                                                         std::uint32_t     type,
 	                                                         bool              mapable)
-	  : _device(device), _type(type), _mapable(mapable) {}
+	  : _device(device), _type(type), _mapable(mapable)
+	{
+	}
 
 	template <std::uint32_t MinSize, std::uint32_t MaxSize>
 	auto Device_memory_pool<MinSize, MaxSize>::alloc(std::uint32_t size, std::uint32_t alignment)
-	        -> util::maybe<Device_memory> {
+	        -> util::maybe<Device_memory>
+	{
 
 		if(size > MaxSize)
 			return util::nothing;
@@ -458,14 +483,16 @@ namespace mirrage::graphic {
 		                                                       std::mutex&       free_mutex)
 		  : _memory(device.allocateMemoryUnique({MaxSize, type}))
 		  , _mapped_addr(mapable ? static_cast<char*>(device.mapMemory(*_memory, 0, VK_WHOLE_SIZE)) : nullptr)
-		  , _free_mutex(free_mutex) {
+		  , _free_mutex(free_mutex)
+		{
 			LOG(plog::debug) << "Alloc: " << (MaxSize / 1024.f / 1024.f) << " MB";
 			_free_blocks[0].emplace_back(0);
 		}
 
 		template <std::uint32_t MinSize, std::uint32_t MaxSize>
 		auto Buddy_block_alloc<MinSize, MaxSize>::alloc(std::uint32_t size, std::uint32_t alignment)
-		        -> util::maybe<Device_memory> {
+		        -> util::maybe<Device_memory>
+		{
 
 			if(size < alignment) {
 				size = alignment;
@@ -526,7 +553,8 @@ namespace mirrage::graphic {
 		}
 
 		template <std::uint32_t MinSize, std::uint32_t MaxSize>
-		void Buddy_block_alloc<MinSize, MaxSize>::free(std::uint32_t layer, std::uint32_t index) {
+		void Buddy_block_alloc<MinSize, MaxSize>::free(std::uint32_t layer, std::uint32_t index)
+		{
 			auto lock = std::scoped_lock{_free_mutex};
 
 			_allocation_count--;
@@ -535,7 +563,6 @@ namespace mirrage::graphic {
 
 			if(layer == 0) {
 				MIRRAGE_INVARIANT(index == 0, "index overflow in layer 0, index=" << index);
-
 			} else {
 				_buddies_different(layer, index).flip();
 				_merge(layer, index);
@@ -544,13 +571,15 @@ namespace mirrage::graphic {
 
 		template <std::uint32_t MinSize, std::uint32_t MaxSize>
 		auto Buddy_block_alloc<MinSize, MaxSize>::_index_to_offset(std::uint32_t layer, std::uint32_t idx)
-		        -> vk::DeviceSize {
+		        -> vk::DeviceSize
+		{
 			return total_size / (1L << (layer + 1)) * idx;
 		}
 
 		template <std::uint32_t MinSize, std::uint32_t MaxSize>
 		auto Buddy_block_alloc<MinSize, MaxSize>::_split(std::uint32_t layer, std::uint32_t idx)
-		        -> std::uint32_t {
+		        -> std::uint32_t
+		{
 			_buddies_different(layer + 1, idx * 2 + 1) = true;
 			_free_blocks[layer + 1].emplace_back(idx * 2 + 1);
 
@@ -558,7 +587,8 @@ namespace mirrage::graphic {
 		}
 
 		template <std::uint32_t MinSize, std::uint32_t MaxSize>
-		auto Buddy_block_alloc<MinSize, MaxSize>::_merge(std::uint32_t layer, std::uint32_t index) -> bool {
+		auto Buddy_block_alloc<MinSize, MaxSize>::_merge(std::uint32_t layer, std::uint32_t index) -> bool
+		{
 			if(layer == 0)
 				return false;
 

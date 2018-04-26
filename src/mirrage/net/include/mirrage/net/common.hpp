@@ -31,7 +31,8 @@ namespace mirrage::net {
 		class Connection {
 		  public:
 			template <typename F> // F = void(util::Str_id channel, Client_handle, gsl::span<const gsl::byte>)
-			void poll(F&& on_packet) {
+			void poll(F&& on_packet)
+			{
 				auto packet = util::maybe<Received_packet>::nothing();
 				while((packet = _poll_packet()).is_some()) {
 					on_packet(std::get<0>(packet.get_or_throw()),

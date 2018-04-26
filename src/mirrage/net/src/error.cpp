@@ -12,7 +12,8 @@ namespace mirrage::net {
 		  public:
 			const char* name() const noexcept override { return "mirrage-network-error"; }
 
-			std::string message(int e) const override {
+			std::string message(int e) const override
+			{
 				switch(static_cast<Net_error>(e)) {
 					case Net_error::unknown_host:
 						return "Tried to connect to hostname that couldn't be resolved.";
@@ -26,7 +27,8 @@ namespace mirrage::net {
 				return "[unexpected " + std::to_string(e) + "]";
 			}
 
-			std::error_condition default_error_condition(int e) const noexcept override {
+			std::error_condition default_error_condition(int e) const noexcept override
+			{
 				switch(static_cast<Net_error>(e)) {
 					case Net_error::unknown_host: return Error_type::network_invalid_host;
 					case Net_error::unknown_channel: return Error_type::network_usage_error;

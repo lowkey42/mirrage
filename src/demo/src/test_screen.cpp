@@ -67,7 +67,8 @@ namespace mirrage {
 	  , _performance_log(util::nothing)
 	  , _window_width(engine.window().width())
 	  , _window_height(engine.window().height())
-	  , _window_fullscreen(engine.window().fullscreen() != graphic::Fullscreen::no) {
+	  , _window_fullscreen(engine.window().fullscreen() != graphic::Fullscreen::no)
+	{
 
 		_camera = _meta_system.entities().emplace("camera");
 
@@ -193,7 +194,8 @@ namespace mirrage {
 	}
 	Test_screen::~Test_screen() noexcept = default;
 
-	void Test_screen::_set_preset(int preset_id) {
+	void Test_screen::_set_preset(int preset_id)
+	{
 		if(_selected_preset == preset_id) {
 			return;
 		}
@@ -228,19 +230,22 @@ namespace mirrage {
 		_update_sun_position();
 	}
 
-	void Test_screen::_on_enter(util::maybe<Screen&> prev) {
+	void Test_screen::_on_enter(util::maybe<Screen&> prev)
+	{
 		_meta_system.shrink_to_fit();
 
 		_engine.input().enable_context("main"_strid);
 		_mailbox.enable();
 	}
 
-	void Test_screen::_on_leave(util::maybe<Screen&> next) {
+	void Test_screen::_on_leave(util::maybe<Screen&> next)
+	{
 		_mailbox.disable();
 		_engine.input().capture_mouse(false);
 	}
 
-	void Test_screen::_update(util::Time dt) {
+	void Test_screen::_update(util::Time dt)
+	{
 		_mailbox.update_subscriptions();
 
 		_record_timer += dt;
@@ -305,7 +310,8 @@ namespace mirrage {
 	}
 
 
-	void Test_screen::_draw() {
+	void Test_screen::_draw()
+	{
 		_gui.start_frame();
 
 		if(_show_ui) {
@@ -321,7 +327,8 @@ namespace mirrage {
 
 		_meta_system.draw();
 	}
-	void Test_screen::_draw_settings_window() {
+	void Test_screen::_draw_settings_window()
+	{
 		auto ctx = _gui.ctx();
 		if(nk_begin_titled(ctx,
 		                   "debug_controls",
@@ -491,7 +498,8 @@ namespace mirrage {
 	}
 
 	namespace {
-		auto to_fixed_str(double num, int digits) {
+		auto to_fixed_str(double num, int digits)
+		{
 			auto ss = std::stringstream{};
 			ss << std::fixed << std::setprecision(digits) << num;
 			return ss.str();
@@ -500,7 +508,8 @@ namespace mirrage {
 		auto pad_left(const std::string& str, int padding) { return std::string(padding, ' ') + str; }
 
 		template <std::size_t N, typename Container, typename Comp>
-		auto top_n(const Container& container, Comp&& less) {
+		auto top_n(const Container& container, Comp&& less)
+		{
 			auto max_elements = std::array<decltype(container.begin()), N>();
 			max_elements.fill(container.end());
 
@@ -522,7 +531,8 @@ namespace mirrage {
 		}
 
 		template <typename Container, typename T>
-		auto index_of(const Container& container, const T& element) -> int {
+		auto index_of(const Container& container, const T& element) -> int
+		{
 			auto top_entry = std::find(container.begin(), container.end(), element);
 			if(top_entry == container.end())
 				return -1;
@@ -530,7 +540,8 @@ namespace mirrage {
 			return gsl::narrow<int>(std::distance(container.begin(), top_entry));
 		}
 	} // namespace
-	void Test_screen::_draw_profiler_window() {
+	void Test_screen::_draw_profiler_window()
+	{
 		auto ctx = _gui.ctx();
 		if(nk_begin_titled(ctx,
 		                   "profiler",
@@ -593,7 +604,8 @@ namespace mirrage {
 		nk_end(ctx);
 	}
 
-	void Test_screen::_update_sun_position() {
+	void Test_screen::_update_sun_position()
+	{
 		_sun.get<Transform_comp>().process([&](auto& transform) {
 			transform.orientation(glm::quat(glm::vec3(
 			        (_sun_elevation - 2.f) * glm::pi<float>() / 2.f, glm::pi<float>() * _sun_azimuth, 0.f)));

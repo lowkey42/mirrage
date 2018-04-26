@@ -9,7 +9,8 @@
 namespace mirrage::asset {
 
 	template <class R>
-	auto Ptr<R>::get_blocking() const -> const R& {
+	auto Ptr<R>::get_blocking() const -> const R&
+	{
 		if(_cached_result)
 			return *_cached_result;
 
@@ -17,7 +18,8 @@ namespace mirrage::asset {
 	}
 
 	template <class R>
-	auto Ptr<R>::get_if_ready() const -> util::maybe<R&> {
+	auto Ptr<R>::get_if_ready() const -> util::maybe<R&>
+	{
 		if(_cached_result)
 			return util::justPtr(_cached_result);
 
@@ -25,12 +27,14 @@ namespace mirrage::asset {
 	}
 
 	template <class R>
-	auto Ptr<R>::ready() const -> bool {
+	auto Ptr<R>::ready() const -> bool
+	{
 		return _task.ready();
 	}
 
 	template <class R>
-	void Ptr<R>::reset() {
+	void Ptr<R>::reset()
+	{
 		_aid           = {};
 		_task          = {};
 		_cached_result = nullptr;
@@ -46,7 +50,7 @@ namespace mirrage::asset {
 
 			template <typename C>
 			static one test(decltype(std::declval<Loader<C>>().reload(std::declval<istream>(),
-			                                                          std::declval<C&>())) *);
+			                                                          std::declval<C&>()))*);
 			template <typename C>
 			static two test(...);
 
@@ -64,7 +68,8 @@ namespace mirrage::asset {
 		                       ::async::task<TaskType>> || std::is_same_v<T, ::async::shared_task<TaskType>>;
 
 		template <typename T>
-		auto Asset_container<T>::load(AID aid, const std::string& path, bool cache) -> Ptr<T> {
+		auto Asset_container<T>::load(AID aid, const std::string& path, bool cache) -> Ptr<T>
+		{
 			auto lock = std::scoped_lock{_container_mutex};
 
 			auto found = _assets.find(path);
@@ -85,7 +90,8 @@ namespace mirrage::asset {
 		}
 
 		template <typename T>
-		void Asset_container<T>::save(const AID& aid, const std::string& name, const T& obj) {
+		void Asset_container<T>::save(const AID& aid, const std::string& name, const T& obj)
+		{
 			auto lock = std::scoped_lock{_container_mutex};
 
 			Loader<T>::save(_manager._open_rw(aid, name), obj);
@@ -97,14 +103,16 @@ namespace mirrage::asset {
 		}
 
 		template <typename T>
-		void Asset_container<T>::shrink_to_fit() noexcept {
+		void Asset_container<T>::shrink_to_fit() noexcept
+		{
 			auto lock = std::scoped_lock{_container_mutex};
 
 			util::erase_if(_assets, [](const auto& v) { return v.second.task.refcount() <= 1; });
 		}
 
 		template <typename T>
-		void Asset_container<T>::reload() {
+		void Asset_container<T>::reload()
+		{
 			auto lock = std::scoped_lock{_container_mutex};
 
 			for(auto&& entry : _assets) {
@@ -118,23 +126,21 @@ namespace mirrage::asset {
 
 		// TODO: test if this actually works
 		template <typename T>
-		void Asset_container<T>::_reload_asset(Asset& asset, const std::string& path) {
+		void Asset_container<T>::_reload_asset(Asset& asset, const std::string& path)
+		{
 			auto& old_value = const_cast<T&>(asset.task.get());
 
 			asset.last_modified = _manager._last_modified(path);
 
 			if constexpr(has_reload_v<T>) {
 				Loader<T>::reload(_manager._open(asset.aid, path), old_value);
-
 			} else {
 				auto new_value = Loader<T>::load(_manager._open(asset.aid, path));
 
 				if constexpr(std::is_same_v<decltype(new_value), async::task<T>>) {
 					old_value = std::move(new_value.get());
-
 				} else if constexpr(std::is_same_v<decltype(new_value), async::shared_task<T>>) {
 					old_value = std::move(const_cast<T&>(new_value.get()));
-
 				} else {
 					old_value = std::move(new_value);
 				}
@@ -146,7 +152,8 @@ namespace mirrage::asset {
 
 
 	template <typename T>
-	auto Asset_manager::load(const AID& id, bool cache) -> Ptr<T> {
+	auto Asset_manager::load(const AID& id, bool cache) -> Ptr<T>
+	{
 		auto a = load_maybe<T>(id, cache);
 		if(a.is_nothing())
 			throw std::system_error(Asset_error::resolve_failed, id.str());
@@ -155,7 +162,8 @@ namespace mirrage::asset {
 	}
 
 	template <typename T>
-	auto Asset_manager::load_maybe(const AID& id, bool cache) -> util::maybe<Ptr<T>> {
+	auto Asset_manager::load_maybe(const AID& id, bool cache) -> util::maybe<Ptr<T>>
+	{
 		auto path = resolve(id);
 		if(path.is_nothing())
 			return util::nothing;
@@ -166,7 +174,8 @@ namespace mirrage::asset {
 	}
 
 	template <typename T>
-	void Asset_manager::save(const AID& id, const T& asset) {
+	void Asset_manager::save(const AID& id, const T& asset)
+	{
 		auto path = resolve(id, false);
 		if(path.is_nothing())
 			throw std::system_error(Asset_error::resolve_failed, id.str());
@@ -179,12 +188,14 @@ namespace mirrage::asset {
 	}
 
 	template <typename T>
-	void Asset_manager::save(const Ptr<T>& asset) {
+	void Asset_manager::save(const Ptr<T>& asset)
+	{
 		save(asset.aid(), *asset);
 	}
 
 	template <typename T, typename... Args>
-	void Asset_manager::create_stateful_loader(Args&&... args) {
+	void Asset_manager::create_stateful_loader(Args&&... args)
+	{
 		auto key = util::type_uid_of<T>();
 
 		auto lock = std::scoped_lock{_containers_mutex};
@@ -197,14 +208,16 @@ namespace mirrage::asset {
 	}
 
 	template <typename T>
-	void Asset_manager::remove_stateful_loader() {
+	void Asset_manager::remove_stateful_loader()
+	{
 		auto lock = std::scoped_lock{_containers_mutex};
 
 		_containers.erase(util::type_uid_of<T>());
 	}
 
 	template <typename T>
-	auto Asset_manager::_find_container() -> util::maybe<detail::Asset_container<T>&> {
+	auto Asset_manager::_find_container() -> util::maybe<detail::Asset_container<T>&>
+	{
 		auto key = util::type_uid_of<T>();
 
 		auto lock = std::scoped_lock{_containers_mutex};
@@ -219,7 +232,6 @@ namespace mirrage::asset {
 			container = _containers.emplace(key, std::make_unique<detail::Asset_container<T>>(*this)).first;
 
 			return util::justPtr(static_cast<detail::Asset_container<T>*>(&*container->second));
-
 		} else {
 			return util::nothing;
 		}

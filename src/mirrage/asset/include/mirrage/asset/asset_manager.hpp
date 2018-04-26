@@ -78,7 +78,8 @@ namespace mirrage::asset {
 
 
 	template <typename T>
-	auto make_ready_asset(const AID& id, T&& val) -> Ptr<std::remove_cv_t<std::remove_reference_t<T>>> {
+	auto make_ready_asset(const AID& id, T&& val) -> Ptr<std::remove_cv_t<std::remove_reference_t<T>>>
+	{
 		return {id, async::make_task(std::forward<T>(val)).share()};
 	}
 
@@ -101,7 +102,9 @@ namespace mirrage::asset {
 		  public:
 			template <typename... Args>
 			explicit Asset_container(Asset_manager& manager, Args&&... args)
-			  : Loader<T>(std::forward<Args>(args)...), _manager(manager) {}
+			  : Loader<T>(std::forward<Args>(args)...), _manager(manager)
+			{
+			}
 
 			using Loader<T>::load;
 			using Loader<T>::save;
@@ -198,7 +201,8 @@ namespace mirrage::asset {
 	};
 
 	template <class T>
-	util::maybe<const T&> unpack(util::maybe<Ptr<T>> m) {
+	util::maybe<const T&> unpack(util::maybe<Ptr<T>> m)
+	{
 		return m.process(util::maybe<const T&>{}, [](Ptr<T>& p) { return util::maybe<const T&>{*p}; });
 	}
 } // namespace mirrage::asset

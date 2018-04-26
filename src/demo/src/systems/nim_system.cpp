@@ -14,11 +14,13 @@ namespace mirrage::systems {
 
 	using namespace util::unit_literals;
 
-	void load_component(ecs::Deserializer& state, Nim_comp& comp) {
+	void load_component(ecs::Deserializer& state, Nim_comp& comp)
+	{
 		state.read_virtual(sf2::vmember("uid", comp._uid));
 	}
 
-	void save_component(ecs::Serializer& state, const Nim_comp& comp) {
+	void save_component(ecs::Serializer& state, const Nim_comp& comp)
+	{
 		state.write_virtual(sf2::vmember("uid", comp._uid));
 	}
 
@@ -37,7 +39,8 @@ namespace mirrage::systems {
 		sf2_structDef(Frame_data, length, entities);
 	} // namespace
 
-	void load(sf2::JsonDeserializer& s, Nim_sequence& seq) {
+	void load(sf2::JsonDeserializer& s, Nim_sequence& seq)
+	{
 		auto frames = std::vector<Frame_data>();
 
 		s.read_virtual(sf2::vmember("frames", frames));
@@ -76,12 +79,10 @@ namespace mirrage::systems {
 					state.positions.emplace_back(iter->second.position);
 					state.orientations.emplace_back(iter->second.orientation);
 					state.light_colors.emplace_back(iter->second.light_color);
-
 				} else if(state.positions.empty()) {
 					state.positions.emplace_back(0, 0, 0);
 					state.orientations.emplace_back(1, 0, 0, 0);
 					state.light_colors.emplace_back(1, 0.938374f, 0.88349f, 100.f);
-
 				} else {
 					state.positions.emplace_back(glm::vec3(state.positions.back()));
 					state.orientations.emplace_back(glm::quat(state.orientations.back()));
@@ -91,7 +92,8 @@ namespace mirrage::systems {
 		}
 	}
 
-	void save(sf2::JsonSerializer& s, const Nim_sequence& seq) {
+	void save(sf2::JsonSerializer& s, const Nim_sequence& seq)
+	{
 		auto frames = std::vector<Frame_data>();
 
 		frames.reserve(seq.frames());
@@ -116,7 +118,8 @@ namespace mirrage::systems {
 
 	namespace {
 		template <class T>
-		auto catmull_rom(float t, const std::vector<T>& points, bool closed) -> T {
+		auto catmull_rom(float t, const std::vector<T>& points, bool closed) -> T
+		{
 			MIRRAGE_INVARIANT(!points.empty(), "Can't interpolate between zero points!");
 
 			// calc points
@@ -136,7 +139,6 @@ namespace mirrage::systems {
 				P1_idx = P1_idx % point_count;
 				P2_idx = P2_idx % point_count;
 				P3_idx = P3_idx % point_count;
-
 			} else {
 				P0_idx = util::min(P0_idx, point_count);
 				P1_idx = P0_idx > 0 ? P0_idx - 1 : P0_idx;
@@ -162,7 +164,8 @@ namespace mirrage::systems {
 		}
 	} // namespace
 
-	void Nim_system::update(util::Time dt) {
+	void Nim_system::update(util::Time dt)
+	{
 		if(!_playing)
 			return;
 
@@ -220,7 +223,8 @@ namespace mirrage::systems {
 		}
 	}
 
-	void Nim_system::play(Nim_sequence_ptr seq, int begin, int end, float speed) {
+	void Nim_system::play(Nim_sequence_ptr seq, int begin, int end, float speed)
+	{
 		if(_playing != seq) {
 			_playing = seq;
 		}
@@ -232,14 +236,16 @@ namespace mirrage::systems {
 		_end_position     = end >= 0 ? end : _playing->frames();
 		_loop             = false;
 	}
-	void Nim_system::play_looped(Nim_sequence_ptr seq, float speed) {
+	void Nim_system::play_looped(Nim_sequence_ptr seq, float speed)
+	{
 		play(seq, 0, -1, speed);
 		_loop = true;
 	}
 
 	void Nim_system::stop() { _playing.reset(); }
 
-	void Nim_system::start_recording(Nim_sequence& seq) {
+	void Nim_system::start_recording(Nim_sequence& seq)
+	{
 		_update_lookup_table();
 
 		auto affected_entities = std::vector<util::Str_id>();
@@ -251,7 +257,8 @@ namespace mirrage::systems {
 		seq = Nim_sequence(affected_entities);
 	}
 
-	void Nim_system::record(util::Time length, Nim_sequence& seq) {
+	void Nim_system::record(util::Time length, Nim_sequence& seq)
+	{
 		seq.push_back(length, [&](const auto& entity_uid) {
 			auto iter = _affected_entities.find(entity_uid);
 			if(iter == _affected_entities.end())
@@ -270,7 +277,8 @@ namespace mirrage::systems {
 		});
 	}
 
-	void Nim_system::_update_lookup_table() {
+	void Nim_system::_update_lookup_table()
+	{
 		_affected_entities.clear();
 		for(auto& nim_comp : _nim_components) {
 			_affected_entities.emplace(nim_comp.uid(), nim_comp.owner());

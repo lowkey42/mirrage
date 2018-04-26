@@ -10,14 +10,16 @@ namespace mirrage::graphic {
 	constexpr auto max_pipeline_cache_count = 3;
 
 	namespace {
-		auto main_pipeline_cache_key(const Device& device) {
+		auto main_pipeline_cache_key(const Device& device)
+		{
 			auto properties = device.physical_device_properties();
 
 			return std::to_string(properties.vendorID) + "_" + std::to_string(properties.deviceID);
 		}
 
 		auto find_pipeline_cache_aid(asset::Asset_manager& assets, const std::string& key)
-		        -> util::maybe<asset::AID> {
+		        -> util::maybe<asset::AID>
+		{
 
 			auto caches = assets.list("pl_cache"_strid);
 			for(auto& cache : caches) {
@@ -29,7 +31,8 @@ namespace mirrage::graphic {
 			return util::nothing;
 		}
 
-		auto discard_outdated_pipeline_caches(asset::Asset_manager& assets) {
+		auto discard_outdated_pipeline_caches(asset::Asset_manager& assets)
+		{
 			auto caches = assets.list("pl_cache"_strid);
 
 			if(caches.size() >= max_pipeline_cache_count) {
@@ -53,7 +56,8 @@ namespace mirrage::graphic {
 	} // namespace
 
 	auto load_main_pipeline_cache(const Device& device, asset::Asset_manager& assets)
-	        -> asset::Ptr<Pipeline_cache> {
+	        -> asset::Ptr<Pipeline_cache>
+	{
 
 		auto key = main_pipeline_cache_key(device);
 
@@ -73,7 +77,8 @@ namespace mirrage::graphic {
 
 namespace mirrage::asset {
 
-	auto Loader<graphic::Pipeline_cache>::load(istream in) -> graphic::Pipeline_cache {
+	auto Loader<graphic::Pipeline_cache>::load(istream in) -> graphic::Pipeline_cache
+	{
 
 		auto data = in.bytes();
 		auto create_info =
@@ -82,7 +87,8 @@ namespace mirrage::asset {
 		return graphic::Pipeline_cache(_device.createPipelineCacheUnique(create_info));
 	}
 
-	void Loader<graphic::Pipeline_cache>::save(ostream out, const graphic::Pipeline_cache& cache) {
+	void Loader<graphic::Pipeline_cache>::save(ostream out, const graphic::Pipeline_cache& cache)
+	{
 		auto data = _device.getPipelineCacheData(*cache);
 		out.write(reinterpret_cast<const char*>(data.data()), gsl::narrow<std::streamsize>(data.size()));
 	}

@@ -9,7 +9,8 @@ namespace mirrage::renderer {
 
 	using namespace util::unit_literals;
 
-	void load_component(ecs::Deserializer& state, Directional_light_comp& comp) {
+	void load_component(ecs::Deserializer& state, Directional_light_comp& comp)
+	{
 		auto src_radius  = comp._source_radius / 1_m;
 		auto temperature = -1.f;
 
@@ -27,7 +28,8 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void save_component(ecs::Serializer& state, const Directional_light_comp& comp) {
+	void save_component(ecs::Serializer& state, const Directional_light_comp& comp)
+	{
 		state.write_virtual(sf2::vmember("source_radius", comp._source_radius / 1_m),
 		                    sf2::vmember("intensity", comp._intensity),
 		                    sf2::vmember("color", comp._color),
@@ -38,7 +40,8 @@ namespace mirrage::renderer {
 
 	void Directional_light_comp::temperature(float kelvin) { _color = temperature_to_color(kelvin); }
 
-	auto Directional_light_comp::calc_shadowmap_view_proj() const -> glm::mat4 {
+	auto Directional_light_comp::calc_shadowmap_view_proj() const -> glm::mat4
+	{
 		auto& transform = owner().get<ecs::components::Transform_comp>().get_or_throw(
 		        "Required Transform_comp missing");
 
@@ -53,7 +56,8 @@ namespace mirrage::renderer {
 		       * glm::inverse(inv_view);
 	}
 
-	auto temperature_to_color(float kelvin) -> util::Rgb {
+	auto temperature_to_color(float kelvin) -> util::Rgb
+	{
 		// rough estimate based on http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/
 
 		auto color = util::Rgb{};
@@ -71,7 +75,6 @@ namespace mirrage::renderer {
 		if(kelvin <= 66.f) {
 			color.g =
 			        glm::clamp(99.4708025861f / 255.f * std::log(kelvin) - 161.1195681661f / 255.f, 0.f, 1.f);
-
 		} else {
 			color.g = glm::clamp(288.1221695283f / 255.f * std::pow(kelvin - 60.f, -0.0755148492f), 0.f, 1.f);
 		}
@@ -79,10 +82,8 @@ namespace mirrage::renderer {
 		// blue
 		if(kelvin >= 66.f) {
 			color.b = 1.f;
-
 		} else if(kelvin <= 19.f) {
 			color.b = 0.f;
-
 		} else {
 			color.b = glm::clamp(
 			        138.5177312231f / 255.f * std::log(kelvin - 10.f) - 305.0447927307f / 255.f, 0.f, 1.f);

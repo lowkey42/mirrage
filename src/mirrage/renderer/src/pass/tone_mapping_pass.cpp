@@ -12,7 +12,8 @@ namespace mirrage::renderer {
 		                                 vk::DescriptorSetLayout    desc_set_layout,
 		                                 vk::Format                 luminance_format,
 		                                 graphic::Render_target_2D& target,
-		                                 graphic::Framebuffer&      out_framebuffer) {
+		                                 graphic::Framebuffer&      out_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -75,7 +76,8 @@ namespace mirrage::renderer {
 		                             vk::DescriptorSetLayout    desc_set_layout,
 		                             vk::Format                 luminance_format,
 		                             graphic::Render_target_2D& target,
-		                             graphic::Framebuffer&      out_framebuffer) {
+		                             graphic::Framebuffer&      out_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -134,7 +136,8 @@ namespace mirrage::renderer {
 			return render_pass;
 		}
 
-		auto get_luminance_format(graphic::Device& device) {
+		auto get_luminance_format(graphic::Device& device)
+		{
 			auto format = device.get_supported_format(
 			        {vk::Format::eR32Sfloat},
 			        vk::FormatFeatureFlagBits::eColorAttachment
@@ -200,7 +203,8 @@ namespace mirrage::renderer {
 	                                                        _adapt_luminance_framebuffer))
 	  , _adapt_luminance_desc_set(_descriptor_set_layout.create_set(
 	            renderer.descriptor_pool(),
-	            {_luminance_buffer.view(_luminance_buffer.mip_levels() - 1), _prev_avg_luminance.view(0)})) {
+	            {_luminance_buffer.view(_luminance_buffer.mip_levels() - 1), _prev_avg_luminance.view(0)}))
+	{
 
 		renderer.gbuffer().avg_log_luminance = _curr_avg_luminance;
 	}
@@ -211,7 +215,8 @@ namespace mirrage::renderer {
 	void Tone_mapping_pass::draw(vk::CommandBuffer& command_buffer,
 	                             Command_buffer_source&,
 	                             vk::DescriptorSet global_uniform_set,
-	                             std::size_t) {
+	                             std::size_t)
+	{
 
 		auto pcs         = Push_constants{};
 		pcs.parameters.x = 0.2f; // adjustment speed if current luminance > previous
@@ -284,7 +289,8 @@ namespace mirrage::renderer {
 	auto Tone_mapping_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                            ecs::Entity_manager&      entities,
 	                                            util::maybe<Meta_system&> meta_system,
-	                                            bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
+	                                            bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	{
 		auto& color_src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		return std::make_unique<Tone_mapping_pass>(renderer, entities, meta_system, color_src);
@@ -292,11 +298,14 @@ namespace mirrage::renderer {
 
 	auto Tone_mapping_pass_factory::rank_device(vk::PhysicalDevice,
 	                                            util::maybe<std::uint32_t> graphics_queue,
-	                                            int                        current_score) -> int {
+	                                            int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Tone_mapping_pass_factory::configure_device(vk::PhysicalDevice,
 	                                                 util::maybe<std::uint32_t>,
-	                                                 graphic::Device_create_info&) {}
+	                                                 graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

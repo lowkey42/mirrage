@@ -18,12 +18,14 @@ namespace mirrage::graphic {
 	  , _images(dev.getSwapchainImagesKHR(*_swapchain))
 	  , _image_width(gsl::narrow<int>(info.imageExtent.width))
 	  , _image_height(gsl::narrow<int>(info.imageExtent.height))
-	  , _image_format(info.imageFormat) {
+	  , _image_format(info.imageFormat)
+	{
 
 		_create_image_views();
 	}
 
-	void Swapchain::_create_image_views() {
+	void Swapchain::_create_image_views()
+	{
 		LOG(plog::debug) << "Created swapchain with " << _images.size()
 		                 << " images (min=" << _info.minImageCount << ")";
 
@@ -39,11 +41,13 @@ namespace mirrage::graphic {
 		}
 	}
 
-	auto Swapchain::acquireNextImage(vk::Semaphore s, vk::Fence f) const -> std::size_t {
+	auto Swapchain::acquireNextImage(vk::Semaphore s, vk::Fence f) const -> std::size_t
+	{
 		return _device.acquireNextImageKHR(*_swapchain, std::numeric_limits<std::uint64_t>::max(), s, f).value;
 	}
 
-	bool Swapchain::present(vk::Queue& q, std::size_t img_index, vk::Semaphore s) {
+	bool Swapchain::present(vk::Queue& q, std::size_t img_index, vk::Semaphore s)
+	{
 		auto img_index_vk = gsl::narrow<uint32_t>(img_index);
 
 		auto info   = vk::PresentInfoKHR{s ? 1u : 0u, &s, 1, &*_swapchain, &img_index_vk};

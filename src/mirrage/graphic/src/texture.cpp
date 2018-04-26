@@ -11,7 +11,8 @@
 namespace mirrage::graphic::detail {
 
 	namespace {
-		auto vk_type(Image_type type) {
+		auto vk_type(Image_type type)
+		{
 			switch(type) {
 				case Image_type::array_1d:
 				case Image_type::single_1d: return vk::ImageType::e1D;
@@ -30,7 +31,8 @@ namespace mirrage::graphic::detail {
 	} // namespace
 
 
-	auto clamp_mip_levels(std::uint32_t width, std::uint32_t height, std::uint32_t mipmaps) -> std::uint32_t {
+	auto clamp_mip_levels(std::uint32_t width, std::uint32_t height, std::uint32_t mipmaps) -> std::uint32_t
+	{
 		if(mipmaps <= 0)
 			mipmaps = 9999;
 
@@ -38,7 +40,8 @@ namespace mirrage::graphic::detail {
 		return mipmaps;
 	}
 
-	auto format_from_channels(Device& device, std::uint32_t channels, bool srgb) -> vk::Format {
+	auto format_from_channels(Device& device, std::uint32_t channels, bool srgb) -> vk::Format
+	{
 		auto format = util::maybe<vk::Format>::nothing();
 
 		switch(channels) {
@@ -79,7 +82,9 @@ namespace mirrage::graphic::detail {
 	           clamp_mip_levels(dim.width, dim.height, mip_levels),
 	           false,
 	           dim)
-	  , _image_view(device.create_image_view(_image.image(), format, 0, _image.mip_level_count(), aspects)) {}
+	  , _image_view(device.create_image_view(_image.image(), format, 0, _image.mip_level_count(), aspects))
+	{
+	}
 
 	Base_texture::Base_texture(Device&                       device,
 	                           Image_type                    type,
@@ -99,17 +104,22 @@ namespace mirrage::graphic::detail {
 		                                          dest += 4;
 		                                          std::memcpy(dest, data.data(), data.size_bytes());
 	                                          }))
-	  , _image_view(device.create_image_view(image(), format, 0, _image.mip_level_count())) {}
+	  , _image_view(device.create_image_view(image(), format, 0, _image.mip_level_count()))
+	{
+	}
 
 	Base_texture::Base_texture(Device& device, Static_image image, vk::Format format)
 	  : _image(std::move(image))
-	  , _image_view(device.create_image_view(this->image(), format, 0, _image.mip_level_count())) {}
+	  , _image_view(device.create_image_view(this->image(), format, 0, _image.mip_level_count()))
+	{
+	}
 
 	auto build_mip_views(Device&              device,
 	                     std::uint32_t        mip_levels,
 	                     vk::Image            image,
 	                     vk::Format           format,
-	                     vk::ImageAspectFlags aspects) -> std::vector<vk::UniqueImageView> {
+	                     vk::ImageAspectFlags aspects) -> std::vector<vk::UniqueImageView>
+	{
 		auto views = std::vector<vk::UniqueImageView>();
 		views.reserve(mip_levels);
 
@@ -121,7 +131,8 @@ namespace mirrage::graphic::detail {
 	}
 
 	auto load_image_data(Device& device, std::uint32_t owner_qfamily, asset::istream in)
-	        -> std::tuple<Static_image, vk::Format, Image_type> {
+	        -> std::tuple<Static_image, vk::Format, Image_type>
+	{
 		auto header     = parse_header(in, in.aid().str());
 		auto dimensions = Image_dimensions(header.width, header.height, header.depth, header.layers);
 

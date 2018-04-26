@@ -5,7 +5,8 @@
 namespace mirrage::renderer {
 
 	namespace {
-		auto get_hdr_format(graphic::Device& device) {
+		auto get_hdr_format(graphic::Device& device)
+		{
 			auto format = device.get_supported_format(
 			        {vk::Format::eR16G16B16Sfloat, vk::Format::eR16G16B16A16Sfloat},
 			        vk::FormatFeatureFlagBits::eColorAttachmentBlend
@@ -19,7 +20,8 @@ namespace mirrage::renderer {
 			return device.get_texture_rgb_format().get_or_throw("No rgb-format supported");
 		}
 
-		auto get_depth_format(graphic::Device& device) {
+		auto get_depth_format(graphic::Device& device)
+		{
 			auto format = device.get_supported_format(
 			        {vk::Format::eR16Unorm, vk::Format::eR16Sfloat, vk::Format::eR32Sfloat},
 			        vk::FormatFeatureFlagBits::eColorAttachment
@@ -91,5 +93,7 @@ namespace mirrage::renderer {
 	           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
 	                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
 	                   | vk::ImageUsageFlagBits::eTransferDst,
-	           vk::ImageAspectFlagBits::eColor) {}
+	           vk::ImageAspectFlagBits::eColor)
+	{
+	}
 } // namespace mirrage::renderer

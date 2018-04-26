@@ -30,7 +30,8 @@ namespace mirrage {
 		void _on_enter(util::maybe<Screen&> prev) override;
 		void _on_leave(util::maybe<Screen&> next) override;
 
-		auto _prev_screen_policy() const noexcept -> Prev_screen_policy override {
+		auto _prev_screen_policy() const noexcept -> Prev_screen_policy override
+		{
 			return Prev_screen_policy::discard;
 		}
 

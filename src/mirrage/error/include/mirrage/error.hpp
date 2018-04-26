@@ -37,8 +37,10 @@ namespace mirrage {
 
 namespace std {
 	template <>
-	struct is_error_condition_enum<mirrage::Error_type> : true_type {};
+	struct is_error_condition_enum<mirrage::Error_type> : true_type {
+	};
 
 	template <>
-	struct is_error_condition_enum<mirrage::Error_source> : true_type {};
+	struct is_error_condition_enum<mirrage::Error_source> : true_type {
+	};
 } // namespace std

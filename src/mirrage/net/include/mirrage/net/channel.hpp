@@ -36,10 +36,12 @@ namespace mirrage::net {
 	*/
 	class Channel_definitions {
 	  public:
-		auto by_id(std::uint8_t i) -> util::maybe<Channel_definition> {
+		auto by_id(std::uint8_t i) -> util::maybe<Channel_definition>
+		{
 			return i < _by_id.size() ? util::just(_by_id[i]) : util::nothing;
 		}
-		auto by_name(util::Str_id name) -> util::maybe<Channel_definition> {
+		auto by_name(util::Str_id name) -> util::maybe<Channel_definition>
+		{
 			auto iter = _by_name.find(name);
 			return iter != _by_name.end() ? util::just(iter->second) : util::nothing;
 		}
@@ -77,7 +79,8 @@ namespace mirrage::net {
 		void send(gsl::span<gsl::byte> data);
 
 		template <typename F>
-		void send(std::size_t size, F&& f) {
+		void send(std::size_t size, F&& f)
+		{
 			auto p = _create_empty_packet(size);
 
 			f(_packet_data(*p));

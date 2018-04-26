@@ -29,7 +29,8 @@ namespace mirrage::graphic {
 		};
 	} // namespace
 
-	auto parse_header(asset::istream& in, const std::string& filename) -> Ktx_header {
+	auto parse_header(asset::istream& in, const std::string& filename) -> Ktx_header
+	{
 		auto type_tag_data = std::array<unsigned char, sizeof(type_tag)>();
 
 		in.read(reinterpret_cast<char*>(type_tag_data.data()), type_tag_data.size());
@@ -63,16 +64,12 @@ namespace mirrage::graphic {
 
 		if(our_header.cubemap) {
 			our_header.type = our_header.layers == 0 ? Image_type::cubemap : Image_type::array_cubemap;
-
 		} else if(our_header.depth > 0) { // 3D
 			our_header.type = our_header.layers == 0 ? Image_type::single_3d : Image_type::array_3d;
-
 		} else if(our_header.height > 0) { // 2D
 			our_header.type = our_header.layers == 0 ? Image_type::single_2d : Image_type::array_2d;
-
 		} else if(our_header.width > 0) { // 1D
 			our_header.type = our_header.layers == 0 ? Image_type::single_1d : Image_type::array_1d;
-
 		} else {
 			MIRRAGE_FAIL("Zero dimensional image (width, height and depth are all zero): " << filename);
 		}

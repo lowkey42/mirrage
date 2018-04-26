@@ -22,7 +22,8 @@ namespace mirrage::renderer {
 		auto build_integrate_brdf_render_pass(Deferred_renderer& renderer,
 		                                      vk::Format         target_format,
 		                                      Render_target_2D&  target,
-		                                      Framebuffer&       out_framebuffer) {
+		                                      Framebuffer&       out_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -83,7 +84,8 @@ namespace mirrage::renderer {
 		                          Render_target_2D&       diffuse,
 		                          Render_target_2D&       specular,
 		                          Render_target_2D&       history_weight,
-		                          Framebuffer&            out_framebuffer) {
+		                          Framebuffer&            out_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -192,7 +194,8 @@ namespace mirrage::renderer {
 		auto build_diffuse_reproject_pass(Deferred_renderer&        renderer,
 		                                  vk::DescriptorSetLayout   desc_set_layout,
 		                                  Render_target_2D&         diffuse,
-		                                  std::vector<Framebuffer>& out_framebuffers) {
+		                                  std::vector<Framebuffer>& out_framebuffers)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -265,7 +268,8 @@ namespace mirrage::renderer {
 		                              Render_target_2D&         gi_buffer_samples,
 		                              Render_target_2D&         gi_buffer_result,
 		                              std::vector<Framebuffer>& out_framebuffers_samples,
-		                              std::vector<Framebuffer>& out_framebuffers_result) {
+		                              std::vector<Framebuffer>& out_framebuffers_result)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -388,7 +392,8 @@ namespace mirrage::renderer {
 		auto build_sample_spec_render_pass(Deferred_renderer&      renderer,
 		                                   vk::DescriptorSetLayout desc_set_layout,
 		                                   Render_target_2D&       gi_spec_buffer,
-		                                   Framebuffer&            out_framebuffer) {
+		                                   Framebuffer&            out_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -454,7 +459,8 @@ namespace mirrage::renderer {
 		                            graphic::Render_target_2D& blur_buffer,
 		                            graphic::Render_target_2D& result_buffer,
 		                            graphic::Framebuffer&      out_blur_framebuffer,
-		                            graphic::Framebuffer&      out_result_framebuffer) {
+		                            graphic::Framebuffer&      out_result_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -524,7 +530,8 @@ namespace mirrage::renderer {
 		auto build_blend_render_pass(Deferred_renderer&      renderer,
 		                             vk::DescriptorSetLayout desc_set_layout,
 		                             Render_target_2D&       color_in_out,
-		                             Framebuffer&            out_framebuffer) {
+		                             Framebuffer&            out_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -585,7 +592,8 @@ namespace mirrage::renderer {
 			return render_pass;
 		}
 
-		auto get_brdf_format(graphic::Device& device) {
+		auto get_brdf_format(graphic::Device& device)
+		{
 			auto format = device.get_supported_format(
 			        {vk::Format::eR16G16Sfloat},
 			        vk::FormatFeatureFlagBits::eColorAttachment
@@ -597,7 +605,8 @@ namespace mirrage::renderer {
 
 			return format.get_or_throw();
 		}
-		auto get_history_weight_format(graphic::Device& device) {
+		auto get_history_weight_format(graphic::Device& device)
+		{
 			auto format = device.get_supported_format(
 			        {vk::Format::eR8G8Unorm, vk::Format::eR8G8B8A8Unorm},
 			        vk::FormatFeatureFlagBits::eColorAttachment
@@ -608,7 +617,8 @@ namespace mirrage::renderer {
 			return format.get_or_throw();
 		}
 
-		auto calc_base_mip_level(std::uint32_t width, std::uint32_t height, bool highres) {
+		auto calc_base_mip_level(std::uint32_t width, std::uint32_t height, bool highres)
+		{
 			auto x_mip = glm::log2(width / 960.f);
 			auto y_mip = glm::log2(height / 500.f);
 
@@ -616,7 +626,8 @@ namespace mirrage::renderer {
 
 			return static_cast<std::uint32_t>(util::max(0, static_cast<int>(std::round(mip))));
 		}
-		auto calc_max_mip_level(std::uint32_t width, std::uint32_t height) {
+		auto calc_max_mip_level(std::uint32_t width, std::uint32_t height)
+		{
 			auto w        = static_cast<float>(width);
 			auto h        = static_cast<float>(height);
 			auto diagonal = std::sqrt(w * w + h * h);
@@ -625,7 +636,8 @@ namespace mirrage::renderer {
 		}
 
 		template <class T>
-		auto to_2prod(T v) {
+		auto to_2prod(T v)
+		{
 			return v % 2 == 0 ? v : v + T(1);
 		}
 	} // namespace
@@ -785,7 +797,8 @@ namespace mirrage::renderer {
 	                                               _gi_diffuse_result.view(),
 	                                               _gi_specular.view(),
 	                                               renderer.gbuffer().albedo_mat_id.view(0),
-	                                               _integrated_brdf.view()})) {
+	                                               _integrated_brdf.view()}))
+	{
 
 		auto end = _max_mip_level;
 		_sample_descriptor_sets.reserve(end - _min_mip_level);
@@ -816,7 +829,8 @@ namespace mirrage::renderer {
 	void Gi_pass::draw(vk::CommandBuffer& command_buffer,
 	                   Command_buffer_source&,
 	                   vk::DescriptorSet global_uniform_set,
-	                   std::size_t) {
+	                   std::size_t)
+	{
 
 		if(!_renderer.settings().gi) {
 			_first_frame = true;
@@ -902,12 +916,14 @@ namespace mirrage::renderer {
 		                      vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
 
-	void Gi_pass::_integrate_brdf(vk::CommandBuffer& command_buffer) {
+	void Gi_pass::_integrate_brdf(vk::CommandBuffer& command_buffer)
+	{
 		_brdf_integration_renderpass.execute(
 		        command_buffer, _brdf_integration_framebuffer, [&] { command_buffer.draw(3, 1, 0, 0); });
 	}
 
-	void Gi_pass::_reproject_history(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals) {
+	void Gi_pass::_reproject_history(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals)
+	{
 		auto _ = _renderer.profiler().push("Reproject");
 
 		auto pcs         = Gi_constants{};
@@ -955,7 +971,8 @@ namespace mirrage::renderer {
 		_prev_proj = _renderer.global_uniforms().proj_mat;
 	}
 
-	void Gi_pass::_generate_first_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet) {
+	void Gi_pass::_generate_first_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet)
+	{
 		if(_min_mip_level > 0) {
 			auto _ = _renderer.profiler().push("Gen. Mipmaps A");
 
@@ -968,7 +985,8 @@ namespace mirrage::renderer {
 			                          _min_mip_level + 1);
 		}
 	}
-	void Gi_pass::_generate_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet) {
+	void Gi_pass::_generate_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet)
+	{
 		auto _ = _renderer.profiler().push("Gen. Mipmaps B");
 
 		graphic::generate_mipmaps(command_buffer,
@@ -988,7 +1006,8 @@ namespace mirrage::renderer {
 		                     float fov_v,
 		                     float screen_width,
 		                     float screen_height,
-		                     float proj_y_plane) {
+		                     float proj_y_plane)
+		{
 			auto dp = glm::pi<float>() * 40.f * 40.f;
 			if(last_sample)
 				dp -= glm::pi<float>() * 20.f * 20.f;
@@ -1000,7 +1019,8 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	void Gi_pass::_generate_gi_samples(vk::CommandBuffer& command_buffer) {
+	void Gi_pass::_generate_gi_samples(vk::CommandBuffer& command_buffer)
+	{
 		auto base_mip = static_cast<int>(_min_mip_level);
 		auto begin    = static_cast<int>(_diffuse_mip_level);
 		auto end      = static_cast<int>(_max_mip_level);
@@ -1127,7 +1147,8 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void Gi_pass::_blur_spec_gi(vk::CommandBuffer& command_buffer) {
+	void Gi_pass::_blur_spec_gi(vk::CommandBuffer& command_buffer)
+	{
 		// blur horizontal
 		_blur_render_pass.execute(command_buffer, _blur_horizonal_framebuffer, [&] {
 			_blur_render_pass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
@@ -1143,7 +1164,8 @@ namespace mirrage::renderer {
 		});
 	}
 
-	void Gi_pass::_draw_gi(vk::CommandBuffer& command_buffer) {
+	void Gi_pass::_draw_gi(vk::CommandBuffer& command_buffer)
+	{
 		auto _ = _renderer.profiler().push("Combine");
 
 		// blend input into result
@@ -1166,7 +1188,8 @@ namespace mirrage::renderer {
 	auto Gi_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                  ecs::Entity_manager&      entities,
 	                                  util::maybe<Meta_system&> meta_system,
-	                                  bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
+	                                  bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	{
 		auto& in_out = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		auto& in_diff = !write_first_pp_buffer ? renderer.gbuffer().colorB : renderer.gbuffer().colorA;
@@ -1178,11 +1201,14 @@ namespace mirrage::renderer {
 
 	auto Gi_pass_factory::rank_device(vk::PhysicalDevice,
 	                                  util::maybe<std::uint32_t> graphics_queue,
-	                                  int                        current_score) -> int {
+	                                  int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Gi_pass_factory::configure_device(vk::PhysicalDevice,
 	                                       util::maybe<std::uint32_t>,
-	                                       graphic::Device_create_info&) {}
+	                                       graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

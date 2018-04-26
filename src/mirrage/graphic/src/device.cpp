@@ -16,7 +16,8 @@ namespace mirrage::graphic {
 		asset::Asset_manager& assets;
 
 		Asset_loaders(asset::Asset_manager& assets, Device& device, Queue_tag default_draw_queue)
-		  : assets(assets) {
+		  : assets(assets)
+		{
 			auto draw_queue = device.get_queue_family(default_draw_queue);
 
 			assets.create_stateful_loader<Pipeline_cache>(*device.vk_device());
@@ -30,7 +31,8 @@ namespace mirrage::graphic {
 			assets.create_stateful_loader<Texture<Image_type::array_cubemap>>(device, draw_queue);
 			assets.create_stateful_loader<Shader_module>(device);
 		}
-		~Asset_loaders() {
+		~Asset_loaders()
+		{
 			assets.remove_stateful_loader<Pipeline_cache>();
 			assets.remove_stateful_loader<Texture<Image_type::single_1d>>();
 			assets.remove_stateful_loader<Texture<Image_type::single_2d>>();
@@ -121,7 +123,8 @@ namespace mirrage::graphic {
 	                                               | vk::FormatFeatureFlagBits::eBlitSrc
 	                                               | vk::FormatFeatureFlagBits::eSampledImageFilterLinear,
 	                                       Format_usage::image_optimal))
-	  , _device_specific_asset_loaders(std::make_unique<Asset_loaders>(assets, *this, default_draw_queue)) {
+	  , _device_specific_asset_loaders(std::make_unique<Asset_loaders>(assets, *this, default_draw_queue))
+	{
 
 		for(auto& sc_info : swapchains) {
 			_swapchains.emplace(
@@ -130,7 +133,8 @@ namespace mirrage::graphic {
 		}
 	}
 
-	Device::~Device() {
+	Device::~Device()
+	{
 		wait_idle();
 		backup_caches();
 
@@ -141,7 +145,8 @@ namespace mirrage::graphic {
 
 		print_memory_usage(std::cerr);
 	}
-	void Device::print_memory_usage(std::ostream& log) const {
+	void Device::print_memory_usage(std::ostream& log) const
+	{
 		auto mem_usage = _memory_allocator.usage_statistic();
 
 		log << "Memory usage: " << mem_usage.used << "/" << mem_usage.reserved << "\n";
@@ -165,20 +170,23 @@ namespace mirrage::graphic {
 		log << std::endl;
 	}
 
-	void Device::backup_caches() {
+	void Device::backup_caches()
+	{
 		if(_pipeline_cache.ready()) {
 			_assets.save(_pipeline_cache);
 		}
 	}
 
-	auto Device::get_queue(Queue_tag tag) -> vk::Queue {
+	auto Device::get_queue(Queue_tag tag) -> vk::Queue
+	{
 		auto real_familiy = _queue_family_mappings.find(tag);
 		MIRRAGE_INVARIANT(real_familiy != _queue_family_mappings.end(),
 		                  "Unknown queue family tag: " << tag.str());
 
 		return _device->getQueue(std::get<0>(real_familiy->second), std::get<1>(real_familiy->second));
 	}
-	auto Device::get_queue_family(Queue_tag tag) -> std::uint32_t {
+	auto Device::get_queue_family(Queue_tag tag) -> std::uint32_t
+	{
 		auto real_familiy = _queue_family_mappings.find(tag);
 		MIRRAGE_INVARIANT(real_familiy != _queue_family_mappings.end(),
 		                  "Unknown queue family tag: " << tag.str());
@@ -186,7 +194,8 @@ namespace mirrage::graphic {
 		return std::get<0>(real_familiy->second);
 	}
 
-	auto Device::create_render_pass_builder() -> Render_pass_builder {
+	auto Device::create_render_pass_builder() -> Render_pass_builder
+	{
 		return Render_pass_builder{*_device, **_pipeline_cache, _assets};
 	}
 
@@ -195,7 +204,8 @@ namespace mirrage::graphic {
 	auto Device::create_buffer(vk::BufferCreateInfo info,
 	                           bool                 host_visible,
 	                           Memory_lifetime      lifetime,
-	                           bool                 dedicated) -> Backed_buffer {
+	                           bool                 dedicated) -> Backed_buffer
+	{
 #ifdef VK_NV_dedicated_allocation
 		auto dedicated_alloc_info = vk::DedicatedAllocationBufferCreateInfoNV{dedicated};
 		if(dedicated) {
@@ -223,7 +233,8 @@ namespace mirrage::graphic {
 	auto Device::create_image(vk::ImageCreateInfo info,
 	                          bool                host_visible,
 	                          Memory_lifetime     lifetime,
-	                          bool                dedicated) -> Backed_image {
+	                          bool                dedicated) -> Backed_image
+	{
 #ifdef VK_NV_dedicated_allocation
 		auto dedicated_alloc_info = vk::DedicatedAllocationImageCreateInfoNV{dedicated};
 		if(dedicated) {
@@ -257,7 +268,8 @@ namespace mirrage::graphic {
 	                               std::uint32_t        mipmap_levels,
 	                               vk::ImageAspectFlags aspect,
 	                               vk::ImageViewType    type,
-	                               vk::ComponentMapping mapping) -> vk::UniqueImageView {
+	                               vk::ComponentMapping mapping) -> vk::UniqueImageView
+	{
 		auto range = vk::ImageSubresourceRange{aspect, base_mipmap, mipmap_levels, 0, 1};
 		return _device->createImageViewUnique(
 		        vk::ImageViewCreateInfo{vk::ImageViewCreateFlags{}, image, type, format, mapping, range});
@@ -269,7 +281,8 @@ namespace mirrage::graphic {
 	                            vk::Filter             filter,
 	                            vk::SamplerMipmapMode  mipmap_mode,
 	                            bool                   anisotropic,
-	                            vk::CompareOp          depth_compare_op) -> vk::UniqueSampler {
+	                            vk::CompareOp          depth_compare_op) -> vk::UniqueSampler
+	{
 		auto max_aniso = anisotropic ? 16.f : 0.f;
 
 		return _device->createSamplerUnique(vk::SamplerCreateInfo{
@@ -293,7 +306,8 @@ namespace mirrage::graphic {
 
 
 	auto Device::create_command_buffer_pool(Queue_tag queue_family, bool resetable, bool short_lived)
-	        -> Command_buffer_pool {
+	        -> Command_buffer_pool
+	{
 		auto real_familiy = _queue_family_mappings.find(queue_family);
 		MIRRAGE_INVARIANT(real_familiy != _queue_family_mappings.end(),
 		                  "Unknown queue family tag: " << queue_family.str());
@@ -311,20 +325,23 @@ namespace mirrage::graphic {
 	}
 
 	auto Device::create_descriptor_set_layout(gsl::span<const vk::DescriptorSetLayoutBinding> bindings)
-	        -> vk::UniqueDescriptorSetLayout {
+	        -> vk::UniqueDescriptorSetLayout
+	{
 		return _device->createDescriptorSetLayoutUnique(
 		        vk::DescriptorSetLayoutCreateInfo{vk::DescriptorSetLayoutCreateFlags{},
 		                                          gsl::narrow<std::uint32_t>(bindings.size()),
 		                                          bindings.data()});
 	}
 	auto Device::create_descriptor_set_layout(const vk::DescriptorSetLayoutBinding& binding)
-	        -> vk::UniqueDescriptorSetLayout {
+	        -> vk::UniqueDescriptorSetLayout
+	{
 		return _device->createDescriptorSetLayoutUnique(
 		        vk::DescriptorSetLayoutCreateInfo{vk::DescriptorSetLayoutCreateFlags{}, 1, &binding});
 	}
 
 	auto Device::create_descriptor_pool(std::uint32_t                             chunk_size,
-	                                    std::initializer_list<vk::DescriptorType> types) -> Descriptor_pool {
+	                                    std::initializer_list<vk::DescriptorType> types) -> Descriptor_pool
+	{
 		return {*_device, chunk_size, types};
 	}
 
@@ -332,7 +349,8 @@ namespace mirrage::graphic {
 
 	auto Device::get_supported_format(std::initializer_list<vk::Format> formats,
 	                                  vk::FormatFeatureFlags            flags,
-	                                  Format_usage                      usage) -> util::maybe<vk::Format> {
+	                                  Format_usage                      usage) -> util::maybe<vk::Format>
+	{
 
 		for(auto format : formats) {
 			auto props    = _gpu.getFormatProperties(format);

@@ -24,13 +24,15 @@ using namespace std::string_literals;
 
 namespace {
 
-	std::string append_file(const std::string& folder, const std::string file) {
+	std::string append_file(const std::string& folder, const std::string file)
+	{
 		if(ends_with(folder, "/") || starts_with(file, "/"))
 			return folder + file;
 		else
 			return folder + "/" + file;
 	}
-	void create_dir(const std::string& dir) {
+	void create_dir(const std::string& dir)
+	{
 #ifdef _WIN32
 		CreateDirectory(dir.c_str(), NULL);
 #else
@@ -38,12 +40,14 @@ namespace {
 #endif
 	}
 
-	auto last_of(const std::string& str, char c) {
+	auto last_of(const std::string& str, char c)
+	{
 		auto idx = str.find_last_of(c);
 		return idx != std::string::npos ? mirrage::util::just(idx + 1) : mirrage::util::nothing;
 	}
 
-	auto split_path(const std::string& path) {
+	auto split_path(const std::string& path)
+	{
 		auto filename_delim_end = last_of(path, '/').get_or(last_of(path, '\\').get_or(0));
 
 		return std::make_tuple(path.substr(0, filename_delim_end - 1),
@@ -53,7 +57,8 @@ namespace {
 
 	std::vector<std::string> list_files(const std::string& dir,
 	                                    const std::string& prefix,
-	                                    const std::string& suffix) noexcept {
+	                                    const std::string& suffix) noexcept
+	{
 		std::vector<std::string> res;
 
 		char** rc = PHYSFS_enumerateFiles(dir.c_str());
@@ -70,7 +75,8 @@ namespace {
 
 		return res;
 	}
-	std::vector<std::string> list_wildcard_files(const std::string& wildcard_path) {
+	std::vector<std::string> list_wildcard_files(const std::string& wildcard_path)
+	{
 		auto   spr  = split_path(wildcard_path);
 		auto&& path = std::get<0>(spr);
 		auto&& file = std::get<1>(spr);
@@ -90,7 +96,8 @@ namespace {
 		return files;
 	}
 
-	bool exists_file(const std::string path) {
+	bool exists_file(const std::string path)
+	{
 		if(!PHYSFS_exists(path.c_str()))
 			return false;
 
@@ -100,7 +107,8 @@ namespace {
 
 		return stat.filetype == PHYSFS_FILETYPE_REGULAR;
 	}
-	bool exists_dir(const std::string path) {
+	bool exists_dir(const std::string path)
+	{
 		if(!PHYSFS_exists(path.c_str()))
 			return false;
 
@@ -112,7 +120,8 @@ namespace {
 	}
 
 	template <typename Callback>
-	void print_dir_recursiv(const std::string& dir, uint8_t depth, Callback&& callback) {
+	void print_dir_recursiv(const std::string& dir, uint8_t depth, Callback&& callback)
+	{
 		std::string p;
 		for(uint8_t i = 0; i < depth; i++)
 			p += "  ";
@@ -127,7 +136,8 @@ namespace {
 		}
 	}
 
-	void init_physicsfs(const std::string& exe_name) {
+	void init_physicsfs(const std::string& exe_name)
+	{
 		if(!PHYSFS_isInit() && !PHYSFS_init(exe_name.empty() ? nullptr : exe_name.c_str())) {
 			throw std::system_error(static_cast<mirrage::asset::Asset_error>(PHYSFS_getLastErrorCode()),
 			                        "Unable to initalize PhysicsFS.");
@@ -139,7 +149,8 @@ namespace {
 
 namespace mirrage::asset {
 
-	std::string pwd() {
+	std::string pwd()
+	{
 		char cCurrentPath[FILENAME_MAX];
 
 #ifdef WINDOWS
@@ -154,7 +165,8 @@ namespace mirrage::asset {
 	}
 	std::string write_dir(const std::string& exe_name,
 	                      const std::string& org_name,
-	                      const std::string& app_name) {
+	                      const std::string& app_name)
+	{
 		init_physicsfs(exe_name);
 
 		if(exists_dir("write_dir")) {
@@ -167,7 +179,8 @@ namespace mirrage::asset {
 
 	Asset_manager::Asset_manager(const std::string& exe_name,
 	                             const std::string& org_name,
-	                             const std::string& app_name) {
+	                             const std::string& app_name)
+	{
 		init_physicsfs(exe_name);
 
 		auto write_dir = ::mirrage::asset::write_dir(exe_name, org_name, app_name);
@@ -217,11 +230,9 @@ namespace mirrage::asset {
 
 				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 				                        "No archives.lst found.");
-
 			} else {
 				LOG(plog::info) << "No archives.lst found. Using defaults.";
 			}
-
 		} else {
 			auto in = _open("cfg:archives.lst"_aid, "archives.lst");
 
@@ -241,7 +252,8 @@ namespace mirrage::asset {
 		_reload_dispatchers();
 	}
 
-	Asset_manager::~Asset_manager() {
+	Asset_manager::~Asset_manager()
+	{
 		_containers.clear();
 		if(!PHYSFS_deinit()) {
 			MIRRAGE_FAIL(
@@ -249,7 +261,8 @@ namespace mirrage::asset {
 		}
 	}
 
-	void Asset_manager::reload() {
+	void Asset_manager::reload()
+	{
 		_reload_dispatchers();
 
 		// The container lock must not be held during reload, because the reload of an asset calls
@@ -269,7 +282,8 @@ namespace mirrage::asset {
 			c->reload();
 		}
 	}
-	void Asset_manager::shrink_to_fit() noexcept {
+	void Asset_manager::shrink_to_fit() noexcept
+	{
 		auto lock = std::scoped_lock{_containers_mutex};
 
 		for(auto& container : _containers) {
@@ -277,14 +291,17 @@ namespace mirrage::asset {
 		}
 	}
 
-	auto Asset_manager::exists(const AID& id) const noexcept -> bool {
+	auto Asset_manager::exists(const AID& id) const noexcept -> bool
+	{
 		return resolve(id).process(false, [](auto&& path) { return exists_file(path); });
 	}
-	auto Asset_manager::try_delete(const AID& id) -> bool {
+	auto Asset_manager::try_delete(const AID& id) -> bool
+	{
 		return resolve(id).process(true, [](auto&& path) { return PHYSFS_delete(path.c_str()) == 0; });
 	}
 
-	auto Asset_manager::open(const AID& id) -> util::maybe<istream> {
+	auto Asset_manager::open(const AID& id) -> util::maybe<istream>
+	{
 		auto path = resolve(id);
 
 		if(path.is_some() && exists_file(path.get_or_throw()))
@@ -292,7 +309,8 @@ namespace mirrage::asset {
 		else
 			return util::nothing;
 	}
-	auto Asset_manager::open_rw(const AID& id) -> ostream {
+	auto Asset_manager::open_rw(const AID& id) -> ostream
+	{
 		auto path = resolve(id);
 		if(path.is_nothing()) {
 			path = resolve(AID{id.type(), ""}).process(id.str(), [&](auto&& prefix) {
@@ -306,7 +324,8 @@ namespace mirrage::asset {
 		return _open_rw(id, path.get_or_throw());
 	}
 
-	auto Asset_manager::list(Asset_type type) -> std::vector<AID> {
+	auto Asset_manager::list(Asset_type type) -> std::vector<AID>
+	{
 		auto lock = std::shared_lock{_dispatchers_mutex};
 
 		std::vector<AID> res;
@@ -326,14 +345,16 @@ namespace mirrage::asset {
 
 		return res;
 	}
-	auto Asset_manager::last_modified(const AID& id) const noexcept -> util::maybe<std::int64_t> {
+	auto Asset_manager::last_modified(const AID& id) const noexcept -> util::maybe<std::int64_t>
+	{
 		using namespace std::literals;
 
 		return resolve(id).process([&](auto& path) { return _last_modified(path); });
 	}
 
 	auto Asset_manager::resolve(const AID& id, bool only_preexisting) const noexcept
-	        -> util::maybe<std::string> {
+	        -> util::maybe<std::string>
+	{
 		auto lock = std::shared_lock{_dispatchers_mutex};
 
 		auto res = _dispatchers.find(id);
@@ -364,7 +385,8 @@ namespace mirrage::asset {
 
 		return util::nothing;
 	}
-	auto Asset_manager::resolve_reverse(std::string_view path) -> util::maybe<AID> {
+	auto Asset_manager::resolve_reverse(std::string_view path) -> util::maybe<AID>
+	{
 		auto lock = std::shared_lock{_dispatchers_mutex};
 
 		for(auto& e : _dispatchers) {
@@ -377,7 +399,8 @@ namespace mirrage::asset {
 
 	void Asset_manager::_post_write() {}
 
-	auto Asset_manager::_base_dir(Asset_type type) const -> util::maybe<std::string> {
+	auto Asset_manager::_base_dir(Asset_type type) const -> util::maybe<std::string>
+	{
 		auto lock = std::shared_lock{_dispatchers_mutex};
 
 		auto dir = _dispatchers.find(AID{type, ""}); // search for prefix-entry
@@ -389,7 +412,8 @@ namespace mirrage::asset {
 		return bdir;
 	}
 
-	void Asset_manager::_reload_dispatchers() {
+	void Asset_manager::_reload_dispatchers()
+	{
 		auto lock = std::unique_lock{_dispatchers_mutex};
 
 		_dispatchers.clear();
@@ -407,17 +431,20 @@ namespace mirrage::asset {
 		}
 	}
 
-	auto Asset_manager::_last_modified(const std::string& path) const -> int64_t {
+	auto Asset_manager::_last_modified(const std::string& path) const -> int64_t
+	{
 		auto stat = PHYSFS_Stat{};
 		if(!PHYSFS_stat(path.c_str(), &stat))
 			throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()));
 
 		return stat.modtime;
 	}
-	auto Asset_manager::_open(const asset::AID& id, const std::string& path) -> istream {
+	auto Asset_manager::_open(const asset::AID& id, const std::string& path) -> istream
+	{
 		return {id, *this, path};
 	}
-	auto Asset_manager::_open_rw(const asset::AID& id, const std::string& path) -> ostream {
+	auto Asset_manager::_open_rw(const asset::AID& id, const std::string& path) -> ostream
+	{
 		return {id, *this, path};
 	}
 

@@ -13,7 +13,8 @@ namespace mirrage::asset {
 		  public:
 			const char* name() const noexcept override { return "mirrage-asset-error"; }
 
-			std::string message(int e) const override {
+			std::string message(int e) const override
+			{
 				switch(static_cast<Asset_error>(e)) {
 					case Asset_error::unspecified_error:
 					case Asset_error::out_of_memory:
@@ -57,7 +58,8 @@ namespace mirrage::asset {
 				return "[unexpected " + std::to_string(e) + "]";
 			}
 
-			std::error_condition default_error_condition(int e) const noexcept override {
+			std::error_condition default_error_condition(int e) const noexcept override
+			{
 				switch(static_cast<Asset_error>(e)) {
 					case Asset_error::unspecified_error:
 					case Asset_error::out_of_memory:

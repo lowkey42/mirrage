@@ -13,7 +13,8 @@
 
 namespace mirrage {
 
-	void create_directory(const std::string& dir) {
+	void create_directory(const std::string& dir)
+	{
 #ifdef _WIN32
 		CreateDirectory(dir.c_str(), NULL);
 #else

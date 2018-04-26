@@ -19,5 +19,6 @@ namespace mirrage::net {
 
 namespace std {
 	template <>
-	struct is_error_code_enum<mirrage::net::Net_error> : true_type {};
+	struct is_error_code_enum<mirrage::net::Net_error> : true_type {
+	};
 } // namespace std

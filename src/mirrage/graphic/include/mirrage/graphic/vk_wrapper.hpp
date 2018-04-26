@@ -57,7 +57,9 @@ namespace mirrage::graphic {
 
 	struct Image_dimensions {
 		Image_dimensions(std::uint32_t width, std::uint32_t height, std::uint32_t depth, std::uint32_t layers)
-		  : width(width), height(height), depth(depth), layers(layers) {}
+		  : width(width), height(height), depth(depth), layers(layers)
+		{
+		}
 
 		std::uint32_t width;
 		std::uint32_t height;
@@ -73,18 +75,22 @@ namespace mirrage::graphic {
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::single_2d> : Image_dimensions {
-		Image_dimensions_t(std::uint32_t width, std::uint32_t height)
-		  : Image_dimensions(width, height, 1, 1) {}
+		Image_dimensions_t(std::uint32_t width, std::uint32_t height) : Image_dimensions(width, height, 1, 1)
+		{
+		}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::array_2d> : Image_dimensions {
 		Image_dimensions_t(std::uint32_t width, std::uint32_t height, std::uint32_t layers)
-		  : Image_dimensions(width, height, 1, layers) {}
+		  : Image_dimensions(width, height, 1, layers)
+		{
+		}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::cubemap> : Image_dimensions {
-		Image_dimensions_t(std::uint32_t width, std::uint32_t height)
-		  : Image_dimensions(width, height, 1, 6) {}
+		Image_dimensions_t(std::uint32_t width, std::uint32_t height) : Image_dimensions(width, height, 1, 6)
+		{
+		}
 	};
 
 
@@ -139,7 +145,9 @@ namespace mirrage::graphic {
 		  : _device(device)
 		  , _warn_on_full(warn_on_full)
 		  , _queues(max_frames, [&] { return create_fence(_device); })
-		  , _callback(callback) {}
+		  , _callback(callback)
+		{
+		}
 		template <typename Factory>
 		Per_frame_queue(Device&     device,
 		                Callback    callback,
@@ -152,12 +160,15 @@ namespace mirrage::graphic {
 		            [&] {
 			            return Entry{create_fence(_device), factory()};
 		            })
-		  , _callback(callback) {}
+		  , _callback(callback)
+		{
+		}
 		~Per_frame_queue() { clear(); }
 
 		auto capacity() const noexcept { return _queues.capacity(); }
 
-		void clear() {
+		void clear()
+		{
 			_queues.pop_while([&](auto& e) {
 				e.fence.wait();
 				_callback(e.data);
@@ -165,7 +176,8 @@ namespace mirrage::graphic {
 			});
 		}
 
-		auto start_new_frame() -> vk::Fence {
+		auto start_new_frame() -> vk::Fence
+		{
 			// free unused data from prev frames
 			_queues.pop_while([&](auto& e) {
 				if(!e.fence)
@@ -214,10 +226,13 @@ namespace mirrage::graphic {
 	class Delete_queue : public Per_frame_queue<util::purgatory> {
 	  public:
 		Delete_queue(Device& device, std::size_t max_frames = 4, bool warn_on_full = true)
-		  : Per_frame_queue(device, +[](util::purgatory& p) { p.clear(); }, max_frames, warn_on_full) {}
+		  : Per_frame_queue(device, +[](util::purgatory& p) { p.clear(); }, max_frames, warn_on_full)
+		{
+		}
 
 		template <typename T>
-		auto destroy_later(T&& obj) -> T& {
+		auto destroy_later(T&& obj) -> T&
+		{
 			return current().add(std::forward<T>(obj));
 		}
 	};

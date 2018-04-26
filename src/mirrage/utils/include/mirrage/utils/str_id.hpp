@@ -20,7 +20,8 @@ namespace mirrage::util {
 
 		constexpr std::size_t str_id_max_length = 13;
 
-		constexpr auto str_id_hash(const char* str) {
+		constexpr auto str_id_hash(const char* str)
+		{
 			using namespace std::string_literals;
 
 			auto id = uint64_t(0);
@@ -31,8 +32,7 @@ namespace mirrage::util {
 				else if(str[i] >= 'a' && str[i] <= 'z')
 					id = (id * str_id_step) + static_cast<uint64_t>(str[i] - 'a' + 2);
 				else
-					throw std::invalid_argument("Unexpected character '"s + str[i]
-					                            + "' in string: " + str);
+					throw std::invalid_argument("Unexpected character '"s + str[i] + "' in string: " + str);
 
 				if(i >= str_id_max_length) {
 					throw std::invalid_argument("String is too long: "s + str);
@@ -51,7 +51,8 @@ namespace mirrage::util {
 		explicit constexpr Str_id(const char* str = "") : _id(detail::str_id_hash(str)) {}
 		explicit constexpr Str_id(int_type id) : _id(id) {}
 
-		auto str() const -> std::string {
+		auto str() const -> std::string
+		{
 			std::string r;
 
 			auto id = _id;
@@ -80,13 +81,15 @@ namespace mirrage::util {
 		int_type _id;
 	};
 
-	inline std::ostream& operator<<(std::ostream& s, const Str_id& id) {
+	inline std::ostream& operator<<(std::ostream& s, const Str_id& id)
+	{
 		s << id.str();
 		return s;
 	}
 
 #ifdef sf2_structDef
-	inline void load(sf2::JsonDeserializer& s, Str_id& v) {
+	inline void load(sf2::JsonDeserializer& s, Str_id& v)
+	{
 		std::string str;
 		s.read_value(str);
 		v = Str_id(str);
@@ -96,7 +99,8 @@ namespace mirrage::util {
 #endif
 } // namespace mirrage::util
 
-inline constexpr mirrage::util::Str_id operator"" _strid(const char* str, std::size_t) {
+inline constexpr mirrage::util::Str_id operator"" _strid(const char* str, std::size_t)
+{
 	return mirrage::util::Str_id(str);
 }
 

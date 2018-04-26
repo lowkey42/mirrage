@@ -49,5 +49,6 @@ namespace mirrage::asset {
 
 namespace std {
 	template <>
-	struct is_error_code_enum<mirrage::asset::Asset_error> : true_type {};
+	struct is_error_code_enum<mirrage::asset::Asset_error> : true_type {
+	};
 } // namespace std

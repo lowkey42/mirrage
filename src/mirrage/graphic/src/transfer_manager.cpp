@@ -6,8 +6,11 @@
 namespace mirrage::graphic {
 
 	Static_buffer::Static_buffer(Static_buffer&& rhs) noexcept
-	  : _buffer(std::move(rhs._buffer)), _transfer_task(std::move(rhs._transfer_task)) {}
-	Static_buffer& Static_buffer::operator=(Static_buffer&& rhs) noexcept {
+	  : _buffer(std::move(rhs._buffer)), _transfer_task(std::move(rhs._transfer_task))
+	{
+	}
+	Static_buffer& Static_buffer::operator=(Static_buffer&& rhs) noexcept
+	{
 		_buffer        = std::move(rhs._buffer);
 		_transfer_task = std::move(rhs._transfer_task);
 		return *this;
@@ -17,9 +20,12 @@ namespace mirrage::graphic {
 	  : _image(std::move(rhs._image))
 	  , _mip_count(std::move(rhs._mip_count))
 	  , _dimensions(std::move(rhs._dimensions))
-	  , _transfer_task(std::move(rhs._transfer_task)) {}
+	  , _transfer_task(std::move(rhs._transfer_task))
+	{
+	}
 
-	Static_image& Static_image::operator=(Static_image&& rhs) noexcept {
+	Static_image& Static_image::operator=(Static_image&& rhs) noexcept
+	{
 		_image         = std::move(rhs._image);
 		_mip_count     = std::move(rhs._mip_count);
 		_dimensions    = std::move(rhs._dimensions);
@@ -28,7 +34,8 @@ namespace mirrage::graphic {
 		return *this;
 	}
 
-	void Dynamic_buffer::update(const Command_buffer& cb, vk::DeviceSize offset, gsl::span<const char> data) {
+	void Dynamic_buffer::update(const Command_buffer& cb, vk::DeviceSize offset, gsl::span<const char> data)
+	{
 		MIRRAGE_INVARIANT(_capacity >= gsl::narrow<std::size_t>(data.size() + offset), "Buffer overflow");
 		MIRRAGE_INVARIANT(data.size() % 4 == 0, "buffer size has to be a multiple of 4: " << data.size());
 		MIRRAGE_INVARIANT(offset % 4 == 0, "buffer offset has to be a multiple of 4: " << offset);
@@ -63,7 +70,8 @@ namespace mirrage::graphic {
 		                   {buffer_barrier_post},
 		                   {});
 	}
-	void Dynamic_buffer::_pre_update(const Command_buffer& cb) {
+	void Dynamic_buffer::_pre_update(const Command_buffer& cb)
+	{
 		auto buffer_barrier_pre = vk::BufferMemoryBarrier{
 		        _latest_usage_access, vk::AccessFlagBits::eTransferWrite, 0, 0, *_buffer, 0, VK_WHOLE_SIZE};
 		cb.pipelineBarrier(_latest_usage,
@@ -76,7 +84,8 @@ namespace mirrage::graphic {
 
 	void Dynamic_buffer::_do_update(const Command_buffer& cb,
 	                                vk::DeviceSize        offset,
-	                                gsl::span<const char> data) {
+	                                gsl::span<const char> data)
+	{
 		MIRRAGE_INVARIANT(_capacity >= gsl::narrow<std::size_t>(data.size() + offset), "Buffer overflow");
 		MIRRAGE_INVARIANT(data.size() % 4 == 0, "buffer size has to be a multiple of 4: " << data.size());
 		MIRRAGE_INVARIANT(offset % 4 == 0, "buffer offset has to be a multiple of 4: " << offset);
@@ -84,7 +93,8 @@ namespace mirrage::graphic {
 		cb.updateBuffer(*_buffer, offset, data.size(), data.data());
 	}
 
-	void Dynamic_buffer::_post_update(const Command_buffer& cb) {
+	void Dynamic_buffer::_post_update(const Command_buffer& cb)
+	{
 		auto buffer_barrier_post = vk::BufferMemoryBarrier{
 		        vk::AccessFlagBits::eTransferWrite, _earliest_usage_access, 0, 0, *_buffer, 0, VK_WHOLE_SIZE};
 		cb.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
@@ -105,7 +115,8 @@ namespace mirrage::graphic {
 	  , _command_buffers(device,
 	                     +[](vk::UniqueCommandBuffer& cb) { cb->reset({}); },
 	                     [&] { return std::move(_command_buffer_pool.create_primary()[0]); },
-	                     max_frames) {
+	                     max_frames)
+	{
 
 		if(!_device.is_unified_memory_architecture()) {
 			_buffer_transfers.reserve(128);
@@ -124,7 +135,8 @@ namespace mirrage::graphic {
 	                                    std::uint32_t              mip_levels,
 	                                    std::uint32_t              size,
 	                                    std::function<void(char*)> write_data,
-	                                    bool                       dedicated) -> Static_image {
+	                                    bool                       dedicated) -> Static_image
+	{
 
 		auto stored_mip_levels = std::max(1u, mip_levels);
 		auto actual_mip_levels = mip_levels;
@@ -202,7 +214,8 @@ namespace mirrage::graphic {
 	                                     std::uint32_t              owner,
 	                                     std::uint32_t              size,
 	                                     std::function<void(char*)> write_data,
-	                                     bool                       dedicated) -> Static_buffer {
+	                                     bool                       dedicated) -> Static_buffer
+	{
 
 		auto staging_buffer_usage = _device.is_unified_memory_architecture()
 		                                    ? usage | vk::BufferUsageFlagBits::eTransferDst
@@ -237,7 +250,8 @@ namespace mirrage::graphic {
 	auto Transfer_manager::_create_staging_buffer(vk::BufferUsageFlags       usage,
 	                                              Memory_lifetime            lifetime,
 	                                              std::uint32_t              size,
-	                                              std::function<void(char*)> write_data) -> Backed_buffer {
+	                                              std::function<void(char*)> write_data) -> Backed_buffer
+	{
 
 		auto staging_buffer = _device.create_buffer(vk::BufferCreateInfo({}, size, usage), true, lifetime);
 
@@ -255,7 +269,8 @@ namespace mirrage::graphic {
 	                                             vk::PipelineStageFlags earliest_usage,
 	                                             vk::AccessFlags        earliest_usage_access,
 	                                             vk::PipelineStageFlags latest_usage,
-	                                             vk::AccessFlags latest_usage_access) -> Dynamic_buffer {
+	                                             vk::AccessFlags        latest_usage_access) -> Dynamic_buffer
+	{
 		auto create_info = vk::BufferCreateInfo({}, size, usage | vk::BufferUsageFlagBits::eTransferDst);
 		return {_device.create_buffer(create_info, false),
 		        size,
@@ -265,7 +280,8 @@ namespace mirrage::graphic {
 		        latest_usage_access};
 	}
 
-	auto Transfer_manager::next_frame(vk::CommandBuffer main_queue_commands) -> util::maybe<vk::Semaphore> {
+	auto Transfer_manager::next_frame(vk::CommandBuffer main_queue_commands) -> util::maybe<vk::Semaphore>
+	{
 		auto lock = std::scoped_lock{_mutex};
 
 		if(_buffer_transfers.empty() && _image_transfers.empty())
@@ -373,7 +389,6 @@ namespace mirrage::graphic {
 					                 t.dimensions.width,
 					                 t.dimensions.height,
 					                 t.mip_count_actual);
-
 				} else {
 					image_layout_transition(main_queue_commands,
 					                        t.dst,
@@ -402,7 +417,8 @@ namespace mirrage::graphic {
 	}
 
 
-	void Transfer_manager::_transfer_image(vk::CommandBuffer cb, const Transfer_image_req& t) {
+	void Transfer_manager::_transfer_image(vk::CommandBuffer cb, const Transfer_image_req& t)
+	{
 		image_layout_transition(cb,
 		                        t.dst,
 		                        vk::ImageLayout::eUndefined,
@@ -433,7 +449,8 @@ namespace mirrage::graphic {
 		cb.copyBufferToImage(*t.src, t.dst, vk::ImageLayout::eTransferDstOptimal, regions);
 	}
 
-	void Transfer_manager::_reset_transfer_event() {
+	void Transfer_manager::_reset_transfer_event()
+	{
 		_tranfer_done_event = async::event_task<void>{};
 		_transfer_done_task = _tranfer_done_event.get_task().share();
 	}

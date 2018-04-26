@@ -16,7 +16,8 @@
 namespace mirrage::graphic {
 
 	template <typename T>
-	inline auto to_bytes(gsl::span<T> data) {
+	inline auto to_bytes(gsl::span<T> data)
+	{
 		return gsl::span<const char>(reinterpret_cast<const char*>(data.data()), data.size_bytes());
 	}
 
@@ -27,7 +28,8 @@ namespace mirrage::graphic {
 		     std::uint32_t                  owner_qfamily,
 		     gsl::span<const V>             vertices,
 		     gsl::span<const std::uint32_t> indices)
-		  : Mesh(device, owner_qfamily, to_bytes(vertices), indices) {
+		  : Mesh(device, owner_qfamily, to_bytes(vertices), indices)
+		{
 			static_assert(std::is_standard_layout<V>::value, "");
 		}
 
@@ -40,7 +42,9 @@ namespace mirrage::graphic {
 		         vertices.size_bytes(),
 		         indices.size_bytes(),
 		         [&](char* dest) { (void) std::memcmp(dest, vertices.data(), vertices.size_bytes()); },
-		         [&](char* dest) { (void) std::memcmp(dest, indices.data(), indices.size_bytes()); }) {}
+		         [&](char* dest) { (void) std::memcmp(dest, indices.data(), indices.size_bytes()); })
+		{
+		}
 
 		Mesh(Device&                    device,
 		     std::uint32_t              owner_qfamily,

@@ -47,18 +47,16 @@ namespace mirrage::util {
 
 	namespace detail {
 		template <std::uint64_t Value, bool SignRequired>
-		constexpr auto compatible_type() {
+		constexpr auto compatible_type()
+		{
 			if constexpr(Value <= std::numeric_limits<std::int8_t>::max()) {
 				return std::int8_t(0);
 			} else if constexpr(Value <= std::numeric_limits<std::int16_t>::max()) {
 				return std::int16_t(0);
-
 			} else if constexpr(Value <= std::numeric_limits<std::int32_t>::max()) {
 				return std::int32_t(0);
-
 			} else if constexpr(Value <= std::numeric_limits<std::int64_t>::max()) {
 				return std::int64_t(0);
-
 			} else if(!SignRequired) {
 				static_assert(!SignRequired, "No integer type supporting more than 64 Bits");
 				return std::uint64_t(0);
@@ -94,7 +92,8 @@ namespace mirrage::util {
 		static constexpr auto max       = Max;
 
 
-		constexpr Int(integer_type value) : _value(value) {
+		constexpr Int(integer_type value) : _value(value)
+		{
 #ifndef NDEBUG
 			if(_value < Min)
 				MIRRAGE_FAIL("Integer underflow assigning " << _value << " below " << Min);
@@ -106,7 +105,8 @@ namespace mirrage::util {
 		constexpr Int(const Int& rhs) = default;
 
 		template <std::int64_t OtherMin, std::uint64_t OtherMax>
-		constexpr Int(Int<OtherMin, OtherMax> value) : _value(static_cast<integer_type>(value._value)) {
+		constexpr Int(Int<OtherMin, OtherMax> value) : _value(static_cast<integer_type>(value._value))
+		{
 #ifndef NDEBUG
 			if constexpr(OtherMin < Min)
 				if(_value < Min)
@@ -119,7 +119,8 @@ namespace mirrage::util {
 		}
 
 
-		constexpr Int& operator=(integer_type value) {
+		constexpr Int& operator=(integer_type value)
+		{
 			_value = value;
 #ifndef NDEBUG
 			if(_value < Min)
@@ -133,7 +134,8 @@ namespace mirrage::util {
 		constexpr Int& operator=(const Int& rhs) = default;
 
 		template <std::int64_t OtherMin, std::uint64_t OtherMax>
-		constexpr Int& operator=(Int<OtherMin, OtherMax> value) {
+		constexpr Int& operator=(Int<OtherMin, OtherMax> value)
+		{
 			_value = static_cast<integer_type>(value._value);
 #ifndef NDEBUG
 			if constexpr(OtherMin < Min)
@@ -149,13 +151,15 @@ namespace mirrage::util {
 
 		constexpr operator integer_type() const noexcept { return _value; }
 
-		constexpr Int operator-() const noexcept {
+		constexpr Int operator-() const noexcept
+		{
 			static_assert(is_signed, "Can't call unary minus on unsigned type!");
 			static_assert(Min >= 0, "Can't call unary minus on type with Min>=0");
 			return -_value;
 		}
 
-		constexpr Int operator++() noexcept {
+		constexpr Int operator++() noexcept
+		{
 #ifndef NDEBUG
 			if(_value >= Max)
 				MIRRAGE_FAIL("Integer overflow incrementing " << _value << " exceeds " << Max);
@@ -163,13 +167,15 @@ namespace mirrage::util {
 			++_value;
 			return *this;
 		}
-		constexpr Int operator++(int) noexcept {
+		constexpr Int operator++(int) noexcept
+		{
 			auto tmp = *this;
 			++(*this);
 			return tmp;
 		}
 
-		constexpr Int operator--() noexcept {
+		constexpr Int operator--() noexcept
+		{
 #ifndef NDEBUG
 			if(_value <= Min)
 				MIRRAGE_FAIL("Integer underflow decrementing " << _value << " below " << Min);
@@ -177,14 +183,16 @@ namespace mirrage::util {
 			--_value;
 			return *this;
 		}
-		constexpr Int operator--(int) noexcept {
+		constexpr Int operator--(int) noexcept
+		{
 			auto tmp = *this;
 			--(*this);
 			return tmp;
 		}
 
 
-		friend std::ostream& operator<<(std::ostream& os, const Int& v) {
+		friend std::ostream& operator<<(std::ostream& os, const Int& v)
+		{
 			if constexpr(is_signed)
 				return os << detail::Out_wrapper<std::int64_t>(static_cast<std::int64_t>(v._value));
 			else
@@ -196,7 +204,8 @@ namespace mirrage::util {
 	};
 
 	template <std::int64_t MinLhs, std::uint64_t MaxLhs, std::int64_t MinRhs, std::uint64_t MaxRhs>
-	auto operator+(Int<MinLhs, MaxLhs> lhs, Int<MinRhs, MaxRhs> rhs) {
+	auto operator+(Int<MinLhs, MaxLhs> lhs, Int<MinRhs, MaxRhs> rhs)
+	{
 		constexpr auto min = MinLhs + MinRhs;
 		constexpr auto max = MaxLhs + MaxRhs;
 		using T            = detail::compatible_type_t<max, (min < 0 || lhs.is_signed || rhs.is_signed)>;
@@ -221,7 +230,8 @@ namespace mirrage::util {
 		static constexpr auto min = static_cast<Type>(MinN) / static_cast<Type>(MinD);
 		static constexpr auto max = static_cast<Type>(MaxN) / static_cast<Type>(MaxD);
 
-		constexpr explicit Real(real_type value) : _value(value) {
+		constexpr explicit Real(real_type value) : _value(value)
+		{
 #ifndef NDEBUG
 			if(_value < min)
 				MIRRAGE_FAIL("Integer underflow assigning " << _value << " below " << min);
@@ -238,7 +248,8 @@ namespace mirrage::util {
 		          std::int64_t OtherMaxD,
 		          typename OtherType>
 		constexpr Real(Real<OtherMinN, OtherMinD, OtherMaxN, OtherMaxD, OtherType> value)
-		  : _value(static_cast<real_type>(value._value)) {
+		  : _value(static_cast<real_type>(value._value))
+		{
 #ifndef NDEBUG
 			if constexpr(decltype(value)::min < min)
 				if(_value < min)
@@ -250,7 +261,8 @@ namespace mirrage::util {
 #endif
 		}
 
-		constexpr Real& operator=(real_type value) {
+		constexpr Real& operator=(real_type value)
+		{
 			_value = value;
 #ifndef NDEBUG
 			if(_value < min)
@@ -268,7 +280,8 @@ namespace mirrage::util {
 		          std::int64_t OtherMaxN,
 		          std::int64_t OtherMaxD,
 		          typename OtherType>
-		constexpr Real& operator=(Real<OtherMinN, OtherMinD, OtherMaxN, OtherMaxD, OtherType> value) {
+		constexpr Real& operator=(Real<OtherMinN, OtherMinD, OtherMaxN, OtherMaxD, OtherType> value)
+		{
 			_value = static_cast<real_type>(value._value);
 #ifndef NDEBUG
 			if constexpr(decltype(value)::min < min)
@@ -283,13 +296,15 @@ namespace mirrage::util {
 
 		constexpr operator real_type() const noexcept { return _value; }
 
-		constexpr Real operator-() const noexcept {
+		constexpr Real operator-() const noexcept
+		{
 			static_assert(min >= 0, "Can't call unary minus on type with Min>=0");
 			return -_value;
 		}
 
 
-		friend std::ostream& operator<<(std::ostream& os, const Real& v) {
+		friend std::ostream& operator<<(std::ostream& os, const Real& v)
+		{
 			return os << detail::Out_wrapper<Type>(v._value);
 		}
 
@@ -306,11 +321,13 @@ namespace mirrage::util {
 
 		constexpr explicit operator bool() const noexcept { return _value; }
 
-		constexpr auto flip() noexcept {
+		constexpr auto flip() noexcept
+		{
 			_value = !_value;
 			return *this;
 		}
-		constexpr auto operator=(bool v) noexcept {
+		constexpr auto operator=(bool v) noexcept
+		{
 			_value = v;
 			return *this;
 		}

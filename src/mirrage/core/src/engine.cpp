@@ -22,7 +22,8 @@
 
 namespace mirrage {
 	namespace {
-		void init_sub_system(Uint32 f, const std::string& name, bool required = true) {
+		void init_sub_system(Uint32 f, const std::string& name, bool required = true)
+		{
 			if(SDL_InitSubSystem(f) != 0) {
 				auto m = "Could not initialize " + name + ": " + get_sdl_error();
 
@@ -45,11 +46,11 @@ namespace mirrage {
 
 		Engine_event_filter(Engine& engine) : Sdl_event_filter(engine.input()), _engine(engine) {}
 
-		bool propagate(SDL_Event& event) override {
+		bool propagate(SDL_Event& event) override
+		{
 			if(event.type == SDL_QUIT) {
 				_engine.exit();
 				return false;
-
 			} else if(event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_F12) {
 				_engine.assets().reload();
 				return false;
@@ -59,13 +60,15 @@ namespace mirrage {
 		}
 	};
 
-	auto get_sdl_error() -> std::string {
+	auto get_sdl_error() -> std::string
+	{
 		std::string sdl_error(SDL_GetError());
 		SDL_ClearError();
 		return sdl_error;
 	}
 
-	Engine::Sdl_wrapper::Sdl_wrapper(bool headless) {
+	Engine::Sdl_wrapper::Sdl_wrapper(bool headless)
+	{
 		MIRRAGE_INVARIANT(SDL_Init(0) == 0, "Could not initialize SDL: " << get_sdl_error());
 
 		if(!headless) {
@@ -107,7 +110,8 @@ namespace mirrage {
 	                           : std::make_unique<Engine_event_filter>(*this))
 	  , _net_manager(std::make_unique<net::Net_manager>())
 	  , _current_time(SDL_GetTicks() / 1000.0)
-	  , _headless(headless) {
+	  , _headless(headless)
+	{
 
 		_graphics_main_window.process([&](auto& window) {
 			_input_manager->viewport({0, 0, window.width(), window.height()});
@@ -130,14 +134,16 @@ namespace mirrage {
 		}
 	}
 
-	Engine::~Engine() noexcept {
+	Engine::~Engine() noexcept
+	{
 		_screens.clear();
 
 		assets().shrink_to_fit();
 	}
 
 	namespace {
-		float smooth(float curr) {
+		float smooth(float curr)
+		{
 			static float history[11]{};
 			static auto  i     = 0;
 			static auto  first = true;
@@ -169,7 +175,8 @@ namespace mirrage {
 		}
 	} // namespace
 
-	void Engine::on_frame() {
+	void Engine::on_frame()
+	{
 		_last_time               = _current_time;
 		_current_time            = util::current_time_sec();
 		auto delta_time          = std::max(0.f, static_cast<float>(_current_time - _last_time));

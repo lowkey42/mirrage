@@ -23,7 +23,8 @@ namespace mirrage::util {
 			bool is_nothing;
 
 			template <typename Func>
-			void on_nothing(Func f) {
+			void on_nothing(Func f)
+			{
 				if(is_nothing)
 					f();
 			}
@@ -39,22 +40,26 @@ namespace mirrage::util {
 		maybe(const maybe& o) noexcept : _valid(o._valid), _data(o._data) {}
 		maybe(maybe&& o) noexcept : _valid(o._valid), _data(std::move(o._data)) { o._valid = false; }
 
-		~maybe() noexcept {
+		~maybe() noexcept
+		{
 			if(is_some())
 				_data.~T();
 		}
 
-		operator maybe<const T>() const noexcept {
+		operator maybe<const T>() const noexcept
+		{
 			return is_some() ? maybe<const T>(_data) : maybe<const T>::nothing();
 		}
 		bool operator!() const noexcept { return is_nothing(); }
 
-		maybe& operator=(const maybe& o) noexcept {
+		maybe& operator=(const maybe& o) noexcept
+		{
 			_valid = o._valid;
 			_data  = o._data;
 			return *this;
 		}
-		maybe& operator=(maybe&& o) noexcept {
+		maybe& operator=(maybe&& o) noexcept
+		{
 			if(o._valid) {
 				if(_valid)
 					_data = std::move(o._data);
@@ -75,37 +80,43 @@ namespace mirrage::util {
 		bool is_some() const noexcept { return _valid; }
 		bool is_nothing() const noexcept { return !is_some(); }
 
-		T get_or_throw() && {
+		T get_or_throw() &&
+		{
 			MIRRAGE_INVARIANT(is_some(), "Called getOrThrow on nothing.");
 
 			return std::move(_data);
 		}
 		template <typename... Ms, typename = std::enable_if_t<sizeof...(Ms) >= 1>>
-		T get_or_throw(Ms&&... ms) && {
+		T get_or_throw(Ms&&... ms) &&
+		{
 			MIRRAGE_INVARIANT(is_some(), ... << std::forward<Ms>(ms));
 
 			return std::move(_data);
 		}
 
-		T& get_or_throw() & {
+		T& get_or_throw() &
+		{
 			MIRRAGE_INVARIANT(is_some(), "Called getOrThrow on nothing.");
 
 			return _data;
 		}
 		template <typename... Ms, typename = std::enable_if_t<sizeof...(Ms) >= 1>>
-		T& get_or_throw(Ms&&... ms) & {
+		T& get_or_throw(Ms&&... ms) &
+		{
 			MIRRAGE_INVARIANT(is_some(), ... << std::forward<Ms>(ms));
 
 			return _data;
 		}
 
-		const T& get_or_throw() const& {
+		const T& get_or_throw() const&
+		{
 			MIRRAGE_INVARIANT(is_some(), "Called getOrThrow on nothing.");
 
 			return _data;
 		}
 		template <typename... Ms, typename = std::enable_if_t<sizeof...(Ms) >= 1>>
-		const T& get_or_throw(Ms&&... ms) const& {
+		const T& get_or_throw(Ms&&... ms) const&
+		{
 			MIRRAGE_INVARIANT(is_some(), ... << std::forward<Ms>(ms));
 
 			return _data;
@@ -118,19 +129,22 @@ namespace mirrage::util {
 		template <typename Func,
 		          typename = std::enable_if_t<!std::is_convertible_v<Func&, const T&>>,
 		          typename = decltype(std::declval<Func>())>
-		T get_or(Func&& f) const noexcept {
+		T get_or(Func&& f) const noexcept
+		{
 			return is_some() ? _data : f();
 		}
 
 		template <typename Func,
 		          class = std::enable_if_t<std::is_same<std::result_of_t<Func(T&)>, void>::value>>
-		void process(Func&& f) const {
+		void process(Func&& f) const
+		{
 			if(is_some())
 				f(_data);
 		}
 		template <typename Func,
 		          class = std::enable_if_t<not std::is_same<std::result_of_t<Func(T&)>, void>::value>>
-		auto process(Func&& f) const -> maybe<std::result_of_t<Func(const T&)>> {
+		auto process(Func&& f) const -> maybe<std::result_of_t<Func(const T&)>>
+		{
 			if(is_some())
 				return f(_data);
 			else
@@ -139,13 +153,15 @@ namespace mirrage::util {
 
 		template <typename Func,
 		          class = std::enable_if_t<std::is_same<std::result_of_t<Func(T&)>, void>::value>>
-		void process(Func&& f) {
+		void process(Func&& f)
+		{
 			if(is_some())
 				f(_data);
 		}
 		template <typename Func,
 		          class = std::enable_if_t<not std::is_same<std::result_of_t<Func(T&)>, void>::value>>
-		auto process(Func&& f) -> maybe<std::result_of_t<Func(T&)>> {
+		auto process(Func&& f) -> maybe<std::result_of_t<Func(T&)>>
+		{
 			if(is_some())
 				return f(_data);
 			else
@@ -153,7 +169,8 @@ namespace mirrage::util {
 		}
 
 		template <typename RT, typename Func>
-		auto process(RT def, Func&& f) -> RT {
+		auto process(RT def, Func&& f) -> RT
+		{
 			if(is_some())
 				return f(_data);
 
@@ -161,7 +178,8 @@ namespace mirrage::util {
 		}
 
 		template <typename RT, typename Func>
-		auto process(RT def, Func&& f) const -> RT {
+		auto process(RT def, Func&& f) const -> RT
+		{
 			if(is_some())
 				return f(_data);
 
@@ -177,41 +195,48 @@ namespace mirrage::util {
 
 	struct nothing_t {
 		template <typename T>
-		operator maybe<T>() const noexcept {
+		operator maybe<T>() const noexcept
+		{
 			return maybe<T>::nothing();
 		}
 	};
 	constexpr nothing_t nothing;
 
 	template <typename T>
-	maybe<std::remove_reference_t<T>> just(T&& inst) {
+	maybe<std::remove_reference_t<T>> just(T&& inst)
+	{
 		return maybe<std::remove_reference_t<T>>(std::forward<T>(inst));
 	}
 	template <typename T>
-	maybe<T> justCopy(const T& inst) {
+	maybe<T> justCopy(const T& inst)
+	{
 		return maybe<T>(inst);
 	}
 	template <typename T>
-	maybe<T&> justPtr(T* inst) {
+	maybe<T&> justPtr(T* inst)
+	{
 		return inst != nullptr ? maybe<T&>(*inst) : nothing;
 	}
 
 	template <typename T, typename Func>
 	auto operator>>(const maybe<T>& t, Func f)
 	        -> std::enable_if_t<!std::is_same<void, decltype(f(t.get_or_throw()))>::value,
-	                            maybe<decltype(f(t.get_or_throw()))>> {
+	                            maybe<decltype(f(t.get_or_throw()))>>
+	{
 		return t.is_some() ? just(f(t.get_or_throw())) : nothing;
 	}
 
 	template <typename T, typename Func>
 	auto operator>>(const maybe<T>& t, Func f)
-	        -> std::enable_if_t<std::is_same<void, decltype(f(t.get_or_throw()))>::value, void> {
+	        -> std::enable_if_t<std::is_same<void, decltype(f(t.get_or_throw()))>::value, void>
+	{
 		if(t.is_some())
 			f(t.get_or_throw());
 	}
 
 	template <typename T>
-	bool operator!(const maybe<T>& m) {
+	bool operator!(const maybe<T>& m)
+	{
 		return !m.is_some();
 	}
 
@@ -222,28 +247,36 @@ namespace mirrage::util {
 		maybe() : _ref(nullptr) {}
 		/*implicit*/ maybe(T& data) noexcept : _ref(&data) {}
 		template <typename U, class = std::enable_if_t<std::is_convertible<U*, T*>::value>>
-		maybe(U& o) noexcept : _ref(&o) {}
+		maybe(U& o) noexcept : _ref(&o)
+		{
+		}
 		maybe(const maybe& o) noexcept : _ref(o._ref) {}
 		maybe(maybe&& o) noexcept : _ref(o._ref) { o._ref = nullptr; }
 		template <typename U, class = std::enable_if_t<std::is_convertible<U*, T*>::value>>
-		maybe(const maybe<U&>& o) noexcept : _ref(o._ref) {}
+		maybe(const maybe<U&>& o) noexcept : _ref(o._ref)
+		{
+		}
 		~maybe() noexcept = default;
 
-		operator maybe<const T&>() const noexcept {
+		operator maybe<const T&>() const noexcept
+		{
 			return is_some() ? maybe<const T&>(*_ref) : maybe<const T&>::nothing();
 		}
 		bool operator!() const noexcept { return is_nothing(); }
 
 		template <typename U, class = std::enable_if_t<std::is_convertible<U*, T*>::value>>
-		maybe& operator=(U& o) noexcept {
+		maybe& operator=(U& o) noexcept
+		{
 			_ref = &o;
 			return *this;
 		}
-		maybe& operator=(const maybe& o) noexcept {
+		maybe& operator=(const maybe& o) noexcept
+		{
 			_ref = o._ref;
 			return *this;
 		}
-		maybe& operator=(maybe&& o) noexcept {
+		maybe& operator=(maybe&& o) noexcept
+		{
 			std::swap(_ref = nullptr, o._ref);
 			return *this;
 		}
@@ -253,13 +286,15 @@ namespace mirrage::util {
 		bool is_some() const noexcept { return _ref != nullptr; }
 		bool is_nothing() const noexcept { return !is_some(); }
 
-		T& get_or_throw() const {
+		T& get_or_throw() const
+		{
 			MIRRAGE_INVARIANT(is_some(), "Called getOrThrow on nothing.");
 
 			return *_ref;
 		}
 		template <typename... Ms, typename = std::enable_if_t<sizeof...(Ms) >= 1>>
-		T& get_or_throw(Ms&&... ms) const {
+		T& get_or_throw(Ms&&... ms) const
+		{
 			MIRRAGE_INVARIANT(is_some(), ... << std::forward<Ms>(ms));
 
 			return *_ref;
@@ -270,19 +305,22 @@ namespace mirrage::util {
 		template <typename Func,
 		          typename = std::enable_if_t<!std::is_convertible_v<Func&, const T&>>,
 		          typename = decltype(std::declval<Func>())>
-		T& get_or(Func&& f) const noexcept {
+		T& get_or(Func&& f) const noexcept
+		{
 			return is_some() ? *_ref : f();
 		}
 
 		template <typename Func,
 		          class = std::enable_if_t<std::is_same<std::result_of_t<Func(T&)>, void>::value>>
-		void process(Func&& f) const {
+		void process(Func&& f) const
+		{
 			if(is_some())
 				f(*_ref);
 		}
 		template <typename Func,
 		          class = std::enable_if_t<not std::is_same<std::result_of_t<Func(T&)>, void>::value>>
-		auto process(Func&& f) const -> maybe<std::result_of_t<Func(const T&)>> {
+		auto process(Func&& f) const -> maybe<std::result_of_t<Func(const T&)>>
+		{
 			if(is_some())
 				return f(*_ref);
 			else
@@ -291,13 +329,15 @@ namespace mirrage::util {
 
 		template <typename Func,
 		          class = std::enable_if_t<std::is_same<std::result_of_t<Func(T&)>, void>::value>>
-		void process(Func&& f) {
+		void process(Func&& f)
+		{
 			if(is_some())
 				f(*_ref);
 		}
 		template <typename Func,
 		          class = std::enable_if_t<not std::is_same<std::result_of_t<Func(T&)>, void>::value>>
-		auto process(Func&& f) -> maybe<std::result_of_t<Func(T&)>> {
+		auto process(Func&& f) -> maybe<std::result_of_t<Func(T&)>>
+		{
 			if(is_some())
 				return f(*_ref);
 			else
@@ -305,7 +345,8 @@ namespace mirrage::util {
 		}
 
 		template <typename RT, typename Func>
-		auto process(RT def, Func&& f) -> RT {
+		auto process(RT def, Func&& f) -> RT
+		{
 			if(is_some())
 				return f(get_or_throw());
 
@@ -313,7 +354,8 @@ namespace mirrage::util {
 		}
 
 		template <typename RT, typename Func>
-		auto process(RT def, Func&& f) const -> RT {
+		auto process(RT def, Func&& f) const -> RT
+		{
 			if(is_some())
 				return f(get_or_throw());
 
@@ -326,10 +368,12 @@ namespace mirrage::util {
 
 	namespace details {
 		template <std::size_t...>
-		struct seq {};
+		struct seq {
+		};
 
 		template <std::size_t N, std::size_t... S>
-		struct gens : gens<N - 1u, N - 1u, S...> {};
+		struct gens : gens<N - 1u, N - 1u, S...> {
+		};
 
 		template <std::size_t... S>
 		struct gens<0u, S...> {
@@ -341,18 +385,21 @@ namespace mirrage::util {
 			std::tuple<T&&...> args;
 
 			template <typename Func>
-			void operator>>(Func&& f) {
+			void operator>>(Func&& f)
+			{
 				call(std::forward<Func>(f), typename gens<sizeof...(T)>::type());
 			}
 
 		  private:
 			template <typename Func, int... S>
-			void call(Func&& f, seq<S...>) {
+			void call(Func&& f, seq<S...>)
+			{
 				call(std::forward<Func>(f), std::forward<decltype(std::get<S>(args))>(std::get<S>(args))...);
 			}
 
 			template <typename Func, typename... Args>
-			void call(Func&& f, Args&&... m) {
+			void call(Func&& f, Args&&... m)
+			{
 				for(bool b : {m.is_some()...})
 					if(!b)
 						return;
@@ -373,12 +420,14 @@ namespace mirrage::util {
 	 *	};
 	 */
 	template <typename... T>
-	auto process(T&&... m) -> details::processor<T...> {
+	auto process(T&&... m) -> details::processor<T...>
+	{
 		return details::processor<T...>{std::tuple<decltype(m)...>(std::forward<T>(m)...)};
 	}
 
 	template <class Map, class Key>
-	auto find_maybe(Map& map, const Key& key) {
+	auto find_maybe(Map& map, const Key& key)
+	{
 		auto iter = map.find(key);
 		return iter != map.end() ? justPtr(&iter->second) : nothing;
 	}
@@ -397,7 +446,8 @@ namespace mirrage::util {
 	};
 
 	template <typename T>
-	inline lazy<T> later(typename lazy<T>::source_t f) {
+	inline lazy<T> later(typename lazy<T>::source_t f)
+	{
 		return lazy<T>(f);
 	}
 
@@ -415,7 +465,8 @@ namespace mirrage::util {
 	};
 
 	template <typename S, typename T>
-	inline lazy<T> later(S* s, T (S::*f)()) {
+	inline lazy<T> later(S* s, T (S::*f)())
+	{
 		std::weak_ptr<S> weak_s = s->shared_from_this();
 
 		return lazy<T>([weak_s, f]() {
@@ -423,7 +474,6 @@ namespace mirrage::util {
 			if(shared_s) {
 				auto s = shared_s.get();
 				return (s->*f)();
-
 			} else {
 				return T{};
 			}

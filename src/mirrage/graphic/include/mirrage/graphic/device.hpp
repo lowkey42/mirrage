@@ -41,12 +41,14 @@ namespace mirrage::graphic {
 		auto get_queue(Queue_tag) -> vk::Queue;
 		auto get_queue_family(Queue_tag) -> std::uint32_t;
 
-		auto get_single_swapchain() -> auto& {
+		auto get_single_swapchain() -> auto&
+		{
 			MIRRAGE_INVARIANT(_swapchains.size() == 1,
 			                  "Wrong number of swapchains found: " << _swapchains.size());
 			return _swapchains.begin()->second;
 		}
-		auto get_swapchain(const std::string& id) -> auto& {
+		auto get_swapchain(const std::string& id) -> auto&
+		{
 			auto it = _swapchains.find(id);
 			MIRRAGE_INVARIANT(it != _swapchains.end(), "Unknown spawchain: " + id);
 			return it->second;
@@ -112,12 +114,14 @@ namespace mirrage::graphic {
 		auto transfer() -> auto& { return _transfer_manager; }
 
 		template <typename T>
-		auto destroy_after_frame(T&& obj) -> T& {
+		auto destroy_after_frame(T&& obj) -> T&
+		{
 			return _delete_queue.destroy_later(std::forward<T>(obj));
 		}
 
 		auto finish_frame(vk::CommandBuffer transfer_barriers)
-		        -> std::tuple<vk::Fence, util::maybe<vk::Semaphore>> {
+		        -> std::tuple<vk::Fence, util::maybe<vk::Semaphore>>
+		{
 			auto semaphore = _transfer_manager.next_frame(transfer_barriers);
 			return std::make_tuple(_delete_queue.start_new_frame(), std::move(semaphore));
 		}
@@ -129,12 +133,14 @@ namespace mirrage::graphic {
 
 		auto context() -> auto& { return util::Registered<Device, Context>::parent(); }
 
-		void wait_idle() {
+		void wait_idle()
+		{
 			_device->waitIdle();
 			_delete_queue.clear();
 		}
 
-		auto is_unified_memory_architecture() const noexcept {
+		auto is_unified_memory_architecture() const noexcept
+		{
 			return _memory_allocator.is_unified_memory_architecture();
 		}
 

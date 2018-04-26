@@ -40,10 +40,12 @@ namespace mirrage::ecs {
 		constexpr void    revision(uint8_t revision) noexcept { _revision = revision; }
 		void              increment_revision() noexcept { _revision++; }
 
-		constexpr packed_t pack() const noexcept {
+		constexpr packed_t pack() const noexcept
+		{
 			return static_cast<packed_t>(_id) << 4 | static_cast<packed_t>(_revision);
 		}
-		static constexpr Entity_handle unpack(packed_t d) noexcept {
+		static constexpr Entity_handle unpack(packed_t d) noexcept
+		{
 			return Entity_handle{static_cast<int32_t>(d >> 4), static_cast<uint8_t>(d & 0b1111)};
 		}
 
@@ -52,24 +54,29 @@ namespace mirrage::ecs {
 		uint8_t _revision : 4;
 	};
 
-	constexpr inline bool operator==(const Entity_handle& lhs, const Entity_handle& rhs) noexcept {
+	constexpr inline bool operator==(const Entity_handle& lhs, const Entity_handle& rhs) noexcept
+	{
 		return lhs.id() == rhs.id() && lhs.revision() == rhs.revision();
 	}
-	constexpr inline bool operator!=(const Entity_handle& lhs, const Entity_handle& rhs) noexcept {
+	constexpr inline bool operator!=(const Entity_handle& lhs, const Entity_handle& rhs) noexcept
+	{
 		return lhs.id() != rhs.id() || lhs.revision() != rhs.revision();
 	}
-	inline bool operator<(const Entity_handle& lhs, const Entity_handle& rhs) noexcept {
+	inline bool operator<(const Entity_handle& lhs, const Entity_handle& rhs) noexcept
+	{
 		return std::make_tuple(lhs.id(), lhs.revision()) < std::make_tuple(rhs.id(), rhs.revision());
 	}
 
 	static_assert(sizeof(Entity_handle::packed_t) <= sizeof(void*),
 	              "what the hell is wrong with your plattform?!");
 
-	inline Entity_handle to_entity_handle(void* u) {
+	inline Entity_handle to_entity_handle(void* u)
+	{
 		return Entity_handle::unpack(
 		        static_cast<Entity_handle::packed_t>(reinterpret_cast<std::intptr_t>(u)));
 	}
-	inline void* to_void_ptr(Entity_handle h) {
+	inline void* to_void_ptr(Entity_handle h)
+	{
 		return reinterpret_cast<void*>(static_cast<std::intptr_t>(h.pack()));
 	}
 
@@ -87,7 +94,8 @@ namespace mirrage::ecs {
 		Entity_handle_generator(Entity_id max = 128) { _slots.resize(static_cast<std::size_t>(max)); }
 
 		// thread-safe
-		auto get_new() -> Entity_handle {
+		auto get_new() -> Entity_handle
+		{
 			Entity_handle h;
 			if(_free.try_dequeue(h)) {
 				auto& rev          = util::at(_slots, static_cast<std::size_t>(h.id() - 1));
@@ -106,14 +114,16 @@ namespace mirrage::ecs {
 		}
 
 		// thread-safe
-		auto valid(Entity_handle h) const noexcept -> bool {
+		auto valid(Entity_handle h) const noexcept -> bool
+		{
 			return h
 			       && (static_cast<Entity_id>(_slots.size()) <= h.id() - 1
 			           || util::at(_slots, static_cast<std::size_t>(h.id() - 1)) == h.revision());
 		}
 
 		// NOT thread-safe
-		auto free(Entity_handle h) -> Entity_handle {
+		auto free(Entity_handle h) -> Entity_handle
+		{
 			if(h.id() - 1 >= static_cast<Entity_id>(_slots.size())) {
 				_slots.resize(static_cast<std::size_t>(h.id() - 1) * 2, 0);
 			}
@@ -132,7 +142,8 @@ namespace mirrage::ecs {
 		}
 
 		// NOT thread-safe
-		auto next(Entity_handle curr = invalid_entity) const -> Entity_handle {
+		auto next(Entity_handle curr = invalid_entity) const -> Entity_handle
+		{
 			// internal_id = external_id - 1, so we don't need to increment it here
 			auto end = _next_free_slot.load();
 
@@ -151,7 +162,8 @@ namespace mirrage::ecs {
 		}
 
 		// NOT thread-safe
-		void clear() {
+		void clear()
+		{
 			_slots.clear();
 			_slots.resize(_slots.capacity(), 0);
 			_next_free_slot = 0;

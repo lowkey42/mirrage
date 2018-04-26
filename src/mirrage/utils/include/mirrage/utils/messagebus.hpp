@@ -76,7 +76,8 @@ namespace mirrage::util {
 		void update_subscriptions();
 
 		template <typename Msg, typename... Arg>
-		void send(Arg&&... arg) {
+		void send(Arg&&... arg)
+		{
 			send_msg(Msg{std::forward<Arg>(arg)...});
 		}
 
@@ -113,7 +114,8 @@ namespace mirrage::util {
 		void update();
 
 		template <typename Msg, typename... Arg>
-		void send(Arg&&... arg) {
+		void send(Arg&&... arg)
+		{
 			send_msg(Msg{std::forward<Arg>(arg)...});
 		}
 
@@ -130,7 +132,8 @@ namespace mirrage::util {
 			template <typename T>
 			void exec_send(const T& m, void* src);
 
-			bool operator==(const Mailbox_ref& rhs) const noexcept {
+			bool operator==(const Mailbox_ref& rhs) const noexcept
+			{
 				return _type == rhs._type && _mailbox == rhs._mailbox;
 			}
 
@@ -140,7 +143,8 @@ namespace mirrage::util {
 			bool                                    _deleted = false;
 		};
 
-		auto& group(type_uid_t id) {
+		auto& group(type_uid_t id)
+		{
 			if(std::size_t(id) >= _mb_groups.size()) {
 				_mb_groups.resize(id + 1);
 				_mb_groups.back().reserve(4);

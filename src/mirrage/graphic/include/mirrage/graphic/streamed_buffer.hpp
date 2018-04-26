@@ -22,7 +22,8 @@ namespace mirrage::graphic {
 		void update(vk::DeviceSize dest_offset, gsl::span<const char> data);
 
 		template <class T>
-		void update_objs(vk::DeviceSize dest_offset, gsl::span<T> obj) {
+		void update_objs(vk::DeviceSize dest_offset, gsl::span<T> obj)
+		{
 			static_assert(std::is_standard_layout<T>::value, "");
 			update(dest_offset,
 			       gsl::span<const char>(reinterpret_cast<const char*>(obj.data()), obj.size_bytes()));
@@ -30,7 +31,8 @@ namespace mirrage::graphic {
 
 		void flush(Command_buffer cb, vk::PipelineStageFlags next_stage, vk::AccessFlags next_access);
 
-		auto buffer() const noexcept {
+		auto buffer() const noexcept
+		{
 			return *_read_buffer.get_or_throw("flush() has never been called on this buffer!");
 		}
 		auto capacity() const noexcept { return _capacity; }

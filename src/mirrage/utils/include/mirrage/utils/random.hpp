@@ -36,7 +36,8 @@ namespace mirrage::util {
 		};
 
 		template <class T, size_t bits, class Generator>
-		auto generate_canonical(Generator& gen) -> T {
+		auto generate_canonical(Generator& gen) -> T
+		{
 			constexpr auto dt    = std::numeric_limits<T>::digits;
 			constexpr auto b     = dt < bits ? dt : bits;
 			constexpr auto log_r = log2<uint64_t, Generator::max() - Generator::min() + uint64_t(1)>::value;
@@ -52,18 +53,21 @@ namespace mirrage::util {
 
 	using random_generator = std::mt19937_64;
 
-	inline auto create_random_generator() -> random_generator {
+	inline auto create_random_generator() -> random_generator
+	{
 		//static std::random_device rd;
 		return random_generator(std::time(0));
 	}
 
 	template <class T, class Generator>
-	auto random_real(Generator& gen, T min, T max) -> T {
+	auto random_real(Generator& gen, T min, T max) -> T
+	{
 		return (max - min) * details::generate_canonical<T, std::numeric_limits<T>::digits>(gen) + min;
 	}
 
 	template <class T, class Generator>
-	auto random_int(Generator& gen, T min, T max) -> T {
+	auto random_int(Generator& gen, T min, T max) -> T
+	{
 		auto v = (max - min) * details::generate_canonical<float, std::numeric_limits<T>::digits>(gen) + min;
 
 		return v;
@@ -71,7 +75,8 @@ namespace mirrage::util {
 
 	/*bernoulli_distribution*/
 	template <class Generator>
-	auto random_bool(Generator& gen, float prop) {
+	auto random_bool(Generator& gen, float prop)
+	{
 		auto v = random_real(gen, 0.f, 1.f);
 		return v < prop;
 	}

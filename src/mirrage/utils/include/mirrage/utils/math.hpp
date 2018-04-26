@@ -39,12 +39,14 @@ namespace mirrage::util {
 
 	// min
 	template <typename FirstT>
-	constexpr auto min(FirstT&& first) {
+	constexpr auto min(FirstT&& first)
+	{
 		return first;
 	}
 
 	template <typename FirstT, typename SecondT>
-	constexpr auto min(FirstT&& first, SecondT&& second) {
+	constexpr auto min(FirstT&& first, SecondT&& second)
+	{
 		using result_t = details::min_max_result_t<FirstT, SecondT>;
 
 		if(static_cast<result_t>(first) < static_cast<result_t>(second))
@@ -55,19 +57,22 @@ namespace mirrage::util {
 
 	template <typename FirstT, typename SecondT, typename... Ts>
 	constexpr auto min(FirstT&& first, SecondT&& second, Ts&&... rest)
-	        -> details::min_max_result_t<FirstT, SecondT, Ts...> {
+	        -> details::min_max_result_t<FirstT, SecondT, Ts...>
+	{
 		return min(min(std::forward<FirstT>(first), std::forward<SecondT>(second)),
 		           std::forward<Ts>(rest)...);
 	}
 
 	// max
 	template <typename FirstT>
-	constexpr auto max(FirstT&& first) {
+	constexpr auto max(FirstT&& first)
+	{
 		return first;
 	}
 
 	template <typename FirstT, typename SecondT>
-	constexpr auto max(FirstT&& first, SecondT&& second) {
+	constexpr auto max(FirstT&& first, SecondT&& second)
+	{
 		using result_t = details::min_max_result_t<FirstT, SecondT>;
 
 		if(static_cast<result_t>(second) < static_cast<result_t>(first))
@@ -78,14 +83,16 @@ namespace mirrage::util {
 
 	template <typename FirstT, typename SecondT, typename... Ts>
 	constexpr auto max(FirstT&& first, SecondT&& second, Ts&&... rest)
-	        -> details::min_max_result_t<FirstT, SecondT, Ts...> {
+	        -> details::min_max_result_t<FirstT, SecondT, Ts...>
+	{
 		return max(max(std::forward<FirstT>(first), std::forward<SecondT>(second)),
 		           std::forward<Ts>(rest)...);
 	}
 
 
 	template <typename Pos, typename Vel>
-	auto spring(Pos source, Vel v, Pos target, float damping, float freq, Time t) -> std::tuple<Pos, Vel> {
+	auto spring(Pos source, Vel v, Pos target, float damping, float freq, Time t) -> std::tuple<Pos, Vel>
+	{
 		auto f      = remove_unit(1 + 2 * t * damping * freq);
 		auto tff    = remove_unit(t * freq * freq);
 		auto ttff   = remove_unit(t * tff);

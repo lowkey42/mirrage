@@ -11,17 +11,21 @@
 namespace mirrage::renderer {
 
 	Deferred_geometry_subpass::Deferred_geometry_subpass(Deferred_renderer& r, ecs::Entity_manager& entities)
-	  : _renderer(r), _models(entities.list<Model_comp>()) {}
+	  : _renderer(r), _models(entities.list<Model_comp>())
+	{
+	}
 
 	void Deferred_geometry_subpass::configure_pipeline(Deferred_renderer&             renderer,
-	                                                   graphic::Pipeline_description& p) {
+	                                                   graphic::Pipeline_description& p)
+	{
 
 		p.rasterization.cullMode = vk::CullModeFlagBits::eNone;
 		p.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 		p.vertex<Model_vertex>(
 		        0, false, 0, &Model_vertex::position, 1, &Model_vertex::normal, 2, &Model_vertex::tex_coords);
 	}
-	void Deferred_geometry_subpass::configure_subpass(Deferred_renderer&, graphic::Subpass_builder& pass) {
+	void Deferred_geometry_subpass::configure_subpass(Deferred_renderer&, graphic::Subpass_builder& pass)
+	{
 		pass.stage("default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
@@ -34,8 +38,8 @@ namespace mirrage::renderer {
 	void Deferred_geometry_subpass::update(util::Time) {}
 	void Deferred_geometry_subpass::pre_draw(vk::CommandBuffer& command_buffer) {}
 
-	void Deferred_geometry_subpass::draw(vk::CommandBuffer&    command_buffer,
-	                                     graphic::Render_pass& render_pass) {
+	void Deferred_geometry_subpass::draw(vk::CommandBuffer& command_buffer, graphic::Render_pass& render_pass)
+	{
 		auto _ = _renderer.profiler().push("Geometry");
 
 		Deferred_push_constants dpc{};

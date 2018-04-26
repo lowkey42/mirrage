@@ -19,7 +19,8 @@ namespace mirrage::renderer {
 		                            vk::DescriptorSetLayout    desc_set_layout,
 		                            vk::Format                 format,
 		                            graphic::Render_target_2D& target_buffer,
-		                            graphic::Framebuffer&      out_framebuffer) {
+		                            graphic::Framebuffer&      out_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -85,7 +86,8 @@ namespace mirrage::renderer {
 		                            graphic::Render_target_2D& blur_buffer,
 		                            graphic::Render_target_2D& result_buffer,
 		                            graphic::Framebuffer&      out_blur_framebuffer,
-		                            graphic::Framebuffer&      out_result_framebuffer) {
+		                            graphic::Framebuffer&      out_result_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -151,7 +153,8 @@ namespace mirrage::renderer {
 			return render_pass;
 		}
 
-		auto get_ao_format(graphic::Device& device) {
+		auto get_ao_format(graphic::Device& device)
+		{
 			auto format = device.get_supported_format(
 			        {vk::Format::eR8G8B8Unorm, vk::Format::eR8G8B8A8Unorm},
 			        vk::FormatFeatureFlagBits::eColorAttachment
@@ -208,7 +211,8 @@ namespace mirrage::renderer {
 	  , _blur_descriptor_set_horizontal(_descriptor_set_layout.create_set(
 	            renderer.descriptor_pool(), {renderer.gbuffer().depth.view(), _ao_result_buffer.view(0)}))
 	  , _blur_descriptor_set_vertical(_descriptor_set_layout.create_set(
-	            renderer.descriptor_pool(), {renderer.gbuffer().depth.view(), _blur_buffer.view(0)})) {
+	            renderer.descriptor_pool(), {renderer.gbuffer().depth.view(), _blur_buffer.view(0)}))
+	{
 
 		MIRRAGE_INVARIANT(!renderer.gbuffer().ambient_occlusion,
 		                  "More than one ambient occlusion implementation activ!");
@@ -221,7 +225,8 @@ namespace mirrage::renderer {
 	void Ssao_pass::draw(vk::CommandBuffer& command_buffer,
 	                     Command_buffer_source&,
 	                     vk::DescriptorSet global_uniform_set,
-	                     std::size_t) {
+	                     std::size_t)
+	{
 
 		if(!_renderer.settings().ssao) {
 			graphic::clear_texture(command_buffer,
@@ -275,17 +280,21 @@ namespace mirrage::renderer {
 	auto Ssao_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                    ecs::Entity_manager&      entities,
 	                                    util::maybe<Meta_system&> meta_system,
-	                                    bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
+	                                    bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	{
 		return std::make_unique<Ssao_pass>(renderer);
 	}
 
 	auto Ssao_pass_factory::rank_device(vk::PhysicalDevice,
 	                                    util::maybe<std::uint32_t> graphics_queue,
-	                                    int                        current_score) -> int {
+	                                    int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Ssao_pass_factory::configure_device(vk::PhysicalDevice,
 	                                         util::maybe<std::uint32_t>,
-	                                         graphic::Device_create_info&) {}
+	                                         graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

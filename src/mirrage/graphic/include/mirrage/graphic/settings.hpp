@@ -32,19 +32,20 @@ namespace mirrage::graphic {
 	};
 
 
-	inline auto default_window_settings(int display = 0) -> Window_settings {
+	inline auto default_window_settings(int display = 0) -> Window_settings
+	{
 		return Window_settings{1280, 720, display, Fullscreen::no};
 	}
-	inline auto default_settings(int display = 0) -> Graphics_settings {
+	inline auto default_settings(int display = 0) -> Graphics_settings
+	{
 		auto settings            = Graphics_settings{};
 		settings.windows["Main"] = default_window_settings(display);
 
 		return settings;
 	}
 
-	inline constexpr auto make_version_number(std::uint32_t major,
-	                                          std::uint32_t minor,
-	                                          std::uint32_t patch) {
+	inline constexpr auto make_version_number(std::uint32_t major, std::uint32_t minor, std::uint32_t patch)
+	{
 		return (((major) << 22) | ((minor) << 12) | (patch));
 	}
 

@@ -23,7 +23,8 @@ namespace mirrage::graphic {
 	using namespace util::unit_literals;
 
 	namespace {
-		void sdl_error_check() {
+		void sdl_error_check()
+		{
 			const char* err = SDL_GetError();
 			if(*err != '\0') {
 				std::string errorStr(err);
@@ -32,7 +33,8 @@ namespace mirrage::graphic {
 			}
 		}
 
-		auto sdl_fullscreen_flag(Fullscreen f) -> SDL_WindowFlags {
+		auto sdl_fullscreen_flag(Fullscreen f) -> SDL_WindowFlags
+		{
 			if(f == Fullscreen::no) {
 				return SDL_WindowFlags(0);
 			}
@@ -49,7 +51,8 @@ namespace mirrage::graphic {
 	  , _width(width)
 	  , _height(height)
 	  , _fullscreen(fullscreen)
-	  , _window(nullptr, SDL_DestroyWindow) {
+	  , _window(nullptr, SDL_DestroyWindow)
+	{
 
 		auto win_flags = Uint32(SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI
 		                        | sdl_fullscreen_flag(fullscreen));
@@ -70,7 +73,8 @@ namespace mirrage::graphic {
 	}
 	Window::~Window() = default;
 
-	void Window::create_surface(Context& context) {
+	void Window::create_surface(Context& context)
+	{
 		if(_surface)
 			return;
 
@@ -81,13 +85,15 @@ namespace mirrage::graphic {
 	}
 
 
-	void Window::on_present() {
+	void Window::on_present()
+	{
 		auto present_started = util::current_time_sec();
 
 		_update_fps_timer(present_started);
 	}
 
-	void Window::_update_fps_timer(double present_started) {
+	void Window::_update_fps_timer(double present_started)
+	{
 		auto delta_time = static_cast<float>(util::current_time_sec() - _frame_start_time);
 
 		float smooth_factor  = 0.1f;
@@ -111,12 +117,14 @@ namespace mirrage::graphic {
 		_frame_start_time = util::current_time_sec();
 	}
 
-	void Window::title(const std::string& title) {
+	void Window::title(const std::string& title)
+	{
 		_title = title;
 		SDL_SetWindowTitle(_window.get(), title.c_str());
 	}
 
-	bool Window::dimensions(int& width, int& height, Fullscreen fullscreen) {
+	bool Window::dimensions(int& width, int& height, Fullscreen fullscreen)
+	{
 		SDL_DisplayMode target, closest;
 		target.w            = width;
 		target.h            = height;

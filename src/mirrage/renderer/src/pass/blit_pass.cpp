@@ -6,7 +6,8 @@ namespace mirrage::renderer {
 	namespace {
 		auto build_render_pass(Deferred_renderer&                 renderer,
 		                       vk::DescriptorSetLayout            desc_set_layout,
-		                       std::vector<graphic::Framebuffer>& out_framebuffers) {
+		                       std::vector<graphic::Framebuffer>& out_framebuffers)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -90,7 +91,9 @@ namespace mirrage::renderer {
 	                                               renderer.gbuffer().bloom.get_or(src).view()}))
 	  , _render_pass(build_render_pass(renderer, *_descriptor_set_layout, _framebuffers))
 	  , _tone_mapping_enabled(renderer.gbuffer().avg_log_luminance.is_some())
-	  , _bloom_enabled(renderer.gbuffer().bloom.is_some()) {}
+	  , _bloom_enabled(renderer.gbuffer().bloom.is_some())
+	{
+	}
 
 
 	void Blit_pass::update(util::Time dt) {}
@@ -98,7 +101,8 @@ namespace mirrage::renderer {
 	void Blit_pass::draw(vk::CommandBuffer& command_buffer,
 	                     Command_buffer_source&,
 	                     vk::DescriptorSet global_uniform_set,
-	                     std::size_t       swapchain_image) {
+	                     std::size_t       swapchain_image)
+	{
 
 		_render_pass.execute(command_buffer, _framebuffers.at(swapchain_image), [&] {
 			auto descriptor_sets = std::array<vk::DescriptorSet, 3>{
@@ -121,7 +125,8 @@ namespace mirrage::renderer {
 	auto Blit_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                    ecs::Entity_manager&      entities,
 	                                    util::maybe<Meta_system&> meta_system,
-	                                    bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
+	                                    bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	{
 		auto& color_src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		return std::make_unique<Blit_pass>(renderer, entities, meta_system, color_src);
@@ -129,11 +134,14 @@ namespace mirrage::renderer {
 
 	auto Blit_pass_factory::rank_device(vk::PhysicalDevice,
 	                                    util::maybe<std::uint32_t> graphics_queue,
-	                                    int                        current_score) -> int {
+	                                    int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Blit_pass_factory::configure_device(vk::PhysicalDevice,
 	                                         util::maybe<std::uint32_t>,
-	                                         graphic::Device_create_info&) {}
+	                                         graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

@@ -36,10 +36,13 @@ namespace mirrage::graphic {
 
 		Pipeline_stage() = default;
 		Pipeline_stage(Shader_stage stage, asset::Ptr<Shader_module> shader, std::string entry_point)
-		  : stage(stage), shader(std::move(shader)), entry_point(std::move(entry_point)) {}
+		  : stage(stage), shader(std::move(shader)), entry_point(std::move(entry_point))
+		{
+		}
 
 		template <class T>
-		void add_constant(std::uint32_t id, const T& data) {
+		void add_constant(std::uint32_t id, const T& data)
+		{
 			add_constant(id, gsl::span<const char>(reinterpret_cast<const char*>(&data), sizeof(T)));
 		}
 
@@ -67,7 +70,8 @@ namespace mirrage::graphic {
 
 
 		template <class T, class... Member>
-		void vertex(int binding, bool per_instance_data, Member&&... members) {
+		void vertex(int binding, bool per_instance_data, Member&&... members)
+		{
 			if(binding < 0)
 				binding = vertex_bindings.size();
 
@@ -117,7 +121,8 @@ namespace mirrage::graphic {
 		vk::PipelineLayoutCreateInfo pipeline_layout;
 
 		template <class Member>
-		void add_vertex_attributes(int binding, int location, std::size_t offset) {
+		void add_vertex_attributes(int binding, int location, std::size_t offset)
+		{
 			static_assert(util::dependent_false<Member>, "Unknown type");
 			MIRRAGE_FAIL("Unknown type passed to add_vertex_attributes(...)");
 		}
@@ -133,7 +138,8 @@ namespace mirrage::graphic {
 
 		template <typename... T>
 		auto shader(const asset::AID& aid, Shader_stage stage, std::string entry_point, T&&... constants)
-		        -> Stage_builder& {
+		        -> Stage_builder&
+		{
 			shader(aid, stage, entry_point);
 			util::apply2(
 			        [&](auto&& id, auto&& value) {
@@ -146,7 +152,8 @@ namespace mirrage::graphic {
 		}
 
 		template <class T, class... Member>
-		auto vertex(int binding, bool per_instance_data, Member&&... members) -> Stage_builder& {
+		auto vertex(int binding, bool per_instance_data, Member&&... members) -> Stage_builder&
+		{
 			pipeline().vertex(binding, per_instance_data, std::forward<Member>(members)...);
 			return *this;
 		}
@@ -232,9 +239,13 @@ namespace mirrage::graphic {
 		Framebuffer_attachment_desc() = default;
 		Framebuffer_attachment_desc(vk::ImageView v, util::Rgba color)
 		  : image_view(v)
-		  , clear_value(vk::ClearColorValue(std::array<float, 4>{color.r, color.g, color.b, color.a})) {}
+		  , clear_value(vk::ClearColorValue(std::array<float, 4>{color.r, color.g, color.b, color.a}))
+		{
+		}
 		Framebuffer_attachment_desc(vk::ImageView v, float depth, std::uint32_t stencil = 0)
-		  : image_view(v), clear_value(vk::ClearDepthStencilValue(depth, stencil)) {}
+		  : image_view(v), clear_value(vk::ClearDepthStencilValue(depth, stencil))
+		{
+		}
 	};
 
 	class Render_pass_builder {
@@ -258,7 +269,8 @@ namespace mirrage::graphic {
 		                       int                                    layers = 1) -> Framebuffer;
 
 		auto build_framebuffer(Framebuffer_attachment_desc attachment, int width, int height, int layers = 1)
-		        -> Framebuffer {
+		        -> Framebuffer
+		{
 			return build_framebuffer(
 			        gsl::span<Framebuffer_attachment_desc>{&attachment, 1}, width, height, layers);
 		}
@@ -298,23 +310,27 @@ namespace mirrage::graphic {
 		void push_constant(util::Str_id id, gsl::span<const char> data);
 
 		template <class T>
-		void push_constant(util::Str_id id, T&& t) {
+		void push_constant(util::Str_id id, T&& t)
+		{
 			push_constant(id, gsl::span<const char>(reinterpret_cast<const char*>(&t), sizeof(T)));
 		}
 
-		void bind_descriptor_set(std::uint32_t firstSet, vk::DescriptorSet set) {
+		void bind_descriptor_set(std::uint32_t firstSet, vk::DescriptorSet set)
+		{
 			bind_descriptor_sets(firstSet, {&set, 1});
 		}
 		void bind_descriptor_sets(std::uint32_t firstSet, gsl::span<const vk::DescriptorSet>);
 
 		template <typename F>
-		void execute(const Command_buffer& buffer, const Framebuffer& fb, F&& f) {
+		void execute(const Command_buffer& buffer, const Framebuffer& fb, F&& f)
+		{
 			_pre(buffer, fb);
 			f();
 			_post();
 		}
 
-		void unsafe_begin_renderpass(const Command_buffer& buffer, const Framebuffer& fb) {
+		void unsafe_begin_renderpass(const Command_buffer& buffer, const Framebuffer& fb)
+		{
 			_pre(buffer, fb);
 		}
 		void unsafe_end_renderpass() { _post(); }
@@ -352,79 +368,92 @@ namespace mirrage::graphic {
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<float>(int         binding,
 	                                                               int         location,
-	                                                               std::size_t offset) {
+	                                                               std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32Sfloat, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<std::int32_t>(int         binding,
 	                                                                      int         location,
-	                                                                      std::size_t offset) {
+	                                                                      std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32Sint, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<std::uint32_t>(int         binding,
 	                                                                       int         location,
-	                                                                       std::size_t offset) {
+	                                                                       std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32Uint, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::vec2>(int         binding,
 	                                                                   int         location,
-	                                                                   std::size_t offset) {
+	                                                                   std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32Sfloat, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::ivec2>(int         binding,
 	                                                                    int         location,
-	                                                                    std::size_t offset) {
+	                                                                    std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32Sint, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::uvec2>(int         binding,
 	                                                                    int         location,
-	                                                                    std::size_t offset) {
+	                                                                    std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32Uint, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::vec3>(int         binding,
 	                                                                   int         location,
-	                                                                   std::size_t offset) {
+	                                                                   std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32Sfloat, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::ivec3>(int         binding,
 	                                                                    int         location,
-	                                                                    std::size_t offset) {
+	                                                                    std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32Sint, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::uvec3>(int         binding,
 	                                                                    int         location,
-	                                                                    std::size_t offset) {
+	                                                                    std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32Uint, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::vec4>(int         binding,
 	                                                                   int         location,
-	                                                                   std::size_t offset) {
+	                                                                   std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32A32Sfloat, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::ivec4>(int         binding,
 	                                                                    int         location,
-	                                                                    std::size_t offset) {
+	                                                                    std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32A32Sint, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::uvec4>(int         binding,
 	                                                                    int         location,
-	                                                                    std::size_t offset) {
+	                                                                    std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32A32Uint, offset);
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<std::uint8_t (&)[4]>(int         binding,
 	                                                                             int         location,
-	                                                                             std::size_t offset) {
+	                                                                             std::size_t offset)
+	{
 		vertex_attributes.emplace_back(location, binding, vk::Format::eR8G8B8A8Unorm, offset);
 	}
 } // namespace mirrage::graphic
@@ -437,7 +466,8 @@ namespace mirrage::asset {
 		Loader(graphic::Device& device) : _device(device) {}
 
 		auto load(istream in) -> graphic::Shader_module;
-		void save(ostream, const graphic::Shader_module&) {
+		void save(ostream, const graphic::Shader_module&)
+		{
 			MIRRAGE_FAIL("Save of shader modules is not supported!");
 		}
 

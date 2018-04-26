@@ -21,7 +21,9 @@ namespace mirrage::renderer {
 
 		Model_comp() = default;
 		Model_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner, Model_ptr model = {})
-		  : Component(manager, owner), _model(std::move(model)) {}
+		  : Component(manager, owner), _model(std::move(model))
+		{
+		}
 
 		auto model_aid() const -> auto& { return _model.aid(); }
 		auto model() const -> auto& { return _model; }
@@ -39,7 +41,9 @@ namespace mirrage::renderer {
 
 		Model_unloaded_comp() = default;
 		Model_unloaded_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner, asset::AID model_aid = {})
-		  : Component(manager, owner), _model_aid(std::move(model_aid)) {}
+		  : Component(manager, owner), _model_aid(std::move(model_aid))
+		{
+		}
 
 		auto model_aid() const -> auto& { return _model_aid; }
 
@@ -56,7 +60,9 @@ namespace mirrage::renderer {
 
 		Model_loading_comp() = default;
 		Model_loading_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner, Model_ptr model = {})
-		  : Component(manager, owner), _model(std::move(model)) {}
+		  : Component(manager, owner), _model(std::move(model))
+		{
+		}
 
 		auto model_aid() const -> auto& { return _model.aid(); }
 		auto model() const -> auto& { return _model; }

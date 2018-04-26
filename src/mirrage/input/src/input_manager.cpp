@@ -60,18 +60,21 @@ namespace mirrage::input {
 		inline auto from_sdl_keycode(SDL_Keycode key) { return static_cast<Key>(key); }
 
 		inline auto to_sdl_pad_button(Pad_button b) { return static_cast<SDL_GameControllerButton>(b); }
-		inline bool is_trigger(Pad_button b) {
+		inline bool is_trigger(Pad_button b)
+		{
 			return b == Pad_button::left_trigger || b == Pad_button::right_trigger;
 		}
 
-		inline auto to_sdl_axis_x(Pad_stick s) {
+		inline auto to_sdl_axis_x(Pad_stick s)
+		{
 			switch(s) {
 				case Pad_stick::left: return SDL_CONTROLLER_AXIS_LEFTX;
 				case Pad_stick::right: return SDL_CONTROLLER_AXIS_RIGHTX;
 				default: return SDL_CONTROLLER_AXIS_INVALID;
 			}
 		}
-		inline auto to_sdl_axis_y(Pad_stick s) {
+		inline auto to_sdl_axis_y(Pad_stick s)
+		{
 			switch(s) {
 				case Pad_stick::left: return SDL_CONTROLLER_AXIS_LEFTY;
 				case Pad_stick::right: return SDL_CONTROLLER_AXIS_RIGHTY;
@@ -82,13 +85,15 @@ namespace mirrage::input {
 
 
 	Sdl_event_filter::Sdl_event_filter(Input_manager& e) : _manager(&e) { _manager->add_event_filter(*this); }
-	Sdl_event_filter::Sdl_event_filter(Sdl_event_filter&& rhs) noexcept : _manager(rhs._manager) {
+	Sdl_event_filter::Sdl_event_filter(Sdl_event_filter&& rhs) noexcept : _manager(rhs._manager)
+	{
 		if(_manager) {
 			_manager->remove_event_filter(rhs);
 			_manager->add_event_filter(*this);
 		}
 	}
-	Sdl_event_filter& Sdl_event_filter::operator=(Sdl_event_filter&& rhs) noexcept {
+	Sdl_event_filter& Sdl_event_filter::operator=(Sdl_event_filter&& rhs) noexcept
+	{
 		if(_manager)
 			_manager->remove_event_filter(*this);
 
@@ -104,7 +109,8 @@ namespace mirrage::input {
 		return *this;
 	}
 
-	Sdl_event_filter::~Sdl_event_filter() {
+	Sdl_event_filter::~Sdl_event_filter()
+	{
 		if(_manager) {
 			_manager->remove_event_filter(*this);
 		}
@@ -114,7 +120,8 @@ namespace mirrage::input {
 	Input_manager::Input_manager(util::Message_bus& bus, asset::Asset_manager& assets)
 	  : _mailbox(bus)
 	  , _screen_to_world_coords(&util::identity<glm::vec2>)
-	  , _mapper(std::make_unique<Input_mapper>(bus, assets)) {
+	  , _mapper(std::make_unique<Input_mapper>(bus, assets))
+	{
 
 		SDL_JoystickEventState(SDL_ENABLE);
 		SDL_GameControllerEventState(SDL_ENABLE);
@@ -152,7 +159,8 @@ namespace mirrage::input {
 	void Input_manager::add_event_filter(Sdl_event_filter& f) { _event_filter.push_back(&f); }
 	void Input_manager::remove_event_filter(Sdl_event_filter& f) { util::erase_fast(_event_filter, &f); }
 
-	void Input_manager::capture_mouse(bool enable) {
+	void Input_manager::capture_mouse(bool enable)
+	{
 		if(_mouse_captured != enable) {
 			SDL_SetRelativeMouseMode(enable ? SDL_TRUE : SDL_FALSE);
 			_mouse_captured = enable;
@@ -164,7 +172,8 @@ namespace mirrage::input {
 		}
 	}
 
-	void Input_manager::update(util::Time dt) {
+	void Input_manager::update(util::Time dt)
+	{
 		_poll_events();
 
 		for(auto i : util::range(_max_pointers))
@@ -176,7 +185,8 @@ namespace mirrage::input {
 		_mailbox.update_subscriptions();
 	}
 
-	void Input_manager::_poll_events() {
+	void Input_manager::_poll_events()
+	{
 		for(auto& f : _event_filter) {
 			f->pre_input_events();
 		}
@@ -199,7 +209,8 @@ namespace mirrage::input {
 	}
 
 
-	void Input_manager::_handle_event(SDL_Event& event) {
+	void Input_manager::_handle_event(SDL_Event& event)
+	{
 		switch(event.type) {
 			case SDL_TEXTINPUT: _mailbox.send<Char_input>(event.text.text); break;
 
@@ -284,7 +295,8 @@ namespace mirrage::input {
 			case SDL_DROPFILE: _mailbox.send<File_dropped>(event.drop.file); break;
 		}
 	}
-	void Input_manager::_on_mouse_motion(const SDL_MouseMotionEvent& motion) {
+	void Input_manager::_on_mouse_motion(const SDL_MouseMotionEvent& motion)
+	{
 		auto idx        = 0;
 		auto screen_pos = _mouse_captured ? _pointer_screen_pos.at(idx) + glm::vec2{motion.xrel, motion.yrel}
 		                                  : glm::vec2{motion.x, motion.y};
@@ -316,7 +328,8 @@ namespace mirrage::input {
 		}
 	}
 
-	void Input_manager::_add_gamepad(int joystick_id) {
+	void Input_manager::_add_gamepad(int joystick_id)
+	{
 		if(joystick_id == -1)
 			joystick_id = SDL_NumJoysticks() - 1;
 
@@ -325,7 +338,6 @@ namespace mirrage::input {
 			if(controller) {
 				_gamepads.emplace_back(std::make_unique<Gamepad>(_gamepads.size() + 1, controller, *_mapper));
 				_mailbox.send<Source_added>(Input_source(_gamepads.size()));
-
 			} else {
 				std::cerr << "Could not open gamecontroller " << joystick_id << ": " << SDL_GetError()
 				          << std::endl;
@@ -333,7 +345,8 @@ namespace mirrage::input {
 		}
 	}
 
-	void Input_manager::_remove_gamepad(int instance_id) {
+	void Input_manager::_remove_gamepad(int instance_id)
+	{
 		auto e = std::find_if(_gamepads.begin(), _gamepads.end(), [instance_id](auto& c) {
 			return c->id() == instance_id;
 		});
@@ -353,7 +366,8 @@ namespace mirrage::input {
 	  : _src_id(src_id)
 	  , _id(SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(c)))
 	  , _sdl_controller(c)
-	  , _mapper(mapper) {
+	  , _mapper(mapper)
+	{
 
 		auto name = SDL_GameControllerName(_sdl_controller);
 
@@ -372,14 +386,16 @@ namespace mirrage::input {
 
 		LOG(plog::info) << "Detected gamepad '" << name << "'";
 	}
-	Input_manager::Gamepad::~Gamepad() {
+	Input_manager::Gamepad::~Gamepad()
+	{
 		if(_haptic)
 			SDL_HapticClose(_haptic);
 
 		SDL_GameControllerClose(_sdl_controller);
 	}
 
-	void Input_manager::Gamepad::force_feedback(float force) {
+	void Input_manager::Gamepad::force_feedback(float force)
+	{
 		if(force > _current_force) {
 			_force_reset_timer = 200_ms;
 			_current_force     = force;
@@ -389,14 +405,17 @@ namespace mirrage::input {
 			SDL_HapticRumblePlay(_haptic, glm::clamp(_current_force, 0.f, 1.f), 200);
 	}
 
-	auto Input_manager::Gamepad::button_pressed(Pad_button b) const noexcept -> bool {
+	auto Input_manager::Gamepad::button_pressed(Pad_button b) const noexcept -> bool
+	{
 		return _button_state[static_cast<int8_t>(b)] == 1;
 	}
-	auto Input_manager::Gamepad::button_released(Pad_button b) const noexcept -> bool {
+	auto Input_manager::Gamepad::button_released(Pad_button b) const noexcept -> bool
+	{
 		return _button_state[static_cast<int8_t>(b)] == 3;
 	}
 
-	auto Input_manager::Gamepad::trigger(Pad_button b) const noexcept -> float {
+	auto Input_manager::Gamepad::trigger(Pad_button b) const noexcept -> float
+	{
 		auto state = [&](auto t) {
 			return glm::abs(SDL_GameControllerGetAxis(_sdl_controller, t)) / _stick_max;
 		};
@@ -411,7 +430,8 @@ namespace mirrage::input {
 			return 0;
 	}
 
-	auto Input_manager::Gamepad::button_down(Pad_button button) const noexcept -> bool {
+	auto Input_manager::Gamepad::button_down(Pad_button button) const noexcept -> bool
+	{
 		if(!is_trigger(button))
 			return SDL_GameControllerGetButton(_sdl_controller, to_sdl_pad_button(button)) != 0;
 
@@ -420,7 +440,8 @@ namespace mirrage::input {
 	}
 	auto Input_manager::Gamepad::button_up(Pad_button b) const noexcept -> bool { return !button_down(b); }
 
-	void Input_manager::Gamepad::update(util::Time dt) {
+	void Input_manager::Gamepad::update(util::Time dt)
+	{
 		if(_force_reset_timer > 0_s) {
 			_force_reset_timer -= dt;
 			if(_force_reset_timer < 0_s)
@@ -472,7 +493,8 @@ namespace mirrage::input {
 		}
 	}
 
-	auto Input_manager::Gamepad::axis(Pad_stick s) -> glm::vec2 {
+	auto Input_manager::Gamepad::axis(Pad_stick s) -> glm::vec2
+	{
 		glm::vec2 v{
 		        SDL_GameControllerGetAxis(_sdl_controller, to_sdl_axis_x(s)) / _stick_max,
 		        SDL_GameControllerGetAxis(_sdl_controller, to_sdl_axis_y(s)) / _stick_max,

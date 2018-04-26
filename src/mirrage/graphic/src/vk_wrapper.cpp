@@ -7,14 +7,18 @@
 namespace mirrage::graphic {
 
 	Command_buffer_pool::Command_buffer_pool(const vk::Device& device, vk::UniqueCommandPool pool)
-	  : _device(device), _pool(std::move(pool)) {}
+	  : _device(device), _pool(std::move(pool))
+	{
+	}
 	Command_buffer_pool::~Command_buffer_pool() { _device.waitIdle(); }
 
-	auto Command_buffer_pool::create_primary(std::size_t count) -> std::vector<vk::UniqueCommandBuffer> {
+	auto Command_buffer_pool::create_primary(std::size_t count) -> std::vector<vk::UniqueCommandBuffer>
+	{
 		return _device.allocateCommandBuffersUnique(
 		        vk::CommandBufferAllocateInfo(*_pool, vk::CommandBufferLevel::ePrimary, count));
 	}
-	auto Command_buffer_pool::create_secondary(std::size_t count) -> std::vector<vk::UniqueCommandBuffer> {
+	auto Command_buffer_pool::create_secondary(std::size_t count) -> std::vector<vk::UniqueCommandBuffer>
+	{
 		return _device.allocateCommandBuffersUnique(
 		        vk::CommandBufferAllocateInfo(*_pool, vk::CommandBufferLevel::eSecondary, count));
 	}
@@ -34,9 +38,12 @@ namespace mirrage::graphic {
 	                         vk::Viewport                viewport,
 	                         vk::Rect2D                  scissor,
 	                         std::vector<vk::ClearValue> cv)
-	  : _fb(std::move(fb)), _viewport(viewport), _scissor(scissor), _clear_values(std::move(cv)) {}
+	  : _fb(std::move(fb)), _viewport(viewport), _scissor(scissor), _clear_values(std::move(cv))
+	{
+	}
 
-	void Framebuffer::viewport(float x, float y, float width, float height, float min_depth, float max_depth) {
+	void Framebuffer::viewport(float x, float y, float width, float height, float min_depth, float max_depth)
+	{
 		_viewport.x        = x;
 		_viewport.y        = y;
 		_viewport.width    = width;
@@ -52,7 +59,8 @@ namespace mirrage::graphic {
 
 
 	namespace {
-		auto get_access_mask(vk::ImageLayout layout) -> vk::AccessFlags {
+		auto get_access_mask(vk::ImageLayout layout) -> vk::AccessFlags
+		{
 			switch(layout) {
 				case vk::ImageLayout::eUndefined: return vk::AccessFlags{};
 
@@ -92,7 +100,8 @@ namespace mirrage::graphic {
 	                             vk::ImageLayout      dst_layout,
 	                             vk::ImageAspectFlags aspects,
 	                             std::uint32_t        mip_level,
-	                             std::uint32_t        mip_level_count) {
+	                             std::uint32_t        mip_level_count)
+	{
 
 		auto subresource = vk::ImageSubresourceRange{aspects, mip_level, mip_level_count, 0, 1};
 
@@ -122,7 +131,8 @@ namespace mirrage::graphic {
 	                      std::uint32_t     height,
 	                      std::uint32_t     mip_count,
 	                      std::uint32_t     start_mip_level,
-	                      bool              filter_linear) {
+	                      bool              filter_linear)
+	{
 
 		if(mip_count == 0) {
 			mip_count = std::floor(std::log2(std::min(width, height))) + 1;
@@ -195,7 +205,8 @@ namespace mirrage::graphic {
 	                  vk::ImageLayout             final_src_layout,
 	                  detail::Base_texture&       dst,
 	                  vk::ImageLayout             initial_dst_layout,
-	                  vk::ImageLayout             final_dst_layout) {
+	                  vk::ImageLayout             final_dst_layout)
+	{
 
 		if(initial_src_layout != vk::ImageLayout::eTransferSrcOptimal) {
 			image_layout_transition(cb,
@@ -263,7 +274,8 @@ namespace mirrage::graphic {
 	                   vk::ImageLayout             initial_layout,
 	                   vk::ImageLayout             final_layout,
 	                   std::uint32_t               initial_mip_level,
-	                   std::uint32_t               mip_levels) {
+	                   std::uint32_t               mip_levels)
+	{
 
 		clear_texture(cb,
 		              img.image(),
@@ -284,7 +296,8 @@ namespace mirrage::graphic {
 	                   vk::ImageLayout   initial_layout,
 	                   vk::ImageLayout   final_layout,
 	                   std::uint32_t     initial_mip_level,
-	                   std::uint32_t     mip_levels) {
+	                   std::uint32_t     mip_levels)
+	{
 
 		if(mip_levels == 0) {
 			mip_levels = std::floor(std::log2(std::min(width, height))) + 1;
