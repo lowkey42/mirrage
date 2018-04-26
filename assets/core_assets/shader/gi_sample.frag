@@ -133,7 +133,6 @@ vec3 gi_sample(int lod, int base_mip) {
 		float cos_angle = cos(a);
 
 		ivec2 p = ivec2(uv + vec2(sin_angle * r, cos_angle * r));
-		float weight;
 		c += calc_illumination_from(lod, texture_size, p, uv, depth, P, N);
 	}
 
@@ -147,11 +146,6 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	vec4 mat_data = texelFetch(mat_data_sampler, src_uv, 0);
 	vec3 N = decode_normal(mat_data.rg);
 	float depth  = texelFetch(depth_sampler, src_uv, 0).r;
-
-	if(depth>=0.9999) {
-		// we hit the skybox => reduce depth so it still contributes some light
-		depth = 0.1;
-	}
 
 	// reconstruct the position (x_i) of the src point and calculate the direction and distance^2 to x
 	vec3 P = position_from_ldepth(src_uv / tex_size, depth);

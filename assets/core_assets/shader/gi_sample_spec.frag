@@ -115,7 +115,7 @@ void main() {
 	if(spec_visible &&
 	   traceScreenSpaceRay1(P+(dir*0.25+jitter*0.1), dir, pcs.projection, depth_sampler,
 							depthSize, 1.0, global_uniforms.proj_planes.x,
-							10, 0.5*jitter.z, max_steps, max_distance, int(startLod + 0.5),
+							20, 0.5*jitter.z, max_steps, max_distance, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 
 		vec3 L = raycast_hit_point - P;

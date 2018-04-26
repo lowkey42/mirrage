@@ -317,7 +317,6 @@ namespace mirrage::renderer {
 				inst->recreate();
 			}
 		}
-		_device->wait_idle();
 	}
 	void Deferred_renderer_factory::_present()
 	{

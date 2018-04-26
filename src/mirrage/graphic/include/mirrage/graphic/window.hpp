@@ -78,7 +78,6 @@ namespace mirrage::graphic {
 
 		double _frame_start_time           = 0;
 		float  _delta_time_smoothed        = 0;
-		float  _cpu_delta_time_smoothed    = 0;
 		float  _time_since_last_FPS_output = 0;
 
 		void _update_fps_timer(double present_started);

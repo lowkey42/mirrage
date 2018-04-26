@@ -92,24 +92,19 @@ namespace mirrage::graphic {
 		_update_fps_timer(present_started);
 	}
 
-	void Window::_update_fps_timer(double present_started)
+	void Window::_update_fps_timer(double)
 	{
 		auto delta_time = static_cast<float>(util::current_time_sec() - _frame_start_time);
 
 		float smooth_factor  = 0.1f;
 		_delta_time_smoothed = (1.0f - smooth_factor) * _delta_time_smoothed + smooth_factor * delta_time;
 
-		auto cpu_delta_time = static_cast<float>(present_started - _frame_start_time);
-		_cpu_delta_time_smoothed =
-		        (1.0f - smooth_factor) * _cpu_delta_time_smoothed + smooth_factor * cpu_delta_time;
-
 		_time_since_last_FPS_output += delta_time;
 		if(_time_since_last_FPS_output >= 1.0f) {
 			_time_since_last_FPS_output = 0.0f;
 			std::ostringstream osstr;
 			osstr << _title << " (" << (int((1.0f / _delta_time_smoothed) * 10.0f) / 10.0f) << " FPS, ";
-			osstr << (int(_delta_time_smoothed * 10000.0f) / 10.0f) << " ms/frame, ";
-			osstr << (int(_cpu_delta_time_smoothed * 10000.0f) / 10.0f) << " ms/frame [cpu])";
+			osstr << (int(_delta_time_smoothed * 10000.0f) / 10.0f) << " ms/frame)";
 
 			SDL_SetWindowTitle(_window.get(), osstr.str().c_str());
 		}
