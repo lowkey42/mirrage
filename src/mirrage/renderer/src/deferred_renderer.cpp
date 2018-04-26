@@ -50,9 +50,11 @@ namespace mirrage::renderer {
 	                                           vk::Filter::eNearest,
 	                                           vk::SamplerMipmapMode::eNearest))
 	  , _noise_descriptor_set_layout(device(), *_noise_sampler, 1, vk::ShaderStageFlagBits::eFragment)
-	  , _passes(util::map(passes, [&, write_first_pp_buffer = true](auto& factory) mutable {
-		  return util::trackable<Pass>(factory->create_pass(*this, ecs, userdata, write_first_pp_buffer));
-	  }))
+	  , _passes(util::map(passes,
+	                      [&, write_first_pp_buffer = true](auto& factory) mutable {
+		                      return util::trackable<Pass>(
+		                              factory->create_pass(*this, ecs, userdata, write_first_pp_buffer));
+	                      }))
 	  , _cameras(&ecs.list<Camera_comp>()) {
 
 		_write_global_uniform_descriptor_set();
@@ -68,7 +70,7 @@ namespace mirrage::renderer {
 	}
 
 	void Deferred_renderer::recreate() {
-		MIRRAGE_WARN("--recreate");
+		LOG(plog::warning) << "--recreate";
 		device().wait_idle();
 
 		for(auto& pass : _passes) {
@@ -119,7 +121,7 @@ namespace mirrage::renderer {
 	void Deferred_renderer::draw() {
 		if(!_noise_descriptor_set) {
 			if(_blue_noise.ready()) {
-				MIRRAGE_DEBUG("Noise texture loaded");
+				LOG(plog::debug) << "Noise texture loaded";
 				_noise_descriptor_set =
 				        _noise_descriptor_set_layout.create_set(descriptor_pool(), {_blue_noise->view()});
 

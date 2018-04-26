@@ -53,7 +53,7 @@ namespace mirrage::asset {
 						return "The stateful loader for the asset type has not been created!";
 				}
 
-				MIRRAGE_WARN("Unexpected error_source: " << e);
+				LOG(plog::warning) << "Unexpected error_source: " << e;
 				return "[unexpected " + std::to_string(e) + "]";
 			}
 

@@ -1,0 +1,6 @@
+[submodule "dependencies/backward-cpp"]
+	path = dependencies/backward-cpp
+	url = git@github.com:bombela/backward-cpp.git
+[submodule "dependencies/plog"]
+	path = dependencies/plog
+	url = git@github.com:SergiusTheBest/plog.git

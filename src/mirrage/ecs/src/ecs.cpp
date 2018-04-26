@@ -42,7 +42,7 @@ namespace mirrage::ecs {
 		if(validate(entity)) {
 			_queue_erase.enqueue(entity);
 		} else {
-			MIRRAGE_ERROR("Double-Deletion of entity " << entity_name(entity));
+			LOG(plog::error) << "Double-Deletion of entity " << entity_name(entity);
 		}
 	}
 

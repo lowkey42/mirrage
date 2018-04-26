@@ -170,9 +170,9 @@ namespace mirrage::ecs {
 					for(auto i = 0ull; i < deletions; i++) {
 						auto entity_id = get_entity_id(deletions_buffer[i], _manager);
 						if(entity_id == invalid_entity_id) {
-							MIRRAGE_WARN("Discard delete of component " << T::name()
-							                                            << " from invalid/deleted entity: "
-							                                            << entity_name(deletions_buffer[i]));
+							LOG(plog::warning)
+							        << "Discard delete of component " << T::name()
+							        << " from invalid/deleted entity: " << entity_name(deletions_buffer[i]);
 							continue;
 						}
 
@@ -219,8 +219,9 @@ namespace mirrage::ecs {
 					for(auto i = 0ull; i < insertions; i++) {
 						auto entity_id = get_entity_id(std::get<1>(insertions_buffer[i]), _manager);
 						if(entity_id == invalid_entity_id) {
-							MIRRAGE_WARN("Discard insertion of component from invalid/deleted entity: "
-							             << entity_name(std::get<1>(insertions_buffer[i])));
+							LOG(plog::warning)
+							        << "Discard insertion of component from invalid/deleted entity: "
+							        << entity_name(std::get<1>(insertions_buffer[i]));
 							continue;
 						}
 

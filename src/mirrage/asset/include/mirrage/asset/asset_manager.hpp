@@ -11,9 +11,9 @@
 #include <mirrage/asset/error.hpp>
 #include <mirrage/asset/stream.hpp>
 
+#include <mirrage/utils/log.hpp>
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/reflection.hpp>
-#include <mirrage/utils/stacktrace.hpp>
 #include <mirrage/utils/string_utils.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
@@ -44,9 +44,10 @@ namespace mirrage::asset {
 	}
 
 	extern std::string pwd();
+	extern std::string write_dir(const std::string& exe_name,
+	                             const std::string& org_name,
+	                             const std::string& app_name);
 
-	extern void setup_storage();
-	extern bool storage_ready();
 
 	template <class R>
 	class Ptr {

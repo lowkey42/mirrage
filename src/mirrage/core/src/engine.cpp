@@ -29,7 +29,7 @@ namespace mirrage {
 				if(required)
 					MIRRAGE_FAIL(m);
 				else
-					MIRRAGE_WARN(m);
+					LOG(plog::warning) << m;
 			}
 		}
 

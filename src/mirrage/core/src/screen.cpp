@@ -11,7 +11,7 @@ namespace mirrage {
 
 	auto Screen_manager::enter(std::unique_ptr<Screen> screen) -> Screen& {
 		if(!_next_screens.empty()) {
-			MIRRAGE_WARN("multiple screen enters per frame.");
+			LOG(plog::warning) << "multiple screen enters per frame.";
 		}
 
 		_next_screens.emplace_back(std::move(screen));
@@ -24,7 +24,7 @@ namespace mirrage {
 			return;
 
 		if(_leave > 0) {
-			MIRRAGE_WARN("multiple screen leaves per frame.");
+			LOG(plog::warning) << "multiple screen leaves per frame.";
 		}
 
 		_leave += depth;

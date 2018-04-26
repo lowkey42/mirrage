@@ -99,13 +99,13 @@ namespace mirrage::util {
 			return _data;
 		}
 
-		const T& get_or_throw() const & {
+		const T& get_or_throw() const& {
 			MIRRAGE_INVARIANT(is_some(), "Called getOrThrow on nothing.");
 
 			return _data;
 		}
 		template <typename... Ms, typename = std::enable_if_t<sizeof...(Ms) >= 1>>
-		const T& get_or_throw(Ms&&... ms) const & {
+		const T& get_or_throw(Ms&&... ms) const& {
 			MIRRAGE_INVARIANT(is_some(), ... << std::forward<Ms>(ms));
 
 			return _data;

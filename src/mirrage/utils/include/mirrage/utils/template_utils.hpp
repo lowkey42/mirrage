@@ -292,7 +292,7 @@ namespace mirrage::util {
 
 			auto current_revision = _trackable->revision;
 			if(_last_seen_revision != current_revision || last_seen == nullptr) {
-				MIRRAGE_DEBUG("Modified " << _last_seen_revision << " != " << current_revision);
+				LOG(plog::debug) << "Modified " << _last_seen_revision << " != " << current_revision;
 				_last_seen_revision = current_revision;
 				return true;
 			}

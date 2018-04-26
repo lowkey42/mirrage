@@ -179,10 +179,9 @@ namespace mirrage::graphic {
 			auto& fence = _queues.head().fence;
 
 			while(!_queues.advance_head()) { // no free slot
-				if(_warn_on_full)
-					MIRRAGE_DEBUG(
-					        "Delete_queue is full. Increase max_frames or "
-					        "reduce amount of frames in flight.");
+				LOG_IF(plog::debug, _warn_on_full)
+				        << "Delete_queue is full. Increase max_frames or reduce amount of "
+				           "frames in flight.";
 
 				_queues.pop([&](auto& e) {
 					e.fence.wait();

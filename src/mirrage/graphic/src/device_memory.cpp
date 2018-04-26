@@ -93,8 +93,8 @@ namespace mirrage::graphic {
 			        _blocks.begin(), _blocks.end(), [](auto& block) { return block->empty(); });
 			auto deleted = std::distance(new_end, _blocks.end());
 			if(deleted > 0) {
-				MIRRAGE_DEBUG("Freed " << deleted << "/" << _blocks.size() << " blocks in allocator for type "
-				                       << _type);
+				LOG(plog::debug) << "Freed " << deleted << "/" << _blocks.size()
+				                 << " blocks in allocator for type " << _type;
 			}
 
 			_blocks.erase(new_end, _blocks.end());
@@ -295,10 +295,10 @@ namespace mirrage::graphic {
 		}
 
 		if(_is_unified_memory_architecture) {
-			MIRRAGE_INFO("Detected a unified memory architecture.");
+			LOG(plog::info) << "Detected a unified memory architecture.";
 		}
 		if(_is_dedicated_allocations_supported) {
-			MIRRAGE_INFO("VK_NV_dedicated_allocation enabled");
+			LOG(plog::info) << "VK_NV_dedicated_allocation enabled";
 		}
 	}
 	Device_memory_allocator::~Device_memory_allocator() = default;
@@ -320,8 +320,8 @@ namespace mirrage::graphic {
 
 				} catch(std::system_error& e) {
 					auto usage = usage_statistic();
-					MIRRAGE_ERROR("Couldn't allocate block of size " << size << "\n Usage: " << usage.used
-					                                                 << "/" << usage.reserved);
+					LOG(plog::error) << "Couldn't allocate block of size " << size
+					                 << "\n Usage: " << usage.used << "/" << usage.reserved;
 					// free memory and retry
 					if(e.code() == vk::Result::eErrorOutOfDeviceMemory && shrink_to_fit() > 0) {
 						return pool->alloc(size, alignment, lifetime);
@@ -364,7 +364,7 @@ namespace mirrage::graphic {
 					alloc_info.pNext      = &dedicated_info;
 				}
 #endif
-				MIRRAGE_DEBUG("Alloc: " << (requirements.size / 1024.f / 1024.f) << " MB");
+				LOG(plog::debug) << "Alloc: " << (requirements.size / 1024.f / 1024.f) << " MB";
 				auto mem      = _device.allocateMemoryUnique(alloc_info);
 				auto mem_addr = host_visible ? static_cast<char*>(_device.mapMemory(*mem, 0, VK_WHOLE_SIZE))
 				                             : nullptr;
@@ -459,7 +459,7 @@ namespace mirrage::graphic {
 		  : _memory(device.allocateMemoryUnique({MaxSize, type}))
 		  , _mapped_addr(mapable ? static_cast<char*>(device.mapMemory(*_memory, 0, VK_WHOLE_SIZE)) : nullptr)
 		  , _free_mutex(free_mutex) {
-			MIRRAGE_DEBUG("Alloc: " << (MaxSize / 1024.f / 1024.f) << " MB");
+			LOG(plog::debug) << "Alloc: " << (MaxSize / 1024.f / 1024.f) << " MB";
 			_free_blocks[0].emplace_back(0);
 		}
 

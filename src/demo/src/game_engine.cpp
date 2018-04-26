@@ -15,14 +15,15 @@
 
 namespace mirrage {
 
-	Game_engine::Game_engine(const std::string& title,
+	Game_engine::Game_engine(const std::string& org,
+	                         const std::string& title,
 	                         std::uint32_t      version_major,
 	                         std::uint32_t      version_minor,
 	                         bool               debug,
 	                         int                argc,
 	                         char**             argv,
 	                         char**             env)
-	  : Engine("secondsystem", title, version_major, version_minor, debug, false, argc, argv, env)
+	  : Engine(org, title, version_major, version_minor, debug, false, argc, argv, env)
 	  , _renderer_factory(std::make_unique<renderer::Deferred_renderer_factory>(
 	            graphics_context(),
 	            window(),

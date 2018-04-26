@@ -78,7 +78,7 @@ namespace mirrage::graphic {
 				return DescriptorSet(this, pool_idx, desc_set, bindings);
 
 			} else {
-				MIRRAGE_WARN("Allocated a new descriptorSetPool (shouldn't happen too often!).");
+				LOG(plog::warning) << "Allocated a new descriptorSetPool (shouldn't happen too often!).";
 				*free_iter = 0;
 			}
 
@@ -125,7 +125,8 @@ namespace mirrage::graphic {
 		auto& free_count = _chunks_free_count.at(idx);
 		free_count += reserved_bindings;
 		if(free_count > _chunk_size) {
-			MIRRAGE_ERROR("Free-count of descriptor pool chunk is higher than max (memory corruption?)!");
+			LOG(plog::error) << "Free-count of descriptor pool chunk is higher than max (memory "
+			                    "corruption?)!";
 		}
 	}
 

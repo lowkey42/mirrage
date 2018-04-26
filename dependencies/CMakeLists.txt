@@ -11,6 +11,7 @@ if(MIRRAGE_BUILD_MESH_CONVERTER)
 endif()
 
 add_subdirectory(asyncplusplus)
+add_subdirectory(backward-cpp)
 add_subdirectory(enet)
 add_subdirectory(glm)
 include(gsl_interface.cmake)
@@ -23,6 +24,7 @@ SET(PHYSFS_ARCHIVE_7Z FALSE CACHE BOOL "" FORCE)
 SET(PHYSFS_BUILD_SHARED FALSE CACHE BOOL "" FORCE)
 add_subdirectory(physfs)
 
+include(plog_interface.cmake)
 include(robin-map_interface.cmake)
 
 add_subdirectory(sf2)

@@ -5,6 +5,8 @@
 
 namespace mirrage::util {
 
+	Command::~Command() = default;
+
 	void Command_manager::execute(std::unique_ptr<Command> cmd) {
 		if(redo_available())
 			_commands.resize(_history_size);

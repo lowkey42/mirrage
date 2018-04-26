@@ -24,8 +24,8 @@ namespace mirrage::graphic {
 	}
 
 	void Swapchain::_create_image_views() {
-		MIRRAGE_DEBUG("Created swapchain with " << _images.size()
-		                                        << " images (min=" << _info.minImageCount << ")");
+		LOG(plog::debug) << "Created swapchain with " << _images.size()
+		                 << " images (min=" << _info.minImageCount << ")";
 
 		_image_views.clear();
 		_image_views.reserve(_images.size());
@@ -34,16 +34,13 @@ namespace mirrage::graphic {
 			ivc.setImage(image);
 			ivc.setViewType(vk::ImageViewType::e2D);
 			ivc.setFormat(_info.imageFormat);
-			ivc.setSubresourceRange(
-			        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
+			ivc.setSubresourceRange(vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
 			_image_views.emplace_back(_device.createImageViewUnique(ivc));
 		}
 	}
 
 	auto Swapchain::acquireNextImage(vk::Semaphore s, vk::Fence f) const -> std::size_t {
-		return _device
-		        .acquireNextImageKHR(*_swapchain, std::numeric_limits<std::uint64_t>::max(), s, f)
-		        .value;
+		return _device.acquireNextImageKHR(*_swapchain, std::numeric_limits<std::uint64_t>::max(), s, f).value;
 	}
 
 	bool Swapchain::present(vk::Queue& q, std::size_t img_index, vk::Semaphore s) {
@@ -59,8 +56,8 @@ namespace mirrage::graphic {
 			_device.waitIdle();
 
 			auto capabilities = _gpu.getSurfaceCapabilitiesKHR(_window.surface());
-			MIRRAGE_DEBUG("Extends: " << capabilities.currentExtent.width << ", "
-			                          << capabilities.currentExtent.height);
+			LOG(plog::debug) << "Extends: " << capabilities.currentExtent.width << ", "
+			                 << capabilities.currentExtent.height;
 
 			_image_width  = _window.width();
 			_image_height = _window.height();
@@ -74,7 +71,7 @@ namespace mirrage::graphic {
 
 			_create_image_views();
 
-			MIRRAGE_INFO("Swapchain recreated");
+			LOG(plog::info) << "Swapchain recreated";
 
 			return true;
 		}

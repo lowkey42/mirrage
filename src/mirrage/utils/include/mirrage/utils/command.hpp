@@ -7,8 +7,6 @@
 
 #pragma once
 
-#include <mirrage/utils/log.hpp>
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,8 +15,8 @@
 namespace mirrage::util {
 
 	struct Command {
-		Command()          = default;
-		virtual ~Command() = default;
+		Command() = default;
+		virtual ~Command();
 
 		virtual void execute()                          = 0;
 		virtual void undo()                             = 0;

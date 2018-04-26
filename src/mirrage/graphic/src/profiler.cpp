@@ -152,7 +152,7 @@ namespace mirrage::graphic {
 		if(_active || _full) {
 			_full = !_query_pools.advance_head();
 			if(_full) {
-				MIRRAGE_INFO("full");
+				LOG(plog::info) << "profiler stack is full";
 			}
 		}
 

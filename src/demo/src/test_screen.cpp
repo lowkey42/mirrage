@@ -14,6 +14,7 @@
 #include <mirrage/input/events.hpp>
 #include <mirrage/input/input_manager.hpp>
 #include <mirrage/translations.hpp>
+#include <mirrage/utils/log.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <glm/glm.hpp>
@@ -89,7 +90,7 @@ namespace mirrage {
 						_engine.screens().leave();
 					}
 					break;
-				case "fast_quit"_strid: std::terminate(); break;
+				case "fast_quit"_strid: std::quick_exit(0);
 				case "create"_strid:
 					_meta_system.entities().emplace("cube").get<Transform_comp>().process(
 					        [&](auto& transform) {
@@ -108,13 +109,15 @@ namespace mirrage {
 
 				case "print"_strid: {
 					auto cam = _camera.get<Transform_comp>().get_or_throw().position();
-					MIRRAGE_INFO("Setup: \n"
-					             << "  Camera position:    " << cam.x << "/" << cam.y << "/" << cam.z << "\n"
-					             << "  Camera orientation: " << _cam_yaw << "/" << _cam_pitch << "\n"
-					             << "  Sun orientation:    " << _sun_elevation << "/" << _sun_azimuth << "\n"
-					             << "  Sun color:          " << _sun_color_temperature << "\n"
-					             << "  Disected:           "
-					             << _meta_system.renderer().settings().debug_disect);
+					LOG(plog::info) << "Setup: \n"
+					                << "  Camera position:    " << cam.x << "/" << cam.y << "/" << cam.z
+					                << "\n"
+					                << "  Camera orientation: " << _cam_yaw << "/" << _cam_pitch << "\n"
+					                << "  Sun orientation:    " << _sun_elevation << "/" << _sun_azimuth
+					                << "\n"
+					                << "  Sun color:          " << _sun_color_temperature << "\n"
+					                << "  Disected:           "
+					                << _meta_system.renderer().settings().debug_disect;
 					break;
 				}
 
@@ -138,7 +141,7 @@ namespace mirrage {
 					        });
 					break;
 				case "pause"_strid:
-					MIRRAGE_INFO("Pause/Unpause playback");
+					LOG(plog::debug) << "Pause/Unpause playback";
 					_meta_system.nims().toggle_pause();
 					break;
 
@@ -559,7 +562,6 @@ namespace mirrage {
 
 			auto print_entry =
 			        [&](auto&& printer, const Profiler_result& result, int depth = 0, int rank = -1) -> void {
-
 				auto color = [&] {
 					switch(rank) {
 						case 0: return nk_rgb(255, 0, 0);

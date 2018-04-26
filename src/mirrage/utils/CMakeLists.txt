@@ -14,7 +14,6 @@ add_library(mirrage_utils STATIC
 	src/md5.cpp
 	src/purgatory.cpp
 	src/reflection.cpp
-	src/stacktrace.cpp
 	src/types.cpp
 	${HEADER_FILES}
 )
@@ -28,11 +27,12 @@ target_compile_definitions(mirrage_utils PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE)
 target_compile_definitions(mirrage_utils PUBLIC GLM_ENABLE_EXPERIMENTAL)
 target_compile_definitions(mirrage_utils PUBLIC GLM_FORCE_CXX14)
 target_compile_definitions(mirrage_utils PUBLIC ENABLE_SF2_ASSETS)
-# target_compile_definitions(mirrage_utils PUBLIC STACKTRACE)
 
 target_include_directories(mirrage_utils PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:include>)
+
+add_backward(mirrage_utils)
 
 target_link_libraries(mirrage_utils
 	PUBLIC
@@ -40,6 +40,7 @@ target_link_libraries(mirrage_utils
 		glm
 		moodycamel
 		sf2
+		plog
 )
    
 

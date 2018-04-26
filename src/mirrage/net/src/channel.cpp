@@ -31,12 +31,11 @@ namespace mirrage::net {
 		                                                        : ENET_PACKET_FLAG_UNSEQUENCED;
 
 		auto packet = std::unique_ptr<ENetPacket, void (*)(ENetPacket*)>(
-		        enet_packet_create(nullptr, size, static_cast<std::uint32_t>(flags)),
-		        &enet_packet_destroy);
+		        enet_packet_create(nullptr, size, static_cast<std::uint32_t>(flags)), &enet_packet_destroy);
 
 		if(!packet) {
 			constexpr auto msg = "Couldn't create the packet data structure (out of memory?)";
-			MIRRAGE_WARN(msg);
+			LOG(plog::warning) << msg;
 			throw std::system_error(Net_error::unspecified_network_error, msg);
 		}
 
@@ -57,7 +56,7 @@ namespace mirrage::net {
 				constexpr auto msg =
 				        "Couldn't send message, because the connection has not been "
 				        "established yet or packet is much to large.";
-				MIRRAGE_WARN(msg);
+				LOG(plog::warning) << msg;
 				throw std::system_error(Net_error::not_connected, msg);
 
 			} else {

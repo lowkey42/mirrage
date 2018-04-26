@@ -833,7 +833,7 @@ namespace mirrage::renderer {
 		auto skip_reprojection = _first_frame || movement > 4.f;
 
 		if(skip_reprojection) {
-			MIRRAGE_DEBUG("Teleport detected");
+			LOG(plog::debug) << "Teleport detected";
 
 			graphic::clear_texture(command_buffer,
 			                       _gi_diffuse_history,

@@ -279,8 +279,7 @@ namespace mirrage::input {
 
 			case SDL_CONTROLLERDEVICEREMOVED: _remove_gamepad(event.cdevice.which); break;
 
-			case SDL_CONTROLLERDEVICEREMAPPED:
-				break; // ignored for now
+			case SDL_CONTROLLERDEVICEREMAPPED: break; // ignored for now
 
 			case SDL_DROPFILE: _mailbox.send<File_dropped>(event.drop.file); break;
 		}
@@ -360,17 +359,18 @@ namespace mirrage::input {
 
 		_haptic = SDL_HapticOpenFromJoystick(SDL_GameControllerGetJoystick(_sdl_controller));
 		if(!_haptic)
-			MIRRAGE_WARN("Warning: Controller '" << name
-			                                     << "'' does not support haptics: " << SDL_GetError());
+			LOG(plog::warning) << "Warning: Controller '" << name
+			                   << "'' does not support haptics: " << SDL_GetError();
 
 		else {
 			if(SDL_HapticRumbleInit(_haptic) < 0) {
 				_haptic = nullptr;
-				MIRRAGE_WARN("Warning: Unable to initialize rumble for '" << name << "': " << SDL_GetError());
+				LOG(plog::warning) << "Warning: Unable to initialize rumble for '" << name
+				                   << "': " << SDL_GetError();
 			}
 		}
 
-		MIRRAGE_INFO("Detected gamepad '" << name << "'");
+		LOG(plog::info) << "Detected gamepad '" << name << "'";
 	}
 	Input_manager::Gamepad::~Gamepad() {
 		if(_haptic)

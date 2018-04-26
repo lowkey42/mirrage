@@ -20,12 +20,11 @@ namespace mirrage {
 						return "Asset manager or I/O-system was used incorrectly.";
 					case Error_type::network_invalid_host:
 						return "Tried to connect to an unknown or unreachable host";
-					case Error_type::network_usage_error:
-						return "Programming bug when using network API";
+					case Error_type::network_usage_error: return "Programming bug when using network API";
 					case Error_type::network_unkown_error: return "Unknown error in network Code";
 				}
 
-				MIRRAGE_WARN("Unexpected Error_type: " << e);
+				LOG(plog::warning) << "Unexpected Error_type: " << e;
 				return "[unexpected Error_type " + std::to_string(e) + "]";
 			}
 		};
@@ -45,7 +44,7 @@ namespace mirrage {
 						return "Error that can't be pinned down to a single possible source";
 				}
 
-				MIRRAGE_WARN("Unexpected error_source: " << e);
+				LOG(plog::warning) << "Unexpected error_source: " << e;
 				return "[unexpected error_source " + std::to_string(e) + "]";
 			}
 
@@ -70,9 +69,7 @@ namespace mirrage {
 		const Error_type_category error_source_cat{};
 	} // namespace
 
-	std::error_condition make_error_condition(Error_type e) {
-		return {static_cast<int>(e), error_type_cat};
-	}
+	std::error_condition make_error_condition(Error_type e) { return {static_cast<int>(e), error_type_cat}; }
 	std::error_condition make_error_condition(Error_source e) {
 		return {static_cast<int>(e), error_source_cat};
 	}

@@ -39,16 +39,15 @@ namespace mirrage::net::detail {
 					if(c.is_nothing())
 						break;
 
-					return std::make_tuple(c.get_or_throw().name,
-					                       event.peer,
-					                       Packet(event.packet, &enet_packet_destroy));
+					return std::make_tuple(
+					        c.get_or_throw().name, event.peer, Packet(event.packet, &enet_packet_destroy));
 				}
 				case ENET_EVENT_TYPE_NONE: return util::nothing;
 			}
 		}
 
 		if(ret < 0) {
-			MIRRAGE_ERROR("An unknown error occured in ENet while receiving incoming packets");
+			LOG(plog::error) << "An unknown error occured in ENet while receiving incoming packets";
 		}
 
 		return util::nothing;

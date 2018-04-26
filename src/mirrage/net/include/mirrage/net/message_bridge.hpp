@@ -102,10 +102,9 @@ namespace mirrage::net {
 		constexpr type_hash_t calc_type_hash() {
 			auto hash = type_hash_t(0);
 
-			for_each_struct_type<T>(
-			        std::make_index_sequence<boost::pfr::tuple_size_v<T>>{}, [&](auto t) {
-				        hash = hash * 31 + calc_type_hash<std::remove_pointer_t<decltype(t)>>();
-			        });
+			for_each_struct_type<T>(std::make_index_sequence<boost::pfr::tuple_size_v<T>>{}, [&](auto t) {
+				hash = hash * 31 + calc_type_hash<std::remove_pointer_t<decltype(t)>>();
+			});
 
 			return hash;
 		}
@@ -169,8 +168,7 @@ namespace mirrage::net {
 
 			} else {
 				auto size = std::size_t(0);
-				boost::pfr::for_each_field(val,
-				                           [&](auto& field) { size += calculate_size(field); });
+				boost::pfr::for_each_field(val, [&](auto& field) { size += calculate_size(field); });
 
 				return size;
 			}
@@ -192,8 +190,7 @@ namespace mirrage::net {
 			}
 		}
 		template <>
-		inline auto read_obj(std::string& val, gsl::span<const gsl::byte> out)
-		        -> gsl::span<const gsl::byte> {
+		inline auto read_obj(std::string& val, gsl::span<const gsl::byte> out) -> gsl::span<const gsl::byte> {
 			auto size = reinterpret_cast<const std::uint32_t&>(out[0]);
 			val.resize(size);
 			std::memcpy(val.data(), &out[sizeof(std::uint32_t)], size);
@@ -212,12 +209,11 @@ namespace mirrage::net {
 			}
 		}
 		template <>
-		inline auto write_obj(const std::string& val, gsl::span<gsl::byte> out)
-		        -> gsl::span<gsl::byte> {
+		inline auto write_obj(const std::string& val, gsl::span<gsl::byte> out) -> gsl::span<gsl::byte> {
 			reinterpret_cast<std::uint32_t&>(out[0]) = gsl::narrow<std::uint32_t>(val.size());
 			std::memcpy(&out[sizeof(std::uint32_t)], val.data(), val.size());
-			return out.subspan(gsl::narrow<gsl::span<gsl::byte>::index_type>(sizeof(std::uint32_t)
-			                                                                 + val.size()));
+			return out.subspan(
+			        gsl::narrow<gsl::span<gsl::byte>::index_type>(sizeof(std::uint32_t) + val.size()));
 		}
 
 	} // namespace detail
@@ -228,9 +224,8 @@ namespace mirrage::net {
 			auto size = detail::calculate_size(event) + sizeof(id) + sizeof(detail::type_hash_t);
 
 			_channel.send(size, [&](auto data) {
-				reinterpret_cast<std::uint16_t&>(data[0]) = id;
-				reinterpret_cast<detail::type_hash_t&>(data[sizeof(std::uint16_t)]) =
-				        detail::type_hash<T>;
+				reinterpret_cast<std::uint16_t&>(data[0])                           = id;
+				reinterpret_cast<detail::type_hash_t&>(data[sizeof(std::uint16_t)]) = detail::type_hash<T>;
 
 				detail::write_obj(event, data.subspan(sizeof(id) + sizeof(detail::type_hash_t)));
 			});
@@ -251,9 +246,9 @@ namespace mirrage::net {
 
 		constexpr auto t_hash = detail::type_hash<T>;
 		if(msg_hash != t_hash) {
-			MIRRAGE_WARN("Type-hash of message " << util::type_name<T>() << " (" << t_id
-			                                     << ") doesn't match " << t_hash << "!=" << msg_hash
-			                                     << " (different app version?).");
+			LOG(plog::warning) << "Type-hash of message " << util::type_name<T>() << " (" << t_id
+			                   << ") doesn't match " << t_hash << "!=" << msg_hash
+			                   << " (different app version?).";
 			return false;
 		}
 
@@ -280,16 +275,13 @@ namespace mirrage::net {
 		constexpr auto header_size = sizeof(std::uint16_t) + sizeof(detail::type_hash_t);
 
 		if(channel != _channel_name || gsl::narrow<std::size_t>(data.size_bytes()) < header_size) {
-			MIRRAGE_INFO(
-			        "Packet dropped because channel-name doesn't match or packet is too "
-			        "small.");
+			LOG(plog::info) << "Packet dropped because channel-name doesn't match or packet is too small.";
 			return false;
 		}
 
-		auto msg_type_id = *reinterpret_cast<const std::uint16_t*>(&data[0]);
-		auto msg_type_hash =
-		        *reinterpret_cast<const detail::type_hash_t*>(&data[sizeof(std::uint16_t)]);
-		auto rest = data.subspan<header_size>();
+		auto msg_type_id   = *reinterpret_cast<const std::uint16_t*>(&data[0]);
+		auto msg_type_hash = *reinterpret_cast<const detail::type_hash_t*>(&data[sizeof(std::uint16_t)]);
+		auto rest          = data.subspan<header_size>();
 
 		if(msg_type_id >= sizeof...(Ts)) {
 			return false;

@@ -38,8 +38,8 @@ namespace mirrage {
 			auto r = Localisation_data{};
 
 			auto on_error = [&](auto& msg, uint32_t row, uint32_t column) {
-				MIRRAGE_ERROR("Error parsing JSON from " << in.aid().str() << " at " << row << ":" << column
-				                                         << ": " << msg);
+				LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at " << row << ":"
+				                 << column << ": " << msg;
 			};
 
 			sf2::JsonDeserializer reader{sf2::format::Json_reader{in, on_error}, on_error};
@@ -76,10 +76,10 @@ namespace mirrage {
 		auto info = _assets.load<Language_info>("cfg:languages_info"_aid);
 
 		if(!contains(info->supported_languages, _language)) {
-			MIRRAGE_INFO("Unsupported language: " << _language);
+			LOG(plog::info) << "Unsupported language: " << _language;
 			_language = Language_id{info->default_language};
 		}
-		MIRRAGE_INFO("Using text language: " << _language);
+		LOG(plog::info) << "Using text language: " << _language;
 
 		_missing_categories.clear();
 		_missing_translations.clear();
@@ -93,8 +93,8 @@ namespace mirrage {
 				entry_count += cat.second.size();
 			}
 		}
-		MIRRAGE_DEBUG("Loaded " << entry_count << " translations in " << cat_count << " categories for "
-		                        << _language);
+		LOG(plog::debug) << "Loaded " << entry_count << " translations in " << cat_count << " categories for "
+		                 << _language;
 	}
 	void Translator::_load(const Language_id& lang) {
 		auto loc_extension = "." + lang + ".json";
@@ -123,8 +123,8 @@ namespace mirrage {
 			auto iter = cat_iter->second.find(str);
 			if(iter == cat_iter->second.end()) {
 				if(_missing_translations.emplace(category, str).second) {
-					MIRRAGE_WARN("Missing translation for language '" << _language << "' " << category << ": "
-					                                                  << str);
+					LOG(plog::warning) << "Missing translation for language '" << _language << "' "
+					                   << category << ": " << str;
 				}
 				return str;
 			}
@@ -133,21 +133,23 @@ namespace mirrage {
 		}
 
 		if(_missing_categories.emplace(category).second) {
-			MIRRAGE_WARN("Missing translation category for language '" << _language << "': " << category);
+			LOG(plog::warning) << "Missing translation category for language '" << _language
+			                   << "': " << category;
 		}
 		return str;
 	}
 
 	void Translator::_print_missing() const {
 		for(auto& category : _missing_categories) {
-			MIRRAGE_WARN("Missing translation category for language '" << _language << "': " << category);
+			LOG(plog::warning) << "Missing translation category for language '" << _language
+			                   << "': " << category;
 		}
 		for(auto& e : _missing_translations) {
 			auto&& category = e.first;
 			auto&& str      = e.second;
 
-			MIRRAGE_WARN("Missing translation for language '" << _language << "' " << category << ": "
-			                                                  << str);
+			LOG(plog::warning) << "Missing translation for language '" << _language << "' " << category
+			                   << ": " << str;
 		}
 	}
 } // namespace mirrage

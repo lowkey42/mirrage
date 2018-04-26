@@ -18,9 +18,6 @@
 #include <unistd.h>
 #endif
 
-#ifdef EMSCRIPTEN
-#include <emscripten.h>
-#endif
 
 using namespace mirrage::util;
 using namespace std::string_literals;
@@ -79,9 +76,8 @@ namespace {
 		auto&& file = std::get<1>(spr);
 
 		auto wildcard = last_of(file, '*').get_or(file.length());
-		if(wildcard != (file.find_first_of('*') + 1)) {
-			MIRRAGE_WARN("More than one wildcard ist currently not supported. Found in: " << wildcard_path);
-		}
+		LOG_IF(plog::warning, wildcard != file.find_first_of('*') + 1)
+		        << "More than one wildcard ist currently not supported. Found in: " << wildcard_path;
 
 		auto prefix = file.substr(0, wildcard - 1);
 		auto suffix = wildcard < file.length() ? file.substr(0, wildcard - 1) : std::string();
@@ -115,19 +111,26 @@ namespace {
 		return stat.filetype == PHYSFS_FILETYPE_DIRECTORY;
 	}
 
-	template <typename Stream>
-	void print_dir_recursiv(const std::string& dir, uint8_t depth, Stream& stream) {
+	template <typename Callback>
+	void print_dir_recursiv(const std::string& dir, uint8_t depth, Callback&& callback) {
 		std::string p;
 		for(uint8_t i = 0; i < depth; i++)
 			p += "  ";
 
-		stream << p << dir << "\n";
+		callback(p + dir);
 		depth++;
 		for(auto&& f : list_files(dir, "", "")) {
 			if(depth >= 5)
-				stream << p << "  " << f << "\n";
+				callback(p + "  " + f);
 			else
-				print_dir_recursiv(f, depth, stream);
+				print_dir_recursiv(f, depth, callback);
+		}
+	}
+
+	void init_physicsfs(const std::string& exe_name) {
+		if(!PHYSFS_isInit() && !PHYSFS_init(exe_name.empty() ? nullptr : exe_name.c_str())) {
+			throw std::system_error(static_cast<mirrage::asset::Asset_error>(PHYSFS_getLastErrorCode()),
+			                        "Unable to initalize PhysicsFS.");
 		}
 	}
 
@@ -149,53 +152,25 @@ namespace mirrage::asset {
 
 		return cCurrentPath;
 	}
+	std::string write_dir(const std::string& exe_name,
+	                      const std::string& org_name,
+	                      const std::string& app_name) {
+		init_physicsfs(exe_name);
 
+		if(exists_dir("write_dir")) {
+			return "write_dir";
+		}
 
-#ifdef EMSCRIPTEN
-	static bool initial_sync_done = false;
-
-	extern "C" void EMSCRIPTEN_KEEPALIVE post_sync_handler() { initial_sync_done = true; }
-
-	void setup_storage() {
-		EM_ASM(FS.mkdir('/persistent_data'); FS.mount(IDBFS, {}, '/persistent_data');
-
-		       Module.syncdone = 0;
-
-		       //populate persistent_data directory with existing persistent source data
-		       //stored with Indexed Db
-		       //first parameter = "true" mean synchronize from Indexed Db to
-		       //Emscripten file system,
-		       // "false" mean synchronize from Emscripten file system to Indexed Db
-		       //second parameter = function called when data are synchronized
-		       FS.syncfs(true, function(err) {
-			       //assert(!err);
-			       Module.print("end file sync..");
-			       Module.syncdone = 1;
-			       ccall('post_sync_handler', 'v');
-		       }););
+		return PHYSFS_getPrefDir(org_name.c_str(), app_name.c_str());
 	}
-
-	bool storage_ready() { return initial_sync_done; }
-#else
-	void setup_storage() {}
-	bool storage_ready() { return true; }
-
-#endif
 
 
 	Asset_manager::Asset_manager(const std::string& exe_name,
 	                             const std::string& org_name,
 	                             const std::string& app_name) {
-		if(!PHYSFS_init(exe_name.empty() ? nullptr : exe_name.c_str()))
-			throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
-			                        "Unable to initalize PhysicsFS.");
+		init_physicsfs(exe_name);
 
-		auto write_dir = PHYSFS_getPrefDir(org_name.c_str(), app_name.c_str());
-
-#ifdef EMSCRIPTEN
-		MIRRAGE_INVARIANT(storage_ready(), "Storage is not ready");
-		write_dir = "/persistent_data";
-#endif
+		auto write_dir = ::mirrage::asset::write_dir(exe_name, org_name, app_name);
 
 		if(!PHYSFS_mount(PHYSFS_getBaseDir(), nullptr, 1)
 		   || !PHYSFS_mount(append_file(PHYSFS_getBaseDir(), "..").c_str(), nullptr, 1)
@@ -203,20 +178,15 @@ namespace mirrage::asset {
 			throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 			                        "Unable to setup default search path.");
 
-
-		if(exists_dir("write_dir")) {
-			write_dir = "write_dir";
-		}
-
 		create_dir(write_dir);
 
-		MIRRAGE_INFO("Write dir: " << write_dir);
+		LOG(plog::debug) << "Write dir: " << write_dir;
 
-		if(!PHYSFS_mount(write_dir, nullptr, 0))
+		if(!PHYSFS_mount(write_dir.c_str(), nullptr, 0))
 			throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 			                        "Unable to construct search path.");
 
-		if(!PHYSFS_setWriteDir(write_dir))
+		if(!PHYSFS_setWriteDir(write_dir.c_str()))
 			throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 			                        "Unable to set write-dir: "s + write_dir);
 
@@ -242,16 +212,14 @@ namespace mirrage::asset {
 			}
 
 			if(lost) {
-				auto& log = util::error(__func__, __FILE__, __LINE__);
-				log << "No archives.lst found. printing search-path...\n";
-				print_dir_recursiv("/", 0, log);
-				log << std::endl;
+				LOG(plog::fatal) << "No archives.lst found. printing search-path...\n";
+				print_dir_recursiv("/", 0, [](auto&& path) { LOG(plog::fatal) << path; });
 
 				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 				                        "No archives.lst found.");
 
 			} else {
-				MIRRAGE_INFO("No archives.lst found. Using defaults.");
+				LOG(plog::info) << "No archives.lst found. Using defaults.";
 			}
 
 		} else {
@@ -261,7 +229,7 @@ namespace mirrage::asset {
 			for(auto&& l : in.lines()) {
 				if(l.find_last_of('*') != std::string::npos) {
 					for(auto& file : list_wildcard_files(l)) {
-						MIRRAGE_INFO("Added FS directory: " << file);
+						LOG(plog::info) << "Added FS directory: " << file;
 						add_source(file.c_str());
 					}
 					continue;
@@ -407,15 +375,7 @@ namespace mirrage::asset {
 		return util::nothing;
 	}
 
-	void Asset_manager::_post_write() {
-#ifdef EMSCRIPTEN
-		//persist Emscripten current data to Indexed Db
-		EM_ASM(FS.syncfs(false,
-		                 function(err){
-		                         //assert(!err);
-		                 }););
-#endif
-	}
+	void Asset_manager::_post_write() {}
 
 	auto Asset_manager::_base_dir(Asset_type type) const -> util::maybe<std::string> {
 		auto lock = std::shared_lock{_dispatchers_mutex};
@@ -435,7 +395,7 @@ namespace mirrage::asset {
 		_dispatchers.clear();
 
 		for(auto&& df : list_files("", "assets", ".map")) {
-			MIRRAGE_INFO("Added asset mapping: " << df);
+			LOG(plog::info) << "Added asset mapping: " << df;
 			auto in = _open({}, df);
 			for(auto&& l : in.lines()) {
 				auto        kvp  = util::split(l, "=");

@@ -9,8 +9,8 @@
 
 #include <mirrage/asset/aid.hpp>
 
+#include <mirrage/utils/log.hpp>
 #include <mirrage/utils/maybe.hpp>
-#include <mirrage/utils/stacktrace.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
 #include <gsl/gsl>
@@ -97,9 +97,8 @@ namespace mirrage::asset {
 
 			sf2::deserialize_json(in,
 			                      [&](auto& msg, uint32_t row, uint32_t column) {
-				                      MIRRAGE_ERROR("Error parsing JSON from " << in.aid().str() << " at "
-				                                                               << row << ":" << column << ": "
-				                                                               << msg);
+				                      LOG(plog::error) << "Error parsing JSON from " << in.aid().str()
+				                                       << " at " << row << ":" << column << ": " << msg;
 			                      },
 			                      r);
 

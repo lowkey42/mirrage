@@ -45,10 +45,7 @@ namespace mirrage::net {
 	  private:
 		friend class Server;
 
-		Server_builder(Host_type     type,
-		               std::string   hostname,
-		               std::uint16_t port,
-		               const Channel_definitions&);
+		Server_builder(Host_type type, std::string hostname, std::uint16_t port, const Channel_definitions&);
 
 		Host_type             _type;
 		std::string           _hostname;
@@ -73,8 +70,8 @@ namespace mirrage::net {
 	 *
 	 *  auto s = Server::on_any_interface(4242, channels)
 	 *                   .max_clients(5)
-	 *                   .on_connect([](auto peer) { MIRRAGE_DEBUG("new client connected"); })
-	 *                   .on_disconnect([](auto peer, auto arg) { MIRRAGE_DEBUG("client disconnected"); })
+	 *                   .on_connect([](auto peer) { LOG(plog::debug) << "new client connected"; })
+	 *                   .on_disconnect([](auto peer, auto arg) { LOG(plog::debug) << "client disconnected"; })
 	 *                   .create();
 	 */
 	class Server final : public detail::Connection {
@@ -84,8 +81,7 @@ namespace mirrage::net {
 		                                         const Channel_definitions& channels) {
 			return {Server_builder::Host_type::named, std::move(hostname), port, channels};
 		}
-		static Server_builder on_any_interface(std::uint16_t              port,
-		                                       const Channel_definitions& channels) {
+		static Server_builder on_any_interface(std::uint16_t port, const Channel_definitions& channels) {
 			return {Server_builder::Host_type::any, {}, port, channels};
 		}
 		static Server_builder on_broadcast_interface(std::uint16_t              port,

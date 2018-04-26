@@ -26,12 +26,8 @@ namespace mirrage {
 			std::string   material_id;
 
 			Sub_mesh_data() = default;
-			Sub_mesh_data(std::uint32_t index_offset,
-			              std::uint32_t index_count,
-			              std::string   material_id)
-			  : index_offset(index_offset)
-			  , index_count(index_count)
-			  , material_id(std::move(material_id)) {}
+			Sub_mesh_data(std::uint32_t index_offset, std::uint32_t index_count, std::string material_id)
+			  : index_offset(index_offset), index_count(index_count), material_id(std::move(material_id)) {}
 		};
 
 		auto last_of(const std::string& str, char c) {
@@ -71,7 +67,7 @@ namespace mirrage {
 
 
 	void convert_model(const std::string& path, const std::string& output) {
-		MIRRAGE_INFO("Convert model \"" << path << "\" with output directory \"" << output << "\"");
+		LOG(plog::info) << "Convert model \"" << path << "\" with output directory \"" << output << "\"";
 
 		auto base_dir   = extract_dir(path);
 		auto model_name = extract_file_name(path);
@@ -83,28 +79,25 @@ namespace mirrage {
 		        aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals | aiProcess_Triangulate
 		                | aiProcess_PreTransformVertices | aiProcess_ImproveCacheLocality
 		                | aiProcess_RemoveRedundantMaterials | aiProcess_OptimizeMeshes
-		                | aiProcess_ValidateDataStructure | aiProcess_FlipUVs
-		                | aiProcess_FixInfacingNormals);
+		                | aiProcess_ValidateDataStructure | aiProcess_FlipUVs | aiProcess_FixInfacingNormals);
 
-		MIRRAGE_INVARIANT(scene,
-		                  "Unable to load model '" << path << "': " << importer.GetErrorString());
+		MIRRAGE_INVARIANT(scene, "Unable to load model '" << path << "': " << importer.GetErrorString());
 
 		// load materials
-		auto materials =
-		        gsl::span<const aiMaterial* const>(scene->mMaterials, scene->mNumMaterials);
+		auto materials = gsl::span<const aiMaterial* const>(scene->mMaterials, scene->mNumMaterials);
 		auto loaded_material_ids = std::vector<util::maybe<std::string>>();
 		loaded_material_ids.reserve(materials.size());
 		for(auto& mat : materials) {
 			aiString name;
 			if(mat->Get(AI_MATKEY_NAME, name) != aiReturn_SUCCESS) {
-				MIRRAGE_WARN("material number " << loaded_material_ids.size() << " has no name!");
+				LOG(plog::warning) << "material number " << loaded_material_ids.size() << " has no name!";
 				loaded_material_ids.emplace_back(util::nothing);
 				continue;
 			}
 
 			auto mat_id = model_name + "_" + name.C_Str();
 			if(!convert_material(mat_id, *mat, base_dir, output)) {
-				MIRRAGE_WARN("Unable to parse material \"" << name.C_Str() << "\"!");
+				LOG(plog::warning) << "Unable to parse material \"" << name.C_Str() << "\"!";
 				loaded_material_ids.emplace_back(util::nothing);
 				continue;
 			}
@@ -144,10 +137,9 @@ namespace mirrage {
 			if(mesh->mNumFaces > 0) {
 				auto& mat = loaded_material_ids.at(mesh->mMaterialIndex);
 				if(mat.is_some()) {
-					sub_meshes.emplace_back(
-					        indices.size(), mesh->mNumFaces * 3, mat.get_or_throw());
+					sub_meshes.emplace_back(indices.size(), mesh->mNumFaces * 3, mat.get_or_throw());
 				} else {
-					MIRRAGE_WARN("Required material is missing/defect!");
+					LOG(plog::warning) << "Required material is missing/defect!";
 				}
 			}
 
@@ -161,15 +153,13 @@ namespace mirrage {
 
 		// write file
 		auto model_out_filename = output + "/models/" + model_name + ".mmf";
-		auto model_out_file =
-		        std::ofstream(model_out_filename, std::ostream::binary | std::ostream::trunc);
+		auto model_out_file = std::ofstream(model_out_filename, std::ostream::binary | std::ostream::trunc);
 
 		MIRRAGE_INVARIANT(model_out_file.is_open(),
 		                  "Unable to open output file \"" << model_out_filename << "\"!");
 
-		auto header = renderer::Model_file_header();
-		header.vertex_count =
-		        gsl::narrow<std::uint32_t>(vertices.size() * sizeof(renderer::Model_vertex));
+		auto header          = renderer::Model_file_header();
+		header.vertex_count  = gsl::narrow<std::uint32_t>(vertices.size() * sizeof(renderer::Model_vertex));
 		header.index_count   = gsl::narrow<std::uint32_t>(indices.size() * sizeof(std::uint32_t));
 		header.submesh_count = gsl::narrow<std::uint32_t>(sub_meshes.size());
 
@@ -195,6 +185,6 @@ namespace mirrage {
 		// write footer
 		write(model_out_file, renderer::Model_file_header::type_tag_value);
 
-		MIRRAGE_INFO("Done.");
+		LOG(plog::info) << "Done.";
 	}
 } // namespace mirrage

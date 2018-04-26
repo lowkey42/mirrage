@@ -21,7 +21,8 @@ namespace mirrage {
 
 	class Game_engine : public Engine {
 	  public:
-		Game_engine(const std::string& title,
+		Game_engine(const std::string& org,
+		            const std::string& title,
 		            std::uint32_t      version_major,
 		            std::uint32_t      version_minor,
 		            bool               debug,

@@ -33,8 +33,8 @@ namespace mirrage::graphic {
 			auto caches = assets.list("pl_cache"_strid);
 
 			if(caches.size() >= max_pipeline_cache_count) {
-				MIRRAGE_DEBUG("More than " << max_pipeline_cache_count
-				                           << " pipeline cahces. Deleting oldest caches.");
+				LOG(plog::debug) << "More than " << max_pipeline_cache_count
+				                 << " pipeline cahces. Deleting oldest caches.";
 
 				std::sort(std::begin(caches), std::end(caches), [&](auto& lhs, auto& rhs) {
 					return assets.last_modified(lhs).get_or(-1) > assets.last_modified(rhs).get_or(-1);
@@ -43,7 +43,8 @@ namespace mirrage::graphic {
 				std::for_each(
 				        std::begin(caches) + max_pipeline_cache_count - 1, std::end(caches), [&](auto& aid) {
 					        if(!assets.try_delete(aid)) {
-						        MIRRAGE_WARN("Unable to delete outdated pipeline cache: " + aid.str());
+						        LOG(plog::warning)
+						                << "Unable to delete outdated pipeline cache: " + aid.str();
 					        }
 				        });
 			}
@@ -57,7 +58,7 @@ namespace mirrage::graphic {
 		auto key = main_pipeline_cache_key(device);
 
 		auto aid = find_pipeline_cache_aid(assets, key).get_or([&] {
-			MIRRAGE_DEBUG("No pipeline cache found for device, creating new one: dev_" << key);
+			LOG(plog::debug) << "No pipeline cache found for device, creating new one: dev_" << key;
 			discard_outdated_pipeline_caches(assets);
 			return asset::AID{"pl_cache"_strid, "dev_" + key};
 		});

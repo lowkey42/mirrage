@@ -14,7 +14,7 @@ namespace mirrage::net {
 				MIRRAGE_FAIL("An error occurred while initializing ENet.");
 			}
 		} else {
-			MIRRAGE_WARN("BUG: Multiple living Net_manager in a single application are.");
+			LOG(plog::warning) << "BUG: Multiple living Net_manager in a single application are.";
 		}
 
 		MIRRAGE_INVARIANT(use_count > 0, "Race for Net_manager construction/destruction");

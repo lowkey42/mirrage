@@ -31,7 +31,7 @@ namespace mirrage::net {
 
 			if(!host) {
 				constexpr auto msg = "Couldn't create the host data structure (out of memory?)";
-				MIRRAGE_WARN(msg);
+				LOG(plog::debug) << msg;
 				throw std::system_error(Net_error::unspecified_network_error, msg);
 			}
 
@@ -47,21 +47,21 @@ namespace mirrage::net {
 			auto ec      = enet_address_set_host(&address, hostname.c_str());
 			if(ec != 0) {
 				const auto msg = "Couldn't resolve host \"" + hostname + "\".";
-				MIRRAGE_WARN(msg);
+				LOG(plog::warning) << msg;
 				throw std::system_error(Net_error::unknown_host, msg);
 			}
 
 
 			auto peer = enet_host_connect(&client_host, &address, channel_count, 0);
 			if(!peer) {
-				const auto msg = "Couldn't connect to host \"" + hostname + "\" at port "
-				                 + std::to_string(port) + ".";
-				MIRRAGE_WARN(msg);
+				const auto msg =
+				        "Couldn't connect to host \"" + hostname + "\" at port " + std::to_string(port) + ".";
+				LOG(plog::warning) << msg;
 				throw std::system_error(Net_error::connection_error, msg);
 			}
 
-			return std::unique_ptr<ENetPeer, void (*)(ENetPeer*)>(
-			        peer, [](auto p) { enet_peer_disconnect(p, 0); });
+			return std::unique_ptr<ENetPeer, void (*)(ENetPeer*)>(peer,
+			                                                      [](auto p) { enet_peer_disconnect(p, 0); });
 		}
 	} // namespace
 
@@ -80,7 +80,7 @@ namespace mirrage::net {
 		auto&& c = _channels.by_name(channel);
 		if(c.is_nothing()) {
 			const auto msg = "Unknown channel \"" + channel.str() + "\".";
-			MIRRAGE_WARN(msg);
+			LOG(plog::warning) << msg;
 			throw std::system_error(Net_error::unknown_channel, msg);
 		}
 

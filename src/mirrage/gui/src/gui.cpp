@@ -328,7 +328,8 @@ namespace mirrage::gui {
 							if(font.default_font) {
 								atlas.default_font = f;
 							}
-							MIRRAGE_DEBUG("Loaded font \"" << font.aid << "\" in fontsize " << font.size);
+							LOG(plog::debug)
+							        << "Loaded font \"" << font.aid << "\" in fontsize " << font.size;
 						});
 					}
 				});
@@ -443,7 +444,7 @@ namespace mirrage::gui {
 			_last_renderer->_gui = this;
 
 		} else {
-			MIRRAGE_WARN("Gui initialized without a valid renderer. Nothing will be drawn!");
+			LOG(plog::warning) << "Gui initialized without a valid renderer. Nothing will be drawn!";
 		}
 	}
 
@@ -464,7 +465,7 @@ namespace mirrage::gui {
 		}
 
 		if(!_impl) {
-			MIRRAGE_INFO("no impl");
+			LOG(plog::info) << "no impl";
 			return;
 		}
 

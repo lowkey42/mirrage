@@ -197,8 +197,8 @@ namespace mirrage::ecs {
 		sf2::format::Error_handler create_error_handler(std::string source_name) {
 			return [source_name =
 			                std::move(source_name)](const std::string& msg, uint32_t row, uint32_t column) {
-				MIRRAGE_ERROR("Error parsing JSON from " << source_name << " at " << row << ":" << column
-				                                         << ": " << msg);
+				LOG(plog::error) << "Error parsing JSON from " << source_name << " at " << row << ":"
+				                 << column << ": " << msg;
 			};
 		}
 	} // namespace
@@ -225,7 +225,7 @@ namespace mirrage::ecs {
 	void apply_blueprint(asset::Asset_manager& asset_mgr, Entity_facet e, const std::string& blueprint) {
 		auto mb = asset_mgr.load_maybe<ecs::Blueprint>(asset::AID{"blueprint"_strid, blueprint});
 		if(mb.is_nothing()) {
-			MIRRAGE_ERROR("Failed to load blueprint \"" << blueprint << "\"");
+			LOG(plog::error) << "Failed to load blueprint \"" << blueprint << "\"";
 			return;
 		}
 		auto b = mb.get_or_throw(); // TODO: could/should be async
@@ -259,7 +259,7 @@ namespace mirrage::ecs {
 			auto comp_type_mb = ecs_deserializer.manager.component_type_by_name(key);
 
 			if(comp_type_mb.is_nothing()) {
-				MIRRAGE_DEBUG("Skipped unknown component " << key);
+				LOG(plog::debug) << "Skipped unknown component " << key;
 				s.skip_obj();
 				return true;
 			}
@@ -267,7 +267,7 @@ namespace mirrage::ecs {
 			auto comp_type = comp_type_mb.get_or_throw();
 
 			if(ecs_deserializer.filter && !ecs_deserializer.filter(comp_type)) {
-				MIRRAGE_DEBUG("Skipped filtered component " << key);
+				LOG(plog::debug) << "Skipped filtered component " << key;
 				s.skip_obj();
 				return true;
 			}

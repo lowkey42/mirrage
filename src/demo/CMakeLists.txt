@@ -13,7 +13,10 @@ add_executable(demo ${HEADER_FILES}
 	src/main.cpp
 	src/meta_system.cpp
 	src/test_screen.cpp
+	${BACKWARD_ENABLE}
 )
+
+add_backward(demo)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(demo PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
@@ -22,6 +25,7 @@ target_link_libraries(demo
 	PRIVATE
 		mirrage::mirrage
 		mirrage::renderer
+		plog
 )
 
 option(MIRRAGE_COMPILE_SHADERS "Compile demo shaders" OFF)

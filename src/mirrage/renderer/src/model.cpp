@@ -191,8 +191,8 @@ namespace mirrage::asset {
 		read(in, footer);
 
 		if(footer != renderer::Model_file_header::type_tag_value) {
-			MIRRAGE_WARN("Invalid footer in model file \"" << in.aid().str()
-			                                               << "\"! The file is probably corrupted!");
+			LOG(plog::warning) << "Invalid footer in model file \"" << in.aid().str()
+			                   << "\"! The file is probably corrupted!";
 		}
 
 		auto all_materials_loaded = async::when_all(material_load_tasks);
@@ -200,7 +200,7 @@ namespace mirrage::asset {
 		using Task_type = decltype(all_loaded)::result_type;
 
 		return all_loaded.then([model = renderer::Model(std::move(mesh), std::move(sub_meshes), in.aid())](
-		        const Task_type&) mutable { return std::move(model); });
+		                               const Task_type&) mutable { return std::move(model); });
 	}
 
 } // namespace mirrage::asset
