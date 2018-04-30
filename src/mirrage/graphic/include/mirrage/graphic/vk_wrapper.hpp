@@ -130,7 +130,7 @@ namespace mirrage::graphic {
 		const vk::Device& _device;
 		vk::UniqueFence   _fence;
 
-		Fence(const vk::Device& device);
+		Fence(const vk::Device& device, bool signaled);
 	};
 
 	extern auto create_fence(Device&) -> Fence;
@@ -310,4 +310,21 @@ namespace mirrage::graphic {
 	                          vk::ImageLayout   final_layout,
 	                          std::uint32_t     initial_mip_level = 0,
 	                          std::uint32_t     mip_levels        = 0);
+
+	template <typename P>
+	auto find_queue_family(vk::PhysicalDevice& gpu, P&& predicat) -> util::maybe<std::uint32_t>
+	{
+		auto i = 0u;
+
+		for(auto& queue_family : gpu.getQueueFamilyProperties()) {
+			if(queue_family.queueCount > 0 && predicat(queue_family)) {
+				return i;
+			}
+
+			i++;
+		}
+
+		return util::nothing;
+	}
+
 } // namespace mirrage::graphic

@@ -211,8 +211,6 @@ namespace mirrage::graphic {
 	auto Stage_builder::shader(const asset::AID& id, Shader_stage stage, std::string entry_point)
 	        -> Stage_builder&
 	{
-		auto in = _builder._assets.load<Shader_module>(id);
-
 		pipeline().stages.emplace_back(
 		        stage, _builder._assets.load<Shader_module>(id), std::move(entry_point));
 

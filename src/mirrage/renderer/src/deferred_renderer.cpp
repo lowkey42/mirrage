@@ -23,6 +23,9 @@ namespace mirrage::renderer {
 	                                                         {vk::DescriptorType::eUniformBuffer,
 	                                                          vk::DescriptorType::eCombinedImageSampler,
 	                                                          vk::DescriptorType::eInputAttachment,
+	                                                          vk::DescriptorType::eStorageBuffer,
+	                                                          vk::DescriptorType::eStorageTexelBuffer,
+	                                                          vk::DescriptorType::eStorageImage,
 	                                                          vk::DescriptorType::eSampledImage,
 	                                                          vk::DescriptorType::eSampler}))
 	  , _gbuffer(std::make_unique<GBuffer>(device(), factory._window.width(), factory._window.height()))
@@ -266,15 +269,18 @@ namespace mirrage::renderer {
 	  , _window(window)
 	  , _device(context.instantiate_device(FOE_SELF(_rank_device), FOE_SELF(_init_device), {&_window}, true))
 	  , _swapchain(_device->get_single_swapchain())
-	  , _queue_family(_device->get_queue_family("draw"_strid))
-	  , _queue(_device->get_queue("draw"_strid))
+	  , _draw_queue_family(_device->get_queue_family("draw"_strid))
+	  , _compute_queue_family(_device->get_queue_family("compute"_strid))
+	  , _draw_queue(_device->get_queue("draw"_strid))
+	  , _compute_queue(_device->get_queue("compute"_strid))
 	  , _image_acquired(_device->create_semaphore())
 	  , _image_presented(_device->create_semaphore())
 	  , _command_buffer_pool(_device->create_command_buffer_pool("draw"_strid, true, true))
+	  , _compute_command_buffer_pool(_device->create_command_buffer_pool("compute"_strid, true, true))
 	  , _model_material_sampler(_device->create_sampler(12))
 	  , _model_desc_set_layout(create_material_descriptor_set_layout(*_device, *_model_material_sampler))
 	  , _asset_loaders(std::make_unique<Asset_loaders>(
-	            _assets, *_device, *_model_material_sampler, *_model_desc_set_layout, _queue_family))
+	            _assets, *_device, *_model_material_sampler, *_model_desc_set_layout, _draw_queue_family))
 	{
 
 		auto maybe_settings = _assets.load_maybe<Renderer_settings>("cfg:renderer"_aid);
@@ -367,16 +373,36 @@ namespace mirrage::renderer {
 		                                  1,
 		                                  &*_image_presented};
 
-		_queue.submit({submit_info}, frame_fence);
+		_draw_queue.submit({submit_info}, frame_fence);
 		_queued_commands.clear();
 
 		// present
-		if(_swapchain.present(_queue, _aquired_swapchain_image.get_or_throw(), *_image_presented)) {
+		if(_swapchain.present(_draw_queue, _aquired_swapchain_image.get_or_throw(), *_image_presented)) {
 			_recreation_pending = true;
 		}
 
 		_aquired_swapchain_image = util::nothing;
 	}
+
+	namespace {
+		auto find_compute_queue(vk::PhysicalDevice& gpu) -> util::maybe<std::uint32_t>
+		{
+			// try to find async compute queue first
+			auto queue = find_queue_family(gpu, [](auto&& q) {
+				return q.timestampValidBits >= 32 && q.queueFlags == vk::QueueFlagBits::eCompute;
+			});
+
+			// ... if their is none, fallback to any compute queue
+			if(queue.is_nothing()) {
+				queue = find_queue_family(gpu, [](auto&& q) {
+					return q.timestampValidBits >= 32
+					       && (q.queueFlags & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute;
+				});
+			}
+
+			return queue;
+		}
+	} // namespace
 
 	auto Deferred_renderer_factory::_rank_device(vk::PhysicalDevice gpu, util::maybe<std::uint32_t> gqueue)
 	        -> int
@@ -400,6 +426,10 @@ namespace mirrage::renderer {
 			return std::numeric_limits<int>::min();
 		}
 
+		if(find_compute_queue(gpu).is_some()) {
+			score -= 500;
+		}
+
 		for(auto& pass : _pass_factories) {
 			score = pass->rank_device(gpu, gqueue, score);
 		}
@@ -414,6 +444,10 @@ namespace mirrage::renderer {
 
 		MIRRAGE_INVARIANT(gqueue.is_some(), "No useable queue family");
 		ret_val.queue_families.emplace("draw"_strid, Queue_create_info{gqueue.get_or_throw()});
+
+		ret_val.queue_families.emplace("compute"_strid,
+		                               Queue_create_info{find_compute_queue(gpu).get_or_throw(
+		                                       "The device doesn't support compute.")});
 
 		auto supported_features = gpu.getFeatures();
 		MIRRAGE_INVARIANT(supported_features.samplerAnisotropy,
@@ -447,5 +481,10 @@ namespace mirrage::renderer {
 		queue_commands(cb);
 
 		return cb;
+	}
+
+	auto Deferred_renderer_factory::create_compute_command_buffer() -> vk::UniqueCommandBuffer
+	{
+		return std::move(_compute_command_buffer_pool.create_primary()[0]);
 	}
 } // namespace mirrage::renderer

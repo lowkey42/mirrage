@@ -56,7 +56,7 @@ namespace mirrage::graphic {
 
 		auto create_render_pass_builder() -> Render_pass_builder;
 		auto create_semaphore() -> vk::UniqueSemaphore;
-		auto create_fence() -> Fence;
+		auto create_fence(bool signaled = false) -> Fence;
 		auto create_command_buffer_pool(Queue_tag queue_family,
 		                                bool      resetable   = true,
 		                                bool      short_lived = false) -> Command_buffer_pool;
@@ -147,6 +147,7 @@ namespace mirrage::graphic {
 		auto max_frames_in_flight() const noexcept { return _delete_queue.capacity() + 2; }
 
 		auto vk_device() const noexcept { return &*_device; }
+		auto pipeline_cache() const noexcept { return **_pipeline_cache; }
 
 	  private:
 		struct Asset_loaders;

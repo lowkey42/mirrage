@@ -69,7 +69,7 @@ namespace {
 		auto write_dir = asset::write_dir(argv[0], org_name, app_name);
 
 		static auto fileAppender = plog::RollingFileAppender<plog::TxtFormatter>(
-		        (write_dir + "/mirrage.log").c_str(), 4L * 1024L, 4);
+		        (write_dir + "/mirrage.log").c_str(), 1024L * 1024L, 4);
 		static auto consoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>();
 		plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender);
 

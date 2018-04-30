@@ -21,14 +21,26 @@ namespace mirrage::renderer {
 		          vk::DescriptorSet global_uniform_set,
 		          std::size_t       swapchain_image) override;
 
+		auto last_histogram() const noexcept -> auto& { return _last_result_data; }
+
 		auto name() const noexcept -> const char* override { return "Tone Mapping"; }
 
 	  private:
-		Deferred_renderer&                   _renderer;
+		Deferred_renderer&      _renderer;
+		graphic::Fence          _compute_fence;
+		vk::UniqueCommandBuffer _last_compute_commands;
+
+		std::vector<graphic::Backed_buffer> _result_buffer;
+		int                                 _ready_result = -1;
+		int                                 _next_result  = 0;
+		std::vector<float>                  _last_result_data;
+
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
 		vk::Format                           _luminance_format;
-		int                                  _first_frame = 4;
+
+		vk::UniqueDescriptorSetLayout       _compute_descriptor_set_layout;
+		std::vector<graphic::DescriptorSet> _compute_descriptor_set;
 
 		// calculate scene luminance for tone mapping
 		graphic::Render_target_2D _luminance_buffer;
@@ -36,12 +48,13 @@ namespace mirrage::renderer {
 		graphic::Render_pass      _calc_luminance_renderpass;
 		graphic::DescriptorSet    _calc_luminance_desc_set;
 
-		// calculate and adapt avg luminance over time
-		graphic::Render_target_2D _prev_avg_luminance;
-		graphic::Render_target_2D _curr_avg_luminance;
-		graphic::Framebuffer      _adapt_luminance_framebuffer;
-		graphic::Render_pass      _adapt_luminance_renderpass;
-		graphic::DescriptorSet    _adapt_luminance_desc_set;
+		vk::UniquePipelineLayout _compute_pipeline_layout;
+		vk::UniquePipeline       _build_histogram_pipeline;
+		vk::UniquePipeline       _compute_exposure_pipeline;
+
+		void _extract_luminance(vk::CommandBuffer&);
+		void _dispatch_build_histogram(vk::CommandBuffer&);
+		void _dispatch_compute_exposure(vk::CommandBuffer&);
 	};
 
 	class Tone_mapping_pass_factory : public Pass_factory {

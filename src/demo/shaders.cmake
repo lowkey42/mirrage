@@ -2,6 +2,7 @@
 file(GLOB_RECURSE GLSL_SOURCE_FILES
 	"${ROOT_DIR}/assets/core_assets/shader/*.frag"
 	"${ROOT_DIR}/assets/core_assets/shader/*.vert"
+	"${ROOT_DIR}/assets/core_assets/shader/*.comp"
 )
 
 set(GLSL_COMPILER "glslc")

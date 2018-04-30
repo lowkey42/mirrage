@@ -8,6 +8,10 @@
 #include <mirrage/renderer/model_comp.hpp>
 #include <mirrage/renderer/pass/gui_pass.hpp>
 
+#ifdef HPC_HISTOGRAM_DEBUG_VIEW
+#include <mirrage/renderer/pass/tone_mapping_pass.hpp>
+#endif
+
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/graphic/window.hpp>
 #include <mirrage/gui/gui.hpp>
@@ -316,6 +320,7 @@ namespace mirrage {
 
 		if(_show_ui) {
 			_draw_settings_window();
+			_draw_histogram_window();
 
 			if(_show_profiler) {
 				_meta_system.renderer().profiler().enable();
@@ -603,6 +608,36 @@ namespace mirrage {
 
 		nk_end(ctx);
 	}
+
+	void Test_screen::_draw_histogram_window()
+	{
+#ifdef HPC_HISTOGRAM_DEBUG_VIEW
+
+		auto tone_mapping_pass = _meta_system.renderer().find_pass<renderer::Tone_mapping_pass>();
+		if(tone_mapping_pass) {
+			auto&& histogram = tone_mapping_pass->last_histogram();
+
+			auto ctx = _gui.ctx();
+			if(nk_begin_titled(
+			           ctx,
+			           "Histogram",
+			           "Histogram",
+			           _gui.centered_right(300, 300),
+			           NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
+
+				nk_layout_row_dynamic(ctx, 150, 1);
+				nk_chart_begin(ctx, NK_CHART_COLUMN, static_cast<int>(histogram.size() - 1), 0, 50);
+				for(auto i : util::range(histogram.size() - 1)) {
+					nk_chart_push(ctx, histogram[i]);
+				}
+				nk_chart_end(ctx);
+			}
+
+			nk_end(ctx);
+		}
+#endif
+	}
+
 
 	void Test_screen::_update_sun_position()
 	{

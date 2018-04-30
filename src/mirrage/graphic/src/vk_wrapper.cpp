@@ -28,7 +28,12 @@ namespace mirrage::graphic {
 	void   Fence::reset() { _device.resetFences({*_fence}); }
 	void Fence::wait() { _device.waitForFences({*_fence}, true, std::numeric_limits<std::uint64_t>::max()); }
 
-	Fence::Fence(const vk::Device& device) : _device(device), _fence(_device.createFenceUnique({})) {}
+	Fence::Fence(const vk::Device& device, bool signaled)
+	  : _device(device)
+	  , _fence(_device.createFenceUnique({signaled ? vk::FenceCreateFlags{vk::FenceCreateFlagBits::eSignaled}
+	                                               : vk::FenceCreateFlags{}}))
+	{
+	}
 
 	auto create_fence(Device& d) -> Fence { return d.create_fence(); }
 

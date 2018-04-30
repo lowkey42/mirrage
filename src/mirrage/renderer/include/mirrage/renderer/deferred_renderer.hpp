@@ -130,8 +130,12 @@ namespace mirrage::renderer {
 		void queue_commands(vk::CommandBuffer);
 		auto queue_temporary_command_buffer() -> vk::CommandBuffer;
 
+		auto create_compute_command_buffer() -> vk::UniqueCommandBuffer;
+
 		auto model_material_sampler() const noexcept { return *_model_material_sampler; }
 		auto model_descriptor_set_layout() const noexcept { return *_model_desc_set_layout; }
+
+		auto compute_queue() const noexcept { return _compute_queue; }
 
 		void finish_frame();
 
@@ -151,11 +155,14 @@ namespace mirrage::renderer {
 		graphic::Window&                _window;
 		graphic::Device_ptr             _device;
 		graphic::Swapchain&             _swapchain;
-		std::uint32_t                   _queue_family;
-		vk::Queue                       _queue;
+		std::uint32_t                   _draw_queue_family;
+		std::uint32_t                   _compute_queue_family;
+		vk::Queue                       _draw_queue;
+		vk::Queue                       _compute_queue;
 		vk::UniqueSemaphore             _image_acquired;
 		vk::UniqueSemaphore             _image_presented;
 		graphic::Command_buffer_pool    _command_buffer_pool;
+		graphic::Command_buffer_pool    _compute_command_buffer_pool;
 		util::maybe<std::size_t>        _aquired_swapchain_image;
 		std::vector<vk::CommandBuffer>  _queued_commands;
 		std::vector<Deferred_renderer*> _renderer_instances;
@@ -208,7 +215,11 @@ namespace mirrage::renderer {
 		auto device() noexcept -> auto& { return *_factory->_device; }
 		auto window() noexcept -> auto& { return _factory->_window; }
 		auto swapchain() noexcept -> auto& { return _factory->_swapchain; }
-		auto queue_family() const noexcept { return _factory->_queue_family; }
+		auto queue_family() const noexcept { return _factory->_draw_queue_family; }
+		auto compute_queue_family() const noexcept { return _factory->_compute_queue_family; }
+
+		auto compute_queue() const noexcept { return _factory->compute_queue(); }
+		auto create_compute_command_buffer() { return _factory->create_compute_command_buffer(); }
 
 		auto create_descriptor_set(vk::DescriptorSetLayout, std::uint32_t bindings) -> graphic::DescriptorSet;
 		auto descriptor_pool() noexcept -> auto& { return _descriptor_set_pool; }

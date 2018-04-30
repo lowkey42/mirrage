@@ -345,7 +345,7 @@ namespace mirrage::graphic {
 		return {*_device, chunk_size, types};
 	}
 
-	auto Device::create_fence() -> Fence { return Fence{*_device}; }
+	auto Device::create_fence(bool signaled) -> Fence { return Fence{*_device, signaled}; }
 
 	auto Device::get_supported_format(std::initializer_list<vk::Format> formats,
 	                                  vk::FormatFeatureFlags            flags,

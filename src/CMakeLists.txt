@@ -28,6 +28,10 @@ elseif(MSVC)
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS /Za)
 endif()
 
+
+add_definitions(-DHPC_HISTOGRAM_DEBUG_VIEW)
+
+
 if(MIRRAGE_BUILD_DEMO)
 	add_subdirectory(demo)
 endif()
