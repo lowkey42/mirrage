@@ -46,13 +46,13 @@ vec3 ToneMapFilmicALU(vec3 color) {
 }
 
 vec3 expose(vec3 color, float threshold) {
-	float avg_luminance = max(exp(texture(avg_log_luminance_sampler, vec2(0.5, 0.5)).r), 0.001);
+	float exposure = pcs.options.z;
 
-	float key = 1.03f - (2.0f / (2 + log(avg_luminance + 1)/log(10)));
-	float exposure = clamp(key/avg_luminance, 0.1, 5.0) + 0.5;
+	if(exposure<=0) {
+		float avg_luminance = max(exp(texture(avg_log_luminance_sampler, vec2(0.5, 0.5)).r), 0.001);
 
-	if(pcs.options.z>0) {
-		exposure = pcs.options.z;
+		float key = 1.03f - (2.0f / (2 + log(avg_luminance + 1)/log(10)));
+		exposure = clamp(key/avg_luminance, 0.1, 5.0) + 0.5;
 	}
 
 	exposure = log2(exposure);
@@ -62,7 +62,7 @@ vec3 expose(vec3 color, float threshold) {
 }
 
 vec3 tone_mapping(vec3 color) {
-	if(pcs.options.x<=0.1)
+	if(pcs.options.x<=0.1 && pcs.options.z<=0)
 		return color;
 
 	// float exposure = settings.options.r;

@@ -95,7 +95,11 @@ namespace mirrage {
 						_engine.screens().leave();
 					}
 					break;
-				case "fast_quit"_strid: std::quick_exit(0);
+				case "fast_quit"_strid:
+					_meta_system.renderer().device().wait_idle();
+					std::this_thread::sleep_for(std::chrono::milliseconds(250));
+					std::quick_exit(0);
+
 				case "create"_strid:
 					_meta_system.entities().emplace("cube").get<Transform_comp>().process(
 					        [&](auto& transform) {
@@ -615,22 +619,48 @@ namespace mirrage {
 
 		auto tone_mapping_pass = _meta_system.renderer().find_pass<renderer::Tone_mapping_pass>();
 		if(tone_mapping_pass) {
-			auto&& histogram = tone_mapping_pass->last_histogram();
+			auto&& histogram                    = tone_mapping_pass->last_histogram();
+			auto   histogram_sum                = std::accumulate(begin(histogram), end(histogram) - 1, 0.0);
+			auto [min_histogram, max_histogram] = std::minmax_element(begin(histogram), end(histogram) - 1);
 
 			auto ctx = _gui.ctx();
 			if(nk_begin_titled(
 			           ctx,
 			           "Histogram",
 			           "Histogram",
-			           _gui.centered_right(300, 300),
+			           _gui.centered_right(500, 650),
 			           NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
 
-				nk_layout_row_dynamic(ctx, 150, 1);
-				nk_chart_begin(ctx, NK_CHART_COLUMN, static_cast<int>(histogram.size() - 1), 0, 50);
+				nk_layout_row_dynamic(ctx, 500, 1);
+				nk_chart_begin(ctx,
+				               NK_CHART_COLUMN,
+				               static_cast<int>(histogram.size() - 1),
+				               *min_histogram,
+				               *max_histogram);
 				for(auto i : util::range(histogram.size() - 1)) {
-					nk_chart_push(ctx, histogram[i]);
+					auto state = nk_chart_push(ctx, histogram[i]);
+					if(state & NK_CHART_HOVERING) {
+						_last_selected_histogram = i;
+					}
 				}
 				nk_chart_end(ctx);
+
+				nk_layout_row_dynamic(ctx, 25, 2);
+				nk_label(ctx, "Luminance", NK_TEXT_CENTERED);
+				auto log_lum_range =
+				        tone_mapping_pass->max_log_luminance() - tone_mapping_pass->min_log_luminance();
+				auto log_lum =
+				        static_cast<double>(_last_selected_histogram) / (histogram.size() - 1) * log_lum_range
+				        + tone_mapping_pass->min_log_luminance();
+				auto lum = std::exp(log_lum);
+				nk_label(ctx, to_fixed_str(lum, 5).c_str(), NK_TEXT_CENTERED);
+
+				auto percentage = static_cast<double>(histogram[_last_selected_histogram]) / histogram_sum;
+				nk_label(ctx, "Percentage", NK_TEXT_CENTERED);
+				nk_label(ctx, (to_fixed_str(percentage, 4) + " %").c_str(), NK_TEXT_CENTERED);
+
+				nk_label(ctx, "Exposure", NK_TEXT_CENTERED);
+				nk_label(ctx, to_fixed_str(histogram.back(), 5).c_str(), NK_TEXT_CENTERED);
 			}
 
 			nk_end(ctx);

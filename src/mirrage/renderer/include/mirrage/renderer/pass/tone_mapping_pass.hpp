@@ -22,13 +22,19 @@ namespace mirrage::renderer {
 		          std::size_t       swapchain_image) override;
 
 		auto last_histogram() const noexcept -> auto& { return _last_result_data; }
+		auto min_log_luminance() const noexcept { return _min_log_luminance; }
+		auto max_log_luminance() const noexcept { return _max_log_luminance; }
 
 		auto name() const noexcept -> const char* override { return "Tone Mapping"; }
 
 	  private:
 		Deferred_renderer&      _renderer;
+		graphic::Texture_2D&    _src;
 		graphic::Fence          _compute_fence;
 		vk::UniqueCommandBuffer _last_compute_commands;
+
+		float _min_log_luminance = -15.f;
+		float _max_log_luminance = 15.f;
 
 		std::vector<graphic::Backed_buffer> _result_buffer;
 		int                                 _ready_result = -1;

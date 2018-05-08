@@ -2,17 +2,19 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 
-#define WIDTH 3200
-#define HEIGHT 2400
-#define HISTOGRAM_SLOTS 128
-#define WORKGROUP_SIZE 32
+#define WIDTH 1920
+#define HEIGHT 1080
+#define HISTOGRAM_SLOTS 256
+#define WORKGROUP_SIZE 16
+#define HISTOGRAM_MIN -10.0
+#define HISTOGRAM_MAX 10.0
 layout (local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1 ) in;
 
-layout (binding = 0, rgba16f) uniform readonly image2D input_image;
+layout (binding = 0, r16f) uniform readonly image2D input_image;
 
-layout(std140, binding = 1) buffer Pos
+layout(binding = 1) buffer Data
 {
-	float particles[HISTOGRAM_SLOTS + 1];
+	uint histogram[HISTOGRAM_SLOTS + 1];
 };
 
 
@@ -20,8 +22,13 @@ void main() {
 	if(gl_GlobalInvocationID.x >= WIDTH || gl_GlobalInvocationID.y >= HEIGHT)
 		return;
 
-	// vec3 rgb = imageLoad(input_image, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)).rgb;
+	float lum = imageLoad(input_image, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)).r;
 
+	lum = clamp(lum, HISTOGRAM_MIN, HISTOGRAM_MAX);
+	float lum_norm = (lum-HISTOGRAM_MIN) / (HISTOGRAM_MAX-HISTOGRAM_MIN);
 
+	uint idx = uint(floor(lum_norm * (HISTOGRAM_SLOTS-1)));
+
+	atomicAdd(histogram[idx], 1);
 }
 

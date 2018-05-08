@@ -1,5 +1,6 @@
 #include <mirrage/renderer/pass/tone_mapping_pass.hpp>
 
+#include <bitset>
 
 namespace mirrage::renderer {
 
@@ -26,7 +27,7 @@ namespace mirrage::renderer {
 			                                  vk::AttachmentLoadOp::eDontCare,
 			                                  vk::AttachmentStoreOp::eDontCare,
 			                                  vk::ImageLayout::eUndefined,
-			                                  vk::ImageLayout::eColorAttachmentOptimal});
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
@@ -34,7 +35,6 @@ namespace mirrage::renderer {
 			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
 			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
-			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
 
 			pipeline.add_push_constant(
@@ -98,7 +98,7 @@ namespace mirrage::renderer {
 		{
 			auto format = device.get_supported_format(
 			        {vk::Format::eR16Sfloat},
-			        vk::FormatFeatureFlagBits::eColorAttachment
+			        vk::FormatFeatureFlagBits::eColorAttachment | vk::FormatFeatureFlagBits::eStorageImage
 			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 
 			MIRRAGE_INVARIANT(format.is_some(), "No Float R16 format supported (required for tone mapping)!");
@@ -106,10 +106,11 @@ namespace mirrage::renderer {
 			return format.get_or_throw();
 		}
 
-		constexpr auto histogram_slots         = 128;
+		constexpr auto histogram_slots         = 256;
 		constexpr auto histogram_buffer_length = histogram_slots + 1;
 		constexpr auto histogram_buffer_size   = histogram_buffer_length * sizeof(float);
-		constexpr auto workgroup_size          = 32;
+		static_assert(sizeof(float) == sizeof(std::uint32_t));
+		constexpr auto workgroup_size = 16;
 		constexpr auto histogram_host_visible =
 #ifdef HPC_HISTOGRAM_DEBUG_VIEW
 		        true;
@@ -125,6 +126,7 @@ namespace mirrage::renderer {
 	                                     util::maybe<Meta_system&>,
 	                                     graphic::Texture_2D& src)
 	  : _renderer(renderer)
+	  , _src(src)
 	  , _compute_fence(renderer.device().create_fence(true))
 
 	  , _last_result_data(histogram_buffer_length, 0.f)
@@ -155,7 +157,7 @@ namespace mirrage::renderer {
 	                      _luminance_format,
 	                      vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst
 	                              | vk::ImageUsageFlagBits::eColorAttachment
-	                              | vk::ImageUsageFlagBits::eSampled,
+	                              | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
 	                      vk::ImageAspectFlagBits::eColor)
 	  , _calc_luminance_renderpass(build_luminance_render_pass(renderer,
 	                                                           *_descriptor_set_layout,
@@ -226,15 +228,22 @@ namespace mirrage::renderer {
 	                             vk::DescriptorSet global_uniform_set,
 	                             std::size_t)
 	{
+
 #ifndef HPC_ASYNC_COMPUTE
 		if(histogram_host_visible && _ready_result >= 0) {
 			// read back histogram + exposure
 			auto data_addr = _result_buffer[_ready_result].memory().mapped_addr().get_or_throw(
 			        "Host visible buffer is not mapped!");
 
-			std::copy(reinterpret_cast<float*>(data_addr),
-			          reinterpret_cast<float*>(data_addr) + histogram_buffer_length,
-			          _last_result_data.begin());
+			auto data = reinterpret_cast<std::uint32_t*>(data_addr);
+
+			for(auto i : util::range(_last_result_data.size())) {
+				_last_result_data[i] = data[i];
+			}
+
+			_last_result_data.back() = *(reinterpret_cast<float*>(data_addr) + (histogram_buffer_length - 1));
+
+			std::fill(data, data + histogram_buffer_length, 0.f);
 		}
 
 		_extract_luminance(command_buffer);
@@ -308,6 +317,8 @@ namespace mirrage::renderer {
 
 	void Tone_mapping_pass::_extract_luminance(vk::CommandBuffer& command_buffer)
 	{
+		auto _ = _renderer.profiler().push("Extract Luminance");
+
 		// extract luminance of current frame
 		_calc_luminance_renderpass.execute(command_buffer, _calc_luminance_framebuffer, [&] {
 			_calc_luminance_renderpass.bind_descriptor_set(0, *_calc_luminance_desc_set);
@@ -317,6 +328,8 @@ namespace mirrage::renderer {
 	}
 	void Tone_mapping_pass::_dispatch_build_histogram(vk::CommandBuffer& command_buffer)
 	{
+		auto _ = _renderer.profiler().push("Build Histogram");
+
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_build_histogram_pipeline);
 		auto desc_set = *_compute_descriptor_set[_next_result];
 		command_buffer.bindDescriptorSets(
@@ -329,7 +342,26 @@ namespace mirrage::renderer {
 	}
 	void Tone_mapping_pass::_dispatch_compute_exposure(vk::CommandBuffer& command_buffer)
 	{
+		auto _ = _renderer.profiler().push("Compute Exposure");
+
+		auto barrier =
+		        vk::BufferMemoryBarrier{vk::AccessFlagBits::eShaderWrite,
+		                                vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
+		                                VK_QUEUE_FAMILY_IGNORED,
+		                                VK_QUEUE_FAMILY_IGNORED,
+		                                *_result_buffer[_next_result],
+		                                0,
+		                                VK_WHOLE_SIZE};
+
+		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::DependencyFlags{},
+		                               {},
+		                               {barrier},
+		                               {});
+
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_compute_exposure_pipeline);
+
 		auto desc_set = *_compute_descriptor_set[_next_result];
 		command_buffer.bindDescriptorSets(
 		        vk::PipelineBindPoint::eCompute, *_compute_pipeline_layout, 0, 1, &desc_set, 0, nullptr);

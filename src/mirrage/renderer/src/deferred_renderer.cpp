@@ -71,6 +71,7 @@ namespace mirrage::renderer {
 
 		device().print_memory_usage(std::cout);
 		device().wait_idle();
+		std::this_thread::sleep_for(std::chrono::milliseconds(250));
 		_passes.clear();
 	}
 
