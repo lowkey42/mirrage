@@ -71,5 +71,7 @@ frag_shader:bloom_filter = shader/bin/bloom_filter.frag.spv
 vert_shader:bloom_blur = shader/bin/bloom_blur.vert.spv
 frag_shader:bloom_blur = shader/bin/bloom_blur.frag.spv
 
+comp_shader:tone_mapping_adjustment = shader/bin/tone_mapping_adjustment.comp.spv
+comp_shader:tone_mapping_final = shader/bin/tone_mapping_final.comp.spv
 comp_shader:tone_mapping_histogram = shader/bin/tone_mapping_histogram.comp.spv
 comp_shader:tone_mapping_exposure = shader/bin/tone_mapping_exposure.comp.spv

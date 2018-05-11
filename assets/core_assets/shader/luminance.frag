@@ -12,6 +12,8 @@ layout(location = 0) out vec4 out_color;
 layout(set=0, binding = 0) uniform sampler2D color_sampler;
 
 float luminance(vec3 c) {
+//	return max(sqrt(dot(c*c, vec3(0.299,0.587,0.114))), 0.0);
+
 	vec3 f = vec3(0.2126,0.7152,0.0722);
 	//vec3 f = vec3(0.299,0.587,0.114);
 	return max(dot(c, f), 0.0);
@@ -20,5 +22,5 @@ float luminance(vec3 c) {
 void main() {
 	vec3 color = textureLod(color_sampler, vertex_out.tex_coords, 0).rgb;
 
-	out_color = vec4(log2(luminance(color) + 0.000001), 0, 0, 1.0);
+	out_color = vec4(log(luminance(color)), 0, 0, 1.0);
 }

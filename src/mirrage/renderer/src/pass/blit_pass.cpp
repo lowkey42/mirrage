@@ -38,7 +38,15 @@ namespace mirrage::renderer {
 			auto& pass = builder.add_subpass(pipeline).color_attachment(screen);
 
 			pass.stage("blit"_strid)
-			        .shader("frag_shader:blit"_aid, graphic::Shader_stage::fragment)
+			        .shader("frag_shader:blit"_aid,
+			                graphic::Shader_stage::fragment,
+			                "main",
+			                0,
+			                renderer.gbuffer().histogram_adjustment_factors.is_some() ? 1 : 0,
+			                1,
+			                std::log2(renderer.gbuffer().min_luminance),
+			                2,
+			                std::log2(renderer.gbuffer().max_luminance))
 			        .shader("vert_shader:blit"_aid, graphic::Shader_stage::vertex);
 
 			builder.add_dependency(
@@ -84,11 +92,12 @@ namespace mirrage::renderer {
 	                                              vk::Filter::eLinear,
 	                                              vk::SamplerMipmapMode::eNearest))
 	  , _descriptor_set_layout(renderer.device(), *_sampler, 4)
-	  , _descriptor_set(
-	            _descriptor_set_layout.create_set(renderer.descriptor_pool(),
-	                                              {src.view(),
-	                                               renderer.gbuffer().avg_log_luminance.get_or(src).view(),
-	                                               renderer.gbuffer().bloom.get_or(src).view()}))
+	  , _descriptor_set(_descriptor_set_layout.create_set(
+	            renderer.descriptor_pool(),
+	            {src.view(),
+	             renderer.gbuffer().avg_log_luminance.get_or(src).view(),
+	             renderer.gbuffer().bloom.get_or(src).view(),
+	             renderer.gbuffer().histogram_adjustment_factors.get_or(src).view()}))
 	  , _render_pass(build_render_pass(renderer, *_descriptor_set_layout, _framebuffers))
 	  , _tone_mapping_enabled(renderer.gbuffer().avg_log_luminance.is_some())
 	  , _bloom_enabled(renderer.gbuffer().bloom.is_some())

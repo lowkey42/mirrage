@@ -22,8 +22,6 @@ namespace mirrage::renderer {
 		          std::size_t       swapchain_image) override;
 
 		auto last_histogram() const noexcept -> auto& { return _last_result_data; }
-		auto min_log_luminance() const noexcept { return _min_log_luminance; }
-		auto max_log_luminance() const noexcept { return _max_log_luminance; }
 
 		auto name() const noexcept -> const char* override { return "Tone Mapping"; }
 
@@ -33,9 +31,6 @@ namespace mirrage::renderer {
 		graphic::Fence          _compute_fence;
 		vk::UniqueCommandBuffer _last_compute_commands;
 
-		float _min_log_luminance = -15.f;
-		float _max_log_luminance = 15.f;
-
 		std::vector<graphic::Backed_buffer> _result_buffer;
 		int                                 _ready_result = -1;
 		int                                 _next_result  = 0;
@@ -44,6 +39,9 @@ namespace mirrage::renderer {
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
 		vk::Format                           _luminance_format;
+
+		// the histogram adjustment factor for each histogram bucket
+		graphic::Render_target_2D _adjustment_buffer;
 
 		vk::UniqueDescriptorSetLayout       _compute_descriptor_set_layout;
 		std::vector<graphic::DescriptorSet> _compute_descriptor_set;
@@ -57,10 +55,14 @@ namespace mirrage::renderer {
 		vk::UniquePipelineLayout _compute_pipeline_layout;
 		vk::UniquePipeline       _build_histogram_pipeline;
 		vk::UniquePipeline       _compute_exposure_pipeline;
+		vk::UniquePipeline       _adjust_histogram_pipeline;
+		vk::UniquePipeline       _build_final_factors_pipeline;
 
 		void _extract_luminance(vk::CommandBuffer&);
 		void _dispatch_build_histogram(vk::CommandBuffer&);
 		void _dispatch_compute_exposure(vk::CommandBuffer&);
+		void _dispatch_adjust_histogram(vk::CommandBuffer&);
+		void _dispatch_build_final_factors(vk::CommandBuffer&);
 	};
 
 	class Tone_mapping_pass_factory : public Pass_factory {

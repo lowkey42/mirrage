@@ -34,5 +34,9 @@ namespace mirrage::renderer {
 
 		util::maybe<graphic::Texture_2D&> avg_log_luminance;
 		util::maybe<graphic::Texture_2D&> bloom;
+
+		util::maybe<graphic::Texture_2D&> histogram_adjustment_factors;
+		float                             min_luminance = 1e-4f;
+		float                             max_luminance = 1e7f;
 	};
 } // namespace mirrage::renderer

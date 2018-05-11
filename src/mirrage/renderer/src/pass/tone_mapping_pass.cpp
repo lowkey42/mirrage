@@ -9,6 +9,18 @@ namespace mirrage::renderer {
 			glm::vec4 parameters;
 		};
 
+		constexpr auto histogram_slots         = 256;
+		constexpr auto histogram_buffer_length = histogram_slots + 1;
+		constexpr auto histogram_buffer_size   = histogram_buffer_length * sizeof(float);
+		static_assert(sizeof(float) == sizeof(std::uint32_t));
+		constexpr auto workgroup_size = 16;
+		constexpr auto histogram_host_visible =
+#ifdef HPC_HISTOGRAM_DEBUG_VIEW
+		        true;
+#else
+		        false;
+#endif
+
 		auto build_luminance_render_pass(Deferred_renderer&         renderer,
 		                                 vk::DescriptorSetLayout    desc_set_layout,
 		                                 vk::Format                 luminance_format,
@@ -18,16 +30,15 @@ namespace mirrage::renderer {
 
 			auto builder = renderer.device().create_render_pass_builder();
 
-			auto screen = builder.add_attachment(
-			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
-			                                  luminance_format,
-			                                  vk::SampleCountFlagBits::e1,
-			                                  vk::AttachmentLoadOp::eDontCare,
-			                                  vk::AttachmentStoreOp::eStore,
-			                                  vk::AttachmentLoadOp::eDontCare,
-			                                  vk::AttachmentStoreOp::eDontCare,
-			                                  vk::ImageLayout::eUndefined,
-			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+			auto screen = builder.add_attachment(vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                                               luminance_format,
+			                                                               vk::SampleCountFlagBits::e1,
+			                                                               vk::AttachmentLoadOp::eDontCare,
+			                                                               vk::AttachmentStoreOp::eStore,
+			                                                               vk::AttachmentLoadOp::eDontCare,
+			                                                               vk::AttachmentStoreOp::eDontCare,
+			                                                               vk::ImageLayout::eUndefined,
+			                                                               vk::ImageLayout::eGeneral});
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
@@ -81,11 +92,25 @@ namespace mirrage::renderer {
 		auto build_compute_pipeline(graphic::Device&      device,
 		                            asset::Asset_manager& assets,
 		                            vk::PipelineLayout    layout,
+		                            float                 histogram_min,
+		                            float                 histogram_max,
 		                            const asset::AID&     shader)
 		{
-			auto module    = assets.load<graphic::Shader_module>(shader);
-			auto spec_info = vk::SpecializationInfo{};
-			// TODO: spec constants
+			auto module = assets.load<graphic::Shader_module>(shader);
+
+			auto spec_entries =
+			        std::array<vk::SpecializationMapEntry, 4>{vk::SpecializationMapEntry{0, 0 * 32, 32},
+			                                                  vk::SpecializationMapEntry{1, 1 * 32, 32},
+			                                                  vk::SpecializationMapEntry{2, 2 * 32, 32},
+			                                                  vk::SpecializationMapEntry{3, 3 * 32, 32}};
+			auto spec_data                                     = std::array<char, 4 * 32>();
+			reinterpret_cast<std::int32_t&>(spec_data[0 * 32]) = histogram_slots;
+			reinterpret_cast<std::int32_t&>(spec_data[1 * 32]) = workgroup_size;
+			reinterpret_cast<float&>(spec_data[2 * 32])        = std::log(histogram_min);
+			reinterpret_cast<float&>(spec_data[3 * 32])        = std::log(histogram_max);
+
+			auto spec_info = vk::SpecializationInfo{
+			        spec_entries.size(), spec_entries.data(), spec_data.size(), spec_data.data()};
 
 			auto stage = vk::PipelineShaderStageCreateInfo{
 			        {}, vk::ShaderStageFlagBits::eCompute, **module, "main", &spec_info};
@@ -105,18 +130,6 @@ namespace mirrage::renderer {
 
 			return format.get_or_throw();
 		}
-
-		constexpr auto histogram_slots         = 256;
-		constexpr auto histogram_buffer_length = histogram_slots + 1;
-		constexpr auto histogram_buffer_size   = histogram_buffer_length * sizeof(float);
-		static_assert(sizeof(float) == sizeof(std::uint32_t));
-		constexpr auto workgroup_size = 16;
-		constexpr auto histogram_host_visible =
-#ifdef HPC_HISTOGRAM_DEBUG_VIEW
-		        true;
-#else
-		        false;
-#endif
 
 	} // namespace
 
@@ -139,17 +152,22 @@ namespace mirrage::renderer {
 	  , _descriptor_set_layout(renderer.device(), *_sampler, 1)
 	  , _luminance_format(get_luminance_format(renderer.device()))
 
-	  , _compute_descriptor_set_layout(renderer.device().create_descriptor_set_layout(
-	            std::vector{vk::DescriptorSetLayoutBinding(0,
-	                                                       vk::DescriptorType::eStorageImage,
-	                                                       1,
-	                                                       vk::ShaderStageFlagBits::eCompute,
-	                                                       &*_sampler),
-	                        vk::DescriptorSetLayoutBinding(1,
-	                                                       vk::DescriptorType::eStorageBuffer,
-	                                                       1,
-	                                                       vk::ShaderStageFlagBits::eCompute,
-	                                                       &*_sampler)}))
+	  , _adjustment_buffer(renderer.device(),
+	                       {histogram_slots, 2},
+	                       1,
+	                       _luminance_format,
+	                       vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst
+	                               | vk::ImageUsageFlagBits::eColorAttachment
+	                               | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
+	                       vk::ImageAspectFlagBits::eColor)
+
+	  , _compute_descriptor_set_layout(renderer.device().create_descriptor_set_layout(std::vector{
+	            vk::DescriptorSetLayoutBinding(
+	                    0, vk::DescriptorType::eStorageImage, 1, vk::ShaderStageFlagBits::eCompute),
+	            vk::DescriptorSetLayoutBinding(
+	                    1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute),
+	            vk::DescriptorSetLayoutBinding(
+	                    2, vk::DescriptorType::eStorageImage, 1, vk::ShaderStageFlagBits::eCompute)}))
 
 	  , _luminance_buffer(renderer.device(),
 	                      {src.width(), src.height()},
@@ -171,53 +189,80 @@ namespace mirrage::renderer {
 	  , _build_histogram_pipeline(build_compute_pipeline(_renderer.device(),
 	                                                     renderer.asset_manager(),
 	                                                     *_compute_pipeline_layout,
+	                                                     renderer.gbuffer().min_luminance,
+	                                                     renderer.gbuffer().max_luminance,
 	                                                     "comp_shader:tone_mapping_histogram"_aid))
 
 	  , _compute_exposure_pipeline(build_compute_pipeline(_renderer.device(),
 	                                                      renderer.asset_manager(),
 	                                                      *_compute_pipeline_layout,
+	                                                      renderer.gbuffer().min_luminance,
+	                                                      renderer.gbuffer().max_luminance,
 	                                                      "comp_shader:tone_mapping_exposure"_aid))
+
+	  , _adjust_histogram_pipeline(build_compute_pipeline(_renderer.device(),
+	                                                      renderer.asset_manager(),
+	                                                      *_compute_pipeline_layout,
+	                                                      renderer.gbuffer().min_luminance,
+	                                                      renderer.gbuffer().max_luminance,
+	                                                      "comp_shader:tone_mapping_adjustment"_aid))
+
+	  , _build_final_factors_pipeline(build_compute_pipeline(_renderer.device(),
+	                                                         renderer.asset_manager(),
+	                                                         *_compute_pipeline_layout,
+	                                                         renderer.gbuffer().min_luminance,
+	                                                         renderer.gbuffer().max_luminance,
+	                                                         "comp_shader:tone_mapping_final"_aid))
 	{
 
-		_result_buffer.reserve(renderer.device().max_frames_in_flight() + 1);
-
-		for(auto _ : util::range(renderer.device().max_frames_in_flight() + 1)) {
-			(void) _;
-
-			_result_buffer.emplace_back(renderer.device().create_buffer(
-			        vk::BufferCreateInfo{{}, histogram_buffer_size, vk::BufferUsageFlagBits::eStorageBuffer},
+		_result_buffer = util::build_vector(renderer.device().max_frames_in_flight() + 1, [&](auto) {
+			return graphic::Backed_buffer{renderer.device().create_buffer(
+			        vk::BufferCreateInfo{
+			                {},
+			                histogram_buffer_size,
+			                vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst},
 			        histogram_host_visible,
-			        graphic::Memory_lifetime::persistent));
+			        graphic::Memory_lifetime::persistent)};
+		});
+
+		_compute_descriptor_set = util::build_vector(_result_buffer.size(), [&](auto) {
+			return graphic::DescriptorSet{
+			        renderer.descriptor_pool().create_descriptor(*_compute_descriptor_set_layout, 2)};
+		});
+
+		auto comp_desc_writes = std::vector<vk::WriteDescriptorSet>();
+		comp_desc_writes.reserve(_result_buffer.size() * 3);
+
+		auto comp_desc_image =
+		        vk::DescriptorImageInfo{*_sampler, _luminance_buffer.view(), vk::ImageLayout::eGeneral};
+
+		auto comp_desc_final =
+		        vk::DescriptorImageInfo{*_sampler, _adjustment_buffer.view(), vk::ImageLayout::eGeneral};
+
+		auto comp_desc_buffers = util::build_vector(_result_buffer.size(), [&](auto i) {
+			return vk::DescriptorBufferInfo{*_result_buffer[i++], 0, VK_WHOLE_SIZE};
+		});
+
+		for(auto i : util::range(_result_buffer.size())) {
+			comp_desc_writes.emplace_back(
+			        *_compute_descriptor_set[i], 0, 0, 1, vk::DescriptorType::eStorageImage, &comp_desc_image);
+
+			comp_desc_writes.emplace_back(*_compute_descriptor_set[i],
+			                              1,
+			                              0,
+			                              1,
+			                              vk::DescriptorType::eStorageBuffer,
+			                              nullptr,
+			                              &comp_desc_buffers[i]);
+
+			comp_desc_writes.emplace_back(
+			        *_compute_descriptor_set[i], 2, 0, 1, vk::DescriptorType::eStorageImage, &comp_desc_final);
 		}
 
-		_compute_descriptor_set.reserve(_result_buffer.size());
+		renderer.device().vk_device()->updateDescriptorSets(
+		        gsl::narrow<std::uint32_t>(comp_desc_writes.size()), comp_desc_writes.data(), 0, nullptr);
 
-		for(auto&& buffer : _result_buffer) {
-			_compute_descriptor_set.emplace_back(
-			        renderer.descriptor_pool().create_descriptor(*_compute_descriptor_set_layout, 2));
-
-			auto comp_desc_image = vk::DescriptorImageInfo{
-			        *_sampler, _luminance_buffer.view(), vk::ImageLayout::eShaderReadOnlyOptimal};
-			auto comp_desc_buffer = vk::DescriptorBufferInfo{*buffer, 0, VK_WHOLE_SIZE};
-
-			auto comp_desc_writes = std::array<vk::WriteDescriptorSet, 2>{
-			        vk::WriteDescriptorSet{*_compute_descriptor_set.back(),
-			                               0,
-			                               0,
-			                               1,
-			                               vk::DescriptorType::eStorageImage,
-			                               &comp_desc_image},
-			        vk::WriteDescriptorSet{*_compute_descriptor_set.back(),
-			                               1,
-			                               0,
-			                               1,
-			                               vk::DescriptorType::eStorageBuffer,
-			                               nullptr,
-			                               &comp_desc_buffer}};
-
-			renderer.device().vk_device()->updateDescriptorSets(
-			        gsl::narrow<std::uint32_t>(comp_desc_writes.size()), comp_desc_writes.data(), 0, nullptr);
-		}
+		renderer.gbuffer().histogram_adjustment_factors = _adjustment_buffer;
 	}
 
 
@@ -228,6 +273,7 @@ namespace mirrage::renderer {
 	                             vk::DescriptorSet global_uniform_set,
 	                             std::size_t)
 	{
+		_renderer.device().wait_idle(); // TODO: remove
 
 #ifndef HPC_ASYNC_COMPUTE
 		if(histogram_host_visible && _ready_result >= 0) {
@@ -242,13 +288,13 @@ namespace mirrage::renderer {
 			}
 
 			_last_result_data.back() = *(reinterpret_cast<float*>(data_addr) + (histogram_buffer_length - 1));
-
-			std::fill(data, data + histogram_buffer_length, 0.f);
 		}
 
 		_extract_luminance(command_buffer);
 		_dispatch_build_histogram(command_buffer);
 		_dispatch_compute_exposure(command_buffer);
+		_dispatch_adjust_histogram(command_buffer);
+		_dispatch_build_final_factors(command_buffer);
 
 #else // TODO
 		if(!_compute_fence)
@@ -330,14 +376,34 @@ namespace mirrage::renderer {
 	{
 		auto _ = _renderer.profiler().push("Build Histogram");
 
+		command_buffer.fillBuffer(*_result_buffer[_next_result], 0, VK_WHOLE_SIZE, 0);
+
+		auto barrier = vk::ImageMemoryBarrier{
+		        vk::AccessFlagBits::eColorAttachmentWrite,
+		        vk::AccessFlagBits::eShaderRead,
+		        vk::ImageLayout::eGeneral,
+		        vk::ImageLayout::eGeneral,
+		        VK_QUEUE_FAMILY_IGNORED,
+		        VK_QUEUE_FAMILY_IGNORED,
+		        _luminance_buffer.image(),
+		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
+
+		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
+		                               vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::DependencyFlags{},
+		                               {},
+		                               {},
+		                               {barrier});
+
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_build_histogram_pipeline);
 		auto desc_set = *_compute_descriptor_set[_next_result];
 		command_buffer.bindDescriptorSets(
 		        vk::PipelineBindPoint::eCompute, *_compute_pipeline_layout, 0, 1, &desc_set, 0, nullptr);
 
 		command_buffer.dispatch(
-		        static_cast<std::uint32_t>(std::ceil(_luminance_buffer.width() / float(workgroup_size))),
-		        static_cast<std::uint32_t>(std::ceil(_luminance_buffer.height() / float(workgroup_size))),
+		        static_cast<std::uint32_t>(std::ceil(_luminance_buffer.width() / float(workgroup_size * 16))),
+		        static_cast<std::uint32_t>(
+		                std::ceil(_luminance_buffer.height() / float(workgroup_size * 16))),
 		        1);
 	}
 	void Tone_mapping_pass::_dispatch_compute_exposure(vk::CommandBuffer& command_buffer)
@@ -368,6 +434,96 @@ namespace mirrage::renderer {
 
 		command_buffer.dispatch(1, 1, 1);
 	}
+	void Tone_mapping_pass::_dispatch_adjust_histogram(vk::CommandBuffer& command_buffer)
+	{
+		auto _ = _renderer.profiler().push("Adjust Histogram");
+
+		auto barrier =
+		        vk::BufferMemoryBarrier{vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
+		                                vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
+		                                VK_QUEUE_FAMILY_IGNORED,
+		                                VK_QUEUE_FAMILY_IGNORED,
+		                                *_result_buffer[_next_result],
+		                                0,
+		                                VK_WHOLE_SIZE};
+
+		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::DependencyFlags{},
+		                               {},
+		                               {barrier},
+		                               {});
+
+		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_adjust_histogram_pipeline);
+
+		auto desc_set = *_compute_descriptor_set[_next_result];
+		command_buffer.bindDescriptorSets(
+		        vk::PipelineBindPoint::eCompute, *_compute_pipeline_layout, 0, 1, &desc_set, 0, nullptr);
+
+		command_buffer.dispatch(1, 1, 1);
+	}
+	void Tone_mapping_pass::_dispatch_build_final_factors(vk::CommandBuffer& command_buffer)
+	{
+		auto _ = _renderer.profiler().push("Compute Factors");
+
+		auto barrier =
+		        vk::BufferMemoryBarrier{vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
+		                                vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
+		                                VK_QUEUE_FAMILY_IGNORED,
+		                                VK_QUEUE_FAMILY_IGNORED,
+		                                *_result_buffer[_next_result],
+		                                0,
+		                                VK_WHOLE_SIZE};
+
+		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::DependencyFlags{},
+		                               {},
+		                               {barrier},
+		                               {});
+
+		auto target_barrier = vk::ImageMemoryBarrier{
+		        vk::AccessFlagBits::eShaderRead,
+		        vk::AccessFlagBits::eShaderWrite,
+		        vk::ImageLayout::eShaderReadOnlyOptimal,
+		        vk::ImageLayout::eGeneral,
+		        VK_QUEUE_FAMILY_IGNORED,
+		        VK_QUEUE_FAMILY_IGNORED,
+		        _adjustment_buffer.image(),
+		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
+
+		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader,
+		                               vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::DependencyFlags{},
+		                               {},
+		                               {},
+		                               {target_barrier});
+
+		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_build_final_factors_pipeline);
+
+		auto desc_set = *_compute_descriptor_set[_next_result];
+		command_buffer.bindDescriptorSets(
+		        vk::PipelineBindPoint::eCompute, *_compute_pipeline_layout, 0, 1, &desc_set, 0, nullptr);
+
+		command_buffer.dispatch(1, 1, 1);
+
+		auto final_barrier = vk::ImageMemoryBarrier{
+		        vk::AccessFlagBits::eShaderWrite,
+		        vk::AccessFlagBits::eShaderRead,
+		        vk::ImageLayout::eGeneral,
+		        vk::ImageLayout::eShaderReadOnlyOptimal,
+		        VK_QUEUE_FAMILY_IGNORED,
+		        VK_QUEUE_FAMILY_IGNORED,
+		        _adjustment_buffer.image(),
+		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
+
+		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::PipelineStageFlagBits::eFragmentShader,
+		                               vk::DependencyFlags{},
+		                               {},
+		                               {},
+		                               {final_barrier});
+	}
 
 	auto Tone_mapping_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                            ecs::Entity_manager&      entities,
@@ -388,7 +544,8 @@ namespace mirrage::renderer {
 
 	void Tone_mapping_pass_factory::configure_device(vk::PhysicalDevice,
 	                                                 util::maybe<std::uint32_t>,
-	                                                 graphic::Device_create_info&)
+	                                                 graphic::Device_create_info& create_info)
 	{
+		//create_info.features.shaderStorageImageExtendedFormats = true;
 	}
 } // namespace mirrage::renderer

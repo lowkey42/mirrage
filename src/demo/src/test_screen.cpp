@@ -591,10 +591,10 @@ namespace mirrage {
 				}();
 
 				nk_label_colored(ctx, pad_left(result.name(), depth * 4).c_str(), NK_TEXT_LEFT, color);
-				nk_label_colored(ctx, to_fixed_str(result.time_ms(), 1).c_str(), NK_TEXT_RIGHT, color);
-				nk_label_colored(ctx, to_fixed_str(result.time_min_ms(), 1).c_str(), NK_TEXT_RIGHT, color);
-				nk_label_colored(ctx, to_fixed_str(result.time_avg_ms(), 1).c_str(), NK_TEXT_RIGHT, color);
-				nk_label_colored(ctx, to_fixed_str(result.time_max_ms(), 1).c_str(), NK_TEXT_RIGHT, color);
+				nk_label_colored(ctx, to_fixed_str(result.time_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
+				nk_label_colored(ctx, to_fixed_str(result.time_min_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
+				nk_label_colored(ctx, to_fixed_str(result.time_avg_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
+				nk_label_colored(ctx, to_fixed_str(result.time_max_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
 
 
 				auto worst_timings = top_n<2>(
@@ -647,17 +647,17 @@ namespace mirrage {
 
 				nk_layout_row_dynamic(ctx, 25, 2);
 				nk_label(ctx, "Luminance", NK_TEXT_CENTERED);
-				auto log_lum_range =
-				        tone_mapping_pass->max_log_luminance() - tone_mapping_pass->min_log_luminance();
+				auto log_lum_range = std::log2(_meta_system.renderer().gbuffer().max_luminance)
+				                     - std::log2(_meta_system.renderer().gbuffer().min_luminance);
 				auto log_lum =
 				        static_cast<double>(_last_selected_histogram) / (histogram.size() - 1) * log_lum_range
-				        + tone_mapping_pass->min_log_luminance();
+				        + std::log2(_meta_system.renderer().gbuffer().min_luminance);
 				auto lum = std::exp(log_lum);
 				nk_label(ctx, to_fixed_str(lum, 5).c_str(), NK_TEXT_CENTERED);
 
 				auto percentage = static_cast<double>(histogram[_last_selected_histogram]) / histogram_sum;
 				nk_label(ctx, "Percentage", NK_TEXT_CENTERED);
-				nk_label(ctx, (to_fixed_str(percentage, 4) + " %").c_str(), NK_TEXT_CENTERED);
+				nk_label(ctx, (to_fixed_str(percentage * 100, 4) + " %").c_str(), NK_TEXT_CENTERED);
 
 				nk_label(ctx, "Exposure", NK_TEXT_CENTERED);
 				nk_label(ctx, to_fixed_str(histogram.back(), 5).c_str(), NK_TEXT_CENTERED);

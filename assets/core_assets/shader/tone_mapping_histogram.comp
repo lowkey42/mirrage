@@ -2,13 +2,12 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 
-#define WIDTH 1920
-#define HEIGHT 1080
-#define HISTOGRAM_SLOTS 256
-#define WORKGROUP_SIZE 16
-#define HISTOGRAM_MIN -10.0
-#define HISTOGRAM_MAX 10.0
-layout (local_size_x = WORKGROUP_SIZE, local_size_y = WORKGROUP_SIZE, local_size_z = 1 ) in;
+layout (constant_id = 0) const int HISTOGRAM_SLOTS = 256;
+layout (constant_id = 1) const int WORKGROUP_SIZE = 16;
+layout (constant_id = 2) const float HISTOGRAM_MIN = -10;
+layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
+
+layout (local_size_x_id = 1, local_size_y_id = 1, local_size_z = 1 ) in;
 
 layout (binding = 0, r16f) uniform readonly image2D input_image;
 
@@ -17,10 +16,48 @@ layout(binding = 1) buffer Data
 	uint histogram[HISTOGRAM_SLOTS + 1];
 };
 
+uint calc_histogram_index(float luminance) {
+	luminance = clamp(luminance, HISTOGRAM_MIN, HISTOGRAM_MAX);
+	luminance = (luminance-HISTOGRAM_MIN) / (HISTOGRAM_MAX-HISTOGRAM_MIN);
+	return uint(floor(luminance * (HISTOGRAM_SLOTS-1)));
+}
+
+shared uint local_histogram[HISTOGRAM_SLOTS];
 
 void main() {
-	if(gl_GlobalInvocationID.x >= WIDTH || gl_GlobalInvocationID.y >= HEIGHT)
-		return;
+	ivec2 data_size = imageSize(input_image);
+
+	uint group_id = gl_WorkGroupID.x + gl_WorkGroupID.y*gl_NumWorkGroups.x;
+	uint num_groups = gl_NumWorkGroups.x*gl_NumWorkGroups.y;
+
+	uint local_id = gl_LocalInvocationID.x + gl_LocalInvocationID.y*gl_WorkGroupSize.x;
+	uint local_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+	uvec2 stride = gl_WorkGroupSize.xy * gl_NumWorkGroups.xy;
+
+	// zero initialize block local histogram
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size){
+		local_histogram[i] = 0;
+	}
+
+	barrier();
+	groupMemoryBarrier();
+
+	// build local histogram
+	for(uint x=gl_GlobalInvocationID.x; x<data_size.x; x+=stride.x) {
+		for(uint y=gl_GlobalInvocationID.y; y<data_size.y; y+=stride.y) {
+			float lum = imageLoad(input_image, ivec2(x,y)).r;
+			atomicAdd(local_histogram[calc_histogram_index(lum)], 1);
+		}
+	}
+
+	barrier();
+	groupMemoryBarrier();
+
+	// copy local histogram to global memory
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size){
+		atomicAdd(histogram[i], local_histogram[i]);
+	}
+/*
 
 	float lum = imageLoad(input_image, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)).r;
 
@@ -30,5 +67,6 @@ void main() {
 	uint idx = uint(floor(lum_norm * (HISTOGRAM_SLOTS-1)));
 
 	atomicAdd(histogram[idx], 1);
+*/
 }
 

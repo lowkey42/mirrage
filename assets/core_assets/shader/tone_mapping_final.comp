@@ -1,0 +1,66 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+
+layout (constant_id = 0) const int HISTOGRAM_SLOTS = 256;
+layout (constant_id = 2) const float HISTOGRAM_MIN = -10;
+layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
+layout (constant_id = 4) const float DISPLAY_MIN = 0;
+layout (constant_id = 5) const float DISPLAY_MAX = 1;
+
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
+
+layout (binding = 2, r16f) uniform writeonly image2D adjustment_factor;
+
+layout(binding = 1) buffer Data
+{
+	uint histogram[HISTOGRAM_SLOTS + 1];
+};
+
+shared uint prefix_sum[HISTOGRAM_SLOTS];
+
+void build_prefix_sum() {
+prefix_sum[0] = 0;
+prefix_sum[1] = 0;
+	for(uint i=2; i<HISTOGRAM_SLOTS; i++) {
+		prefix_sum[i] = prefix_sum[i-1] + histogram[i-1];
+	}
+}
+
+float index_to_log_lum(uint index) {
+	return float(index)/HISTOGRAM_SLOTS * (HISTOGRAM_MAX-HISTOGRAM_MIN) + HISTOGRAM_MIN;
+}
+
+void main() {
+	// TODO: optimize
+
+	build_prefix_sum();
+
+	// sum up histogram (T) and get min/max
+	uint min_index = HISTOGRAM_SLOTS;
+	uint max_index = 0;
+	for(uint i=1; i<HISTOGRAM_SLOTS; i++) {
+		if(histogram[i]>0) {
+			min_index = min(i, min_index);
+			max_index = max(i, max_index);
+		}
+	}
+
+	float min_log_lum = index_to_log_lum(min_index);
+	float max_log_lum = index_to_log_lum(max_index);
+
+	float sum = prefix_sum[HISTOGRAM_SLOTS-1] + histogram[HISTOGRAM_SLOTS-1];
+
+	// store at i: min + (max-min) * (prefix_sum[i] / T)
+	for(int i=0; i<HISTOGRAM_SLOTS; i++) {
+		//float factor = pow(2, log2(0.01) + (log2(1)-log2(0.01)) * float(prefix_sum[i])/sum);
+		float factor = exp(log(0.001) + (log(1)-log(0.001)) * float(prefix_sum[i])/sum);
+		//float factor = float(prefix_sum[i])/sum;
+
+		factor = factor/exp(index_to_log_lum(i));
+
+		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
+
+		histogram[i] = uint(factor*100);
+	}
+}
