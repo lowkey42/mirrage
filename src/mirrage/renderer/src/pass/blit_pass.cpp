@@ -123,6 +123,7 @@ namespace mirrage::renderer {
 			settings.x = _tone_mapping_enabled ? 1 : 0;
 			settings.y = _bloom_enabled && _renderer.settings().bloom ? 20 : 0;
 			settings.z = _renderer.settings().exposure_override;
+			settings.w = _renderer.settings().histogram_adjustment ? 1 : 0;
 
 			_render_pass.push_constant("settings"_strid, settings);
 

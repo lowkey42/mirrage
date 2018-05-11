@@ -470,10 +470,14 @@ namespace mirrage {
 			nk_property_int(
 			        ctx, "Low-Quality MIP-Levels", 0, &renderer_settings.gi_low_quality_mip_levels, 8, 1, 1);
 
-			nk_property_float(ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.01, 0.1);
+			nk_property_float(ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.01f, 0.1f);
+
+			bool_nk_wrapper = renderer_settings.histogram_adjustment ? 1 : 0;
+			nk_checkbox_label(ctx, "Histogram Adjustment", &bool_nk_wrapper);
+			renderer_settings.histogram_adjustment = bool_nk_wrapper == 1;
 
 			nk_property_float(
-			        ctx, "Background Brightness", 0.f, &renderer_settings.background_intensity, 10.f, 1, 0.1);
+			        ctx, "Background Brightness", 0.f, &renderer_settings.background_intensity, 10.f, 1, 0.1f);
 
 			bool_nk_wrapper = renderer_settings.ssao ? 1 : 0;
 			nk_checkbox_label(ctx, "Ambient Occlusion", &bool_nk_wrapper);
@@ -628,10 +632,10 @@ namespace mirrage {
 			           ctx,
 			           "Histogram",
 			           "Histogram",
-			           _gui.centered_right(500, 650),
+			           _gui.centered_right(400, 600),
 			           NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
 
-				nk_layout_row_dynamic(ctx, 500, 1);
+				nk_layout_row_dynamic(ctx, 400, 1);
 				nk_chart_begin(ctx,
 				               NK_CHART_COLUMN,
 				               static_cast<int>(histogram.size() - 1),
@@ -661,6 +665,12 @@ namespace mirrage {
 
 				nk_label(ctx, "Exposure", NK_TEXT_CENTERED);
 				nk_label(ctx, to_fixed_str(histogram.back(), 5).c_str(), NK_TEXT_CENTERED);
+
+				nk_label(ctx, "Trimmings", NK_TEXT_CENTERED);
+				nk_label(ctx,
+				         std::to_string(static_cast<int>(_window_width * _window_height - histogram_sum))
+				                 .c_str(),
+				         NK_TEXT_CENTERED);
 			}
 
 			nk_end(ctx);

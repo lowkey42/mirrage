@@ -99,15 +99,19 @@ namespace mirrage::renderer {
 			auto module = assets.load<graphic::Shader_module>(shader);
 
 			auto spec_entries =
-			        std::array<vk::SpecializationMapEntry, 4>{vk::SpecializationMapEntry{0, 0 * 32, 32},
+			        std::array<vk::SpecializationMapEntry, 6>{vk::SpecializationMapEntry{0, 0 * 32, 32},
 			                                                  vk::SpecializationMapEntry{1, 1 * 32, 32},
 			                                                  vk::SpecializationMapEntry{2, 2 * 32, 32},
-			                                                  vk::SpecializationMapEntry{3, 3 * 32, 32}};
+			                                                  vk::SpecializationMapEntry{3, 3 * 32, 32},
+			                                                  vk::SpecializationMapEntry{4, 4 * 32, 32},
+			                                                  vk::SpecializationMapEntry{5, 5 * 32, 32}};
 			auto spec_data                                     = std::array<char, 4 * 32>();
 			reinterpret_cast<std::int32_t&>(spec_data[0 * 32]) = histogram_slots;
 			reinterpret_cast<std::int32_t&>(spec_data[1 * 32]) = workgroup_size;
 			reinterpret_cast<float&>(spec_data[2 * 32])        = std::log(histogram_min);
 			reinterpret_cast<float&>(spec_data[3 * 32])        = std::log(histogram_max);
+			reinterpret_cast<float&>(spec_data[4 * 32])        = std::log(0.001f);
+			reinterpret_cast<float&>(spec_data[5 * 32])        = std::log(1.0f);
 
 			auto spec_info = vk::SpecializationInfo{
 			        spec_entries.size(), spec_entries.data(), spec_data.size(), spec_data.data()};

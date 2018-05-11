@@ -5,15 +5,49 @@
 layout (constant_id = 0) const int HISTOGRAM_SLOTS = 256;
 layout (constant_id = 2) const float HISTOGRAM_MIN = -10;
 layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
+layout (constant_id = 4) const float DISPLAY_MIN = 0;
+layout (constant_id = 5) const float DISPLAY_MAX = 1;
 
-layout (local_size_x_id = 0, local_size_y = 1, local_size_z = 1 ) in;
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
 
 layout(binding = 1) buffer Data
 {
 	uint histogram[HISTOGRAM_SLOTS + 1];
 };
 
+uint calc_total() {
+	uint sum = 0;
+	for(uint i=0; i<256; i++) {
+		sum += histogram[i];
+	}
+
+	return sum;
+}
 
 void main() {
-	// TODO
+	// TODO: optimize
+
+	float total = calc_total();
+
+	float world_range = HISTOGRAM_MAX - HISTOGRAM_MIN;
+	float display_range = DISPLAY_MAX - DISPLAY_MIN;
+	float bin_width = world_range / HISTOGRAM_SLOTS;
+
+	float tolerance = 0.025 * total;
+	float trimmings = total;
+	int safe_guard = 0;
+	while(trimmings>tolerance && total>=tolerance && safe_guard++<100) {
+		trimmings = 0;
+
+		float ceiling = floor(total*bin_width / display_range);
+
+		for(uint i=0; i<256; i++) {
+			if(histogram[i] > ceiling) {
+				trimmings += histogram[i] - ceiling;
+				histogram[i] = uint(ceiling);
+			}
+		}
+
+		total -= trimmings;
+	}
 }

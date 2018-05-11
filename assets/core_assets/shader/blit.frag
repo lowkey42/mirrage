@@ -51,9 +51,6 @@ vec3 ToneMapFilmicALU(vec3 color) {
 }
 
 float ha_luminance(vec3 c) {
-//	return max(sqrt(dot(c*c, vec3(0.299,0.587,0.114))), 0.0);
-
-//	return (c.r+c.b+c.g)/3;
 	vec3 f = vec3(0.2126,0.7152,0.0722);
 	return max(dot(c, f), 0.0);
 }
@@ -75,16 +72,13 @@ vec3 expose(vec3 color, float threshold) {
 }
 
 vec3 tone_mapping(vec3 color) {
-	if(ADJUST_HISTOGRAM==1 && pcs.options.z<=0) {
+	if(ADJUST_HISTOGRAM==1 && pcs.options.w>0.001) {
 		float luminance = ha_luminance(color);
 		float idx = log(luminance);
 		idx = clamp(idx, MIN_LOG_LUMINANCE, MAX_LOG_LUMINANCE);
 		idx = (idx-MIN_LOG_LUMINANCE) / (MAX_LOG_LUMINANCE-MIN_LOG_LUMINANCE);
 
-		float new_lum = texture(histogram_adjustment_sampler, vec2(idx, 0.5)).r;
-		//float new_lum = exp(texelFetch(histogram_adjustment_sampler, ivec2(ceil(idx*textureSize(histogram_adjustment_sampler,0).x), 0),0).r);
-		//color = color / (luminance*vec3(0.2126,0.7152,0.0722)) * (new_lum*vec3(0.2126,0.7152,0.0722));
-		color *= new_lum;
+		color *= texture(histogram_adjustment_sampler, vec2(idx, 0.5)).r;
 	}
 
 	if(pcs.options.x<=0.1 && pcs.options.z<=0)
@@ -175,6 +169,4 @@ vec3 dither(vec3 color) {
 void main() {
 	//out_color = vec4(tone_mapping(texture(color_sampler, vertex_out.tex_coords).rgb), 1.0);
 	out_color = vec4(dither(tone_mapping(resolve_fxaa().rgb)), 1.0);
-
-	//out_color.rgb = exp(texture(histogram_adjustment_sampler, vec2(vertex_out.tex_coords.x, 0.0)).rrr);
 }
