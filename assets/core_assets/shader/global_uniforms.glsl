@@ -1,7 +1,7 @@
 #ifndef GLOBAL_UNIFORMS_INCLUDED
 #define GLOBAL_UNIFORMS_INCLUDED
 
-layout(binding = 0) uniform Global_uniforms {
+layout(set=0, binding = 0) uniform Global_uniforms {
 	mat4 view_proj_mat;
 	mat4 view_mat;
 	mat4 proj_mat;

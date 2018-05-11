@@ -36,7 +36,8 @@ namespace mirrage::renderer {
 	                    0,
 	                    vk::DescriptorType::eUniformBuffer,
 	                    1,
-	                    vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment}))
+	                    vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
+	                            | vk::ShaderStageFlagBits::eCompute}))
 	  , _global_uniform_descriptor_set(
 	            _descriptor_set_pool.create_descriptor(*_global_uniform_descriptor_set_layout, 1))
 	  , _global_uniform_buffer(

@@ -30,6 +30,7 @@ namespace mirrage::renderer {
 		graphic::Texture_2D&    _src;
 		graphic::Fence          _compute_fence;
 		vk::UniqueCommandBuffer _last_compute_commands;
+		bool                    _first_frame = true;
 
 		std::vector<graphic::Backed_buffer> _result_buffer;
 		int                                 _ready_result = -1;
@@ -58,11 +59,11 @@ namespace mirrage::renderer {
 		vk::UniquePipeline       _adjust_histogram_pipeline;
 		vk::UniquePipeline       _build_final_factors_pipeline;
 
-		void _extract_luminance(vk::CommandBuffer&);
-		void _dispatch_build_histogram(vk::CommandBuffer&);
-		void _dispatch_compute_exposure(vk::CommandBuffer&);
-		void _dispatch_adjust_histogram(vk::CommandBuffer&);
-		void _dispatch_build_final_factors(vk::CommandBuffer&);
+		void _extract_luminance(vk::DescriptorSet, vk::CommandBuffer&);
+		void _dispatch_build_histogram(vk::DescriptorSet, vk::CommandBuffer&);
+		void _dispatch_compute_exposure(vk::DescriptorSet, vk::CommandBuffer&);
+		void _dispatch_adjust_histogram(vk::DescriptorSet, vk::CommandBuffer&);
+		void _dispatch_build_final_factors(vk::DescriptorSet, vk::CommandBuffer&);
 	};
 
 	class Tone_mapping_pass_factory : public Pass_factory {

@@ -47,6 +47,7 @@ namespace mirrage::renderer {
 			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
 			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
 
 			pipeline.add_push_constant(
@@ -84,11 +85,13 @@ namespace mirrage::renderer {
 			return render_pass;
 		}
 
-		auto build_compute_pipeline_layout(graphic::Device&               device,
+		auto build_compute_pipeline_layout(Deferred_renderer&             renderer,
 		                                   const vk::DescriptorSetLayout& desc_set_layout)
 		{
-			return device.vk_device()->createPipelineLayoutUnique(
-			        vk::PipelineLayoutCreateInfo{{}, 1, &desc_set_layout});
+			auto dsl = std::array<vk::DescriptorSetLayout, 2>{renderer.global_uniforms_layout(),
+			                                                  desc_set_layout};
+			return renderer.device().vk_device()->createPipelineLayoutUnique(
+			        vk::PipelineLayoutCreateInfo{{}, dsl.size(), dsl.data()});
 		}
 		auto build_compute_pipeline(graphic::Device&      device,
 		                            asset::Asset_manager& assets,
@@ -189,8 +192,7 @@ namespace mirrage::renderer {
 	                                                           _calc_luminance_framebuffer))
 	  , _calc_luminance_desc_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view()}))
 
-	  , _compute_pipeline_layout(
-	            build_compute_pipeline_layout(_renderer.device(), *_compute_descriptor_set_layout))
+	  , _compute_pipeline_layout(build_compute_pipeline_layout(_renderer, *_compute_descriptor_set_layout))
 	  , _build_histogram_pipeline(build_compute_pipeline(_renderer.device(),
 	                                                     renderer.asset_manager(),
 	                                                     *_compute_pipeline_layout,
@@ -280,6 +282,17 @@ namespace mirrage::renderer {
 	{
 		_renderer.device().wait_idle(); // TODO: remove
 
+		if(_first_frame) {
+			_first_frame = false;
+			graphic::clear_texture(command_buffer,
+			                       _adjustment_buffer,
+			                       {0, 0, 0, 0},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal,
+			                       0,
+			                       1);
+		}
+
 #ifndef HPC_ASYNC_COMPUTE
 		if(histogram_host_visible && _ready_result >= 0) {
 			// read back histogram + exposure
@@ -295,13 +308,13 @@ namespace mirrage::renderer {
 			_last_result_data.back() = *(reinterpret_cast<float*>(data_addr) + (histogram_buffer_length - 1));
 		}
 
-		_extract_luminance(command_buffer);
-		_dispatch_build_histogram(command_buffer);
-		_dispatch_compute_exposure(command_buffer);
+		_extract_luminance(global_uniform_set, command_buffer);
+		_dispatch_build_histogram(global_uniform_set, command_buffer);
+		_dispatch_compute_exposure(global_uniform_set, command_buffer);
 		if(_renderer.settings().histogram_trim) {
-			_dispatch_adjust_histogram(command_buffer);
+			_dispatch_adjust_histogram(global_uniform_set, command_buffer);
 		}
-		_dispatch_build_final_factors(command_buffer);
+		_dispatch_build_final_factors(global_uniform_set, command_buffer);
 
 #else // TODO
 		if(!_compute_fence)
@@ -368,18 +381,21 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void Tone_mapping_pass::_extract_luminance(vk::CommandBuffer& command_buffer)
+	void Tone_mapping_pass::_extract_luminance(vk::DescriptorSet  global_uniform_set,
+	                                           vk::CommandBuffer& command_buffer)
 	{
 		auto _ = _renderer.profiler().push("Extract Luminance");
 
 		// extract luminance of current frame
 		_calc_luminance_renderpass.execute(command_buffer, _calc_luminance_framebuffer, [&] {
-			_calc_luminance_renderpass.bind_descriptor_set(0, *_calc_luminance_desc_set);
+			auto desc_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_calc_luminance_desc_set};
+			_calc_luminance_renderpass.bind_descriptor_sets(0, desc_sets);
 
 			command_buffer.draw(3, 1, 0, 0);
 		});
 	}
-	void Tone_mapping_pass::_dispatch_build_histogram(vk::CommandBuffer& command_buffer)
+	void Tone_mapping_pass::_dispatch_build_histogram(vk::DescriptorSet  global_uniform_set,
+	                                                  vk::CommandBuffer& command_buffer)
 	{
 		auto _ = _renderer.profiler().push("Build Histogram");
 
@@ -403,9 +419,16 @@ namespace mirrage::renderer {
 		                               {barrier});
 
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_build_histogram_pipeline);
-		auto desc_set = *_compute_descriptor_set[_next_result];
-		command_buffer.bindDescriptorSets(
-		        vk::PipelineBindPoint::eCompute, *_compute_pipeline_layout, 0, 1, &desc_set, 0, nullptr);
+
+		auto desc_sets =
+		        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_compute_descriptor_set[_next_result]};
+		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+		                                  *_compute_pipeline_layout,
+		                                  0,
+		                                  desc_sets.size(),
+		                                  desc_sets.data(),
+		                                  0,
+		                                  nullptr);
 
 		command_buffer.dispatch(
 		        static_cast<std::uint32_t>(
@@ -414,7 +437,8 @@ namespace mirrage::renderer {
 		                std::ceil(_luminance_buffer.height() / float(workgroup_size * histogram_batch_size))),
 		        1);
 	}
-	void Tone_mapping_pass::_dispatch_compute_exposure(vk::CommandBuffer& command_buffer)
+	void Tone_mapping_pass::_dispatch_compute_exposure(vk::DescriptorSet  global_uniform_set,
+	                                                   vk::CommandBuffer& command_buffer)
 	{
 		auto _ = _renderer.profiler().push("Compute Exposure");
 
@@ -436,13 +460,19 @@ namespace mirrage::renderer {
 
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_compute_exposure_pipeline);
 
-		auto desc_set = *_compute_descriptor_set[_next_result];
-		command_buffer.bindDescriptorSets(
-		        vk::PipelineBindPoint::eCompute, *_compute_pipeline_layout, 0, 1, &desc_set, 0, nullptr);
-
+		auto desc_sets =
+		        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_compute_descriptor_set[_next_result]};
+		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+		                                  *_compute_pipeline_layout,
+		                                  0,
+		                                  desc_sets.size(),
+		                                  desc_sets.data(),
+		                                  0,
+		                                  nullptr);
 		command_buffer.dispatch(1, 1, 1);
 	}
-	void Tone_mapping_pass::_dispatch_adjust_histogram(vk::CommandBuffer& command_buffer)
+	void Tone_mapping_pass::_dispatch_adjust_histogram(vk::DescriptorSet  global_uniform_set,
+	                                                   vk::CommandBuffer& command_buffer)
 	{
 		auto _ = _renderer.profiler().push("Adjust Histogram");
 
@@ -464,13 +494,19 @@ namespace mirrage::renderer {
 
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_adjust_histogram_pipeline);
 
-		auto desc_set = *_compute_descriptor_set[_next_result];
-		command_buffer.bindDescriptorSets(
-		        vk::PipelineBindPoint::eCompute, *_compute_pipeline_layout, 0, 1, &desc_set, 0, nullptr);
-
+		auto desc_sets =
+		        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_compute_descriptor_set[_next_result]};
+		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+		                                  *_compute_pipeline_layout,
+		                                  0,
+		                                  desc_sets.size(),
+		                                  desc_sets.data(),
+		                                  0,
+		                                  nullptr);
 		command_buffer.dispatch(1, 1, 1);
 	}
-	void Tone_mapping_pass::_dispatch_build_final_factors(vk::CommandBuffer& command_buffer)
+	void Tone_mapping_pass::_dispatch_build_final_factors(vk::DescriptorSet  global_uniform_set,
+	                                                      vk::CommandBuffer& command_buffer)
 	{
 		auto _ = _renderer.profiler().push("Compute Factors");
 
@@ -493,7 +529,7 @@ namespace mirrage::renderer {
 		auto target_barrier = vk::ImageMemoryBarrier{
 		        vk::AccessFlagBits::eShaderRead,
 		        vk::AccessFlagBits::eShaderWrite,
-		        vk::ImageLayout::eUndefined,
+		        vk::ImageLayout::eShaderReadOnlyOptimal,
 		        vk::ImageLayout::eGeneral,
 		        VK_QUEUE_FAMILY_IGNORED,
 		        VK_QUEUE_FAMILY_IGNORED,
@@ -509,10 +545,15 @@ namespace mirrage::renderer {
 
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_build_final_factors_pipeline);
 
-		auto desc_set = *_compute_descriptor_set[_next_result];
-		command_buffer.bindDescriptorSets(
-		        vk::PipelineBindPoint::eCompute, *_compute_pipeline_layout, 0, 1, &desc_set, 0, nullptr);
-
+		auto desc_sets =
+		        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_compute_descriptor_set[_next_result]};
+		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
+		                                  *_compute_pipeline_layout,
+		                                  0,
+		                                  gsl::narrow<std::uint32_t>(desc_sets.size()),
+		                                  desc_sets.data(),
+		                                  0,
+		                                  nullptr);
 		command_buffer.dispatch(1, 1, 1);
 
 		auto final_barrier = vk::ImageMemoryBarrier{

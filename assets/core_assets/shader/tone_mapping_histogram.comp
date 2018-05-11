@@ -9,9 +9,9 @@ layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
 
 layout (local_size_x_id = 1, local_size_y_id = 1, local_size_z = 1 ) in;
 
-layout (binding = 0, r16f) uniform readonly image2D input_image;
+layout (set=1, binding = 0, r16f) uniform readonly image2D input_image;
 
-layout(binding = 1) buffer Data
+layout(set=1, binding = 1) buffer Data
 {
 	uint histogram[HISTOGRAM_SLOTS + 1];
 };

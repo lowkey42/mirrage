@@ -10,12 +10,15 @@ layout (constant_id = 5) const float DISPLAY_MAX = 1;
 
 layout (local_size_x = 128, local_size_y = 1, local_size_z = 1 ) in;
 
-layout (binding = 2, r16f) uniform writeonly image2D adjustment_factor;
+layout (set=1, binding = 2, r16f) uniform image2D adjustment_factor;
 
-layout(binding = 1) buffer Data
+layout(set=1, binding = 1) buffer Data
 {
 	uint histogram[HISTOGRAM_SLOTS + 1];
 };
+
+#include "global_uniforms.glsl"
+
 
 shared uint prefix_sum[HISTOGRAM_SLOTS+1];
 
@@ -87,8 +90,13 @@ void main() {
 	float sum = prefix_sum[HISTOGRAM_SLOTS];
 
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		float prev = imageLoad(adjustment_factor, ivec2(i,0)).r;
+
 		float factor = exp(DISPLAY_MIN + (DISPLAY_MAX-DISPLAY_MIN) * float(prefix_sum[i])/sum)
 		             / exp(index_to_log_lum(i));
+
+		const float tau = 0.5;
+		factor = prev + (factor - prev) * (1 - exp(-global_uniforms.time.z * tau));
 
 		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
 

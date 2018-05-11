@@ -9,7 +9,7 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 out_color;
 
-layout(set=0, binding = 0) uniform sampler2D color_sampler;
+layout(set=1, binding = 0) uniform sampler2D color_sampler;
 
 float luminance(vec3 c) {
 	vec3 f = vec3(0.2126,0.7152,0.0722);

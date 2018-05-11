@@ -10,7 +10,7 @@ layout (constant_id = 5) const float DISPLAY_MAX = 1;
 
 layout (local_size_x = 32, local_size_y = 1, local_size_z = 1 ) in;
 
-layout(binding = 1) buffer Data
+layout(set=1, binding = 1) buffer Data
 {
 	uint histogram[HISTOGRAM_SLOTS + 1];
 };
@@ -80,6 +80,13 @@ void main() {
 		trimmings = 0;
 	}
 
+	if(total<tolerance) {
+		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+			local_histogram[i] = 1;
+		}
+		memoryBarrierShared();
+		barrier();
+	}
 
 	// write result back to global memory
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
