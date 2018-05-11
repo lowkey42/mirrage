@@ -472,10 +472,6 @@ namespace mirrage {
 
 			nk_property_float(ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.01f, 0.1f);
 
-			bool_nk_wrapper = renderer_settings.histogram_adjustment ? 1 : 0;
-			nk_checkbox_label(ctx, "Histogram Adjustment", &bool_nk_wrapper);
-			renderer_settings.histogram_adjustment = bool_nk_wrapper == 1;
-
 			nk_property_float(
 			        ctx, "Background Brightness", 0.f, &renderer_settings.background_intensity, 10.f, 1, 0.1f);
 
@@ -671,6 +667,19 @@ namespace mirrage {
 				         std::to_string(static_cast<int>(_window_width * _window_height - histogram_sum))
 				                 .c_str(),
 				         NK_TEXT_CENTERED);
+
+				auto renderer_settings = _meta_system.renderer().settings();
+				auto bool_nk_wrapper   = 0;
+
+				bool_nk_wrapper = renderer_settings.histogram_adjustment ? 1 : 0;
+				nk_checkbox_label(ctx, "Histogram Adjustment", &bool_nk_wrapper);
+				renderer_settings.histogram_adjustment = bool_nk_wrapper == 1;
+
+				bool_nk_wrapper = renderer_settings.histogram_trim ? 1 : 0;
+				nk_checkbox_label(ctx, "Histogram Trim", &bool_nk_wrapper);
+				renderer_settings.histogram_trim = bool_nk_wrapper == 1;
+
+				_meta_system.renderer().settings(renderer_settings, false);
 			}
 
 			nk_end(ctx);

@@ -40,6 +40,7 @@ namespace mirrage::renderer {
 		int   gi_low_quality_mip_levels = 0;
 		float exposure_override         = 0.f;
 		bool  histogram_adjustment      = true;
+		bool  histogram_trim            = true;
 
 		bool ssao  = true;
 		bool bloom = true;

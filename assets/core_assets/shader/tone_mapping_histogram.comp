@@ -34,13 +34,13 @@ void main() {
 	uint local_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
 	uvec2 stride = gl_WorkGroupSize.xy * gl_NumWorkGroups.xy;
 
-	// zero initialize block local histogram
+	// zero initialize local histogram
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size){
 		local_histogram[i] = 0;
 	}
 
+	memoryBarrierShared();
 	barrier();
-	groupMemoryBarrier();
 
 	// build local histogram
 	for(uint x=gl_GlobalInvocationID.x; x<data_size.x; x+=stride.x) {
@@ -50,15 +50,16 @@ void main() {
 		}
 	}
 
+	memoryBarrierShared();
 	barrier();
-	groupMemoryBarrier();
 
 	// copy local histogram to global memory
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size){
 		atomicAdd(histogram[i], local_histogram[i]);
 	}
-/*
 
+
+/* OLD:
 	float lum = imageLoad(input_image, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)).r;
 
 	lum = clamp(lum, HISTOGRAM_MIN, HISTOGRAM_MAX);

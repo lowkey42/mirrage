@@ -13,7 +13,8 @@ namespace mirrage::renderer {
 		constexpr auto histogram_buffer_length = histogram_slots + 1;
 		constexpr auto histogram_buffer_size   = histogram_buffer_length * sizeof(float);
 		static_assert(sizeof(float) == sizeof(std::uint32_t));
-		constexpr auto workgroup_size = 16;
+		constexpr auto workgroup_size       = 32;
+		constexpr auto histogram_batch_size = 16;
 		constexpr auto histogram_host_visible =
 #ifdef HPC_HISTOGRAM_DEBUG_VIEW
 		        true;
@@ -105,12 +106,12 @@ namespace mirrage::renderer {
 			                                                  vk::SpecializationMapEntry{3, 3 * 32, 32},
 			                                                  vk::SpecializationMapEntry{4, 4 * 32, 32},
 			                                                  vk::SpecializationMapEntry{5, 5 * 32, 32}};
-			auto spec_data                                     = std::array<char, 4 * 32>();
+			auto spec_data                                     = std::array<char, 6 * 32>();
 			reinterpret_cast<std::int32_t&>(spec_data[0 * 32]) = histogram_slots;
 			reinterpret_cast<std::int32_t&>(spec_data[1 * 32]) = workgroup_size;
 			reinterpret_cast<float&>(spec_data[2 * 32])        = std::log(histogram_min);
 			reinterpret_cast<float&>(spec_data[3 * 32])        = std::log(histogram_max);
-			reinterpret_cast<float&>(spec_data[4 * 32])        = std::log(0.001f);
+			reinterpret_cast<float&>(spec_data[4 * 32])        = std::log(1.f / 255.f * 0.4f);
 			reinterpret_cast<float&>(spec_data[5 * 32])        = std::log(1.0f);
 
 			auto spec_info = vk::SpecializationInfo{
@@ -297,7 +298,9 @@ namespace mirrage::renderer {
 		_extract_luminance(command_buffer);
 		_dispatch_build_histogram(command_buffer);
 		_dispatch_compute_exposure(command_buffer);
-		_dispatch_adjust_histogram(command_buffer);
+		if(_renderer.settings().histogram_trim) {
+			_dispatch_adjust_histogram(command_buffer);
+		}
 		_dispatch_build_final_factors(command_buffer);
 
 #else // TODO
@@ -405,9 +408,10 @@ namespace mirrage::renderer {
 		        vk::PipelineBindPoint::eCompute, *_compute_pipeline_layout, 0, 1, &desc_set, 0, nullptr);
 
 		command_buffer.dispatch(
-		        static_cast<std::uint32_t>(std::ceil(_luminance_buffer.width() / float(workgroup_size * 16))),
 		        static_cast<std::uint32_t>(
-		                std::ceil(_luminance_buffer.height() / float(workgroup_size * 16))),
+		                std::ceil(_luminance_buffer.width() / float(workgroup_size * histogram_batch_size))),
+		        static_cast<std::uint32_t>(
+		                std::ceil(_luminance_buffer.height() / float(workgroup_size * histogram_batch_size))),
 		        1);
 	}
 	void Tone_mapping_pass::_dispatch_compute_exposure(vk::CommandBuffer& command_buffer)
@@ -489,7 +493,7 @@ namespace mirrage::renderer {
 		auto target_barrier = vk::ImageMemoryBarrier{
 		        vk::AccessFlagBits::eShaderRead,
 		        vk::AccessFlagBits::eShaderWrite,
-		        vk::ImageLayout::eShaderReadOnlyOptimal,
+		        vk::ImageLayout::eUndefined,
 		        vk::ImageLayout::eGeneral,
 		        VK_QUEUE_FAMILY_IGNORED,
 		        VK_QUEUE_FAMILY_IGNORED,
@@ -550,6 +554,6 @@ namespace mirrage::renderer {
 	                                                 util::maybe<std::uint32_t>,
 	                                                 graphic::Device_create_info& create_info)
 	{
-		//create_info.features.shaderStorageImageExtendedFormats = true;
+		create_info.features.shaderStorageImageExtendedFormats = true;
 	}
 } // namespace mirrage::renderer

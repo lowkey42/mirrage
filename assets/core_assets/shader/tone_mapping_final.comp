@@ -8,7 +8,7 @@ layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
 layout (constant_id = 4) const float DISPLAY_MIN = 0;
 layout (constant_id = 5) const float DISPLAY_MAX = 1;
 
-layout (local_size_x = 1, local_size_y = 1, local_size_z = 1 ) in;
+layout (local_size_x = 128, local_size_y = 1, local_size_z = 1 ) in;
 
 layout (binding = 2, r16f) uniform writeonly image2D adjustment_factor;
 
@@ -17,14 +17,61 @@ layout(binding = 1) buffer Data
 	uint histogram[HISTOGRAM_SLOTS + 1];
 };
 
-shared uint prefix_sum[HISTOGRAM_SLOTS];
+shared uint prefix_sum[HISTOGRAM_SLOTS+1];
 
+// based on https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch39.html
 void build_prefix_sum() {
-prefix_sum[0] = 0;
-prefix_sum[1] = 0;
-	for(uint i=2; i<HISTOGRAM_SLOTS; i++) {
+	int local_id = int(gl_LocalInvocationID.x);
+	int offset = 1;
+
+	prefix_sum[2*local_id] = histogram[2*local_id];
+	prefix_sum[2*local_id+1] = histogram[2*local_id+1];
+
+	// up-sweep phase
+	for (int d = HISTOGRAM_SLOTS/2; d > 0; d /=2) {
+		memoryBarrierShared();
+		barrier();
+
+		if (local_id < d) {
+			uint ai = offset*(2*local_id+1)-1;
+			uint bi = offset*(2*local_id+2)-1;
+			prefix_sum[bi] += prefix_sum[ai];
+		}
+		offset *= 2;
+	}
+
+	// clear the last element
+	if (local_id == 0) { prefix_sum[HISTOGRAM_SLOTS - 1] = 0; }
+
+	// down-sweep phase
+	for (int d = 1; d < HISTOGRAM_SLOTS; d *= 2) {
+		offset /= 2;
+		memoryBarrierShared();
+		barrier();
+
+		if (local_id < d) {
+			uint ai = offset*(2*local_id+1)-1;
+			uint bi = offset*(2*local_id+2)-1;
+			uint t = prefix_sum[ai];
+			prefix_sum[ai] = prefix_sum[bi];
+			prefix_sum[bi] += t;
+		}
+	}
+
+	// store the total in the last element
+	if (local_id == 0) {
+		prefix_sum[HISTOGRAM_SLOTS] = prefix_sum[HISTOGRAM_SLOTS-1] + histogram[HISTOGRAM_SLOTS-1];
+	}
+	memoryBarrierShared();
+	barrier();
+
+/* old/sequencial
+	prefix_sum[0] = 0;
+	prefix_sum[HISTOGRAM_SLOTS*0+1] = 0; // ignore first bucket
+	for(uint i=2; i<HISTOGRAM_SLOTS+1; i++) {
 		prefix_sum[i] = prefix_sum[i-1] + histogram[i-1];
 	}
+*/
 }
 
 float index_to_log_lum(uint index) {
@@ -32,18 +79,19 @@ float index_to_log_lum(uint index) {
 }
 
 void main() {
-	// TODO: optimize
+	// calculate constants
+	uint local_id = gl_LocalInvocationID.x;
+	uint local_size = gl_WorkGroupSize.x;
 
 	build_prefix_sum();
+	float sum = prefix_sum[HISTOGRAM_SLOTS];
 
-	float sum = prefix_sum[HISTOGRAM_SLOTS-1] + histogram[HISTOGRAM_SLOTS-1];
-
-	for(int i=0; i<HISTOGRAM_SLOTS; i++) {
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
 		float factor = exp(DISPLAY_MIN + (DISPLAY_MAX-DISPLAY_MIN) * float(prefix_sum[i])/sum)
 		             / exp(index_to_log_lum(i));
 
 		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
 
-		//histogram[i] = uint(factor*100);
+		// DEBUG-PRINT: histogram[i] = prefix_sum[i];
 	}
 }
