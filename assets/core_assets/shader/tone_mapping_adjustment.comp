@@ -8,7 +8,7 @@ layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
 layout (constant_id = 4) const float DISPLAY_MIN = 0;
 layout (constant_id = 5) const float DISPLAY_MAX = 1;
 
-layout (local_size_x = 32, local_size_y = 1, local_size_z = 1 ) in;
+layout (local_size_x = 128, local_size_y = 1, local_size_z = 1 ) in;
 
 layout(set=1, binding = 1) buffer Data
 {
@@ -19,6 +19,23 @@ shared uint local_histogram[HISTOGRAM_SLOTS];
 shared int total;
 shared int trimmings;
 
+#include "tone_mapping_prefix_sum.glsl"
+
+
+float delta_L_t(float La) {
+	// Table 1 of "A Visibility Matching Tone Reproduction Operator for High Dynamic Range Scenes"
+	float x = La/log(10);// * 0.43429448190325182765f; // log_e to log_10
+
+	if     (x < -3.94)   return -2.86;
+	else if(x < -1.44)   return pow(0.405*x+1.6, 2.18) - 2.86;
+	else if(x < -0.0184) return x - 0.395;
+	else if(x < 1.9)     return pow(0.249*x+0.65, 2.7) - 0.72;
+	else                 return x - 1.255;
+}
+
+float index_to_log_lum(uint index) {
+	return float(index)/HISTOGRAM_SLOTS * (HISTOGRAM_MAX-HISTOGRAM_MIN) + HISTOGRAM_MIN;
+}
 
 void main() {
 	// calculate constants and initialize shared memory
@@ -49,16 +66,22 @@ void main() {
 
 
 	// trim histogram
-	float tolerance = 0.025 * total;
+	float tolerance = 0.0001 * total;
 	int safe_guard = 0;
 	while(total>=tolerance && safe_guard++<100) {
-		int ceiling = int(floor(total*bin_width / display_range));
-
+		build_prefix_sum();
+		float sum = prefix_sum[HISTOGRAM_SLOTS];
 		int sub_trimmings = 0;
 
 		// trim each bucket
 		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-			if(local_histogram[i] > ceiling) {
+			float L_w = exp(index_to_log_lum(i));
+			float L_d = exp(DISPLAY_MIN + (DISPLAY_MAX-DISPLAY_MIN) * float(prefix_sum[i])/sum);
+			int ceiling = int(floor(delta_L_t(L_d)/delta_L_t(L_w) * total*bin_width*L_w / (display_range*L_d)));
+			//int ceiling = int(floor(total*bin_width / (display_range)));
+			//ceiling = min(ceiling,int(floor(total*bin_width / (display_range)))); // TODO
+
+			if(local_histogram[i] >= ceiling) {
 				sub_trimmings += int(local_histogram[i]) - ceiling;
 				local_histogram[i] = uint(ceiling);
 			}
@@ -82,7 +105,7 @@ void main() {
 
 	if(total<tolerance) {
 		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-			local_histogram[i] = 1;
+			local_histogram[i] = 0;
 		}
 		memoryBarrierShared();
 		barrier();

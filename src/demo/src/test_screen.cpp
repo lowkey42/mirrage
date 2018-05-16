@@ -404,10 +404,10 @@ namespace mirrage {
 						        _set_preset(0);
 					        }
 
-					        auto color = util::Rgba{light.color(), light.intensity() / 200.f};
+					        auto color = util::Rgba{light.color(), light.intensity() / 50'000.f};
 					        if(gui::color_picker(ctx, color, 210.f)) {
 						        light.color({color.r, color.g, color.b});
-						        light.intensity(color.a * 200.f);
+						        light.intensity(color.a * 50'000.f);
 						        _set_preset(0);
 					        }
 				        });
@@ -470,7 +470,7 @@ namespace mirrage {
 			nk_property_int(
 			        ctx, "Low-Quality MIP-Levels", 0, &renderer_settings.gi_low_quality_mip_levels, 8, 1, 1);
 
-			nk_property_float(ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.01f, 0.1f);
+			nk_property_float(ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.001f, 0.01f);
 
 			nk_property_float(
 			        ctx, "Background Brightness", 0.f, &renderer_settings.background_intensity, 10.f, 1, 0.1f);

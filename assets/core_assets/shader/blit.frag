@@ -73,12 +73,22 @@ vec3 expose(vec3 color, float threshold) {
 
 vec3 tone_mapping(vec3 color) {
 	if(ADJUST_HISTOGRAM==1 && pcs.options.w>0.001) {
+/*
+		vec3 cie_color = rgb2cie(color);
+		float scotopic_lum = cie_color.y * (1.33*(1+(cie_color.y+cie_color.z)/cie_color.x)-1.68);
+		float min_mesoptic = 0.00031622776f / 30;
+		float max_mesoptic = 3.16227766017f / 30;
+		float alpha = clamp((scotopic_lum-min_mesoptic) / (max_mesoptic-min_mesoptic), 0, 1);
+		color = mix(vec3(scotopic_lum), color, alpha);
+*/
 		float luminance = ha_luminance(color);
 		float idx = log(luminance);
 		idx = clamp(idx, MIN_LOG_LUMINANCE, MAX_LOG_LUMINANCE);
 		idx = (idx-MIN_LOG_LUMINANCE) / (MAX_LOG_LUMINANCE-MIN_LOG_LUMINANCE);
-
 		color *= texture(histogram_adjustment_sampler, vec2(idx, 0.5)).r;
+
+//		if(luminance<10)
+//			color*=0;
 	}
 
 	if(pcs.options.x<=0.1 && pcs.options.z<=0)

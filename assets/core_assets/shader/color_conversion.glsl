@@ -31,5 +31,12 @@ vec3 clamp_color_luminance(vec3 c, float max_luminance) {
 	return hsv2rgb(hsv);
 }
 
+vec3 rgb2cie(vec3 c) {
+	mat3 m;
+	m[0] = vec3(0.4124, 0.2126, 0.0193);
+	m[1] = vec3(0.3576, 0.7152, 0.1192);
+	m[2] = vec3(0.1805, 0.0722, 0.9505);
+	return m * c;
+}
 
 #endif

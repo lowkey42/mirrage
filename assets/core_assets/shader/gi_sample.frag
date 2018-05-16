@@ -70,7 +70,7 @@ void main() {
 	out_color = vec4(gi_sample(int(current_mip+0.5), int(base_mip+0.5)), 1);
 
 	// clamp the result to a reasonable range to reduce artefacts
-	out_color.rgb = clamp(out_color.rgb, vec3(0), vec3(20));
+	out_color.rgb = clamp(out_color.rgb, vec3(0), vec3(5000));
 
 	// normalize diffuse GI by its luminance to reduce fire-flies
 	out_color.rgb /= (1 + luminance_norm(out_color.rgb));
