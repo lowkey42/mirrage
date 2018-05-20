@@ -90,8 +90,10 @@ namespace mirrage::renderer {
 		{
 			auto dsl = std::array<vk::DescriptorSetLayout, 2>{renderer.global_uniforms_layout(),
 			                                                  desc_set_layout};
+			auto pcs = vk::PushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, sizeof(Push_constants)};
+
 			return renderer.device().vk_device()->createPipelineLayoutUnique(
-			        vk::PipelineLayoutCreateInfo{{}, dsl.size(), dsl.data()});
+			        vk::PipelineLayoutCreateInfo{{}, dsl.size(), dsl.data(), 1, &pcs});
 		}
 		auto build_compute_pipeline(graphic::Device&      device,
 		                            asset::Asset_manager& assets,
@@ -103,19 +105,15 @@ namespace mirrage::renderer {
 			auto module = assets.load<graphic::Shader_module>(shader);
 
 			auto spec_entries =
-			        std::array<vk::SpecializationMapEntry, 6>{vk::SpecializationMapEntry{0, 0 * 32, 32},
+			        std::array<vk::SpecializationMapEntry, 4>{vk::SpecializationMapEntry{0, 0 * 32, 32},
 			                                                  vk::SpecializationMapEntry{1, 1 * 32, 32},
 			                                                  vk::SpecializationMapEntry{2, 2 * 32, 32},
-			                                                  vk::SpecializationMapEntry{3, 3 * 32, 32},
-			                                                  vk::SpecializationMapEntry{4, 4 * 32, 32},
-			                                                  vk::SpecializationMapEntry{5, 5 * 32, 32}};
-			auto spec_data                                     = std::array<char, 6 * 32>();
+			                                                  vk::SpecializationMapEntry{3, 3 * 32, 32}};
+			auto spec_data                                     = std::array<char, 4 * 32>();
 			reinterpret_cast<std::int32_t&>(spec_data[0 * 32]) = histogram_slots;
 			reinterpret_cast<std::int32_t&>(spec_data[1 * 32]) = workgroup_size;
 			reinterpret_cast<float&>(spec_data[2 * 32])        = std::log(histogram_min);
 			reinterpret_cast<float&>(spec_data[3 * 32])        = std::log(histogram_max);
-			reinterpret_cast<float&>(spec_data[4 * 32])        = std::log(1.f / 255.f * 0.4f);
-			reinterpret_cast<float&>(spec_data[5 * 32])        = std::log(1.0f);
 
 			auto spec_info = vk::SpecializationInfo{
 			        spec_entries.size(), spec_entries.data(), spec_data.size(), spec_data.data()};
@@ -293,7 +291,6 @@ namespace mirrage::renderer {
 			                       1);
 		}
 
-#ifndef HPC_ASYNC_COMPUTE
 		if(histogram_host_visible && _ready_result >= 0) {
 			// read back histogram + exposure
 			auto data_addr = _result_buffer[_ready_result].memory().mapped_addr().get_or_throw(
@@ -315,60 +312,6 @@ namespace mirrage::renderer {
 			_dispatch_adjust_histogram(global_uniform_set, command_buffer);
 		}
 		_dispatch_build_final_factors(global_uniform_set, command_buffer);
-
-#else // TODO
-		if(!_compute_fence)
-			return; // compute result is not ready, yet
-
-		_compute_fence.reset();
-
-		// TODO: ownership transfer of result buffer ('clear' on first frame)
-
-		// image ownership transfer of luminance result (release)
-		auto subresource = vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
-
-		auto release_barrier = vk::ImageMemoryBarrier{vk::AccessFlagBits::eColorAttachmentWrite,
-		                                              vk::AccessFlagBits::eShaderRead,
-		                                              vk::ImageLayout::eColorAttachmentOptimal,
-		                                              vk::ImageLayout::eShaderReadOnlyOptimal,
-		                                              _renderer.queue_family(),
-		                                              _renderer.compute_queue_family(),
-		                                              _luminance_buffer.image(),
-		                                              subresource};
-
-		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
-		                               vk::PipelineStageFlagBits::eComputeShader,
-		                               vk::DependencyFlags{},
-		                               {},
-		                               {},
-		                               {release_barrier});
-
-		_last_compute_commands = _renderer.create_compute_command_buffer();
-		{
-			_last_compute_commands->begin(
-			        vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-			ON_EXIT { _last_compute_commands->end(); };
-
-			// image ownership transfer of luminance result (aquire)
-			_last_compute_commands->pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			                                        vk::PipelineStageFlagBits::eComputeShader,
-			                                        vk::DependencyFlags{},
-			                                        {},
-			                                        {},
-			                                        {release_barrier});
-
-
-			// TODO: dispatch compute
-		}
-
-		// TODO: submit (wait for end of current frame and signal compute fence, when we are done)
-		auto wait_semaphores = vk::Semaphore{}; // TODO: frame semaphore
-		auto wait_stages     = vk::PipelineStageFlags(vk::PipelineStageFlagBits::eAllCommands);
-
-		auto submit_info = vk::SubmitInfo{
-		        1, &wait_semaphores, &wait_stages, 1, &_last_compute_commands.get(), 0, nullptr};
-		_renderer.compute_queue().submit({submit_info}, _compute_fence.vk_fence());
-#endif
 
 		// increment index of next/ready result
 		_next_result++;
@@ -503,6 +446,13 @@ namespace mirrage::renderer {
 		                                  desc_sets.data(),
 		                                  0,
 		                                  nullptr);
+
+		auto pcs         = Push_constants{};
+		pcs.parameters.x = std::log(std::max(_renderer.settings().min_display_luminance, 0.0001f));
+		pcs.parameters.y = std::log(_renderer.settings().max_display_luminance);
+		command_buffer.pushConstants(
+		        *_compute_pipeline_layout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(Push_constants), &pcs);
+
 		command_buffer.dispatch(1, 1, 1);
 	}
 	void Tone_mapping_pass::_dispatch_build_final_factors(vk::DescriptorSet  global_uniform_set,
@@ -554,6 +504,13 @@ namespace mirrage::renderer {
 		                                  desc_sets.data(),
 		                                  0,
 		                                  nullptr);
+
+		auto pcs         = Push_constants{};
+		pcs.parameters.x = std::log(std::max(_renderer.settings().min_display_luminance, 0.0001f));
+		pcs.parameters.y = std::log(_renderer.settings().max_display_luminance);
+		command_buffer.pushConstants(
+		        *_compute_pipeline_layout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(Push_constants), &pcs);
+
 		command_buffer.dispatch(1, 1, 1);
 
 		auto final_barrier = vk::ImageMemoryBarrier{

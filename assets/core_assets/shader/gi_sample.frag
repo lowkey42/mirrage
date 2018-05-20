@@ -70,10 +70,10 @@ void main() {
 	out_color = vec4(gi_sample(int(current_mip+0.5), int(base_mip+0.5)), 1);
 
 	// clamp the result to a reasonable range to reduce artefacts
-	out_color.rgb = clamp(out_color.rgb, vec3(0), vec3(5000));
+	out_color.rgb = max(out_color.rgb, vec3(0));
 
 	// normalize diffuse GI by its luminance to reduce fire-flies
-	out_color.rgb /= (1 + luminance_norm(out_color.rgb));
+//	out_color.rgb /= (1 + luminance_norm(out_color.rgb)/1);
 }
 
 const float PI     = 3.14159265359;
@@ -176,7 +176,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 
 	} else {
 		// fetch the light emitted by the src pixel, modulate it by the calculated factor and return it
-		vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;
+		vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb/1000.0;
 		return radiance * weight;
 	}
 }

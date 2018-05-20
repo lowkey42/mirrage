@@ -5,15 +5,17 @@
 layout (constant_id = 0) const int HISTOGRAM_SLOTS = 256;
 layout (constant_id = 2) const float HISTOGRAM_MIN = -10;
 layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
-layout (constant_id = 4) const float DISPLAY_MIN = 0;
-layout (constant_id = 5) const float DISPLAY_MAX = 1;
 
 layout (local_size_x = 128, local_size_y = 1, local_size_z = 1 ) in;
 
-layout(set=1, binding = 1) buffer Data
-{
+layout(set=1, binding = 1) buffer Data {
 	uint histogram[HISTOGRAM_SLOTS + 1];
 };
+
+layout(push_constant) uniform Push_constants {
+	// min/max log display luminance
+	vec4 parameters;
+} pcs;
 
 shared uint local_histogram[HISTOGRAM_SLOTS];
 shared int total;
@@ -24,7 +26,7 @@ shared int trimmings;
 
 float delta_L_t(float La) {
 	// Table 1 of "A Visibility Matching Tone Reproduction Operator for High Dynamic Range Scenes"
-	float x = La/log(10);// * 0.43429448190325182765f; // log_e to log_10
+	float x = log(La)/log(10)+1; // to log_10
 
 	if     (x < -3.94)   return -2.86;
 	else if(x < -1.44)   return pow(0.405*x+1.6, 2.18) - 2.86;
@@ -38,6 +40,9 @@ float index_to_log_lum(uint index) {
 }
 
 void main() {
+	float DISPLAY_MIN = pcs.parameters.x;
+	float DISPLAY_MAX = pcs.parameters.y;
+
 	// calculate constants and initialize shared memory
 	uint local_id = gl_LocalInvocationID.x + gl_LocalInvocationID.y*gl_WorkGroupSize.x;
 	uint local_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
@@ -76,10 +81,8 @@ void main() {
 		// trim each bucket
 		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
 			float L_w = exp(index_to_log_lum(i));
-			float L_d = exp(DISPLAY_MIN + (DISPLAY_MAX-DISPLAY_MIN) * float(prefix_sum[i])/sum);
+			float L_d = exp(DISPLAY_MIN + display_range * float(prefix_sum[i])/sum);
 			int ceiling = int(floor(delta_L_t(L_d)/delta_L_t(L_w) * total*bin_width*L_w / (display_range*L_d)));
-			//int ceiling = int(floor(total*bin_width / (display_range)));
-			//ceiling = min(ceiling,int(floor(total*bin_width / (display_range)))); // TODO
 
 			if(local_histogram[i] >= ceiling) {
 				sub_trimmings += int(local_histogram[i]) - ceiling;

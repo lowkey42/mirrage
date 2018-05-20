@@ -5,17 +5,19 @@
 layout (constant_id = 0) const int HISTOGRAM_SLOTS = 256;
 layout (constant_id = 2) const float HISTOGRAM_MIN = -10;
 layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
-layout (constant_id = 4) const float DISPLAY_MIN = 0;
-layout (constant_id = 5) const float DISPLAY_MAX = 1;
 
 layout (local_size_x = 128, local_size_y = 1, local_size_z = 1 ) in;
 
 layout (set=1, binding = 2, r16f) uniform image2D adjustment_factor;
 
-layout(set=1, binding = 1) buffer Data
-{
+layout(set=1, binding = 1) buffer Data {
 	uint histogram[HISTOGRAM_SLOTS + 1];
 };
+
+layout(push_constant) uniform Push_constants {
+	// min/max log display luminance
+	vec4 parameters;
+} pcs;
 
 #include "global_uniforms.glsl"
 
@@ -27,6 +29,9 @@ float index_to_log_lum(uint index) {
 }
 
 void main() {
+	float DISPLAY_MIN = pcs.parameters.x;
+	float DISPLAY_MAX = pcs.parameters.y;
+
 	// calculate constants
 	uint local_id = gl_LocalInvocationID.x;
 	uint local_size = gl_WorkGroupSize.x;
@@ -47,7 +52,7 @@ void main() {
 			             / curr_lum;
 		}
 
-		factor = mix(prev, factor, global_uniforms.time.z/0.25);
+		factor = mix(prev, factor, global_uniforms.time.z/0.5);
 
 		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
 

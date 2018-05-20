@@ -76,8 +76,8 @@ vec3 tone_mapping(vec3 color) {
 /*
 		vec3 cie_color = rgb2cie(color);
 		float scotopic_lum = cie_color.y * (1.33*(1+(cie_color.y+cie_color.z)/cie_color.x)-1.68);
-		float min_mesoptic = 0.00031622776f / 30;
-		float max_mesoptic = 3.16227766017f / 30;
+		float min_mesoptic = 0.00031622776f/10;
+		float max_mesoptic = 3.16227766017f/10;
 		float alpha = clamp((scotopic_lum-min_mesoptic) / (max_mesoptic-min_mesoptic), 0, 1);
 		color = mix(vec3(scotopic_lum), color, alpha);
 */

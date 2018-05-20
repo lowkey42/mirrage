@@ -470,7 +470,8 @@ namespace mirrage {
 			nk_property_int(
 			        ctx, "Low-Quality MIP-Levels", 0, &renderer_settings.gi_low_quality_mip_levels, 8, 1, 1);
 
-			nk_property_float(ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.001f, 0.01f);
+			nk_property_float(
+			        ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.001f, 0.01f);
 
 			nk_property_float(
 			        ctx, "Background Brightness", 0.f, &renderer_settings.background_intensity, 10.f, 1, 0.1f);
@@ -678,6 +679,22 @@ namespace mirrage {
 				bool_nk_wrapper = renderer_settings.histogram_trim ? 1 : 0;
 				nk_checkbox_label(ctx, "Histogram Trim", &bool_nk_wrapper);
 				renderer_settings.histogram_trim = bool_nk_wrapper == 1;
+
+
+				nk_property_float(ctx,
+				                  "Min Display Lum.",
+				                  1.f / 255.f / 4.f,
+				                  &renderer_settings.min_display_luminance,
+				                  1.f,
+				                  0.001f,
+				                  0.01f);
+				nk_property_float(ctx,
+				                  "Max Display Lum.",
+				                  1.f / 255.f / 4.f,
+				                  &renderer_settings.max_display_luminance,
+				                  1.f,
+				                  0.001f,
+				                  0.01f);
 
 				_meta_system.renderer().settings(renderer_settings, false);
 			}
