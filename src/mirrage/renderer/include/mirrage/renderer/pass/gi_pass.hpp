@@ -82,6 +82,11 @@ namespace mirrage::renderer {
 		graphic::Render_pass   _sample_spec_renderpass;
 		graphic::DescriptorSet _sample_spec_descriptor_set;
 
+		// median filter to remove noise from specular illumination
+		graphic::Framebuffer   _median_spec_framebuffer;
+		graphic::Render_pass   _median_spec_renderpass;
+		graphic::DescriptorSet _median_spec_descriptor_set;
+
 		// blur pass for specular illumination
 		graphic::Framebuffer   _blur_horizonal_framebuffer;
 		graphic::Framebuffer   _blur_vertical_framebuffer;

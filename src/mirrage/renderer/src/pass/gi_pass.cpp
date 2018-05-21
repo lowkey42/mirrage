@@ -454,6 +454,71 @@ namespace mirrage::renderer {
 			return render_pass;
 		}
 
+		auto build_median_spec_render_pass(Deferred_renderer&      renderer,
+		                                   vk::DescriptorSetLayout desc_set_layout,
+		                                   Render_target_2D&       gi_spec_buffer,
+		                                   Framebuffer&            out_framebuffer)
+		{
+
+			auto builder = renderer.device().create_render_pass_builder();
+
+			auto color = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  renderer.gbuffer().color_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+
+			auto pipeline                    = graphic::Pipeline_description{};
+			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
+			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
+
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+			pipeline.add_push_constant("pcs"_strid,
+			                           sizeof(Gi_constants),
+			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+
+			auto& pass = builder.add_subpass(pipeline).color_attachment(
+			        color, graphic::all_color_components, graphic::blend_premultiplied_alpha);
+
+			pass.stage("median"_strid)
+			        .shader("frag_shader:median_filter"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:median_filter"_aid, graphic::Shader_stage::vertex);
+
+			builder.add_dependency(
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlags{},
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+
+			builder.add_dependency(
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eBottomOfPipe,
+			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                | vk::AccessFlagBits::eTransferRead);
+
+
+			auto render_pass = builder.build();
+
+			out_framebuffer = builder.build_framebuffer({gi_spec_buffer.view(0), util::Rgba{}},
+			                                            gsl::narrow<int>(gi_spec_buffer.width()),
+			                                            gsl::narrow<int>(gi_spec_buffer.height()));
+
+			return render_pass;
+		}
+
 		auto build_blur_render_pass(Deferred_renderer&         renderer,
 		                            vk::DescriptorSetLayout    desc_set_layout,
 		                            graphic::Render_target_2D& blur_buffer,
@@ -775,16 +840,21 @@ namespace mirrage::renderer {
 	                                                                   _history_weight.view(),
 	                                                                   _gi_diffuse_history.view(0)}))
 
+	  , _median_spec_renderpass(build_median_spec_render_pass(
+	            renderer, *_descriptor_set_layout, _gi_specular_history, _median_spec_framebuffer))
+	  , _median_spec_descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
+	                                                                  {_gi_specular.view(0)}))
+
 	  , _blur_render_pass(build_blur_render_pass(renderer,
 	                                             *_descriptor_set_layout,
 	                                             _gi_specular_history,
 	                                             _gi_specular,
-	                                             _blur_horizonal_framebuffer,
-	                                             _blur_vertical_framebuffer))
+	                                             _blur_vertical_framebuffer,
+	                                             _blur_horizonal_framebuffer))
 	  , _blur_descriptor_set_horizontal(_descriptor_set_layout.create_set(
-	            renderer.descriptor_pool(), {renderer.gbuffer().depth.view(), _gi_specular.view()}))
-	  , _blur_descriptor_set_vertical(_descriptor_set_layout.create_set(
 	            renderer.descriptor_pool(), {renderer.gbuffer().depth.view(), _gi_specular_history.view()}))
+	  , _blur_descriptor_set_vertical(_descriptor_set_layout.create_set(
+	            renderer.descriptor_pool(), {renderer.gbuffer().depth.view(), _gi_specular.view()}))
 
 	  , _blend_renderpass(
 	            build_blend_render_pass(renderer, *_descriptor_set_layout, _color_in_out, _blend_framebuffer))
@@ -795,7 +865,7 @@ namespace mirrage::renderer {
 	                                               renderer.gbuffer().depth.view(_base_mip_level),
 	                                               renderer.gbuffer().mat_data.view(_base_mip_level),
 	                                               _gi_diffuse_result.view(),
-	                                               _gi_specular.view(),
+	                                               _gi_specular_history.view(),
 	                                               renderer.gbuffer().albedo_mat_id.view(0),
 	                                               _integrated_brdf.view()}))
 	{
@@ -906,14 +976,14 @@ namespace mirrage::renderer {
 		                      _history_weight_prev,
 		                      vk::ImageLayout::eUndefined,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal);
-
+/*
 		graphic::blit_texture(command_buffer,
 		                      _gi_specular,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      _gi_specular_history,
 		                      vk::ImageLayout::eUndefined,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal);
+		                      vk::ImageLayout::eShaderReadOnlyOptimal);*/
 	}
 
 	void Gi_pass::_integrate_brdf(vk::CommandBuffer& command_buffer)
@@ -1139,6 +1209,11 @@ namespace mirrage::renderer {
 				command_buffer.draw(3, 1, 0, 0);
 			});
 		}
+
+		_median_spec_renderpass.execute(command_buffer, _median_spec_framebuffer, [&] {
+			_median_spec_renderpass.bind_descriptor_set(1, *_median_spec_descriptor_set);
+			command_buffer.draw(3, 1, 0, 0);
+		});
 
 
 		auto _ = _renderer.profiler().push("Sample (spec blur)");

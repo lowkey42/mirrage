@@ -56,6 +56,9 @@ frag_shader:gi_spec_blur = shader/bin/gi_spec_blur.frag.spv
 vert_shader:gi_reproject = shader/bin/fullscreen.vert.spv
 frag_shader:gi_reproject = shader/bin/gi_reproject.frag.spv
 
+vert_shader:median_filter = shader/bin/fullscreen.vert.spv
+frag_shader:median_filter = shader/bin/median_filter.frag.spv
+
 vert_shader:voxelization = shader/bin/voxelization.vert.spv
 frag_shader:voxelization = shader/bin/voxelization.frag.spv
 
