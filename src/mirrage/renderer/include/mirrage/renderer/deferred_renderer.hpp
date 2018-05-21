@@ -41,8 +41,8 @@ namespace mirrage::renderer {
 		float exposure_override         = 0.f;
 		bool  histogram_adjustment      = true;
 		bool  histogram_trim            = true;
-		float min_display_luminance     = 1.f / 255.f;
-		float max_display_luminance     = 244.f / 255.f;
+		float min_display_luminance     = 0.005f;
+		float max_display_luminance     = 0.9f;
 
 		bool ssao  = true;
 		bool bloom = true;

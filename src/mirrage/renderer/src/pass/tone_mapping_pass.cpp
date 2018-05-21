@@ -84,6 +84,67 @@ namespace mirrage::renderer {
 
 			return render_pass;
 		}
+		auto build_scotopic_render_pass(Deferred_renderer&         renderer,
+		                                 vk::DescriptorSetLayout    desc_set_layout,
+		                                 graphic::Render_target_2D& target,
+		                                 graphic::Framebuffer&      out_framebuffer)
+		{
+
+			auto builder = renderer.device().create_render_pass_builder();
+
+			auto screen = builder.add_attachment(vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                                               renderer.gbuffer().color_format,
+			                                                               vk::SampleCountFlagBits::e1,
+			                                                               vk::AttachmentLoadOp::eDontCare,
+			                                                               vk::AttachmentStoreOp::eStore,
+			                                                               vk::AttachmentLoadOp::eDontCare,
+			                                                               vk::AttachmentStoreOp::eDontCare,
+			                                                               vk::ImageLayout::eUndefined,
+			                                                               vk::ImageLayout::eShaderReadOnlyOptimal});
+
+			auto pipeline                    = graphic::Pipeline_description{};
+			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
+			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
+
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+
+			pipeline.add_push_constant(
+			        "pcs"_strid, sizeof(Push_constants), vk::ShaderStageFlagBits::eFragment);
+
+			auto& pass = builder.add_subpass(pipeline).color_attachment(screen);
+
+			pass.stage("scotopic"_strid)
+			        .shader("frag_shader:tone_mapping_scotopic"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:tone_mapping_scotopic"_aid, graphic::Shader_stage::vertex);
+
+			builder.add_dependency(
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlags{},
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+
+			builder.add_dependency(
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eBottomOfPipe,
+			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                | vk::AccessFlagBits::eTransferRead);
+
+
+			auto render_pass = builder.build();
+
+			out_framebuffer = builder.build_framebuffer(
+			        {target.view(0), util::Rgba{}}, target.width(), target.height());
+
+			return render_pass;
+		}
 
 		auto build_compute_pipeline_layout(Deferred_renderer&             renderer,
 		                                   const vk::DescriptorSetLayout& desc_set_layout)
@@ -143,7 +204,8 @@ namespace mirrage::renderer {
 	Tone_mapping_pass::Tone_mapping_pass(Deferred_renderer& renderer,
 	                                     ecs::Entity_manager&,
 	                                     util::maybe<Meta_system&>,
-	                                     graphic::Texture_2D& src)
+	                                     graphic::Texture_2D& src,
+	                                     graphic::Render_target_2D& target)
 	  : _renderer(renderer)
 	  , _src(src)
 	  , _compute_fence(renderer.device().create_fence(true))
@@ -175,6 +237,12 @@ namespace mirrage::renderer {
 	            vk::DescriptorSetLayoutBinding(
 	                    2, vk::DescriptorType::eStorageImage, 1, vk::ShaderStageFlagBits::eCompute)}))
 
+	  , _scotopic_renderpass(build_scotopic_render_pass(renderer,
+	                                                     *_descriptor_set_layout,
+                                                         target,
+                                                         _scotopic_framebuffer))
+	  ,_scotopic_desc_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view()}))
+
 	  , _luminance_buffer(renderer.device(),
 	                      {src.width(), src.height()},
 	                      0,
@@ -188,7 +256,7 @@ namespace mirrage::renderer {
 	                                                           _luminance_format,
 	                                                           _luminance_buffer,
 	                                                           _calc_luminance_framebuffer))
-	  , _calc_luminance_desc_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view()}))
+	  , _calc_luminance_desc_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {target.view()}))
 
 	  , _compute_pipeline_layout(build_compute_pipeline_layout(_renderer, *_compute_descriptor_set_layout))
 	  , _build_histogram_pipeline(build_compute_pipeline(_renderer.device(),
@@ -305,6 +373,7 @@ namespace mirrage::renderer {
 			_last_result_data.back() = *(reinterpret_cast<float*>(data_addr) + (histogram_buffer_length - 1));
 		}
 
+		_scotopic_adaption(global_uniform_set, command_buffer);
 		_extract_luminance(global_uniform_set, command_buffer);
 		_dispatch_build_histogram(global_uniform_set, command_buffer);
 		_dispatch_compute_exposure(global_uniform_set, command_buffer);
@@ -337,6 +406,20 @@ namespace mirrage::renderer {
 			command_buffer.draw(3, 1, 0, 0);
 		});
 	}
+	void Tone_mapping_pass::_scotopic_adaption(vk::DescriptorSet  global_uniform_set,
+	                                           vk::CommandBuffer& command_buffer)
+	{
+		auto _ = _renderer.profiler().push("Scotopic Adaption");
+
+		// extract luminance of current frame
+		_scotopic_renderpass.execute(command_buffer, _scotopic_framebuffer, [&] {
+			auto desc_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_scotopic_desc_set};
+			_scotopic_renderpass.bind_descriptor_sets(0, desc_sets);
+
+			command_buffer.draw(3, 1, 0, 0);
+		});
+	}
+
 	void Tone_mapping_pass::_dispatch_build_histogram(vk::DescriptorSet  global_uniform_set,
 	                                                  vk::CommandBuffer& command_buffer)
 	{
@@ -536,9 +619,11 @@ namespace mirrage::renderer {
 	                                            util::maybe<Meta_system&> meta_system,
 	                                            bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
 	{
-		auto& color_src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
+		auto& color_src  = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
+		auto& color_dest = !write_first_pp_buffer ? renderer.gbuffer().colorB : renderer.gbuffer().colorA;
+		write_first_pp_buffer = !write_first_pp_buffer;
 
-		return std::make_unique<Tone_mapping_pass>(renderer, entities, meta_system, color_src);
+		return std::make_unique<Tone_mapping_pass>(renderer, entities, meta_system, color_src, color_dest);
 	}
 
 	auto Tone_mapping_pass_factory::rank_device(vk::PhysicalDevice,
