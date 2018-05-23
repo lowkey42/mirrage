@@ -842,8 +842,8 @@ namespace mirrage::renderer {
 
 	  , _median_spec_renderpass(build_median_spec_render_pass(
 	            renderer, *_descriptor_set_layout, _gi_specular_history, _median_spec_framebuffer))
-	  , _median_spec_descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
-	                                                                  {_gi_specular.view(0)}))
+	  , _median_spec_descriptor_set(
+	            _descriptor_set_layout.create_set(renderer.descriptor_pool(), {_gi_specular.view(0)}))
 
 	  , _blur_render_pass(build_blur_render_pass(renderer,
 	                                             *_descriptor_set_layout,
@@ -976,14 +976,6 @@ namespace mirrage::renderer {
 		                      _history_weight_prev,
 		                      vk::ImageLayout::eUndefined,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal);
-/*
-		graphic::blit_texture(command_buffer,
-		                      _gi_specular,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      _gi_specular_history,
-		                      vk::ImageLayout::eUndefined,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal);*/
 	}
 
 	void Gi_pass::_integrate_brdf(vk::CommandBuffer& command_buffer)

@@ -22,11 +22,11 @@ namespace mirrage::renderer {
 		        false;
 #endif
 
-		auto build_luminance_render_pass(Deferred_renderer&         renderer,
-		                                 vk::DescriptorSetLayout    desc_set_layout,
-		                                 vk::Format                 luminance_format,
-		                                 graphic::Render_target_2D& target,
-		                                 graphic::Framebuffer&      out_framebuffer)
+		auto build_luminance_render_pass(Deferred_renderer&                 renderer,
+		                                 vk::DescriptorSetLayout            desc_set_layout,
+		                                 vk::Format                         luminance_format,
+		                                 graphic::Render_target_2D&         target,
+		                                 std::vector<graphic::Framebuffer>& out_framebuffers)
 		{
 
 			auto builder = renderer.device().create_render_pass_builder();
@@ -79,28 +79,31 @@ namespace mirrage::renderer {
 
 			auto render_pass = builder.build();
 
-			out_framebuffer = builder.build_framebuffer(
-			        {target.view(0), util::Rgba{}}, target.width(), target.height());
+			out_framebuffers = util::build_vector(target.mip_levels(), [&](auto i) {
+				return builder.build_framebuffer(
+				        {target.view(i), util::Rgba{}}, target.width(i), target.height(i));
+			});
 
 			return render_pass;
 		}
 		auto build_scotopic_render_pass(Deferred_renderer&         renderer,
-		                                 vk::DescriptorSetLayout    desc_set_layout,
-		                                 graphic::Render_target_2D& target,
-		                                 graphic::Framebuffer&      out_framebuffer)
+		                                vk::DescriptorSetLayout    desc_set_layout,
+		                                graphic::Render_target_2D& target,
+		                                graphic::Framebuffer&      out_framebuffer)
 		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
-			auto screen = builder.add_attachment(vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
-			                                                               renderer.gbuffer().color_format,
-			                                                               vk::SampleCountFlagBits::e1,
-			                                                               vk::AttachmentLoadOp::eDontCare,
-			                                                               vk::AttachmentStoreOp::eStore,
-			                                                               vk::AttachmentLoadOp::eDontCare,
-			                                                               vk::AttachmentStoreOp::eDontCare,
-			                                                               vk::ImageLayout::eUndefined,
-			                                                               vk::ImageLayout::eShaderReadOnlyOptimal});
+			auto screen = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  renderer.gbuffer().color_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
@@ -198,17 +201,24 @@ namespace mirrage::renderer {
 			return format.get_or_throw();
 		}
 
+		auto compute_foveal_mip_level(float base_height, float v_fov)
+		{
+			auto target_height = static_cast<int>(std::round(2.f * std::tan(v_fov) / 0.01745f));
+
+			return static_cast<std::uint32_t>(std::round(glm::log2(base_height / target_height)));
+		}
+
 	} // namespace
 
 
 	Tone_mapping_pass::Tone_mapping_pass(Deferred_renderer& renderer,
 	                                     ecs::Entity_manager&,
 	                                     util::maybe<Meta_system&>,
-	                                     graphic::Texture_2D& src,
+	                                     graphic::Render_target_2D& src,
 	                                     graphic::Render_target_2D& target)
 	  : _renderer(renderer)
 	  , _src(src)
-	  , _compute_fence(renderer.device().create_fence(true))
+	  , _target(target)
 
 	  , _last_result_data(histogram_buffer_length, 0.f)
 
@@ -237,11 +247,9 @@ namespace mirrage::renderer {
 	            vk::DescriptorSetLayoutBinding(
 	                    2, vk::DescriptorType::eStorageImage, 1, vk::ShaderStageFlagBits::eCompute)}))
 
-	  , _scotopic_renderpass(build_scotopic_render_pass(renderer,
-	                                                     *_descriptor_set_layout,
-                                                         target,
-                                                         _scotopic_framebuffer))
-	  ,_scotopic_desc_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view()}))
+	  , _scotopic_renderpass(
+	            build_scotopic_render_pass(renderer, *_descriptor_set_layout, target, _scotopic_framebuffer))
+	  , _scotopic_desc_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view()}))
 
 	  , _luminance_buffer(renderer.device(),
 	                      {src.width(), src.height()},
@@ -255,8 +263,7 @@ namespace mirrage::renderer {
 	                                                           *_descriptor_set_layout,
 	                                                           _luminance_format,
 	                                                           _luminance_buffer,
-	                                                           _calc_luminance_framebuffer))
-	  , _calc_luminance_desc_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {target.view()}))
+	                                                           _calc_luminance_framebuffers))
 
 	  , _compute_pipeline_layout(build_compute_pipeline_layout(_renderer, *_compute_descriptor_set_layout))
 	  , _build_histogram_pipeline(build_compute_pipeline(_renderer.device(),
@@ -288,6 +295,11 @@ namespace mirrage::renderer {
 	                                                         "comp_shader:tone_mapping_final"_aid))
 	{
 
+		_calc_luminance_desc_sets = util::build_vector(src.mip_levels(), [&](auto i) {
+			return _descriptor_set_layout.create_set(renderer.descriptor_pool(),
+			                                         {target.view(gsl::narrow<std::uint32_t>(i))});
+		});
+
 		_result_buffer = util::build_vector(renderer.device().max_frames_in_flight() + 1, [&](auto) {
 			return graphic::Backed_buffer{renderer.device().create_buffer(
 			        vk::BufferCreateInfo{
@@ -298,16 +310,10 @@ namespace mirrage::renderer {
 			        graphic::Memory_lifetime::persistent)};
 		});
 
-		_compute_descriptor_set = util::build_vector(_result_buffer.size(), [&](auto) {
+		_compute_descriptor_set = util::build_vector(_result_buffer.size() * src.mip_levels(), [&](auto) {
 			return graphic::DescriptorSet{
-			        renderer.descriptor_pool().create_descriptor(*_compute_descriptor_set_layout, 2)};
+			        renderer.descriptor_pool().create_descriptor(*_compute_descriptor_set_layout, 3)};
 		});
-
-		auto comp_desc_writes = std::vector<vk::WriteDescriptorSet>();
-		comp_desc_writes.reserve(_result_buffer.size() * 3);
-
-		auto comp_desc_image =
-		        vk::DescriptorImageInfo{*_sampler, _luminance_buffer.view(), vk::ImageLayout::eGeneral};
 
 		auto comp_desc_final =
 		        vk::DescriptorImageInfo{*_sampler, _adjustment_buffer.view(), vk::ImageLayout::eGeneral};
@@ -316,24 +322,41 @@ namespace mirrage::renderer {
 			return vk::DescriptorBufferInfo{*_result_buffer[i++], 0, VK_WHOLE_SIZE};
 		});
 
-		for(auto i : util::range(_result_buffer.size())) {
-			comp_desc_writes.emplace_back(
-			        *_compute_descriptor_set[i], 0, 0, 1, vk::DescriptorType::eStorageImage, &comp_desc_image);
 
-			comp_desc_writes.emplace_back(*_compute_descriptor_set[i],
-			                              1,
-			                              0,
-			                              1,
-			                              vk::DescriptorType::eStorageBuffer,
-			                              nullptr,
-			                              &comp_desc_buffers[i]);
+		for(auto mip : util::range(src.mip_levels())) {
+			auto comp_desc_writes = std::vector<vk::WriteDescriptorSet>();
+			comp_desc_writes.reserve(_result_buffer.size() * 3);
 
-			comp_desc_writes.emplace_back(
-			        *_compute_descriptor_set[i], 2, 0, 1, vk::DescriptorType::eStorageImage, &comp_desc_final);
+			auto comp_desc_image = vk::DescriptorImageInfo{
+			        *_sampler, _luminance_buffer.view(mip), vk::ImageLayout::eGeneral};
+
+			for(auto i : util::range(_result_buffer.size())) {
+				comp_desc_writes.emplace_back(*_compute_descriptor_set[i * src.mip_levels() + mip],
+				                              0,
+				                              0,
+				                              1,
+				                              vk::DescriptorType::eStorageImage,
+				                              &comp_desc_image);
+
+				comp_desc_writes.emplace_back(*_compute_descriptor_set[i * src.mip_levels() + mip],
+				                              1,
+				                              0,
+				                              1,
+				                              vk::DescriptorType::eStorageBuffer,
+				                              nullptr,
+				                              &comp_desc_buffers[i]);
+
+				comp_desc_writes.emplace_back(*_compute_descriptor_set[i * src.mip_levels() + mip],
+				                              2,
+				                              0,
+				                              1,
+				                              vk::DescriptorType::eStorageImage,
+				                              &comp_desc_final);
+			}
+
+			renderer.device().vk_device()->updateDescriptorSets(
+			        gsl::narrow<std::uint32_t>(comp_desc_writes.size()), comp_desc_writes.data(), 0, nullptr);
 		}
-
-		renderer.device().vk_device()->updateDescriptorSets(
-		        gsl::narrow<std::uint32_t>(comp_desc_writes.size()), comp_desc_writes.data(), 0, nullptr);
 
 		renderer.gbuffer().histogram_adjustment_factors = _adjustment_buffer;
 	}
@@ -374,13 +397,27 @@ namespace mirrage::renderer {
 		}
 
 		_scotopic_adaption(global_uniform_set, command_buffer);
-		_extract_luminance(global_uniform_set, command_buffer);
-		_dispatch_build_histogram(global_uniform_set, command_buffer);
-		_dispatch_compute_exposure(global_uniform_set, command_buffer);
-		if(_renderer.settings().histogram_trim) {
-			_dispatch_adjust_histogram(global_uniform_set, command_buffer);
+
+		auto foveal_mip_level =
+		        compute_foveal_mip_level(_src.height(), _renderer.global_uniforms().proj_planes.w);
+		if(foveal_mip_level > 0) {
+			graphic::generate_mipmaps(command_buffer,
+			                          _target.image(),
+			                          vk::ImageLayout::eShaderReadOnlyOptimal,
+			                          vk::ImageLayout::eShaderReadOnlyOptimal,
+			                          _target.width(),
+			                          _target.height(),
+			                          foveal_mip_level + 1,
+			                          0);
 		}
-		_dispatch_build_final_factors(global_uniform_set, command_buffer);
+
+		_extract_luminance(global_uniform_set, command_buffer, foveal_mip_level);
+		_dispatch_build_histogram(global_uniform_set, command_buffer, foveal_mip_level);
+		_dispatch_compute_exposure(global_uniform_set, command_buffer, foveal_mip_level);
+		if(_renderer.settings().histogram_trim) {
+			_dispatch_adjust_histogram(global_uniform_set, command_buffer, foveal_mip_level);
+		}
+		_dispatch_build_final_factors(global_uniform_set, command_buffer, foveal_mip_level);
 
 		// increment index of next/ready result
 		_next_result++;
@@ -394,13 +431,15 @@ namespace mirrage::renderer {
 	}
 
 	void Tone_mapping_pass::_extract_luminance(vk::DescriptorSet  global_uniform_set,
-	                                           vk::CommandBuffer& command_buffer)
+	                                           vk::CommandBuffer& command_buffer,
+	                                           std::uint32_t      mip_level)
 	{
 		auto _ = _renderer.profiler().push("Extract Luminance");
 
 		// extract luminance of current frame
-		_calc_luminance_renderpass.execute(command_buffer, _calc_luminance_framebuffer, [&] {
-			auto desc_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_calc_luminance_desc_set};
+		_calc_luminance_renderpass.execute(command_buffer, _calc_luminance_framebuffers.at(mip_level), [&] {
+			auto desc_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set,
+			                                                  *_calc_luminance_desc_sets.at(mip_level)};
 			_calc_luminance_renderpass.bind_descriptor_sets(0, desc_sets);
 
 			command_buffer.draw(3, 1, 0, 0);
@@ -421,7 +460,8 @@ namespace mirrage::renderer {
 	}
 
 	void Tone_mapping_pass::_dispatch_build_histogram(vk::DescriptorSet  global_uniform_set,
-	                                                  vk::CommandBuffer& command_buffer)
+	                                                  vk::CommandBuffer& command_buffer,
+	                                                  std::uint32_t      mip_level)
 	{
 		auto _ = _renderer.profiler().push("Build Histogram");
 
@@ -435,7 +475,7 @@ namespace mirrage::renderer {
 		        VK_QUEUE_FAMILY_IGNORED,
 		        VK_QUEUE_FAMILY_IGNORED,
 		        _luminance_buffer.image(),
-		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
+		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, mip_level, 1, 0, 1}};
 
 		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
 		                               vk::PipelineStageFlagBits::eComputeShader,
@@ -446,8 +486,8 @@ namespace mirrage::renderer {
 
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_build_histogram_pipeline);
 
-		auto desc_sets =
-		        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_compute_descriptor_set[_next_result]};
+		auto desc_sets = std::array<vk::DescriptorSet, 2>{
+		        global_uniform_set, *_compute_descriptor_set[_next_result * _src.mip_levels() + mip_level]};
 		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
 		                                  *_compute_pipeline_layout,
 		                                  0,
@@ -457,14 +497,15 @@ namespace mirrage::renderer {
 		                                  nullptr);
 
 		command_buffer.dispatch(
-		        static_cast<std::uint32_t>(
-		                std::ceil(_luminance_buffer.width() / float(workgroup_size * histogram_batch_size))),
-		        static_cast<std::uint32_t>(
-		                std::ceil(_luminance_buffer.height() / float(workgroup_size * histogram_batch_size))),
+		        static_cast<std::uint32_t>(std::ceil(_luminance_buffer.width(mip_level)
+		                                             / float(workgroup_size * histogram_batch_size))),
+		        static_cast<std::uint32_t>(std::ceil(_luminance_buffer.height(mip_level)
+		                                             / float(workgroup_size * histogram_batch_size))),
 		        1);
 	}
 	void Tone_mapping_pass::_dispatch_compute_exposure(vk::DescriptorSet  global_uniform_set,
-	                                                   vk::CommandBuffer& command_buffer)
+	                                                   vk::CommandBuffer& command_buffer,
+	                                                   std::uint32_t      mip_level)
 	{
 		auto _ = _renderer.profiler().push("Compute Exposure");
 
@@ -486,8 +527,8 @@ namespace mirrage::renderer {
 
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_compute_exposure_pipeline);
 
-		auto desc_sets =
-		        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_compute_descriptor_set[_next_result]};
+		auto desc_sets = std::array<vk::DescriptorSet, 2>{
+		        global_uniform_set, *_compute_descriptor_set[_next_result * _src.mip_levels() + mip_level]};
 		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
 		                                  *_compute_pipeline_layout,
 		                                  0,
@@ -498,7 +539,8 @@ namespace mirrage::renderer {
 		command_buffer.dispatch(1, 1, 1);
 	}
 	void Tone_mapping_pass::_dispatch_adjust_histogram(vk::DescriptorSet  global_uniform_set,
-	                                                   vk::CommandBuffer& command_buffer)
+	                                                   vk::CommandBuffer& command_buffer,
+	                                                   std::uint32_t      mip_level)
 	{
 		auto _ = _renderer.profiler().push("Adjust Histogram");
 
@@ -520,8 +562,8 @@ namespace mirrage::renderer {
 
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_adjust_histogram_pipeline);
 
-		auto desc_sets =
-		        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_compute_descriptor_set[_next_result]};
+		auto desc_sets = std::array<vk::DescriptorSet, 2>{
+		        global_uniform_set, *_compute_descriptor_set[_next_result * _src.mip_levels() + mip_level]};
 		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
 		                                  *_compute_pipeline_layout,
 		                                  0,
@@ -539,7 +581,8 @@ namespace mirrage::renderer {
 		command_buffer.dispatch(1, 1, 1);
 	}
 	void Tone_mapping_pass::_dispatch_build_final_factors(vk::DescriptorSet  global_uniform_set,
-	                                                      vk::CommandBuffer& command_buffer)
+	                                                      vk::CommandBuffer& command_buffer,
+	                                                      std::uint32_t      mip_level)
 	{
 		auto _ = _renderer.profiler().push("Compute Factors");
 
@@ -578,8 +621,8 @@ namespace mirrage::renderer {
 
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_build_final_factors_pipeline);
 
-		auto desc_sets =
-		        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_compute_descriptor_set[_next_result]};
+		auto desc_sets = std::array<vk::DescriptorSet, 2>{
+		        global_uniform_set, *_compute_descriptor_set[_next_result * _src.mip_levels() + mip_level]};
 		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
 		                                  *_compute_pipeline_layout,
 		                                  0,

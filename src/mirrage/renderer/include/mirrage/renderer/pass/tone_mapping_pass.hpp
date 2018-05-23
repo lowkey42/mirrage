@@ -12,7 +12,7 @@ namespace mirrage::renderer {
 		Tone_mapping_pass(Deferred_renderer&,
 		                  ecs::Entity_manager&,
 		                  util::maybe<Meta_system&>,
-		                  graphic::Texture_2D& src,
+		                  graphic::Render_target_2D& src,
 		                  graphic::Render_target_2D& target);
 
 
@@ -27,11 +27,10 @@ namespace mirrage::renderer {
 		auto name() const noexcept -> const char* override { return "Tone Mapping"; }
 
 	  private:
-		Deferred_renderer&      _renderer;
-		graphic::Texture_2D&    _src;
-		graphic::Fence          _compute_fence;
-		vk::UniqueCommandBuffer _last_compute_commands;
-		bool                    _first_frame = true;
+		Deferred_renderer&         _renderer;
+		graphic::Render_target_2D& _src;
+		graphic::Render_target_2D& _target;
+		bool                       _first_frame = true;
 
 		std::vector<graphic::Backed_buffer> _result_buffer;
 		int                                 _ready_result = -1;
@@ -49,15 +48,15 @@ namespace mirrage::renderer {
 		std::vector<graphic::DescriptorSet> _compute_descriptor_set;
 
 		// scotopic color sensitivity adaption
-		graphic::Framebuffer      _scotopic_framebuffer;
-		graphic::Render_pass      _scotopic_renderpass;
-		graphic::DescriptorSet    _scotopic_desc_set;
+		graphic::Framebuffer   _scotopic_framebuffer;
+		graphic::Render_pass   _scotopic_renderpass;
+		graphic::DescriptorSet _scotopic_desc_set;
 
 		// calculate scene luminance for tone mapping
-		graphic::Render_target_2D _luminance_buffer;
-		graphic::Framebuffer      _calc_luminance_framebuffer;
-		graphic::Render_pass      _calc_luminance_renderpass;
-		graphic::DescriptorSet    _calc_luminance_desc_set;
+		graphic::Render_target_2D           _luminance_buffer;
+		std::vector<graphic::Framebuffer>   _calc_luminance_framebuffers;
+		graphic::Render_pass                _calc_luminance_renderpass;
+		std::vector<graphic::DescriptorSet> _calc_luminance_desc_sets;
 
 		vk::UniquePipelineLayout _compute_pipeline_layout;
 		vk::UniquePipeline       _build_histogram_pipeline;
@@ -66,11 +65,11 @@ namespace mirrage::renderer {
 		vk::UniquePipeline       _build_final_factors_pipeline;
 
 		void _scotopic_adaption(vk::DescriptorSet, vk::CommandBuffer&);
-		void _extract_luminance(vk::DescriptorSet, vk::CommandBuffer&);
-		void _dispatch_build_histogram(vk::DescriptorSet, vk::CommandBuffer&);
-		void _dispatch_compute_exposure(vk::DescriptorSet, vk::CommandBuffer&);
-		void _dispatch_adjust_histogram(vk::DescriptorSet, vk::CommandBuffer&);
-		void _dispatch_build_final_factors(vk::DescriptorSet, vk::CommandBuffer&);
+		void _extract_luminance(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
+		void _dispatch_build_histogram(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
+		void _dispatch_compute_exposure(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
+		void _dispatch_adjust_histogram(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
+		void _dispatch_build_final_factors(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
 	};
 
 	class Tone_mapping_pass_factory : public Pass_factory {

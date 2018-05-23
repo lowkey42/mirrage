@@ -162,25 +162,25 @@ namespace mirrage::util {
 		return detail::build_array_impl<N>(factory, std::make_index_sequence<N>());
 	}
 
-	template <typename T, class F>
-	auto build_vector(std::size_t n, F&& factory)
+	template <typename T, class SizeT, class F>
+	auto build_vector(SizeT n, F&& factory)
 	{
 		auto vec = std::vector<T>();
 		vec.reserve(n);
 
-		for(auto i = std::size_t(0); i < n; i++) {
+		for(auto i = SizeT(0); i < n; i++) {
 			factory(i, vec);
 		}
 
 		return vec;
 	}
-	template <class F>
-	auto build_vector(std::size_t n, F&& factory)
+	template <class SizeT, class F>
+	auto build_vector(SizeT n, F&& factory)
 	{
-		auto vec = std::vector<decltype(factory(std::declval<std::size_t>()))>();
+		auto vec = std::vector<decltype(factory(std::declval<SizeT>()))>();
 		vec.reserve(n);
 
-		for(auto i = std::size_t(0); i < n; i++) {
+		for(auto i = SizeT(0); i < n; i++) {
 			vec.push_back(factory(i));
 		}
 
