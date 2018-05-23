@@ -665,7 +665,8 @@ namespace mirrage {
 
 				nk_label(ctx, "Trimmings", NK_TEXT_CENTERED);
 				nk_label(ctx,
-				         std::to_string(static_cast<int>(_window_width * _window_height - histogram_sum))
+				         std::to_string(
+				                 static_cast<int>(tone_mapping_pass->max_histogram_size() - histogram_sum))
 				                 .c_str(),
 				         NK_TEXT_CENTERED);
 
@@ -685,14 +686,14 @@ namespace mirrage {
 				                  "Min Display Lum.",
 				                  1.f / 255.f / 4.f,
 				                  &renderer_settings.min_display_luminance,
-				                  1.f,
+				                  500.f,
 				                  0.001f,
 				                  0.01f);
 				nk_property_float(ctx,
 				                  "Max Display Lum.",
 				                  1.f / 255.f / 4.f,
 				                  &renderer_settings.max_display_luminance,
-				                  1.f,
+				                  500.f,
 				                  0.001f,
 				                  0.01f);
 

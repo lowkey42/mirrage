@@ -40,7 +40,7 @@ void main() {
 	float top = HISTOGRAM_SLOTS-1;
 	for(int i=HISTOGRAM_SLOTS-1; i>0; i--) {
 		sum += histogram[i];
-		if(sum < histogram_sum*0.1) {
+		if(sum < histogram_sum*0.05) {
 			top = i;
 		} else {
 			break;
@@ -51,13 +51,13 @@ void main() {
 	float top_log_lum = top/HISTOGRAM_SLOTS * (HISTOGRAM_MAX-HISTOGRAM_MIN) + HISTOGRAM_MIN;
 	float median_log_lum = median/HISTOGRAM_SLOTS * (HISTOGRAM_MAX-HISTOGRAM_MIN) + HISTOGRAM_MIN;
 
-	float target_log_lum = median_log_lum;
+	float target_log_lum = top_log_lum;
 
 	float L = exp(target_log_lum);
 	float key = 1.03f - (2.0f / (2 + log(L + 1)/log(10)));
 	float exposure = key/L;
 
-	//exposure = exp(target_log_lum);
+	exposure = exp(target_log_lum);
 
 	histogram[HISTOGRAM_SLOTS] = floatBitsToUint(exposure);
 }

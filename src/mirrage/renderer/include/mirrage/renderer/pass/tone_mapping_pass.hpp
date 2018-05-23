@@ -23,6 +23,7 @@ namespace mirrage::renderer {
 		          std::size_t       swapchain_image) override;
 
 		auto last_histogram() const noexcept -> auto& { return _last_result_data; }
+		auto max_histogram_size() const noexcept { return _last_max_histogram_size; }
 
 		auto name() const noexcept -> const char* override { return "Tone Mapping"; }
 
@@ -36,6 +37,7 @@ namespace mirrage::renderer {
 		int                                 _ready_result = -1;
 		int                                 _next_result  = 0;
 		std::vector<float>                  _last_result_data;
+		std::uint32_t                       _last_max_histogram_size = 0;
 
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;

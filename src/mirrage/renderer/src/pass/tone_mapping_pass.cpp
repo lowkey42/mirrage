@@ -400,6 +400,7 @@ namespace mirrage::renderer {
 
 		auto foveal_mip_level =
 		        compute_foveal_mip_level(_src.height(), _renderer.global_uniforms().proj_planes.w);
+		_last_max_histogram_size = _src.height(foveal_mip_level) * _src.width(foveal_mip_level);
 		if(foveal_mip_level > 0) {
 			graphic::generate_mipmaps(command_buffer,
 			                          _target.image(),
@@ -573,8 +574,8 @@ namespace mirrage::renderer {
 		                                  nullptr);
 
 		auto pcs         = Push_constants{};
-		pcs.parameters.x = std::log(std::max(_renderer.settings().min_display_luminance, 0.0001f));
-		pcs.parameters.y = std::log(_renderer.settings().max_display_luminance);
+		pcs.parameters.x = std::log(std::max(_renderer.settings().min_display_luminance / 10.f, 0.0001f));
+		pcs.parameters.y = std::log(_renderer.settings().max_display_luminance / 10.f);
 		command_buffer.pushConstants(
 		        *_compute_pipeline_layout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(Push_constants), &pcs);
 
@@ -632,8 +633,8 @@ namespace mirrage::renderer {
 		                                  nullptr);
 
 		auto pcs         = Push_constants{};
-		pcs.parameters.x = std::log(std::max(_renderer.settings().min_display_luminance, 0.0001f));
-		pcs.parameters.y = std::log(_renderer.settings().max_display_luminance);
+		pcs.parameters.x = std::log(std::max(_renderer.settings().min_display_luminance / 10.f, 0.0001f));
+		pcs.parameters.y = std::log(_renderer.settings().max_display_luminance / 10.f);
 		command_buffer.pushConstants(
 		        *_compute_pipeline_layout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(Push_constants), &pcs);
 

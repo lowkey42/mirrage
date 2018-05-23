@@ -27,12 +27,15 @@ shared int trimmings;
 float delta_L_t(float La) {
 	// Table 1 of "A Visibility Matching Tone Reproduction Operator for High Dynamic Range Scenes"
 	float x = log(La)/log(10)+1; // to log_10
+	float r = 0;
 
-	if     (x < -3.94)   return -2.86;
-	else if(x < -1.44)   return pow(0.405*x+1.6, 2.18) - 2.86;
-	else if(x < -0.0184) return x - 0.395;
-	else if(x < 1.9)     return pow(0.249*x+0.65, 2.7) - 0.72;
-	else                 return x - 1.255;
+	if     (x<=-3.94  ) r = -2.86;
+	else if(x<=-1.44  ) r = pow(0.405*x+1.6, 2.18) - 2.86;
+	else if(x<=-0.0184) r = x - 0.395;
+	else if(x<=1.9    ) r = pow(0.249*x+0.65, 2.7) - 0.72;
+	else                r = x - 1.255;
+
+	return pow(10.0, r);
 }
 
 float index_to_log_lum(uint index) {
@@ -82,7 +85,7 @@ void main() {
 		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
 			float L_w = exp(index_to_log_lum(i));
 			float L_d = exp(DISPLAY_MIN + display_range * float(prefix_sum[i])/sum);
-			int ceiling = int(floor(delta_L_t(L_d)/delta_L_t(L_w) * total*bin_width*L_w / (display_range*L_d)));
+			int ceiling = int(round(delta_L_t(L_d)/delta_L_t(L_w) * sum*bin_width*L_w / (display_range*L_d)));
 
 			if(local_histogram[i] >= ceiling) {
 				sub_trimmings += int(local_histogram[i]) - ceiling;
@@ -106,16 +109,14 @@ void main() {
 		trimmings = 0;
 	}
 
+	// write result back to global memory
 	if(total<tolerance) {
 		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-			local_histogram[i] = 0;
+			histogram[i] = 10;
 		}
-		memoryBarrierShared();
-		barrier();
-	}
-
-	// write result back to global memory
-	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-		histogram[i] = local_histogram[i];
+	} else {
+		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+			histogram[i] = local_histogram[i];
+		}
 	}
 }

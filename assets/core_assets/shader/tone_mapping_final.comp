@@ -43,14 +43,9 @@ void main() {
 		float prev = imageLoad(adjustment_factor, ivec2(i,0)).r;
 
 		float curr_lum = exp(index_to_log_lum(i));
-		float factor;
-
-		if(sum<=0.0001f) {
-			factor = curr_lum / (curr_lum+1.f) * (exp(DISPLAY_MAX)-exp(DISPLAY_MIN)) + exp(DISPLAY_MIN);
-		} else {
-			factor = exp(DISPLAY_MIN + (DISPLAY_MAX-DISPLAY_MIN) * float(prefix_sum[i])/sum)
-			             / curr_lum;
-		}
+		float factor = exp(DISPLAY_MIN + (DISPLAY_MAX-DISPLAY_MIN) * float(prefix_sum[i])/sum);
+		factor = (factor - exp(DISPLAY_MIN)) / (exp(DISPLAY_MAX)-exp(DISPLAY_MIN));
+		factor = factor / curr_lum;
 
 		factor = mix(prev, factor, global_uniforms.time.z/0.5);
 
