@@ -414,7 +414,7 @@ namespace mirrage::renderer {
 
 		_extract_luminance(global_uniform_set, command_buffer, foveal_mip_level);
 		_dispatch_build_histogram(global_uniform_set, command_buffer, foveal_mip_level);
-		_dispatch_compute_exposure(global_uniform_set, command_buffer, foveal_mip_level);
+		//_dispatch_compute_exposure(global_uniform_set, command_buffer, foveal_mip_level);
 		if(_renderer.settings().histogram_trim) {
 			_dispatch_adjust_histogram(global_uniform_set, command_buffer, foveal_mip_level);
 		}

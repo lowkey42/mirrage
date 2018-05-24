@@ -47,7 +47,8 @@ void main() {
 		factor = (factor - exp(DISPLAY_MIN)) / (exp(DISPLAY_MAX)-exp(DISPLAY_MIN));
 		factor = factor / curr_lum;
 
-		factor = mix(prev, factor, global_uniforms.time.z/0.5);
+		if(!isnan(prev) && !isinf(prev))
+			factor = mix(prev, factor, global_uniforms.time.z/0.1);
 
 		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
 
