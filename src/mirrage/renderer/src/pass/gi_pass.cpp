@@ -964,7 +964,7 @@ namespace mirrage::renderer {
 		}
 
 		_generate_mipmaps(command_buffer, global_uniform_set);
-		_generate_gi_samples(command_buffer);
+		_generate_gi_samples(command_buffer, global_uniform_set);
 		_draw_gi(command_buffer);
 
 
@@ -1081,7 +1081,7 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	void Gi_pass::_generate_gi_samples(vk::CommandBuffer& command_buffer)
+	void Gi_pass::_generate_gi_samples(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals)
 	{
 		auto base_mip = static_cast<int>(_min_mip_level);
 		auto begin    = static_cast<int>(_diffuse_mip_level);
@@ -1121,7 +1121,9 @@ namespace mirrage::renderer {
 						_sample_renderpass.set_stage("sample"_strid);
 
 					if(first_iteration) {
-						_sample_renderpass.bind_descriptor_set(1, _renderer.noise_descriptor_set());
+						_sample_renderpass.bind_descriptor_sets(
+						        0,
+						        std::array<vk::DescriptorSet, 2>{globals, _renderer.noise_descriptor_set()});
 					}
 
 					_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[i - base_mip]);

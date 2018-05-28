@@ -111,7 +111,7 @@ namespace mirrage::renderer {
 		void _generate_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
 
 		// calculates GI samples and stores them into the levels of _gi_diffuse and _gi_specular
-		void _generate_gi_samples(vk::CommandBuffer& command_buffer);
+		void _generate_gi_samples(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
 
 		// blurs the specular samples
 		void _blur_spec_gi(vk::CommandBuffer& command_buffer);

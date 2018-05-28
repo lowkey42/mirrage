@@ -13,6 +13,7 @@
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
+#include <plog/Log.h>
 #include <gsl/gsl>
 
 #include <iostream>

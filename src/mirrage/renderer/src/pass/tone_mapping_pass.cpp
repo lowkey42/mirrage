@@ -203,7 +203,7 @@ namespace mirrage::renderer {
 
 		auto compute_foveal_mip_level(float base_height, float v_fov)
 		{
-			auto target_height = static_cast<int>(std::round(2.f * std::tan(v_fov) / 0.01745f));
+			auto target_height = static_cast<int>(std::round(2.f * std::tan(v_fov / 2.f) / 0.01745f));
 
 			return static_cast<std::uint32_t>(std::round(glm::log2(base_height / target_height)));
 		}

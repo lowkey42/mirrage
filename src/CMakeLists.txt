@@ -21,8 +21,9 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic
-		-Wzero-as-null-pointer-constant -Wlogical-op -Werror -Wno-unused-parameter
+		-Wlogical-op -Werror -Wno-unused-parameter
 		-Wno-missing-braces)
+	# TODO: removed (for now) because of false-positives: -Wzero-as-null-pointer-constant
 
 elseif(MSVC)
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS /Za)
