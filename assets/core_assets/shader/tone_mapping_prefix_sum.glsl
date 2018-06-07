@@ -46,12 +46,4 @@ void build_prefix_sum() {
 	}
 	memoryBarrierShared();
 	barrier();
-
-/* old/sequencial
-	prefix_sum[0] = 0;
-	prefix_sum[HISTOGRAM_SLOTS*0+1] = 0; // ignore first bucket
-	for(uint i=2; i<HISTOGRAM_SLOTS+1; i++) {
-		prefix_sum[i] = prefix_sum[i-1] + histogram[i-1];
-	}
-*/
 }

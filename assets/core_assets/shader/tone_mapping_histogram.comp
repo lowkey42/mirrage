@@ -9,12 +9,17 @@ layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
 
 layout (local_size_x_id = 1, local_size_y_id = 1, local_size_z = 1 ) in;
 
-layout (set=1, binding = 0, r16f) uniform readonly image2D input_image;
+layout (set=1, binding = 0, rgba16f) uniform readonly image2D input_image;
 
 layout(set=1, binding = 1) buffer Data
 {
 	uint histogram[HISTOGRAM_SLOTS + 1];
 };
+
+float luminance(vec3 c) {
+	vec3 f = vec3(0.2126,0.7152,0.0722);
+	return max(dot(c, f), 0.0);
+}
 
 uint calc_histogram_index(float luminance) {
 	luminance = clamp(luminance, HISTOGRAM_MIN, HISTOGRAM_MAX);
@@ -39,35 +44,21 @@ void main() {
 		local_histogram[i] = 0;
 	}
 
-	memoryBarrierShared();
 	barrier();
 
 	// build local histogram
 	for(uint x=gl_GlobalInvocationID.x; x<data_size.x; x+=stride.x) {
 		for(uint y=gl_GlobalInvocationID.y; y<data_size.y; y+=stride.y) {
-			float lum = imageLoad(input_image, ivec2(x,y)).r;
+			float lum = log(luminance(imageLoad(input_image, ivec2(x,y)).rgb));
 			atomicAdd(local_histogram[calc_histogram_index(lum)], 1);
 		}
 	}
 
-	memoryBarrierShared();
 	barrier();
 
 	// copy local histogram to global memory
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size){
 		atomicAdd(histogram[i], local_histogram[i]);
 	}
-
-
-/* OLD:
-	float lum = imageLoad(input_image, ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y)).r;
-
-	lum = clamp(lum, HISTOGRAM_MIN, HISTOGRAM_MAX);
-	float lum_norm = (lum-HISTOGRAM_MIN) / (HISTOGRAM_MAX-HISTOGRAM_MIN);
-
-	uint idx = uint(floor(lum_norm * (HISTOGRAM_SLOTS-1)));
-
-	atomicAdd(histogram[idx], 1);
-*/
 }
 

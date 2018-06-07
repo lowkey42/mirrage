@@ -463,10 +463,6 @@ namespace mirrage {
 
 			nk_property_int(ctx, "Sample Count", 8, &renderer_settings.gi_samples, 1024, 1, 1);
 
-			//			bool_nk_wrapper = renderer_settings.gi_jitter_samples ? 1 : 0;
-			//			nk_checkbox_label(ctx, "Jitter GI Samples", &bool_nk_wrapper);
-			//			renderer_settings.gi_jitter_samples = bool_nk_wrapper == 1;
-
 			nk_property_int(
 			        ctx, "Low-Quality MIP-Levels", 0, &renderer_settings.gi_low_quality_mip_levels, 8, 1, 1);
 
@@ -659,9 +655,6 @@ namespace mirrage {
 				auto percentage = static_cast<double>(histogram[_last_selected_histogram]) / histogram_sum;
 				nk_label(ctx, "Percentage", NK_TEXT_CENTERED);
 				nk_label(ctx, (to_fixed_str(percentage * 100, 4) + " %").c_str(), NK_TEXT_CENTERED);
-
-				nk_label(ctx, "Exposure", NK_TEXT_CENTERED);
-				nk_label(ctx, to_fixed_str(histogram.back(), 5).c_str(), NK_TEXT_CENTERED);
 
 				nk_label(ctx, "Trimmings", NK_TEXT_CENTERED);
 				nk_label(ctx,

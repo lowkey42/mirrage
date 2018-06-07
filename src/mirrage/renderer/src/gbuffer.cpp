@@ -7,10 +7,13 @@ namespace mirrage::renderer {
 	namespace {
 		auto get_hdr_format(graphic::Device& device)
 		{
-			auto format = device.get_supported_format(
-			        {vk::Format::eR16G16B16Sfloat, vk::Format::eR16G16B16A16Sfloat},
-			        vk::FormatFeatureFlagBits::eColorAttachmentBlend
-			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
+			auto format =
+			        device.get_supported_format({vk::Format::eR16G16B16A16Sfloat},
+			                                    vk::FormatFeatureFlagBits::eColorAttachmentBlend
+			                                            | vk::FormatFeatureFlagBits::eSampledImageFilterLinear
+			                                            | vk::FormatFeatureFlagBits::eStorageImage
+			                                            | vk::FormatFeatureFlagBits::eTransferDst
+			                                            | vk::FormatFeatureFlagBits::eTransferSrc);
 
 			if(format.is_some())
 				return format.get_or_throw();
@@ -83,7 +86,7 @@ namespace mirrage::renderer {
 	           color_format,
 	           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
 	                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
-	                   | vk::ImageUsageFlagBits::eTransferDst,
+	                   | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eStorage,
 	           vk::ImageAspectFlagBits::eColor)
 
 	  , colorB(device,
@@ -92,7 +95,7 @@ namespace mirrage::renderer {
 	           color_format,
 	           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
 	                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
-	                   | vk::ImageUsageFlagBits::eTransferDst,
+	                   | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eStorage,
 	           vk::ImageAspectFlagBits::eColor)
 	{
 	}

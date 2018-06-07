@@ -51,7 +51,5 @@ void main() {
 			factor = mix(prev, factor, global_uniforms.time.z/0.1);
 
 		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
-
-		// DEBUG-PRINT: histogram[i] = prefix_sum[i];
 	}
 }

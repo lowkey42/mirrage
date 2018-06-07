@@ -69,7 +69,6 @@ void main() {
 	}
 	atomicAdd(total, sub_total);
 
-	memoryBarrierShared();
 	barrier();
 
 
@@ -94,13 +93,11 @@ void main() {
 		}
 
 		// update total and sum sub-trimmings to check if we are done
-		memoryBarrierShared();
 		barrier();
 
 		atomicAdd(total, -sub_trimmings);
 		atomicAdd(trimmings, sub_trimmings);
 
-		memoryBarrierShared();
 		barrier();
 
 		if(trimmings < tolerance)

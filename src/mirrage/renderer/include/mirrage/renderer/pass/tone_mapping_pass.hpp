@@ -54,12 +54,6 @@ namespace mirrage::renderer {
 		graphic::Render_pass   _scotopic_renderpass;
 		graphic::DescriptorSet _scotopic_desc_set;
 
-		// calculate scene luminance for tone mapping
-		graphic::Render_target_2D           _luminance_buffer;
-		std::vector<graphic::Framebuffer>   _calc_luminance_framebuffers;
-		graphic::Render_pass                _calc_luminance_renderpass;
-		std::vector<graphic::DescriptorSet> _calc_luminance_desc_sets;
-
 		vk::UniquePipelineLayout _compute_pipeline_layout;
 		vk::UniquePipeline       _build_histogram_pipeline;
 		vk::UniquePipeline       _compute_exposure_pipeline;
@@ -67,7 +61,6 @@ namespace mirrage::renderer {
 		vk::UniquePipeline       _build_final_factors_pipeline;
 
 		void _scotopic_adaption(vk::DescriptorSet, vk::CommandBuffer&);
-		void _extract_luminance(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
 		void _dispatch_build_histogram(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
 		void _dispatch_compute_exposure(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
 		void _dispatch_adjust_histogram(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
