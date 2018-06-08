@@ -16,9 +16,15 @@ layout(set=1, binding = 1) buffer Data
 	uint histogram[HISTOGRAM_SLOTS + 1];
 };
 
-float luminance(vec3 c) {
-	vec3 f = vec3(0.2126,0.7152,0.0722);
-	return max(dot(c, f), 0.0);
+#include "color_conversion.glsl"
+
+
+float tm_luminance(vec3 c) {
+	vec3 cie_color = rgb2cie(c*10);
+	return cie_color.y * (1.33*(1+(cie_color.y+cie_color.z)/cie_color.x)-1.68);
+
+//	vec3 f = vec3(0.2126,0.7152,0.0722);
+//	return max(dot(c, f), 0.0);
 }
 
 uint calc_histogram_index(float luminance) {
@@ -49,7 +55,7 @@ void main() {
 	// build local histogram
 	for(uint x=gl_GlobalInvocationID.x; x<data_size.x; x+=stride.x) {
 		for(uint y=gl_GlobalInvocationID.y; y<data_size.y; y+=stride.y) {
-			float lum = log(luminance(imageLoad(input_image, ivec2(x,y)).rgb));
+			float lum = log(tm_luminance(imageLoad(input_image, ivec2(x,y)).rgb));
 			atomicAdd(local_histogram[calc_histogram_index(lum)], 1);
 		}
 	}

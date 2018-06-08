@@ -22,7 +22,11 @@ namespace mirrage {
 		auto get_env_language()
 		{
 			auto locale = std::locale{""}.name();
-			auto lang   = locale.substr(0, locale.find_first_of("._"));
+			auto equals = locale.find('=');
+			if(equals != std::string::npos)
+				locale = locale.substr(equals + 1);
+
+			auto lang = locale.substr(0, locale.find_first_of("._"));
 
 			return lang;
 		}

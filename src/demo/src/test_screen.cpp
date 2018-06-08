@@ -617,8 +617,8 @@ namespace mirrage {
 		auto tone_mapping_pass = _meta_system.renderer().find_pass<renderer::Tone_mapping_pass>();
 		if(tone_mapping_pass) {
 			auto&& histogram                    = tone_mapping_pass->last_histogram();
-			auto   histogram_sum                = std::accumulate(begin(histogram), end(histogram) - 1, 0.0);
-			auto [min_histogram, max_histogram] = std::minmax_element(begin(histogram), end(histogram) - 1);
+			auto   histogram_sum                = std::accumulate(begin(histogram), end(histogram) - 4, 0.0);
+			auto [min_histogram, max_histogram] = std::minmax_element(begin(histogram), end(histogram) - 4);
 
 			auto ctx = _gui.ctx();
 			if(nk_begin_titled(
@@ -629,11 +629,8 @@ namespace mirrage {
 			           NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
 
 				nk_layout_row_dynamic(ctx, 400, 1);
-				nk_chart_begin(ctx,
-				               NK_CHART_COLUMN,
-				               static_cast<int>(histogram.size() - 1),
-				               *min_histogram,
-				               *max_histogram);
+				nk_chart_begin(
+				        ctx, NK_CHART_COLUMN, static_cast<int>(histogram.size() - 4), 0, *max_histogram);
 				for(auto i : util::range(histogram.size() - 1)) {
 					auto state = nk_chart_push(ctx, histogram[i]);
 					if(state & NK_CHART_HOVERING) {
@@ -655,6 +652,15 @@ namespace mirrage {
 				auto percentage = static_cast<double>(histogram[_last_selected_histogram]) / histogram_sum;
 				nk_label(ctx, "Percentage", NK_TEXT_CENTERED);
 				nk_label(ctx, (to_fixed_str(percentage * 100, 4) + " %").c_str(), NK_TEXT_CENTERED);
+
+				nk_label(ctx, "La", NK_TEXT_CENTERED);
+				nk_label(ctx, (to_fixed_str(histogram[histogram.size() - 2], 4)).c_str(), NK_TEXT_CENTERED);
+				nk_label(ctx, "range", NK_TEXT_CENTERED);
+				nk_label(ctx,
+				         (to_fixed_str(1.f - histogram[histogram.size() - 4], 4)).c_str(),
+				         NK_TEXT_CENTERED);
+				nk_label(ctx, "offset", NK_TEXT_CENTERED);
+				nk_label(ctx, (to_fixed_str(histogram[histogram.size() - 3], 4)).c_str(), NK_TEXT_CENTERED);
 
 				nk_label(ctx, "Trimmings", NK_TEXT_CENTERED);
 				nk_label(ctx,

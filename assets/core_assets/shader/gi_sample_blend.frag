@@ -159,6 +159,8 @@ void main() {
 
 	c_history = clip_aabb(cmin.xyz, cmax.xyz, clamp(cavg, cmin, cmax), c_history);
 
-	float weight = texture(history_weight_sampler, vertex_out.tex_coords).g;
-	out_color.rgb = mix(out_color.rgb, c_history, weight*0.9);
+//	if(abs(dot(out_color.rgb,out_color.rgb)-dot(c_history,c_history))<10.0) {
+		float weight = texture(history_weight_sampler, vertex_out.tex_coords).g;
+		out_color.rgb = mix(out_color.rgb, c_history, weight*0.9);
+//	}
 }

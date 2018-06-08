@@ -51,8 +51,11 @@ vec3 ToneMapFilmicALU(vec3 color) {
 }
 
 float ha_luminance(vec3 c) {
-	vec3 f = vec3(0.2126,0.7152,0.0722);
-	return max(dot(c, f), 0.0);
+	vec3 cie_color = rgb2cie(c);
+	return cie_color.y * (1.33*(1+(cie_color.y+cie_color.z)/cie_color.x)-1.68);
+
+//	vec3 f = vec3(0.2126,0.7152,0.0722);
+//	return max(dot(c, f), 0.0);
 }
 
 vec3 expose(vec3 color, float threshold) {
@@ -73,6 +76,7 @@ vec3 expose(vec3 color, float threshold) {
 
 vec3 tone_mapping(vec3 color) {
 	if(ADJUST_HISTOGRAM==1 && pcs.options.w>0.001) {
+		color *=10;
 		float luminance = ha_luminance(color);
 		float idx = log(luminance);
 		idx = clamp(idx, MIN_LOG_LUMINANCE, MAX_LOG_LUMINANCE);

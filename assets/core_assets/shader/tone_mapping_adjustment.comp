@@ -9,7 +9,11 @@ layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
 layout (local_size_x = 128, local_size_y = 1, local_size_z = 1 ) in;
 
 layout(set=1, binding = 1) buffer Data {
-	uint histogram[HISTOGRAM_SLOTS + 1];
+	uint histogram[HISTOGRAM_SLOTS + 4];
+};
+
+layout(set=1, binding = 3) buffer PrevData {
+	uint prev_histogram[HISTOGRAM_SLOTS + 4];
 };
 
 layout(push_constant) uniform Push_constants {
@@ -17,16 +21,22 @@ layout(push_constant) uniform Push_constants {
 	vec4 parameters;
 } pcs;
 
-shared uint local_histogram[HISTOGRAM_SLOTS];
+#include "global_uniforms.glsl"
+
+shared int ceilings[HISTOGRAM_SLOTS];
+shared int local_histogram[HISTOGRAM_SLOTS];
 shared int total;
-shared int trimmings;
+shared int ceil_sum;
+shared int cuts;
+shared int free_histograms;
+shared float sigma;
 
 #include "tone_mapping_prefix_sum.glsl"
 
 
 float delta_L_t(float La) {
 	// Table 1 of "A Visibility Matching Tone Reproduction Operator for High Dynamic Range Scenes"
-	float x = log(La)/log(10)+1; // to log_10
+	float x = log(La)/log(10); // to log_10
 	float r = 0;
 
 	if     (x<=-3.94  ) r = -2.86;
@@ -42,6 +52,10 @@ float index_to_log_lum(uint index) {
 	return float(index)/HISTOGRAM_SLOTS * (HISTOGRAM_MAX-HISTOGRAM_MIN) + HISTOGRAM_MIN;
 }
 
+float R(float L, float sigma_La) {
+	return pow(L,0.7) / (pow(L,0.7) + pow(sigma_La, 0.7));
+}
+
 void main() {
 	float DISPLAY_MIN = pcs.parameters.x;
 	float DISPLAY_MAX = pcs.parameters.y;
@@ -52,68 +66,192 @@ void main() {
 
 	float world_range = HISTOGRAM_MAX - HISTOGRAM_MIN;
 	float display_range = DISPLAY_MAX - DISPLAY_MIN;
-	float bin_width = world_range / HISTOGRAM_SLOTS;
 
 	total = 0;
-	trimmings = 0;
-
-	memoryBarrierShared();
-	barrier();
-
+	ceil_sum = 0;
+	cuts = 0;
+	free_histograms = 0;
 
 	// copy histogram to shared memory and sum up total
 	int sub_total = 0;
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-		local_histogram[i] = histogram[i];
-		sub_total += int(local_histogram[i]);
+		int h = int(histogram[i]);
+		local_histogram[i] = h;
+		sub_total += h;
 	}
+
+	memoryBarrierShared();
+	barrier();
+
 	atomicAdd(total, sub_total);
+	barrier();
+
+float La;
+	// adaption
+	if(local_id==0) {
+		float L0 = max(uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+2]), 0.0001);
+		float p0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+3]);
+		float t  = global_uniforms.time.z;
+		float t0_pigment = 30; // pigment bleaching/regeneration time
+		float t0_neural  = 4.0; // neural adaption time
+
+		float median_idx = (total+1.0)/2.0;
+		float sum = 0;
+		uint median = HISTOGRAM_SLOTS-1;
+		for(uint i=0; i<HISTOGRAM_SLOTS; i++) {
+			sum += local_histogram[i];
+			if(sum > median_idx) {
+				median = i;
+				break;
+			}
+		}
+		La = exp(index_to_log_lum(clamp(int(median),1, HISTOGRAM_SLOTS-2)));
+
+		float pLa = 0.0001 / (0.0001 + La);
+		float p = pLa + (p0-pLa) * exp(-t/(t0_pigment*pLa));
+
+		float L = La + (L0-La)*exp(-t/t0_neural);
+
+		float sigma_b = 1.0 / p;
+		float sigma_n = pow(10, (2.311*pow(L,0.3604))
+							   /(pow(L, 0.3604) + pow(0.008061,0.3604)) -2.749);
+		float sigma_c = pow(10, (1.735*pow(L,0.9524))
+							   /(pow(L, 0.9524) + pow(1.277,0.9524)) +0.005684);
+
+		sigma = sigma_b * sigma_n * sigma_c;
+
+		histogram[HISTOGRAM_SLOTS+2] = floatBitsToUint(L);
+		histogram[HISTOGRAM_SLOTS+3] = floatBitsToUint(p);
+	}
+
+	// constant calculated with doc/tonemapping/calc_delta_r.cpp
+	// depends on exponent used in R, min/max world luminance and bucket count
+	float delta_R = 0.00946641;// 0.0135218;
+
+
+	build_prefix_sum();
+
+	float min_bin = HISTOGRAM_SLOTS;
+	float max_bin = 0;
+	for(uint i=0; i<HISTOGRAM_SLOTS; i++) {
+		if(local_histogram[i]>0) {
+			min_bin = min(min_bin, i);
+			max_bin = max(max_bin, i);
+		}
+	}
+	//world_range = B_wmax - B_wmin;
 
 	barrier();
 
+	float ceil_const = float(total) / HISTOGRAM_SLOTS * (world_range/display_range);
 
-	// trim histogram
-	float tolerance = 0.0001 * total;
-	int safe_guard = 0;
-	while(total>=tolerance && safe_guard++<100) {
-		build_prefix_sum();
-		float sum = prefix_sum[HISTOGRAM_SLOTS];
-		int sub_trimmings = 0;
+	float bin_width = world_range / HISTOGRAM_SLOTS;
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		float L_w = exp(index_to_log_lum(i));
+		float L_d = exp(DISPLAY_MIN + display_range * float(prefix_sum[i])/total);
 
-		// trim each bucket
-		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-			float L_w = exp(index_to_log_lum(i));
-			float L_d = exp(DISPLAY_MIN + display_range * float(prefix_sum[i])/sum);
-			int ceiling = int(round(delta_L_t(L_d)/delta_L_t(L_w) * sum*bin_width*L_w / (display_range*L_d)));
+		//ceilings[i] = int(round(ceil_const * (delta_L_t(L_d)/L_d) / (delta_L_t(L_w)/L_w)));
+		// ceilings[i] = int(round(ceil_const * 1 / (delta_L_t(L_w)/L_w)));
+		//ceilings[i] = int(round(delta_L_t(L_d)/delta_L_t(L_w) * total*bin_width*L_w / (display_range*L_d)));
 
-			if(local_histogram[i] >= ceiling) {
-				sub_trimmings += int(local_histogram[i]) - ceiling;
-				local_histogram[i] = uint(ceiling);
-			}
-		}
+		float r = R(L_w, sigma) + delta_R;
+		float delta_L = r>1 ? 1.0/0.0//9999999.0
+		                    : sigma * (r/(1-r)) - L_w;
 
-		// update total and sum sub-trimmings to check if we are done
-		barrier();
+		ceilings[i] = int(round(ceil_const * (delta_L_t(L_d)/L_d) / (delta_L/L_w)));
 
-		atomicAdd(total, -sub_trimmings);
-		atomicAdd(trimmings, sub_trimmings);
-
-		barrier();
-
-		if(trimmings < tolerance)
-			break;
-
-		trimmings = 0;
+		//ceilings[i] *= int(step(1, local_histogram[i]));
+		atomicAdd(ceil_sum, ceilings[i]);
 	}
 
-	// write result back to global memory
-	if(total<tolerance) {
-		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-			histogram[i] = 10;
+	barrier();
+
+	float display_range_factor = 1.f;
+	float display_range_offset = 0.f;
+
+	if(ceil_sum<total) {
+		display_range_factor = float(total) / ceil_sum;
+
+		if(local_id==0) {
+			float n = total;
+			float median_idx = (n+1.0)/2.0;
+
+			float sum = 0;
+			float median = HISTOGRAM_SLOTS-1;
+			for(int i=1; i<HISTOGRAM_SLOTS; i++) {
+				sum += histogram[i];
+				if(sum > median_idx) {
+					median = i;
+					break;
+				}
+			}
+
+			float median_log_lum = index_to_log_lum(uint(median));
+			float range = display_range * display_range_factor;
+			float min = median_log_lum - range/2;
+
+			min = display_range - display_range * display_range_factor;
+			//display_range_offset = min - DISPLAY_MIN;
 		}
-	} else {
-		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-			histogram[i] = local_histogram[i];
+	}
+
+
+	cuts = 0;
+	barrier();
+
+	// cut histogram
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		int ceiling = int(round(ceilings[i]/display_range_factor));
+		int cut = max(0, local_histogram[i]-ceiling);
+		local_histogram[i] -= cut;
+		atomicAdd(cuts, int(cut));
+	}
+
+	barrier();
+	int org_cuts = cuts;
+	barrier();
+
+	// redistribute
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		int ceiling = int(round(ceilings[i]/display_range_factor));
+
+		float fill_percentage = float(local_histogram[i]) / total;
+		int fill = int(round(min(fill_percentage * org_cuts,  ceiling)));
+
+		atomicAdd(cuts, -fill);
+		local_histogram[i] += fill;
+
+		if(local_histogram[i] < ceiling && i<=max_bin) {
+			atomicAdd(free_histograms, 1);
 		}
+	}
+
+	barrier();
+
+	// redistribute the remainder equaly
+	if(cuts > free_histograms) {
+		float fill_percentage = 1.f / free_histograms;
+
+		for(uint i=local_id; i<max_bin; i+=local_size) {
+			int ceiling = int(round(ceilings[i]/display_range_factor));
+
+			int fill = int(round(min(fill_percentage * cuts, ceiling)));
+
+			local_histogram[i] += fill;
+		}
+	}
+
+	barrier();
+
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		histogram[i] = local_histogram[i];
+	}
+
+	if(local_id==0) {
+		histogram[HISTOGRAM_SLOTS] = floatBitsToUint(1.0-display_range_factor);
+		histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(display_range_offset);
+
+		//histogram[HISTOGRAM_SLOTS] = floatBitsToUint(1.0-total);
+		//histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(ceil_sum);
 	}
 }

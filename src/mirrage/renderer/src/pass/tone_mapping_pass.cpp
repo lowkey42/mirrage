@@ -9,10 +9,11 @@ namespace mirrage::renderer {
 			glm::vec4 parameters;
 		};
 
-		constexpr auto scotopic_adaption       = false;
-		constexpr auto histogram_slots         = 256;
-		constexpr auto histogram_buffer_length = histogram_slots + 1;
-		constexpr auto histogram_buffer_size   = histogram_buffer_length * sizeof(float);
+		constexpr auto scotopic_adaption = false;
+		constexpr auto histogram_slots   = 256;
+		constexpr auto histogram_buffer_length =
+		        histogram_slots + 4; // bins, display_factor, display_offset, La, p(La)
+		constexpr auto histogram_buffer_size = histogram_buffer_length * sizeof(float);
 		static_assert(sizeof(float) == sizeof(std::uint32_t));
 		constexpr auto workgroup_size       = 32;
 		constexpr auto histogram_batch_size = 8;
@@ -182,7 +183,9 @@ namespace mirrage::renderer {
 	            vk::DescriptorSetLayoutBinding(
 	                    1, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute),
 	            vk::DescriptorSetLayoutBinding(
-	                    2, vk::DescriptorType::eStorageImage, 1, vk::ShaderStageFlagBits::eCompute)}))
+	                    2, vk::DescriptorType::eStorageImage, 1, vk::ShaderStageFlagBits::eCompute),
+	            vk::DescriptorSetLayoutBinding(
+	                    3, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute)}))
 
 	  , _scotopic_renderpass(
 	            build_scotopic_render_pass(renderer, *_descriptor_set_layout, target, _scotopic_framebuffer))
@@ -230,7 +233,7 @@ namespace mirrage::renderer {
 		        vk::DescriptorImageInfo{*_sampler, _adjustment_buffer.view(), vk::ImageLayout::eGeneral};
 
 		auto comp_desc_buffers = util::build_vector(_result_buffer.size(), [&](auto i) {
-			return vk::DescriptorBufferInfo{*_result_buffer[i++], 0, VK_WHOLE_SIZE};
+			return vk::DescriptorBufferInfo{*_result_buffer[i], 0, VK_WHOLE_SIZE};
 		});
 
 
@@ -263,6 +266,15 @@ namespace mirrage::renderer {
 				                              1,
 				                              vk::DescriptorType::eStorageImage,
 				                              &comp_desc_final);
+
+				auto prev_buffer = i > 0 ? i - 1 : _result_buffer.size() - 1;
+				comp_desc_writes.emplace_back(*_compute_descriptor_set[i * src.mip_levels() + mip],
+				                              3,
+				                              0,
+				                              1,
+				                              vk::DescriptorType::eStorageBuffer,
+				                              nullptr,
+				                              &comp_desc_buffers[prev_buffer]);
 			}
 
 			renderer.device().vk_device()->updateDescriptorSets(
@@ -282,6 +294,7 @@ namespace mirrage::renderer {
 	{
 		if(_first_frame) {
 			_first_frame = false;
+			// clear all internal storage on first exec
 			graphic::clear_texture(command_buffer,
 			                       _adjustment_buffer,
 			                       {0, 0, 0, 0},
@@ -289,6 +302,10 @@ namespace mirrage::renderer {
 			                       vk::ImageLayout::eShaderReadOnlyOptimal,
 			                       0,
 			                       1);
+
+			for(auto& buffer : _result_buffer) {
+				command_buffer.fillBuffer(*buffer, 0, VK_WHOLE_SIZE, 0);
+			}
 		}
 
 		if(histogram_host_visible && _ready_result >= 0) {
@@ -302,7 +319,10 @@ namespace mirrage::renderer {
 				_last_result_data[i] = data[i];
 			}
 
-			_last_result_data.back() = *(reinterpret_cast<float*>(data_addr) + (histogram_buffer_length - 1));
+			for(auto i : util::range(1, 4)) {
+				_last_result_data[_last_result_data.size() - i] =
+				        *(reinterpret_cast<float*>(data_addr) + (histogram_buffer_length - i));
+			}
 		}
 
 		if(scotopic_adaption) {
@@ -381,7 +401,41 @@ namespace mirrage::renderer {
 	{
 		auto _ = _renderer.profiler().push("Build Histogram");
 
+		auto barrier1 =
+		        vk::BufferMemoryBarrier{vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
+		                                vk::AccessFlagBits::eTransferWrite,
+		                                VK_QUEUE_FAMILY_IGNORED,
+		                                VK_QUEUE_FAMILY_IGNORED,
+		                                *_result_buffer[_next_result],
+		                                0,
+		                                VK_WHOLE_SIZE};
+
+		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::PipelineStageFlagBits::eTransfer,
+		                               vk::DependencyFlags{},
+		                               {},
+		                               {barrier1},
+		                               {});
+
 		command_buffer.fillBuffer(*_result_buffer[_next_result], 0, VK_WHOLE_SIZE, 0);
+
+
+		auto barrier2 =
+		        vk::BufferMemoryBarrier{vk::AccessFlagBits::eTransferWrite,
+		                                vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
+		                                VK_QUEUE_FAMILY_IGNORED,
+		                                VK_QUEUE_FAMILY_IGNORED,
+		                                *_result_buffer[_next_result],
+		                                0,
+		                                VK_WHOLE_SIZE};
+
+		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+		                               vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::DependencyFlags{},
+		                               {},
+		                               {barrier2},
+		                               {});
+
 
 		auto barrier = vk::ImageMemoryBarrier{
 		        vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eColorAttachmentWrite,
