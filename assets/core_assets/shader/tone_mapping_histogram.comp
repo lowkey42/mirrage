@@ -28,9 +28,9 @@ float tm_luminance(vec3 c) {
 }
 
 uint calc_histogram_index(float luminance) {
-	luminance = clamp(luminance, HISTOGRAM_MIN, HISTOGRAM_MAX);
+	//luminance = clamp(luminance, HISTOGRAM_MIN, HISTOGRAM_MAX);
 	luminance = (luminance-HISTOGRAM_MIN) / (HISTOGRAM_MAX-HISTOGRAM_MIN);
-	return uint(floor(luminance * (HISTOGRAM_SLOTS-1)));
+	return uint(clamp(int(round(luminance * (HISTOGRAM_SLOTS-1))), 0, HISTOGRAM_SLOTS-1));
 }
 
 shared uint local_histogram[HISTOGRAM_SLOTS];

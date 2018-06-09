@@ -51,10 +51,10 @@ void main() {
 		float curr_lum = exp(index_to_log_lum(i));
 		float factor = exp(display_min + display_range * float(prefix_sum[i])/sum);
 		factor = (factor - exp(DISPLAY_MIN)) / (exp(DISPLAY_MAX)-exp(DISPLAY_MIN));
-		factor = clamp(factor / curr_lum, 0.0001, 0.1);
+		factor = clamp(factor / curr_lum, 0.0001, 1.0);
 
 		if(!isnan(prev) && !isinf(prev))
-			factor = mix(prev, factor, global_uniforms.time.z/0.1);
+			factor = mix(prev, factor, global_uniforms.time.z/0.2);
 
 		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
 	}

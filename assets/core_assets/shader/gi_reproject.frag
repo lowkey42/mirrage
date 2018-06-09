@@ -76,7 +76,7 @@ void main() {
 		vec3 radiance = textureLod(history_diff_sampler, prev_uv.xy, 0).rgb;
 		vec3 specular = textureLod(history_spec_sampler, prev_uv.xy, 0).rgb;
 
-		vec3 gi = calculate_gi(vertex_out.tex_coords, radiance, specular,
+		vec3 gi = calculate_gi(vertex_out.tex_coords, radiance, specular*0,
 		                       albedo_sampler, mat_data_sampler, brdf_sampler);
 
 		out_input = vec4(gi, 0.0);

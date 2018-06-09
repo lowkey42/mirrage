@@ -9,7 +9,7 @@ namespace mirrage::renderer {
 			glm::vec4 parameters;
 		};
 
-		constexpr auto scotopic_adaption = false;
+		constexpr auto scotopic_adaption = true;
 		constexpr auto histogram_slots   = 256;
 		constexpr auto histogram_buffer_length =
 		        histogram_slots + 4; // bins, display_factor, display_offset, La, p(La)
@@ -434,6 +434,22 @@ namespace mirrage::renderer {
 		                               vk::DependencyFlags{},
 		                               {},
 		                               {barrier2},
+		                               {});
+
+		auto barrier3 = vk::BufferMemoryBarrier{
+		        vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
+		        vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
+		        VK_QUEUE_FAMILY_IGNORED,
+		        VK_QUEUE_FAMILY_IGNORED,
+		        *_result_buffer[_next_result > 0 ? _next_result - 1 : _result_buffer.size() - 1],
+		        0,
+		        VK_WHOLE_SIZE};
+
+		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::PipelineStageFlagBits::eComputeShader,
+		                               vk::DependencyFlags{},
+		                               {},
+		                               {barrier3},
 		                               {});
 
 

@@ -53,7 +53,7 @@ float index_to_log_lum(uint index) {
 }
 
 float R(float L, float sigma_La) {
-	return pow(L,0.7) / (pow(L,0.7) + pow(sigma_La, 0.7));
+	return L / (L + sigma_La);
 }
 
 void main() {
@@ -89,11 +89,12 @@ void main() {
 float La;
 	// adaption
 	if(local_id==0) {
-		float L0 = max(uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+2]), 0.0001);
+		float L0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+2]);
 		float p0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+3]);
 		float t  = global_uniforms.time.z;
-		float t0_pigment = 30; // pigment bleaching/regeneration time
-		float t0_neural  = 4.0; // neural adaption time
+		float t0_pigment = 100; // pigment bleaching/regeneration time
+		float t0_neural  = 2.08; // neural adaption time
+		float pigment_regen_speed = 0.01;
 
 		float median_idx = (total+1.0)/2.0;
 		float sum = 0;
@@ -107,17 +108,41 @@ float La;
 		}
 		La = exp(index_to_log_lum(clamp(int(median),1, HISTOGRAM_SLOTS-2)));
 
-		float pLa = 0.0001 / (0.0001 + La);
-		float p = pLa + (p0-pLa) * exp(-t/(t0_pigment*pLa));
+/*
+		float avg = 0;
+		for(uint i=0; i<HISTOGRAM_SLOTS; i++) {
+			avg += local_histogram[i] * exp(index_to_log_lum(i));
+		}
+		avg /= total;
+		La = avg;
+		*/
 
+		La = clamp(La, 0.0001, 30);
+		La /= 100; // TODO: WTF!?!?
+		//La = 0.2;
+		// ~18 => ~0.2
+		// ~0.8 => ~0.04
+
+		float pLa = 0.0001 / (0.0001 + La);
+		float p = pLa + (p0-pLa) * exp(-t/(t0_pigment*max(pLa,pigment_regen_speed)));
 		float L = La + (L0-La)*exp(-t/t0_neural);
 
 		float sigma_b = 1.0 / p;
+
+
+		// rods
 		float sigma_n = pow(10, (2.311*pow(L,0.3604))
 							   /(pow(L, 0.3604) + pow(0.008061,0.3604)) -2.749);
 		float sigma_c = pow(10, (1.735*pow(L,0.9524))
 							   /(pow(L, 0.9524) + pow(1.277,0.9524)) +0.005684);
 
+		/*
+		// cones
+		float sigma_n = pow(10, (2.027*pow(L,0.6406))
+							   /(pow(L, 0.6406) + pow(5.859,0.6406)) +0.01711);
+		float sigma_c = pow(10, (1.929*pow(L,0.8471))
+							   /(pow(L, 0.8471) + pow(1048.0,0.8471)) +0.01820);
+*/
 		sigma = sigma_b * sigma_n * sigma_c;
 
 		histogram[HISTOGRAM_SLOTS+2] = floatBitsToUint(L);
@@ -126,7 +151,7 @@ float La;
 
 	// constant calculated with doc/tonemapping/calc_delta_r.cpp
 	// depends on exponent used in R, min/max world luminance and bucket count
-	float delta_R = 0.00946641;// 0.0135218;
+	float delta_R = 0.0135218;
 
 
 	build_prefix_sum();
@@ -158,7 +183,8 @@ float La;
 		float delta_L = r>1 ? 1.0/0.0//9999999.0
 		                    : sigma * (r/(1-r)) - L_w;
 
-		ceilings[i] = int(round(ceil_const * (delta_L_t(L_d)/L_d) / (delta_L/L_w)));
+		float x = (delta_L_t(L_d)/L_d);
+		ceilings[i] = int(round(ceil_const * x / (delta_L/L_w)));
 
 		//ceilings[i] *= int(step(1, local_histogram[i]));
 		atomicAdd(ceil_sum, ceilings[i]);
@@ -170,7 +196,7 @@ float La;
 	float display_range_offset = 0.f;
 
 	if(ceil_sum<total) {
-		display_range_factor = float(total) / ceil_sum;
+		display_range_factor = float(ceil_sum) / float(total);
 
 		if(local_id==0) {
 			float n = total;
@@ -214,14 +240,15 @@ float La;
 	// redistribute
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
 		int ceiling = int(round(ceilings[i]/display_range_factor));
+		int remainder = ceiling - local_histogram[i];
 
 		float fill_percentage = float(local_histogram[i]) / total;
-		int fill = int(round(min(fill_percentage * org_cuts,  ceiling)));
+		int fill = min(int(round(fill_percentage * org_cuts)),  remainder);
 
 		atomicAdd(cuts, -fill);
 		local_histogram[i] += fill;
 
-		if(local_histogram[i] < ceiling && i<=max_bin) {
+		if(local_histogram[i] < ceiling) {
 			atomicAdd(free_histograms, 1);
 		}
 	}
@@ -232,10 +259,11 @@ float La;
 	if(cuts > free_histograms) {
 		float fill_percentage = 1.f / free_histograms;
 
-		for(uint i=local_id; i<max_bin; i+=local_size) {
+		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
 			int ceiling = int(round(ceilings[i]/display_range_factor));
+			int remainder = ceiling - local_histogram[i];
 
-			int fill = int(round(min(fill_percentage * cuts, ceiling)));
+			int fill = min(int(round(fill_percentage * cuts)),  remainder);
 
 			local_histogram[i] += fill;
 		}

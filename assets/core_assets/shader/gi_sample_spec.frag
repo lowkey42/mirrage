@@ -143,7 +143,7 @@ void main() {
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 	                                  0).r;
 
-	//out_color *= 1.0 - (history_weight*0.98);
+	out_color *= 1.0 - (history_weight*0.96);
 
 	out_color = max(out_color, vec4(0));
 }
