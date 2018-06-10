@@ -83,13 +83,8 @@ namespace mirrage::renderer {
 	                                              vk::BorderColor::eIntOpaqueBlack,
 	                                              vk::Filter::eLinear,
 	                                              vk::SamplerMipmapMode::eNearest))
-	  , _descriptor_set_layout(renderer.device(), *_sampler, 4)
-	  , _descriptor_set(_descriptor_set_layout.create_set(
-	            renderer.descriptor_pool(),
-	            {src.view(),
-	             renderer.gbuffer().avg_log_luminance.get_or(src).view(),
-	             renderer.gbuffer().bloom.get_or(src).view(),
-	             renderer.gbuffer().histogram_adjustment_factors.get_or(src).view()}))
+	  , _descriptor_set_layout(renderer.device(), *_sampler, 1)
+	  , _descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view()}))
 	  , _render_pass(build_render_pass(renderer, *_descriptor_set_layout, _framebuffers))
 	  , _tone_mapping_enabled(renderer.gbuffer().avg_log_luminance.is_some())
 	  , _bloom_enabled(renderer.gbuffer().bloom.is_some())

@@ -42,6 +42,15 @@ namespace mirrage::graphic {
 			auto depth() const noexcept { return _image.depth(); }
 			auto layers() const noexcept { return _image.layers(); }
 
+			auto width(std::uint32_t level) const noexcept
+			{
+				return this->width() / (std::uint32_t(1) << level);
+			}
+			auto height(std::uint32_t level) const noexcept
+			{
+				return this->height() / (std::uint32_t(1) << level);
+			}
+
 		  protected:
 			// construct as render target
 			Base_texture(Device&,
@@ -146,11 +155,6 @@ namespace mirrage::graphic {
 		using Texture<Type>::view;
 
 		auto view(std::uint32_t level) const noexcept { return *_single_mip_level_views.at(level); }
-		auto width(std::uint32_t level) const noexcept { return this->width() / (std::uint32_t(1) << level); }
-		auto height(std::uint32_t level) const noexcept
-		{
-			return this->height() / (std::uint32_t(1) << level);
-		}
 		auto mip_levels() const noexcept
 		{
 			return gsl::narrow<std::uint32_t>(_single_mip_level_views.size());

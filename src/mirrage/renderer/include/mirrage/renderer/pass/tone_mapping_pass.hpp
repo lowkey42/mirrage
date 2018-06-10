@@ -45,15 +45,13 @@ namespace mirrage::renderer {
 
 		// the histogram adjustment factor for each histogram bucket
 		graphic::Render_target_2D _adjustment_buffer;
+		graphic::Render_target_2D _avg_log_luminance_buffer;
 
 		vk::UniqueDescriptorSetLayout       _compute_descriptor_set_layout;
 		std::vector<graphic::DescriptorSet> _compute_descriptor_set;
 
 		// calculate veiling luminance
-		graphic::Render_target_2D         _veil_buffer;
-		std::vector<graphic::Framebuffer> _veil_framebuffers;
-		graphic::Render_pass              _veil_renderpass;
-		graphic::DescriptorSet            _veil_desc_set;
+		util::maybe<graphic::Render_target_2D&> _veil_buffer;
 
 		// calculate histogram and tone mapping factors
 		vk::UniquePipelineLayout _compute_pipeline_layout;
@@ -61,13 +59,12 @@ namespace mirrage::renderer {
 		vk::UniquePipeline       _adjust_histogram_pipeline;
 
 		// apply tone mapping
-		graphic::Framebuffer                _apply_framebuffer;
-		graphic::Render_pass                _apply_renderpass;
-		std::vector<graphic::DescriptorSet> _apply_desc_sets;
+		graphic::Framebuffer   _apply_framebuffer;
+		graphic::Render_pass   _apply_renderpass;
+		graphic::DescriptorSet _apply_desc_set;
 
 		void _clear_result_buffer(vk::CommandBuffer&);
 		auto _generate_foveal_image(vk::CommandBuffer&) -> std::uint32_t;
-		void _generate_veil_image(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
 		void _dispatch_build_histogram(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
 		void _dispatch_adjust_histogram(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
 		void _apply_tone_ampping(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);

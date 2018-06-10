@@ -18,6 +18,8 @@ layout(set=1, binding = 3) buffer PrevData {
 	uint prev_histogram[HISTOGRAM_SLOTS + 4];
 };
 
+layout (set=1, binding = 5, r16f) uniform image2D avg_log_lum_buffer;
+
 layout(push_constant) uniform Push_constants {
 	// min/max log display luminance
 	vec4 parameters;
@@ -143,6 +145,40 @@ void main() {
 
 		histogram[HISTOGRAM_SLOTS+2] = floatBitsToUint(L);
 		histogram[HISTOGRAM_SLOTS+3] = floatBitsToUint(p);
+
+
+		float sum = 0;
+		int top = 0;
+		int top_lower = 0;
+		for(int i=HISTOGRAM_SLOTS-1; i>0; i--) {
+			sum += histogram[i];
+			if(sum < total*0.02) {
+				top = i;
+			} else if(sum < total*0.2) {
+				top_lower = i;
+			} else {
+				break;
+			}
+		}
+
+		float avg_lum      = exp(index_to_log_lum(clamp(int(top), 0, HISTOGRAM_SLOTS-1)));
+		float lower_lum    = exp(index_to_log_lum(clamp(int(top_lower), 0, HISTOGRAM_SLOTS-1)));
+
+		float prev_avg_lum = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+1]);
+		float prev_lower_lum = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS]);
+
+		lower_lum = lower_lum + (prev_lower_lum-lower_lum)*exp(-t/t0_neural);
+		avg_lum = avg_lum + (prev_avg_lum-avg_lum)*exp(-t/t0_neural);
+
+		histogram[HISTOGRAM_SLOTS] = floatBitsToUint(lower_lum);
+		histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(avg_lum);
+
+		float upper_bound = log(avg_lum);
+		float lower_bound = log(avg_lum - (avg_lum-lower_lum));
+		imageStore(avg_log_lum_buffer, ivec2(0,0), vec4(lower_bound));
+		imageStore(avg_log_lum_buffer, ivec2(0,1), vec4(lower_bound));
+		imageStore(avg_log_lum_buffer, ivec2(1,0), vec4(upper_bound));
+		imageStore(avg_log_lum_buffer, ivec2(1,1), vec4(upper_bound));
 	}
 
 	// constant calculated with doc/tonemapping/calc_delta_r.cpp
@@ -231,11 +267,11 @@ void main() {
 
 	// write back adjustment result (for debugging and lerp/smoothing)
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-		histogram[i] = local_histogram[i];
+//		histogram[i] = local_histogram[i];
 	}
 	if(local_id==0) {
-		histogram[HISTOGRAM_SLOTS] = floatBitsToUint(1.0-display_range_factor);
-		histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(0);
+		//histogram[HISTOGRAM_SLOTS] = floatBitsToUint(1.0-display_range_factor);
+		//histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(0);
 	}
 
 
@@ -246,8 +282,6 @@ void main() {
 
 
 	// calc output texture
-	//display_range *= display_range_factor;
-
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
 		float prev = imageLoad(adjustment_factor, ivec2(i,0)).r;
 

@@ -210,7 +210,9 @@ namespace mirrage::graphic {
 	                  vk::ImageLayout             final_src_layout,
 	                  detail::Base_texture&       dst,
 	                  vk::ImageLayout             initial_dst_layout,
-	                  vk::ImageLayout             final_dst_layout)
+	                  vk::ImageLayout             final_dst_layout,
+	                  std::int32_t                src_mip,
+	                  std::int32_t                dst_mip)
 	{
 
 		if(initial_src_layout != vk::ImageLayout::eTransferSrcOptimal) {
@@ -219,7 +221,7 @@ namespace mirrage::graphic {
 			                        initial_src_layout,
 			                        vk::ImageLayout::eTransferSrcOptimal,
 			                        vk::ImageAspectFlagBits::eColor,
-			                        0,
+			                        gsl::narrow<std::uint32_t>(src_mip),
 			                        1);
 		}
 
@@ -229,21 +231,27 @@ namespace mirrage::graphic {
 			                        initial_dst_layout,
 			                        vk::ImageLayout::eTransferDstOptimal,
 			                        vk::ImageAspectFlagBits::eColor,
-			                        0,
+			                        gsl::narrow<std::uint32_t>(dst_mip),
 			                        1);
 		}
 
 		auto src_range = std::array<vk::Offset3D, 2>{
-		        vk::Offset3D{0, 0, 0}, vk::Offset3D{int32_t(src.width()), int32_t(src.height()), 1}};
+		        vk::Offset3D{0, 0, 0},
+		        vk::Offset3D{int32_t(src.width(src_mip)), int32_t(src.height(src_mip)), 1}};
 		auto dst_range = std::array<vk::Offset3D, 2>{
-		        vk::Offset3D{0, 0, 0}, vk::Offset3D{int32_t(dst.width()), int32_t(dst.height()), 1}};
-		auto blit = vk::ImageBlit{// src
-		                          vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
-		                          src_range,
+		        vk::Offset3D{0, 0, 0},
+		        vk::Offset3D{int32_t(dst.width(dst_mip)), int32_t(dst.height(dst_mip)), 1}};
+		auto blit = vk::ImageBlit{
+		        // src
+		        vk::ImageSubresourceLayers{
+		                vk::ImageAspectFlagBits::eColor, gsl::narrow<std::uint32_t>(src_mip), 0, 1},
+		        src_range,
 
-		                          // dst
-		                          vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, 0, 0, 1},
-		                          dst_range};
+		        // dst
+		        vk::ImageSubresourceLayers{
+		                vk::ImageAspectFlagBits::eColor, gsl::narrow<std::uint32_t>(dst_mip), 0, 1},
+		        dst_range};
+
 		cb.blitImage(src.image(),
 		             vk::ImageLayout::eTransferSrcOptimal,
 		             dst.image(),
@@ -258,7 +266,7 @@ namespace mirrage::graphic {
 			                        vk::ImageLayout::eTransferSrcOptimal,
 			                        final_src_layout,
 			                        vk::ImageAspectFlagBits::eColor,
-			                        0,
+			                        gsl::narrow<std::uint32_t>(src_mip),
 			                        1);
 		}
 
@@ -268,7 +276,7 @@ namespace mirrage::graphic {
 			                        vk::ImageLayout::eTransferDstOptimal,
 			                        final_dst_layout,
 			                        vk::ImageAspectFlagBits::eColor,
-			                        0,
+			                        gsl::narrow<std::uint32_t>(dst_mip),
 			                        1);
 		}
 	}

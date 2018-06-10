@@ -616,9 +616,9 @@ namespace mirrage {
 
 		auto tone_mapping_pass = _meta_system.renderer().find_pass<renderer::Tone_mapping_pass>();
 		if(tone_mapping_pass) {
-			auto&& histogram                    = tone_mapping_pass->last_histogram();
-			auto   histogram_sum                = std::accumulate(begin(histogram), end(histogram) - 4, 0.0);
-			auto [min_histogram, max_histogram] = std::minmax_element(begin(histogram), end(histogram) - 4);
+			auto&& histogram     = tone_mapping_pass->last_histogram();
+			auto   histogram_sum = std::accumulate(begin(histogram), end(histogram) - 4, 0.0);
+			auto   max_histogram = std::max_element(begin(histogram), end(histogram) - 4);
 
 			auto ctx = _gui.ctx();
 			if(nk_begin_titled(

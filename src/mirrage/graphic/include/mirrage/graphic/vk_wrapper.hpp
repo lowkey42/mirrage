@@ -291,7 +291,9 @@ namespace mirrage::graphic {
 	                         vk::ImageLayout             final_src_layout,
 	                         detail::Base_texture&       dst,
 	                         vk::ImageLayout             initial_dst_layout,
-	                         vk::ImageLayout             final_dst_layout);
+	                         vk::ImageLayout             final_dst_layout,
+	                         std::int32_t                src_mip = 0,
+	                         std::int32_t                dst_mip = 0);
 
 	extern void clear_texture(vk::CommandBuffer           cb,
 	                          const detail::Base_texture& img,

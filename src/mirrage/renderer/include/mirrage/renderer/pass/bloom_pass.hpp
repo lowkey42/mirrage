@@ -24,14 +24,13 @@ namespace mirrage::renderer {
 		auto name() const noexcept -> const char* override { return "Bloom"; }
 
 	  private:
-		static constexpr auto blur_start_mip_level = 2;
-		static constexpr auto blur_mip_levels      = 6;
-
-		using Blur_framebuffers = std::array<graphic::Framebuffer, blur_mip_levels - blur_start_mip_level>;
+		using Blur_framebuffers = std::vector<graphic::Framebuffer>;
 
 		Deferred_renderer&                   _renderer;
+		graphic::Render_target_2D&           _src;
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
+		bool                                 _first_frame = true;
 
 		// copy high intensity colors from color buffer into bloom buffer
 		graphic::Render_target_2D _bloom_buffer;
@@ -41,13 +40,14 @@ namespace mirrage::renderer {
 
 		// blur the bloom buffer
 		graphic::Render_target_2D _blur_buffer;
-		vk::UniqueImageView       _downsampled_blur_view;
 		Blur_framebuffers         _blur_framebuffer_horizontal;
 		Blur_framebuffers         _blur_framebuffer_vertical;
 		graphic::Render_pass      _blur_renderpass;
 		graphic::DescriptorSet    _blur_descriptor_set_horizontal;
 		graphic::DescriptorSet    _blur_descriptor_set_vertical;
-		graphic::DescriptorSet    _blur_descriptor_set_vertical_final;
+
+		std::vector<vk::UniqueImageView>    _downsampled_blur_views;
+		std::vector<graphic::DescriptorSet> _blur_descriptor_set_vertical_final;
 	};
 
 	class Bloom_pass_factory : public Pass_factory {

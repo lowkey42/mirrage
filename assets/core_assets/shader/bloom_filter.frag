@@ -21,7 +21,7 @@ layout(push_constant) uniform Settings {
 
 
 vec3 expose(vec3 color, float threshold) {
-	float avg_luminance = max(exp(texture(avg_log_luminance_sampler, vec2(0.5, 0.5)).r), 0.001);
+	float avg_luminance = max(exp(texture(avg_log_luminance_sampler, vec2(0.5, 0.5)).r), 0.0001);
 
 	float key = 1.03f - (2.0f / (2 + log(avg_luminance + 1)/log(10)));
 	float exposure = clamp(key/avg_luminance, 0.1, 6.0) + 0.5;
@@ -37,5 +37,15 @@ vec3 expose(vec3 color, float threshold) {
 }
 
 void main() {
-	out_color = vec4(expose(texture(color_sampler, vertex_out.tex_coords).rgb, pcs.options.x), 1.0);
+	float lower_bound = max(exp(texelFetch(avg_log_luminance_sampler, ivec2(0, 0), 0).r), 0.0001);
+	float upper_bound = max(exp(texelFetch(avg_log_luminance_sampler, ivec2(1, 0), 0).r), 0.0001);
+
+	vec3 color = texture(color_sampler, vertex_out.tex_coords).rgb;
+	float lum = rgb2cie(color*10).y;
+
+	color *= smoothstep(lower_bound, upper_bound, lum)*0.95+0.05;
+
+	color *= 0.087 * 10.0;
+
+	out_color = vec4(color, 1.0);
 }

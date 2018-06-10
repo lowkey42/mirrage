@@ -16,8 +16,6 @@ layout(location = 0) out vec4 out_color;
 layout(set=1, binding = 0) uniform sampler2D blue_noise;
 
 layout(set=2, binding = 0) uniform sampler2D color_sampler;
-layout(set=2, binding = 1) uniform sampler2D avg_log_luminance_sampler;
-layout(set=2, binding = 2) uniform sampler2D bloom_sampler;
 
 layout(push_constant) uniform Settings {
 	vec4 options;
@@ -52,7 +50,7 @@ float ha_luminance(vec3 c) {
 //	vec3 f = vec3(0.2126,0.7152,0.0722);
 //	return max(dot(c, f), 0.0);
 }
-
+/*
 vec3 expose(vec3 color, float threshold) {
 	float exposure = pcs.options.z;
 
@@ -70,6 +68,8 @@ vec3 expose(vec3 color, float threshold) {
 }
 
 vec3 tone_mapping(vec3 color) {
+//	color = textureLod(bloom_sampler, vertex_out.tex_coords, 0).rgb*0.087;
+
 	if(pcs.options.x<=0.1 && pcs.options.z<=0)
 		return color;
 
@@ -79,12 +79,12 @@ vec3 tone_mapping(vec3 color) {
 	color = ToneMapFilmicALU(color);
 
 	if(pcs.options.y >= 0.01) {
-		color += textureLod(bloom_sampler, vertex_out.tex_coords, 0).rgb * pcs.options.y;
+//		color = textureLod(bloom_sampler, vertex_out.tex_coords, 0).rgb * pcs.options.y;
 	}
 
 	return color;
 }
-
+*/
 vec3 resolve_fxaa() {
 	float FXAA_SPAN_MAX = 8.0;
 	float FXAA_REDUCE_MUL = 1.0/8.0;
@@ -157,5 +157,6 @@ vec3 dither(vec3 color) {
 
 void main() {
 	//out_color = vec4(tone_mapping(texture(color_sampler, vertex_out.tex_coords).rgb), 1.0);
-	out_color = vec4(dither(tone_mapping(resolve_fxaa().rgb)), 1.0);
+	//out_color = vec4(dither(tone_mapping(resolve_fxaa().rgb)), 1.0);
+	out_color = vec4(dither(resolve_fxaa().rgb), 1.0);
 }

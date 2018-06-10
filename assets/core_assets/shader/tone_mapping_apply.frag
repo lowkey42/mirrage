@@ -39,10 +39,11 @@ void main() {
 
 
 	vec3 color = textureLod(color_sampler, vertex_out.tex_coords, 0).rgb;
+	color *= 10;
+
 	vec3 veil = textureLod(veil_sampler, vertex_out.tex_coords, 0).rgb;
 	color = 0.913*color + veil;
 
-	color *= 10;
 	vec3 cie_color = rgb2cie(color);
 	float lum = cie_color.y;
 
