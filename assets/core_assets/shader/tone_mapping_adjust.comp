@@ -12,6 +12,8 @@ layout(set=1, binding = 1) buffer Data {
 	uint histogram[HISTOGRAM_SLOTS + 4];
 };
 
+layout (set=1, binding = 2, r16f) uniform image2D adjustment_factor;
+
 layout(set=1, binding = 3) buffer PrevData {
 	uint prev_histogram[HISTOGRAM_SLOTS + 4];
 };
@@ -86,7 +88,6 @@ void main() {
 	atomicAdd(total, sub_total);
 	barrier();
 
-float La;
 	// adaption
 	if(local_id==0) {
 		float L0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+2]);
@@ -96,32 +97,27 @@ float La;
 		float t0_neural  = 2.08; // neural adaption time
 		float pigment_regen_speed = 0.01;
 
-		float median_idx = (total+1.0)/2.0;
-		float sum = 0;
-		uint median = HISTOGRAM_SLOTS-1;
-		for(uint i=0; i<HISTOGRAM_SLOTS; i++) {
-			sum += local_histogram[i];
-			if(sum > median_idx) {
-				median = i;
-				break;
+		float n = total;
+		uint median = 0;
+		if(n>0) {
+			float median_idx = (n+1)/2.0;
+			float sum = 0;
+			for(uint i=0; i<HISTOGRAM_SLOTS; i++) {
+				sum += local_histogram[i];
+				if(sum >= median_idx) {
+					median = i;
+					break;
+				}
 			}
 		}
-		La = exp(index_to_log_lum(clamp(int(median),1, HISTOGRAM_SLOTS-2)));
 
-/*
-		float avg = 0;
-		for(uint i=0; i<HISTOGRAM_SLOTS; i++) {
-			avg += local_histogram[i] * exp(index_to_log_lum(i));
-		}
-		avg /= total;
-		La = avg;
-		*/
+		float La = exp(index_to_log_lum(clamp(int(median), 0, HISTOGRAM_SLOTS-1)));
+		La = clamp(La, 0.001, 30);
 
-		La = clamp(La, 0.0001, 30);
-		La /= 100; // TODO: WTF!?!?
-		//La = 0.2;
-		// ~18 => ~0.2
-		// ~0.8 => ~0.04
+		// correction faktor based on observations in various lighting conditions.
+		//   for some reason the original equation is too dark in bright but correct in dark environments
+		float La_scale = 100.8225 - 99.99274*exp(-0.4800563*La);
+		La /= max(1, La_scale);
 
 		float pLa = 0.0001 / (0.0001 + La);
 		float p = pLa + (p0-pLa) * exp(-t/(t0_pigment*max(pLa,pigment_regen_speed)));
@@ -142,7 +138,7 @@ float La;
 							   /(pow(L, 0.6406) + pow(5.859,0.6406)) +0.01711);
 		float sigma_c = pow(10, (1.929*pow(L,0.8471))
 							   /(pow(L, 0.8471) + pow(1048.0,0.8471)) +0.01820);
-*/
+		*/
 		sigma = sigma_b * sigma_n * sigma_c;
 
 		histogram[HISTOGRAM_SLOTS+2] = floatBitsToUint(L);
@@ -156,16 +152,6 @@ float La;
 
 	build_prefix_sum();
 
-	float min_bin = HISTOGRAM_SLOTS;
-	float max_bin = 0;
-	for(uint i=0; i<HISTOGRAM_SLOTS; i++) {
-		if(local_histogram[i]>0) {
-			min_bin = min(min_bin, i);
-			max_bin = max(max_bin, i);
-		}
-	}
-	//world_range = B_wmax - B_wmin;
-
 	barrier();
 
 	float ceil_const = float(total) / HISTOGRAM_SLOTS * (world_range/display_range);
@@ -175,50 +161,22 @@ float La;
 		float L_w = exp(index_to_log_lum(i));
 		float L_d = exp(DISPLAY_MIN + display_range * float(prefix_sum[i])/total);
 
-		//ceilings[i] = int(round(ceil_const * (delta_L_t(L_d)/L_d) / (delta_L_t(L_w)/L_w)));
-		// ceilings[i] = int(round(ceil_const * 1 / (delta_L_t(L_w)/L_w)));
-		//ceilings[i] = int(round(delta_L_t(L_d)/delta_L_t(L_w) * total*bin_width*L_w / (display_range*L_d)));
-
 		float r = R(L_w, sigma) + delta_R;
-		float delta_L = r>1 ? 1.0/0.0//9999999.0
+		float delta_L = r>1 ? 1.0/0.0
 		                    : sigma * (r/(1-r)) - L_w;
 
 		float x = (delta_L_t(L_d)/L_d);
 		ceilings[i] = int(round(ceil_const * x / (delta_L/L_w)));
 
-		//ceilings[i] *= int(step(1, local_histogram[i]));
 		atomicAdd(ceil_sum, ceilings[i]);
 	}
 
 	barrier();
 
 	float display_range_factor = 1.f;
-	float display_range_offset = 0.f;
 
 	if(ceil_sum<total) {
 		display_range_factor = float(ceil_sum) / float(total);
-
-		if(local_id==0) {
-			float n = total;
-			float median_idx = (n+1.0)/2.0;
-
-			float sum = 0;
-			float median = HISTOGRAM_SLOTS-1;
-			for(int i=1; i<HISTOGRAM_SLOTS; i++) {
-				sum += histogram[i];
-				if(sum > median_idx) {
-					median = i;
-					break;
-				}
-			}
-
-			float median_log_lum = index_to_log_lum(uint(median));
-			float range = display_range * display_range_factor;
-			float min = median_log_lum - range/2;
-
-			min = display_range - display_range * display_range_factor;
-			//display_range_offset = min - DISPLAY_MIN;
-		}
 	}
 
 
@@ -260,10 +218,10 @@ float La;
 		float fill_percentage = 1.f / free_histograms;
 
 		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-			int ceiling = int(round(ceilings[i]/display_range_factor));
+			int ceiling = int(ceil(ceilings[i]/display_range_factor));
 			int remainder = ceiling - local_histogram[i];
 
-			int fill = min(int(round(fill_percentage * cuts)),  remainder);
+			int fill = min(int(ceil(fill_percentage * cuts)),  remainder);
 
 			local_histogram[i] += fill;
 		}
@@ -271,15 +229,36 @@ float La;
 
 	barrier();
 
+	// write back adjustment result (for debugging and lerp/smoothing)
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
 		histogram[i] = local_histogram[i];
 	}
-
 	if(local_id==0) {
 		histogram[HISTOGRAM_SLOTS] = floatBitsToUint(1.0-display_range_factor);
-		histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(display_range_offset);
+		histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(0);
+	}
 
-		//histogram[HISTOGRAM_SLOTS] = floatBitsToUint(1.0-total);
-		//histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(ceil_sum);
+
+	memoryBarrierShared();
+	barrier();
+	build_prefix_sum();
+	float sum = prefix_sum[HISTOGRAM_SLOTS];
+
+
+	// calc output texture
+	//display_range *= display_range_factor;
+
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		float prev = imageLoad(adjustment_factor, ivec2(i,0)).r;
+
+		float curr_lum = exp(index_to_log_lum(i));
+		float factor = exp(DISPLAY_MIN + display_range * float(prefix_sum[i])/sum);
+		factor = (factor - exp(DISPLAY_MIN)) / (exp(DISPLAY_MAX)-exp(DISPLAY_MIN));
+		factor = factor / curr_lum;
+
+		if(!isnan(prev) && !isinf(prev))
+			factor = mix(prev, factor, global_uniforms.time.z/0.2);
+
+		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
 	}
 }

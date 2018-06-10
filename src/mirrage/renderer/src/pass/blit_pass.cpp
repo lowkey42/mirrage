@@ -38,15 +38,7 @@ namespace mirrage::renderer {
 			auto& pass = builder.add_subpass(pipeline).color_attachment(screen);
 
 			pass.stage("blit"_strid)
-			        .shader("frag_shader:blit"_aid,
-			                graphic::Shader_stage::fragment,
-			                "main",
-			                0,
-			                renderer.gbuffer().histogram_adjustment_factors.is_some() ? 1 : 0,
-			                1,
-			                std::log2(renderer.gbuffer().min_luminance),
-			                2,
-			                std::log2(renderer.gbuffer().max_luminance))
+			        .shader("frag_shader:blit"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:blit"_aid, graphic::Shader_stage::vertex);
 
 			builder.add_dependency(

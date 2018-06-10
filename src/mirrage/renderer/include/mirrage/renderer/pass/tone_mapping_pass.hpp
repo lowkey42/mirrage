@@ -49,22 +49,28 @@ namespace mirrage::renderer {
 		vk::UniqueDescriptorSetLayout       _compute_descriptor_set_layout;
 		std::vector<graphic::DescriptorSet> _compute_descriptor_set;
 
-		// scotopic color sensitivity adaption
-		graphic::Framebuffer   _scotopic_framebuffer;
-		graphic::Render_pass   _scotopic_renderpass;
-		graphic::DescriptorSet _scotopic_desc_set;
+		// calculate veiling luminance
+		graphic::Render_target_2D         _veil_buffer;
+		std::vector<graphic::Framebuffer> _veil_framebuffers;
+		graphic::Render_pass              _veil_renderpass;
+		graphic::DescriptorSet            _veil_desc_set;
 
+		// calculate histogram and tone mapping factors
 		vk::UniquePipelineLayout _compute_pipeline_layout;
 		vk::UniquePipeline       _build_histogram_pipeline;
-		vk::UniquePipeline       _compute_exposure_pipeline;
 		vk::UniquePipeline       _adjust_histogram_pipeline;
-		vk::UniquePipeline       _build_final_factors_pipeline;
 
-		void _scotopic_adaption(vk::DescriptorSet, vk::CommandBuffer&);
+		// apply tone mapping
+		graphic::Framebuffer                _apply_framebuffer;
+		graphic::Render_pass                _apply_renderpass;
+		std::vector<graphic::DescriptorSet> _apply_desc_sets;
+
+		void _clear_result_buffer(vk::CommandBuffer&);
+		auto _generate_foveal_image(vk::CommandBuffer&) -> std::uint32_t;
+		void _generate_veil_image(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
 		void _dispatch_build_histogram(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
-		void _dispatch_compute_exposure(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
 		void _dispatch_adjust_histogram(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
-		void _dispatch_build_final_factors(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
+		void _apply_tone_ampping(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
 	};
 
 	class Tone_mapping_pass_factory : public Pass_factory {

@@ -18,11 +18,6 @@ layout(set=1, binding = 0) uniform sampler2D blue_noise;
 layout(set=2, binding = 0) uniform sampler2D color_sampler;
 layout(set=2, binding = 1) uniform sampler2D avg_log_luminance_sampler;
 layout(set=2, binding = 2) uniform sampler2D bloom_sampler;
-layout(set=2, binding = 3) uniform sampler2D histogram_adjustment_sampler;
-
-layout (constant_id = 0) const int ADJUST_HISTOGRAM = 0;
-layout (constant_id = 1) const float MIN_LOG_LUMINANCE = -10;
-layout (constant_id = 2) const float MAX_LOG_LUMINANCE = 10;
 
 layout(push_constant) uniform Settings {
 	vec4 options;
@@ -75,18 +70,6 @@ vec3 expose(vec3 color, float threshold) {
 }
 
 vec3 tone_mapping(vec3 color) {
-	if(ADJUST_HISTOGRAM==1 && pcs.options.w>0.001) {
-		color *=10;
-		float luminance = ha_luminance(color);
-		float idx = log(luminance);
-		idx = clamp(idx, MIN_LOG_LUMINANCE, MAX_LOG_LUMINANCE);
-		idx = (idx-MIN_LOG_LUMINANCE) / (MAX_LOG_LUMINANCE-MIN_LOG_LUMINANCE);
-		color *= texture(histogram_adjustment_sampler, vec2(idx, 0.5)).r;
-
-//		if(luminance<10)
-//			color*=0;
-	}
-
 	if(pcs.options.x<=0.1 && pcs.options.z<=0)
 		return color;
 
