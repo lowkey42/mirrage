@@ -251,10 +251,10 @@ namespace mirrage::renderer {
 			return;
 		}
 
-		static constexpr auto blur_mip_levels = 4;
+		static constexpr auto blur_mip_levels = 6;
 		auto                  start_mip_level =
 		        compute_start_mip_level(_src.height(), _renderer.global_uniforms().proj_planes.w);
-		start_mip_level = 1; //TODO
+		start_mip_level = 2; //TODO
 
 
 		auto pcs         = Push_constants{};

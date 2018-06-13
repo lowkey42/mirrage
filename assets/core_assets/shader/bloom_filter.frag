@@ -43,7 +43,7 @@ void main() {
 	vec3 color = texture(color_sampler, vertex_out.tex_coords).rgb;
 	float lum = rgb2cie(color*10).y;
 
-	color *= smoothstep(lower_bound, upper_bound, lum)*0.95+0.05;
+	//color *= smoothstep(lower_bound, upper_bound, lum)*0.95+0.05;
 
 	color *= 0.087 * 10.0;
 

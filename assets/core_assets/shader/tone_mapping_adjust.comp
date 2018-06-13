@@ -114,7 +114,7 @@ void main() {
 		}
 
 		float La = exp(index_to_log_lum(clamp(int(median), 0, HISTOGRAM_SLOTS-1)));
-		La = clamp(La, 0.001, 30);
+		La = clamp(La, 0.001, 15);
 
 		// correction faktor based on observations in various lighting conditions.
 		//   for some reason the original equation is too dark in bright but correct in dark environments
@@ -288,10 +288,10 @@ void main() {
 		float curr_lum = exp(index_to_log_lum(i));
 		float factor = exp(DISPLAY_MIN + display_range * float(prefix_sum[i])/sum);
 		factor = (factor - exp(DISPLAY_MIN)) / (exp(DISPLAY_MAX)-exp(DISPLAY_MIN));
-		factor = factor / curr_lum;
+		factor = clamp(factor / curr_lum, 0.001, 1);
 
 		if(!isnan(prev) && !isinf(prev))
-			factor = mix(prev, factor, global_uniforms.time.z/0.2);
+			factor = mix(prev, factor, global_uniforms.time.z/0.5);
 
 		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
 	}

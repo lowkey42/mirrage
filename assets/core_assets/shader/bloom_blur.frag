@@ -46,8 +46,10 @@ void main() {
 	if(COMBINE>0) {
 		int end   = int(round(pcs.options.y));
 		for(int i=0; i<end; i++) {
-			result += textureLod(downsampled_color_sampler, vertex_out.uv_center, i).rgb / (i+1);
+			result += textureLod(downsampled_color_sampler, vertex_out.uv_center, i).rgb;
 		}
+
+		result /= end+1;
 	}
 
 	color_out = vec4(result, 1.0);
