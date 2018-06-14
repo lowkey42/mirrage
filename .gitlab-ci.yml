@@ -13,12 +13,14 @@ build_gcc:
     - export CXX=g++
     - mkdir build
     - cd build
-    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
-    - cmake --build .
+    - mkdir bin
+    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
+    - cmake --build . --target src/install
   artifacts:
     paths:
       - build/src/demo/demo
       - build/src/mirrage/*/*.a
+    expire_in: 1 day
 
 build_clang:
   stage: build
@@ -27,12 +29,14 @@ build_clang:
     - export CXX=clang++
     - mkdir build
     - cd build
-    - cmake -G Ninja -DCMAKE_BUILD_TYPE=Release ..
-    - cmake --build .
+    - mkdir bin
+    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
+    - cmake --build . --target src/install
   artifacts:
     paths:
       - build/src/demo/demo
       - build/src/mirrage/*/*.a
+    expire_in: 1 week
 
 build_scanbuild:
   stage: build

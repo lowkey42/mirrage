@@ -63,11 +63,7 @@ install(TARGETS mirrage_graphic EXPORT mirrage_graphic_targets
 	LIBRARY DESTINATION lib
 	RUNTIME DESTINATION bin
 )
-install(
-	DIRECTORY ${CMAKE_SOURCE_DIR}/include/
-	DESTINATION include
-	FILES_MATCHING PATTERN "*.h*"
-)
+install(DIRECTORY include/ DESTINATION include)
 install(EXPORT mirrage_graphic_targets
 	FILE mirrage_graphic.cmake
 	NAMESPACE mirrage::
