@@ -18,8 +18,7 @@ build_gcc:
     - cmake --build . --target src/install
   artifacts:
     paths:
-      - build/src/demo/demo
-      - build/src/mirrage/*/*.a
+      - build/bin
     expire_in: 1 day
 
 build_clang:
@@ -34,8 +33,7 @@ build_clang:
     - cmake --build . --target src/install
   artifacts:
     paths:
-      - build/src/demo/demo
-      - build/src/mirrage/*/*.a
+      - build/bin
     expire_in: 1 week
 
 build_scanbuild:
