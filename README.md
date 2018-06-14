@@ -1,8 +1,7 @@
-[![Mirrage logo](/logo.svg)]()
+[![Mirrage logo](logo.svg)]()
 
-[![Build Status](https://travis-ci.org/lowkey42/mirrage.svg?branch=develop)](https://travis-ci.org/lowkey42/mirrage)
+[![pipeline status](https://gitlab.com/lowkey42/mirrage/badges/develop/pipeline.svg)](https://gitlab.com/lowkey42/mirrage/commits/develop)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](/LICENSE)
-[![Documentation](https://codedocs.xyz/lowkey42/mirrage.svg)](https://codedocs.xyz/lowkey42/mirrage/)
 
 ## Mirrage
 
@@ -16,7 +15,7 @@ Mirrage (Mirrage Indirect Radiance Renderer And Game Engine) is a Vulkan based d
 | ![](screenshots/top_down.jpeg) | ![](screenshots/hallway_1.jpeg) |
 |------------------|------------------|
 | ![](screenshots/metal.jpeg) | ![](screenshots/cornell.jpeg) |
-| ![](screenshots/hallway_2.jpeg) | ![](screenshots/light_cube.jpeg) |
+| ![](screenshots/front.jpeg) | ![](screenshots/light_cube.jpeg) |
 
 
 ### Dependencies
