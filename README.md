@@ -1,4 +1,4 @@
-[![Mirrage logo](logo.svg)]()
+[![Mirrage logo](https://github.com/lowkey42/mirrage/raw/develop/logo.svg?sanitize=true)]()
 
 [![pipeline status](https://gitlab.com/lowkey42/mirrage/badges/develop/pipeline.svg)](https://gitlab.com/lowkey42/mirrage/commits/develop)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](/LICENSE)
