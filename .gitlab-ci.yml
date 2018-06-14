@@ -2,7 +2,10 @@ image: lowkey42/build-env:latest
 
 stages:
   - build
-
+  
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  
 build_gcc:
   stage: build
   script:
