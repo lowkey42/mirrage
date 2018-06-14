@@ -1,0 +1,47 @@
+image: lowkey42/build-env:latest
+
+stages:
+  - build
+
+build_gcc:
+  stage: build
+  script: 
+    - export CC=gcc
+    - export CXX=g++
+    - mkdir build
+    - cd build
+    - cmake -DCMAKE_BUILD_TYPE=Release 
+    - cmake --build .
+  artifacts:
+    paths:
+      - build/src/demo/demo
+      - build/src/mirrage/*/*.a
+
+build_clang:
+  stage: build
+  script: 
+    - export CC=clang
+    - export CXX=clang++
+    - mkdir build
+    - cd build
+    - can-build --use-c++=clang++ cmake -DMIRRAGE_FORCE_LIBCPP=ON -G "Unix Makefiles"
+    - scan-build --use-c++=clang++ -enable-checker deadcode.DeadStores -enable-checker security.insecureAPI.UncheckedReturn --status-bugs -v cmake --build .
+    paths:
+      - build/src/demo/demo
+      - build/src/mirrage/*/*.a
+
+build_scanbuild:
+  stage: build
+  script: 
+    - export CC=clang
+    - export CXX=clang++
+    - mkdir build
+    - cd build
+    - cmake -DCMAKE_BUILD_TYPE=Release 
+    - cmake --build .
+  artifacts:
+    paths:
+      - build/src/demo/demo
+      - build/src/mirrage/*/*.a
+
+
