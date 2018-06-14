@@ -480,6 +480,10 @@ namespace mirrage {
 			nk_checkbox_label(ctx, "Bloom", &bool_nk_wrapper);
 			renderer_settings.bloom = bool_nk_wrapper == 1;
 
+			bool_nk_wrapper = renderer_settings.tonemapping ? 1 : 0;
+			nk_checkbox_label(ctx, "Tonemapping", &bool_nk_wrapper);
+			renderer_settings.tonemapping = bool_nk_wrapper == 1;
+
 
 			nk_layout_row_dynamic(ctx, 20, 2);
 
@@ -617,8 +621,8 @@ namespace mirrage {
 		auto tone_mapping_pass = _meta_system.renderer().find_pass<renderer::Tone_mapping_pass>();
 		if(tone_mapping_pass) {
 			auto&& histogram     = tone_mapping_pass->last_histogram();
-			auto   histogram_sum = std::accumulate(begin(histogram), end(histogram) - 4, 0.0);
-			auto   max_histogram = std::max_element(begin(histogram), end(histogram) - 4);
+			auto   histogram_sum = std::accumulate(begin(histogram), end(histogram) - 2, 0.0);
+			auto   max_histogram = std::max_element(begin(histogram), end(histogram) - 2);
 
 			auto ctx = _gui.ctx();
 			if(nk_begin_titled(
@@ -630,7 +634,7 @@ namespace mirrage {
 
 				nk_layout_row_dynamic(ctx, 400, 1);
 				nk_chart_begin(
-				        ctx, NK_CHART_COLUMN, static_cast<int>(histogram.size() - 4), 0, *max_histogram);
+				        ctx, NK_CHART_COLUMN, static_cast<int>(histogram.size() - 2), 0, *max_histogram);
 				for(auto i : util::range(histogram.size() - 1)) {
 					auto state = nk_chart_push(ctx, histogram[i]);
 					if(state & NK_CHART_HOVERING) {
@@ -641,11 +645,11 @@ namespace mirrage {
 
 				nk_layout_row_dynamic(ctx, 25, 2);
 				nk_label(ctx, "Luminance", NK_TEXT_CENTERED);
-				auto log_lum_range = std::log2(_meta_system.renderer().gbuffer().max_luminance)
-				                     - std::log2(_meta_system.renderer().gbuffer().min_luminance);
+				auto log_lum_range = std::log(_meta_system.renderer().gbuffer().max_luminance)
+				                     - std::log(_meta_system.renderer().gbuffer().min_luminance);
 				auto log_lum =
 				        static_cast<double>(_last_selected_histogram) / (histogram.size() - 1) * log_lum_range
-				        + std::log2(_meta_system.renderer().gbuffer().min_luminance);
+				        + std::log(_meta_system.renderer().gbuffer().min_luminance);
 				auto lum = std::exp(log_lum);
 				nk_label(ctx, to_fixed_str(lum, 5).c_str(), NK_TEXT_CENTERED);
 
@@ -655,12 +659,10 @@ namespace mirrage {
 
 				nk_label(ctx, "La", NK_TEXT_CENTERED);
 				nk_label(ctx, (to_fixed_str(histogram[histogram.size() - 2], 4)).c_str(), NK_TEXT_CENTERED);
-				nk_label(ctx, "range", NK_TEXT_CENTERED);
+				nk_label(ctx, "p(La)", NK_TEXT_CENTERED);
 				nk_label(ctx,
-				         (to_fixed_str(1.f - histogram[histogram.size() - 4], 4)).c_str(),
+				         (to_fixed_str(1.f - histogram[histogram.size() - 1], 4)).c_str(),
 				         NK_TEXT_CENTERED);
-				nk_label(ctx, "offset", NK_TEXT_CENTERED);
-				nk_label(ctx, (to_fixed_str(histogram[histogram.size() - 3], 4)).c_str(), NK_TEXT_CENTERED);
 
 				nk_label(ctx, "Trimmings", NK_TEXT_CENTERED);
 				nk_label(ctx,
@@ -670,16 +672,6 @@ namespace mirrage {
 				         NK_TEXT_CENTERED);
 
 				auto renderer_settings = _meta_system.renderer().settings();
-				auto bool_nk_wrapper   = 0;
-
-				bool_nk_wrapper = renderer_settings.histogram_adjustment ? 1 : 0;
-				nk_checkbox_label(ctx, "Histogram Adjustment", &bool_nk_wrapper);
-				renderer_settings.histogram_adjustment = bool_nk_wrapper == 1;
-
-				bool_nk_wrapper = renderer_settings.histogram_trim ? 1 : 0;
-				nk_checkbox_label(ctx, "Histogram Trim", &bool_nk_wrapper);
-				renderer_settings.histogram_trim = bool_nk_wrapper == 1;
-
 
 				nk_property_float(ctx,
 				                  "Min Display Lum.",

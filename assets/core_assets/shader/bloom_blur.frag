@@ -44,12 +44,7 @@ void main() {
 	result += read(vertex_out.uv_r3, 0.010381362401148057);
 
 	if(COMBINE>0) {
-		int end   = int(round(pcs.options.y));
-		for(int i=0; i<end; i++) {
-			result += textureLod(downsampled_color_sampler, vertex_out.uv_center, i).rgb;
-		}
-
-		result /= end+1;
+		result += textureLod(downsampled_color_sampler, vertex_out.uv_center, 0).rgb;
 	}
 
 	color_out = vec4(result, 1.0);

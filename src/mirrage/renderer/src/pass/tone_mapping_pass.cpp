@@ -9,10 +9,9 @@ namespace mirrage::renderer {
 			glm::vec4 parameters;
 		};
 
-		constexpr auto histogram_slots = 256;
-		constexpr auto histogram_buffer_length =
-		        histogram_slots + 4; // bins, display_factor, display_offset, La, p(La)
-		constexpr auto histogram_buffer_size = histogram_buffer_length * sizeof(float);
+		constexpr auto histogram_slots         = 256;
+		constexpr auto histogram_buffer_length = histogram_slots + 2; // bins, La, p(La)
+		constexpr auto histogram_buffer_size   = histogram_buffer_length * sizeof(float);
 		static_assert(sizeof(float) == sizeof(std::uint32_t));
 		constexpr auto workgroup_size       = 32;
 		constexpr auto histogram_batch_size = 8;
@@ -184,16 +183,6 @@ namespace mirrage::renderer {
 	                               | vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eStorage,
 	                       vk::ImageAspectFlagBits::eColor)
 
-	  , _avg_log_luminance_buffer(renderer.device(),
-	                              {2, 2},
-	                              1,
-	                              _luminance_format,
-	                              vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst
-	                                      | vk::ImageUsageFlagBits::eColorAttachment
-	                                      | vk::ImageUsageFlagBits::eSampled
-	                                      | vk::ImageUsageFlagBits::eStorage,
-	                              vk::ImageAspectFlagBits::eColor)
-
 	  , _compute_descriptor_set_layout(renderer.device().create_descriptor_set_layout(std::vector{
 	            vk::DescriptorSetLayoutBinding(
 	                    0, vk::DescriptorType::eStorageImage, 1, vk::ShaderStageFlagBits::eCompute),
@@ -207,8 +196,6 @@ namespace mirrage::renderer {
 	                    4, vk::DescriptorType::eStorageImage, 1, vk::ShaderStageFlagBits::eCompute),
 	            vk::DescriptorSetLayoutBinding(
 	                    5, vk::DescriptorType::eStorageImage, 1, vk::ShaderStageFlagBits::eCompute)}))
-
-	  , _veil_buffer(renderer.gbuffer().bloom)
 
 	  , _compute_pipeline_layout(build_compute_pipeline_layout(_renderer, *_compute_descriptor_set_layout))
 	  , _build_histogram_pipeline(build_compute_pipeline(_renderer.device(),
@@ -228,9 +215,8 @@ namespace mirrage::renderer {
 	  , _apply_renderpass(
 	            build_apply_render_pass(renderer, *_descriptor_set_layout, target, _apply_framebuffer))
 
-	  , _apply_desc_set(_descriptor_set_layout.create_set(
-	            renderer.descriptor_pool(),
-	            {src.view(0), _adjustment_buffer.view(0), renderer.gbuffer().bloom.get_or(src).view()}))
+	  , _apply_desc_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
+	                                                      {src.view(0), _adjustment_buffer.view(0)}))
 	{
 
 		_result_buffer = util::build_vector(renderer.device().max_frames_in_flight() + 1, [&](auto) {
@@ -245,7 +231,7 @@ namespace mirrage::renderer {
 
 		_compute_descriptor_set = util::build_vector(_result_buffer.size() * src.mip_levels(), [&](auto) {
 			return graphic::DescriptorSet{
-			        renderer.descriptor_pool().create_descriptor(*_compute_descriptor_set_layout, 6)};
+			        renderer.descriptor_pool().create_descriptor(*_compute_descriptor_set_layout, 4)};
 		});
 
 		auto comp_desc_final =
@@ -254,13 +240,6 @@ namespace mirrage::renderer {
 		auto comp_desc_buffers = util::build_vector(_result_buffer.size(), [&](auto i) {
 			return vk::DescriptorBufferInfo{*_result_buffer[i], 0, VK_WHOLE_SIZE};
 		});
-
-
-		auto comp_desc_avg_log_lum = vk::DescriptorImageInfo{
-		        *_sampler, _avg_log_luminance_buffer.view(0), vk::ImageLayout::eGeneral};
-
-		auto comp_desc_veil = vk::DescriptorImageInfo{
-		        *_sampler, renderer.gbuffer().bloom.get_or(target).view(0), vk::ImageLayout::eGeneral};
 
 		for(auto mip : util::range(src.mip_levels())) {
 			auto comp_desc_writes = std::vector<vk::WriteDescriptorSet>();
@@ -300,27 +279,11 @@ namespace mirrage::renderer {
 				                              vk::DescriptorType::eStorageBuffer,
 				                              nullptr,
 				                              &comp_desc_buffers[prev_buffer]);
-
-				comp_desc_writes.emplace_back(*_compute_descriptor_set[i * src.mip_levels() + mip],
-				                              4,
-				                              0,
-				                              1,
-				                              vk::DescriptorType::eStorageImage,
-				                              &comp_desc_veil);
-
-				comp_desc_writes.emplace_back(*_compute_descriptor_set[i * src.mip_levels() + mip],
-				                              5,
-				                              0,
-				                              1,
-				                              vk::DescriptorType::eStorageImage,
-				                              &comp_desc_avg_log_lum);
 			}
 
 			renderer.device().vk_device()->updateDescriptorSets(
 			        gsl::narrow<std::uint32_t>(comp_desc_writes.size()), comp_desc_writes.data(), 0, nullptr);
 		}
-
-		renderer.gbuffer().avg_log_luminance = _avg_log_luminance_buffer;
 	}
 
 
@@ -358,7 +321,7 @@ namespace mirrage::renderer {
 				_last_result_data[i] = data[i];
 			}
 
-			for(auto i : util::range(1, 4)) {
+			for(auto i : util::range(1, 2)) {
 				_last_result_data[_last_result_data.size() - i] =
 				        *(reinterpret_cast<float*>(data_addr) + (histogram_buffer_length - i));
 			}
@@ -371,6 +334,15 @@ namespace mirrage::renderer {
 		_dispatch_adjust_histogram(global_uniform_set, command_buffer, foveal_mip_level);
 		_apply_tone_ampping(global_uniform_set, command_buffer, foveal_mip_level);
 
+		if(!_renderer.settings().tonemapping) {
+			graphic::blit_texture(command_buffer,
+			                      _src,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                      _target,
+			                      vk::ImageLayout::eUndefined,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal);
+		}
 
 		// increment index of next/ready result
 		_next_result++;
@@ -457,23 +429,13 @@ namespace mirrage::renderer {
 		        _src.image(),
 		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, mip_level, 1, 0, 1}};
 
-		auto acquire_veil = vk::ImageMemoryBarrier{
-		        vk::AccessFlagBits::eTransferWrite | vk::AccessFlagBits::eColorAttachmentWrite,
-		        vk::AccessFlagBits::eShaderRead,
-		        vk::ImageLayout::eShaderReadOnlyOptimal,
-		        vk::ImageLayout::eGeneral,
-		        VK_QUEUE_FAMILY_IGNORED,
-		        VK_QUEUE_FAMILY_IGNORED,
-		        _veil_buffer.get_or(_target).image(),
-		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
-
 		command_buffer.pipelineBarrier(
 		        vk::PipelineStageFlagBits::eTransfer | vk::PipelineStageFlagBits::eColorAttachmentOutput,
 		        vk::PipelineStageFlagBits::eComputeShader,
 		        vk::DependencyFlags{},
 		        {},
 		        {},
-		        {acquire_input, acquire_veil});
+		        {acquire_input});
 
 
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_build_histogram_pipeline);
@@ -537,22 +499,12 @@ namespace mirrage::renderer {
 		        _adjustment_buffer.image(),
 		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
 
-		auto acquire_avg_log_lum_buffer = vk::ImageMemoryBarrier{
-		        vk::AccessFlagBits::eShaderRead,
-		        vk::AccessFlagBits::eShaderWrite,
-		        vk::ImageLayout::eUndefined,
-		        vk::ImageLayout::eGeneral,
-		        VK_QUEUE_FAMILY_IGNORED,
-		        VK_QUEUE_FAMILY_IGNORED,
-		        _avg_log_luminance_buffer.image(),
-		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
-
 		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eFragmentShader,
 		                               vk::PipelineStageFlagBits::eComputeShader,
 		                               vk::DependencyFlags{},
 		                               {},
 		                               {},
-		                               {acquire_adjustment_buffer, acquire_avg_log_lum_buffer});
+		                               {acquire_adjustment_buffer});
 
 		command_buffer.bindPipeline(vk::PipelineBindPoint::eCompute, *_adjust_histogram_pipeline);
 
@@ -573,24 +525,6 @@ namespace mirrage::renderer {
 		        *_compute_pipeline_layout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(Push_constants), &pcs);
 
 		command_buffer.dispatch(1, 1, 1);
-
-
-		auto release_avg_log_lum_buffer = vk::ImageMemoryBarrier{
-		        vk::AccessFlagBits::eShaderWrite,
-		        vk::AccessFlagBits::eShaderRead,
-		        vk::ImageLayout::eGeneral,
-		        vk::ImageLayout::eShaderReadOnlyOptimal,
-		        VK_QUEUE_FAMILY_IGNORED,
-		        VK_QUEUE_FAMILY_IGNORED,
-		        _avg_log_luminance_buffer.image(),
-		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
-
-		command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eComputeShader,
-		                               vk::PipelineStageFlagBits::eFragmentShader,
-		                               vk::DependencyFlags{},
-		                               {},
-		                               {},
-		                               {release_avg_log_lum_buffer});
 	}
 
 	void Tone_mapping_pass::_apply_tone_ampping(vk::DescriptorSet  global_uniform_set,
@@ -610,16 +544,6 @@ namespace mirrage::renderer {
 		        _src.image(),
 		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, mip_level, 1, 0, 1}};
 
-		auto acquire_veil = vk::ImageMemoryBarrier{
-		        vk::AccessFlagBits::eShaderRead,
-		        vk::AccessFlagBits::eShaderRead,
-		        vk::ImageLayout::eGeneral,
-		        vk::ImageLayout::eShaderReadOnlyOptimal,
-		        VK_QUEUE_FAMILY_IGNORED,
-		        VK_QUEUE_FAMILY_IGNORED,
-		        _veil_buffer.get_or(_target).image(),
-		        vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1}};
-
 		auto acquire_adjustment_buffer = vk::ImageMemoryBarrier{
 		        vk::AccessFlagBits::eShaderWrite,
 		        vk::AccessFlagBits::eShaderRead,
@@ -635,7 +559,7 @@ namespace mirrage::renderer {
 		                               vk::DependencyFlags{},
 		                               {},
 		                               {},
-		                               {acquire_adjustment_buffer, acquire_input, acquire_veil});
+		                               {acquire_adjustment_buffer, acquire_input});
 
 		_apply_renderpass.execute(command_buffer, _apply_framebuffer, [&] {
 			auto desc_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_apply_desc_set};

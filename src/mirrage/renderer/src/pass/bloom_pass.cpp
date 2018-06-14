@@ -8,24 +8,24 @@ namespace mirrage::renderer {
 			glm::vec4 parameters; // threshold
 		};
 
-		auto build_filter_render_pass(Deferred_renderer&         renderer,
-		                              vk::DescriptorSetLayout    desc_set_layout,
-		                              graphic::Render_target_2D& target,
-		                              graphic::Framebuffer&      out_framebuffer)
+		auto build_apply_render_pass(Deferred_renderer&         renderer,
+		                             vk::DescriptorSetLayout    desc_set_layout,
+		                             graphic::Render_target_2D& target,
+		                             graphic::Framebuffer&      out_framebuffer)
 		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
-			auto screen =
-			        builder.add_attachment(vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
-			                                                         renderer.gbuffer().color_format,
-			                                                         vk::SampleCountFlagBits::e1,
-			                                                         vk::AttachmentLoadOp::eDontCare,
-			                                                         vk::AttachmentStoreOp::eStore,
-			                                                         vk::AttachmentLoadOp::eDontCare,
-			                                                         vk::AttachmentStoreOp::eDontCare,
-			                                                         vk::ImageLayout::eUndefined,
-			                                                         vk::ImageLayout::eTransferSrcOptimal});
+			auto screen = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  renderer.gbuffer().color_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eLoad,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
@@ -39,11 +39,12 @@ namespace mirrage::renderer {
 			pipeline.add_push_constant(
 			        "pcs"_strid, sizeof(Push_constants), vk::ShaderStageFlagBits::eFragment);
 
-			auto& pass = builder.add_subpass(pipeline).color_attachment(screen);
+			auto& pass = builder.add_subpass(pipeline).color_attachment(
+			        screen, graphic::all_color_components, graphic::blend_premultiplied_alpha);
 
-			pass.stage("filter"_strid)
-			        .shader("frag_shader:bloom_filter"_aid, graphic::Shader_stage::fragment)
-			        .shader("vert_shader:bloom_filter"_aid, graphic::Shader_stage::vertex);
+			pass.stage("apply"_strid)
+			        .shader("frag_shader:bloom_apply"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:bloom_apply"_aid, graphic::Shader_stage::vertex);
 
 			builder.add_dependency(
 			        util::nothing,
@@ -153,14 +154,6 @@ namespace mirrage::renderer {
 
 			return render_pass;
 		}
-
-		auto compute_start_mip_level(float base_height, float v_fov)
-		{
-			auto target_height = static_cast<int>(std::round(2.f * std::tan(v_fov / 2.f) / 0.01745f));
-
-			return static_cast<std::uint32_t>(std::round(glm::log2(base_height / target_height)));
-		}
-
 	} // namespace
 
 
@@ -185,11 +178,11 @@ namespace mirrage::renderer {
 	                  0,
 	                  renderer.gbuffer().color_format,
 	                  vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst
-	                          | vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-	                          | vk::ImageUsageFlagBits::eStorage,
+	                          | vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
 	                  vk::ImageAspectFlagBits::eColor)
-	  , _filter_renderpass(build_filter_render_pass(
-	            renderer, *_descriptor_set_layout, _bloom_buffer, _filter_framebuffer))
+	  , _apply_renderpass(build_apply_render_pass(renderer, *_descriptor_set_layout, src, _apply_framebuffer))
+	  , _apply_descriptor_set(
+	            _descriptor_set_layout.create_set(_renderer.descriptor_pool(), {_bloom_buffer.view()}))
 
 	  , _blur_buffer(renderer.device(),
 	                 {_bloom_buffer.width(), _bloom_buffer.height()},
@@ -205,8 +198,8 @@ namespace mirrage::renderer {
 	                                            _blur_framebuffer_horizontal,
 	                                            _blur_framebuffer_vertical))
 
-	  , _blur_descriptor_set_horizontal(_descriptor_set_layout.create_set(
-	            renderer.descriptor_pool(), {_bloom_buffer.view(), _bloom_buffer.view()}))
+	  , _blur_descriptor_set_horizontal(
+	            _descriptor_set_layout.create_set(renderer.descriptor_pool(), {_src.view(), _src.view()}))
 	  , _blur_descriptor_set_vertical(_descriptor_set_layout.create_set(
 	            renderer.descriptor_pool(), {_blur_buffer.view(), _blur_buffer.view()}))
 	{
@@ -220,9 +213,6 @@ namespace mirrage::renderer {
 			return _descriptor_set_layout.create_set(renderer.descriptor_pool(),
 			                                         {_blur_buffer.view(), *_downsampled_blur_views.at(i)});
 		});
-
-
-		renderer.gbuffer().bloom = _bloom_buffer;
 	}
 
 
@@ -236,13 +226,6 @@ namespace mirrage::renderer {
 		if(_first_frame) {
 			_first_frame = false;
 
-			_filter_descriptor_set = _descriptor_set_layout.create_set(
-			        _renderer.descriptor_pool(),
-			        {_src.view(0),
-			         _renderer.gbuffer()
-			                 .avg_log_luminance.get_or_throw("Tonemapping pass is required for bloom!")
-			                 .view()});
-
 			graphic::clear_texture(command_buffer,
 			                       _bloom_buffer,
 			                       util::Rgba{0, 0, 0, 0},
@@ -251,35 +234,23 @@ namespace mirrage::renderer {
 			return;
 		}
 
-		static constexpr auto blur_mip_levels = 6;
-		auto                  start_mip_level =
-		        compute_start_mip_level(_src.height(), _renderer.global_uniforms().proj_planes.w);
-		start_mip_level = 2; //TODO
+		if(!_renderer.settings().bloom)
+			return;
+
+		auto blur_mip_levels = util::max(3, _src.mip_levels() - 6);
+		auto start_mip_level = 3u;
 
 
-		auto pcs         = Push_constants{};
-		pcs.parameters.x = 8.0f; // bloom threshold
-		pcs.parameters.z = _renderer.settings().exposure_override;
-
-		// filter
-		_filter_renderpass.execute(command_buffer, _filter_framebuffer, [&] {
-			auto descriptor_sets =
-			        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_filter_descriptor_set};
-			_filter_renderpass.bind_descriptor_sets(0, descriptor_sets);
-
-			_filter_renderpass.push_constant("pcs"_strid, pcs);
-
-			command_buffer.draw(3, 1, 0, 0);
-		});
+		auto pcs = Push_constants{};
 
 		// generate mip chain
 		graphic::generate_mipmaps(command_buffer,
-		                          _bloom_buffer.image(),
-		                          vk::ImageLayout::eTransferSrcOptimal,
+		                          _src.image(),
 		                          vk::ImageLayout::eShaderReadOnlyOptimal,
-		                          _bloom_buffer.width(),
-		                          _bloom_buffer.height(),
-		                          _bloom_buffer.mip_levels());
+		                          vk::ImageLayout::eShaderReadOnlyOptimal,
+		                          _src.width(),
+		                          _src.height(),
+		                          util::min(_src.mip_levels(), start_mip_level + blur_mip_levels));
 
 		auto start       = std::min(blur_mip_levels + start_mip_level - 1, _blur_buffer.mip_levels() - 1);
 		pcs.parameters.y = start - start_mip_level;
@@ -298,7 +269,7 @@ namespace mirrage::renderer {
 
 			// blur vertical
 			_blur_renderpass.execute(command_buffer, _blur_framebuffer_vertical.at(i - 1), [&] {
-				if(i == start_mip_level) {
+				if(i < start) {
 					_blur_renderpass.set_stage("blur_v_last"_strid);
 					_blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_vertical_final.at(i));
 				} else {
@@ -312,17 +283,17 @@ namespace mirrage::renderer {
 			});
 		}
 
-		for(auto i = int(start_mip_level) - 1; i >= 1; i--) {
-			graphic::blit_texture(command_buffer,
-			                      _bloom_buffer,
-			                      vk::ImageLayout::eShaderReadOnlyOptimal,
-			                      vk::ImageLayout::eShaderReadOnlyOptimal,
-			                      _bloom_buffer,
-			                      vk::ImageLayout::eShaderReadOnlyOptimal,
-			                      vk::ImageLayout::eShaderReadOnlyOptimal,
-			                      i,
-			                      i - 1);
-		}
+		// apply
+		_apply_renderpass.execute(command_buffer, _apply_framebuffer, [&] {
+			auto descriptor_sets =
+			        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_apply_descriptor_set};
+			_apply_renderpass.bind_descriptor_sets(0, descriptor_sets);
+
+			pcs.parameters.x = start_mip_level - 1;
+			_apply_renderpass.push_constant("pcs"_strid, pcs);
+
+			command_buffer.draw(3, 1, 0, 0);
+		});
 	}
 
 
@@ -331,9 +302,9 @@ namespace mirrage::renderer {
 	                                     util::maybe<Meta_system&> meta_system,
 	                                     bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
 	{
-		auto& color_src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
+		auto& src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
-		return std::make_unique<Bloom_pass>(renderer, entities, meta_system, color_src);
+		return std::make_unique<Bloom_pass>(renderer, entities, meta_system, src);
 	}
 
 	auto Bloom_pass_factory::rank_device(vk::PhysicalDevice,

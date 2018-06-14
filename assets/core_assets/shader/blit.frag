@@ -156,7 +156,9 @@ vec3 dither(vec3 color) {
 }
 
 void main() {
-	//out_color = vec4(tone_mapping(texture(color_sampler, vertex_out.tex_coords).rgb), 1.0);
-	//out_color = vec4(dither(tone_mapping(resolve_fxaa().rgb)), 1.0);
-	out_color = vec4(dither(resolve_fxaa().rgb), 1.0);
+	vec3 color = resolve_fxaa();
+	if(pcs.options.z>0)
+		color *= pcs.options.z;
+
+	out_color = vec4(dither(color), 1.0);
 }

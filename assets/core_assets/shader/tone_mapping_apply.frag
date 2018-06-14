@@ -12,21 +12,12 @@ layout(location = 0) out vec4 out_color;
 
 layout(set=1, binding = 0) uniform sampler2D color_sampler;
 layout(set=1, binding = 1) uniform sampler2D histogram_adjustment_sampler;
-layout(set=1, binding = 2) uniform sampler2D veil_sampler;
 
 layout (constant_id = 0) const float HISTOGRAM_MIN = 0;
 layout (constant_id = 1) const float HISTOGRAM_MAX = 0;
 layout (constant_id = 2) const int HISTOGRAM_SLOTS = 256;
 
-/*
-float tm_luminance(vec3 c) {
-	vec3 cie_color = rgb2cie(c);
-	return cie_color.y * (1.33*(1+(cie_color.y+cie_color.z)/cie_color.x)-1.68);
 
-//	vec3 f = vec3(0.2126,0.7152,0.0722);
-//	return max(dot(c, f), 0.0);
-}
-*/
 float calc_histogram_index_fp(float luminance) {
 	luminance = (luminance-HISTOGRAM_MIN) / (HISTOGRAM_MAX-HISTOGRAM_MIN);
 	return clamp(luminance, 0, 1);
@@ -40,9 +31,6 @@ void main() {
 
 	vec3 color = textureLod(color_sampler, vertex_out.tex_coords, 0).rgb;
 	color *= 10;
-
-	vec3 veil = textureLod(veil_sampler, vertex_out.tex_coords, 0).rgb;
-	color = 0.913*color + veil;
 
 	vec3 cie_color = rgb2cie(color);
 	float lum = cie_color.y;

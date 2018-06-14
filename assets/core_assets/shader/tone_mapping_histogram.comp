@@ -10,7 +10,6 @@ layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
 layout (local_size_x_id = 1, local_size_y_id = 1, local_size_z = 1 ) in;
 
 layout (set=1, binding = 0, rgba16f) uniform readonly image2D input_image;
-layout (set=1, binding = 4, rgba16f) uniform readonly image2D veil_image;
 
 layout(set=1, binding = 1) buffer Data
 {
@@ -52,8 +51,6 @@ void main() {
 	for(uint x=gl_GlobalInvocationID.x; x<data_size.x; x+=stride.x) {
 		for(uint y=gl_GlobalInvocationID.y; y<data_size.y; y+=stride.y) {
 			vec3 color = imageLoad(input_image, ivec2(x,y)).rgb;
-			vec3 veil  = imageLoad(veil_image, ivec2(x,y)).rgb;
-			color = 0.913*color + veil;
 			float lum = log(tm_luminance(color*10));
 			atomicAdd(local_histogram[calc_histogram_index(lum)], 1);
 		}

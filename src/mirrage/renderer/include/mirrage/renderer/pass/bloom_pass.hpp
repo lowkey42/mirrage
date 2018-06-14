@@ -34,9 +34,9 @@ namespace mirrage::renderer {
 
 		// copy high intensity colors from color buffer into bloom buffer
 		graphic::Render_target_2D _bloom_buffer;
-		graphic::Framebuffer      _filter_framebuffer;
-		graphic::Render_pass      _filter_renderpass;
-		graphic::DescriptorSet    _filter_descriptor_set;
+		graphic::Framebuffer      _apply_framebuffer;
+		graphic::Render_pass      _apply_renderpass;
+		graphic::DescriptorSet    _apply_descriptor_set;
 
 		// blur the bloom buffer
 		graphic::Render_target_2D _blur_buffer;

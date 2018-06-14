@@ -9,16 +9,14 @@ layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
 layout (local_size_x = 128, local_size_y = 1, local_size_z = 1 ) in;
 
 layout(set=1, binding = 1) buffer Data {
-	uint histogram[HISTOGRAM_SLOTS + 4];
+	uint histogram[HISTOGRAM_SLOTS + 2];
 };
 
 layout (set=1, binding = 2, r16f) uniform image2D adjustment_factor;
 
 layout(set=1, binding = 3) buffer PrevData {
-	uint prev_histogram[HISTOGRAM_SLOTS + 4];
+	uint prev_histogram[HISTOGRAM_SLOTS + 2];
 };
-
-layout (set=1, binding = 5, r16f) uniform image2D avg_log_lum_buffer;
 
 layout(push_constant) uniform Push_constants {
 	// min/max log display luminance
@@ -92,11 +90,11 @@ void main() {
 
 	// adaption
 	if(local_id==0) {
-		float L0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+2]);
-		float p0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+3]);
+		float L0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS]);
+		float p0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+1]);
 		float t  = global_uniforms.time.z;
 		float t0_pigment = 100; // pigment bleaching/regeneration time
-		float t0_neural  = 2.08; // neural adaption time
+		float t0_neural  = 1.08; // neural adaption time
 		float pigment_regen_speed = 0.01;
 
 		float n = total;
@@ -143,42 +141,8 @@ void main() {
 		*/
 		sigma = sigma_b * sigma_n * sigma_c;
 
-		histogram[HISTOGRAM_SLOTS+2] = floatBitsToUint(L);
-		histogram[HISTOGRAM_SLOTS+3] = floatBitsToUint(p);
-
-
-		float sum = 0;
-		int top = 0;
-		int top_lower = 0;
-		for(int i=HISTOGRAM_SLOTS-1; i>0; i--) {
-			sum += histogram[i];
-			if(sum < total*0.02) {
-				top = i;
-			} else if(sum < total*0.2) {
-				top_lower = i;
-			} else {
-				break;
-			}
-		}
-
-		float avg_lum      = exp(index_to_log_lum(clamp(int(top), 0, HISTOGRAM_SLOTS-1)));
-		float lower_lum    = exp(index_to_log_lum(clamp(int(top_lower), 0, HISTOGRAM_SLOTS-1)));
-
-		float prev_avg_lum = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+1]);
-		float prev_lower_lum = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS]);
-
-		lower_lum = lower_lum + (prev_lower_lum-lower_lum)*exp(-t/t0_neural);
-		avg_lum = avg_lum + (prev_avg_lum-avg_lum)*exp(-t/t0_neural);
-
-		histogram[HISTOGRAM_SLOTS] = floatBitsToUint(lower_lum);
-		histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(avg_lum);
-
-		float upper_bound = log(avg_lum);
-		float lower_bound = log(avg_lum - (avg_lum-lower_lum));
-		imageStore(avg_log_lum_buffer, ivec2(0,0), vec4(lower_bound));
-		imageStore(avg_log_lum_buffer, ivec2(0,1), vec4(lower_bound));
-		imageStore(avg_log_lum_buffer, ivec2(1,0), vec4(upper_bound));
-		imageStore(avg_log_lum_buffer, ivec2(1,1), vec4(upper_bound));
+		histogram[HISTOGRAM_SLOTS] = floatBitsToUint(L);
+		histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(p);
 	}
 
 	// constant calculated with doc/tonemapping/calc_delta_r.cpp

@@ -45,13 +45,9 @@ namespace mirrage::renderer {
 
 		// the histogram adjustment factor for each histogram bucket
 		graphic::Render_target_2D _adjustment_buffer;
-		graphic::Render_target_2D _avg_log_luminance_buffer;
 
 		vk::UniqueDescriptorSetLayout       _compute_descriptor_set_layout;
 		std::vector<graphic::DescriptorSet> _compute_descriptor_set;
-
-		// calculate veiling luminance
-		util::maybe<graphic::Render_target_2D&> _veil_buffer;
 
 		// calculate histogram and tone mapping factors
 		vk::UniquePipelineLayout _compute_pipeline_layout;

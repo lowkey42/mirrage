@@ -68,17 +68,14 @@ frag_shader:luminance = shader/bin/luminance.frag.spv
 vert_shader:luminance_adapt = shader/bin/fullscreen.vert.spv
 frag_shader:luminance_adapt = shader/bin/luminance_adapt.frag.spv
 
-vert_shader:bloom_filter = shader/bin/fullscreen.vert.spv
-frag_shader:bloom_filter = shader/bin/bloom_filter.frag.spv
+vert_shader:bloom_apply = shader/bin/fullscreen.vert.spv
+frag_shader:bloom_apply = shader/bin/bloom_apply.frag.spv
 
 vert_shader:bloom_blur = shader/bin/bloom_blur.vert.spv
 frag_shader:bloom_blur = shader/bin/bloom_blur.frag.spv
 
 comp_shader:tone_mapping_adjust = shader/bin/tone_mapping_adjust.comp.spv
 comp_shader:tone_mapping_histogram = shader/bin/tone_mapping_histogram.comp.spv
-
-vert_shader:tone_mapping_veil = shader/bin/fullscreen.vert.spv
-frag_shader:tone_mapping_veil = shader/bin/tone_mapping_veil.frag.spv
 
 vert_shader:tone_mapping_apply = shader/bin/fullscreen.vert.spv
 frag_shader:tone_mapping_apply = shader/bin/tone_mapping_apply.frag.spv

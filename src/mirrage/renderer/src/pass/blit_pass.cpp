@@ -86,8 +86,6 @@ namespace mirrage::renderer {
 	  , _descriptor_set_layout(renderer.device(), *_sampler, 1)
 	  , _descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view()}))
 	  , _render_pass(build_render_pass(renderer, *_descriptor_set_layout, _framebuffers))
-	  , _tone_mapping_enabled(renderer.gbuffer().avg_log_luminance.is_some())
-	  , _bloom_enabled(renderer.gbuffer().bloom.is_some())
 	{
 	}
 
@@ -107,10 +105,7 @@ namespace mirrage::renderer {
 			_render_pass.bind_descriptor_sets(0, descriptor_sets);
 
 			glm::vec4 settings;
-			settings.x = _tone_mapping_enabled ? 1 : 0;
-			settings.y = _bloom_enabled && _renderer.settings().bloom ? 20 : 0;
 			settings.z = _renderer.settings().exposure_override;
-			settings.w = _renderer.settings().histogram_adjustment ? 1 : 0;
 
 			_render_pass.push_constant("settings"_strid, settings);
 

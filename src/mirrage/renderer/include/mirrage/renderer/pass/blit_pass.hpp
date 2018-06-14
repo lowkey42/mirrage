@@ -31,8 +31,6 @@ namespace mirrage::renderer {
 		graphic::DescriptorSet               _descriptor_set;
 		std::vector<graphic::Framebuffer>    _framebuffers;
 		graphic::Render_pass                 _render_pass;
-		const bool                           _tone_mapping_enabled;
-		const bool                           _bloom_enabled;
 	};
 
 	class Blit_pass_factory : public Pass_factory {
