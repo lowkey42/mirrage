@@ -214,24 +214,36 @@ void main() {
 	barrier();
 
 	// redistribute the remainder equaly
-	if(cuts > free_histograms) {
-		float fill_percentage = 1.f / free_histograms;
+	for(int i = 0; i<10; i++) {
+		if(cuts>0 && free_histograms>0) {
+			org_cuts = cuts;
+			int org_free_histograms = free_histograms;
+			barrier();
 
-		for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-			int ceiling = int(ceil(ceilings[i]/display_range_factor));
-			int remainder = ceiling - local_histogram[i];
+			float fill_percentage = 1.f / org_free_histograms;
 
-			int fill = min(int(ceil(fill_percentage * cuts)),  remainder);
+			for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+				int ceiling = int(ceil(ceilings[i]/display_range_factor));
+				int remainder = ceiling - local_histogram[i];
 
-			local_histogram[i] += fill;
+				int fill = min(int(ceil(fill_percentage * org_cuts)),  remainder);
+
+				local_histogram[i] += fill;
+				atomicAdd(cuts, -fill);
+
+				if(fill>0 && local_histogram[i] >= ceiling) {
+					atomicAdd(free_histograms, -1);
+				}
+			}
 		}
+
+		barrier();
 	}
 
-	barrier();
 
 	// write back adjustment result (for debugging and lerp/smoothing)
 	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
-//		histogram[i] = local_histogram[i];
+		histogram[i] = local_histogram[i];
 	}
 	if(local_id==0) {
 		//histogram[HISTOGRAM_SLOTS] = floatBitsToUint(1.0-display_range_factor);
