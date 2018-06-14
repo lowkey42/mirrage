@@ -13,7 +13,10 @@ add_executable(demo ${HEADER_FILES}
 	src/main.cpp
 	src/meta_system.cpp
 	src/test_screen.cpp
+	${BACKWARD_ENABLE}
 )
+
+add_backward(demo)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(demo PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
@@ -22,10 +25,17 @@ target_link_libraries(demo
 	PRIVATE
 		mirrage::mirrage
 		mirrage::renderer
+		plog
 )
 
 option(MIRRAGE_COMPILE_SHADERS "Compile demo shaders" OFF)
 if(MIRRAGE_COMPILE_SHADERS)
 	include(shaders.cmake)
 	add_dependencies(demo demo_shaders)
+endif()
+
+option(MIRRAGE_EXPORT_EXECUTABLE "Export executable" OFF)
+if(MIRRAGE_EXPORT_EXECUTABLE)
+	install(DIRECTORY ${ROOT_DIR}/assets/ DESTINATION bin)
+	install(TARGETS demo RUNTIME DESTINATION bin)
 endif()

@@ -122,19 +122,23 @@ namespace mirrage::util {
 
 	// FF, GG, HH, and II transformations for rounds 1, 2, 3, and 4.
 	// Rotation is separate from addition to prevent recomputation.
-	inline void MD5::FF(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac) {
+	inline void MD5::FF(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac)
+	{
 		a = rotate_left(a + F(b, c, d) + x + ac, s) + b;
 	}
 
-	inline void MD5::GG(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac) {
+	inline void MD5::GG(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac)
+	{
 		a = rotate_left(a + G(b, c, d) + x + ac, s) + b;
 	}
 
-	inline void MD5::HH(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac) {
+	inline void MD5::HH(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac)
+	{
 		a = rotate_left(a + H(b, c, d) + x + ac, s) + b;
 	}
 
-	inline void MD5::II(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac) {
+	inline void MD5::II(uint4& a, uint4 b, uint4 c, uint4 d, uint4 x, uint4 s, uint4 ac)
+	{
 		a = rotate_left(a + I(b, c, d) + x + ac, s) + b;
 	}
 
@@ -146,7 +150,8 @@ namespace mirrage::util {
 	//////////////////////////////////////////////
 
 	// nifty shortcut ctor, compute MD5 for string and finalize it right away
-	MD5::MD5(const std::string& text) {
+	MD5::MD5(const std::string& text)
+	{
 		init();
 		update(text.c_str(), text.length());
 		finalize();
@@ -154,7 +159,8 @@ namespace mirrage::util {
 
 	//////////////////////////////
 
-	void MD5::init() {
+	void MD5::init()
+	{
 		finalized = false;
 
 		count[0] = 0;
@@ -170,17 +176,19 @@ namespace mirrage::util {
 	//////////////////////////////
 
 	// decodes input (unsigned char) into output (uint4). Assumes len is a multiple of 4.
-	void MD5::decode(uint4 output[], const uint1 input[], size_type len) {
+	void MD5::decode(uint4 output[], const uint1 input[], size_type len)
+	{
 		for(unsigned int i = 0, j = 0; j < len; i++, j += 4)
-			output[i] = ((uint4) input[j]) | (((uint4) input[j + 1]) << 8) | (((uint4) input[j + 2]) << 16)
-			            | (((uint4) input[j + 3]) << 24);
+			output[i] = static_cast<uint4>(input[j]) | (static_cast<uint4>(input[j + 1]) << 8)
+			            | (static_cast<uint4>(input[j + 2]) << 16) | (static_cast<uint4>(input[j + 3]) << 24);
 	}
 
 	//////////////////////////////
 
 	// encodes input (uint4) into output (unsigned char). Assumes len is
 	// a multiple of 4.
-	void MD5::encode(uint1 output[], const uint4 input[], size_type len) {
+	void MD5::encode(uint1 output[], const uint4 input[], size_type len)
+	{
 		for(size_type i = 0, j = 0; j < len; i++, j += 4) {
 			output[j]     = input[i] & 0xff;
 			output[j + 1] = (input[i] >> 8) & 0xff;
@@ -192,7 +200,8 @@ namespace mirrage::util {
 	//////////////////////////////
 
 	// apply MD5 algo on a block
-	void MD5::transform(const uint1 block[blocksize]) {
+	void MD5::transform(const uint1 block[blocksize])
+	{
 		uint4 a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 		decode(x, block, blocksize);
 
@@ -281,7 +290,8 @@ namespace mirrage::util {
 
 	// MD5 block update operation. Continues an MD5 message-digest
 	// operation, processing another message block
-	void MD5::update(const unsigned char input[], size_type length) {
+	void MD5::update(const unsigned char input[], size_type length)
+	{
 		// compute number of bytes mod 64
 		size_type index = count[0] / 8 % blocksize;
 
@@ -316,13 +326,17 @@ namespace mirrage::util {
 	//////////////////////////////
 
 	// for convenience provide a verson with signed char
-	void MD5::update(const char input[], size_type length) { update((const unsigned char*) input, length); }
+	void MD5::update(const char input[], size_type length)
+	{
+		update(reinterpret_cast<const unsigned char*>(input), length);
+	}
 
 	//////////////////////////////
 
 	// MD5 finalization. Ends an MD5 message-digest operation, writing the
 	// the message digest and zeroizing the context.
-	MD5& MD5::finalize() {
+	MD5& MD5::finalize()
+	{
 		static unsigned char padding[64] = {0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		                                    0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 		                                    0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -357,7 +371,8 @@ namespace mirrage::util {
 	//////////////////////////////
 
 	// return hex representation of digest as string
-	std::string MD5::hexdigest() const {
+	std::string MD5::hexdigest() const
+	{
 		if(!finalized)
 			return "";
 
@@ -375,7 +390,8 @@ namespace mirrage::util {
 
 	//////////////////////////////
 
-	std::string md5(const std::string& str) {
+	std::string md5(const std::string& str)
+	{
 		MD5 md5 = MD5(str);
 
 		return md5.hexdigest();

@@ -35,7 +35,8 @@ namespace mirrage::util {
 			 * until the container is cleared or destroyed
 			 */
 		template <typename T>
-		auto add(T&& obj) -> T& {
+		auto add(T&& obj) -> T&
+		{
 			static_assert(sizeof(T) < block_size, "The required size is bigger than the blocksize!");
 			static_assert(!std::is_lvalue_reference<T>::value,
 			              "The object has to be passed as an rvalue reference to transfer its ownership!");

@@ -39,8 +39,10 @@ if(NOT hasParent)
 	# custom target that does nothing but references all files so they show up in QtCreator
 	file(GLOB_RECURSE ALL_FILES
 			 RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
-			 ${CMAKE_CURRENT_SOURCE_DIR}/*.*)
+			 *.*)
 
+	list(FILTER ALL_FILES EXCLUDE REGEX "^src/.+\\.(h|c)+")
+	list(FILTER ALL_FILES EXCLUDE REGEX "^src/.*CMakeLists.txt")
 	add_custom_target(zz_all_project_files SOURCES ${ALL_FILES})
 
 else()

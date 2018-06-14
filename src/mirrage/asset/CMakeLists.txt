@@ -11,6 +11,7 @@ file(GLOB_RECURSE HEADER_FILES
 add_library(mirrage_asset STATIC
 	src/aid.cpp
 	src/asset_manager.cpp
+	src/error.cpp
 	src/stream.cpp
 	${HEADER_FILES}
 )
@@ -27,8 +28,11 @@ target_include_directories(mirrage_asset PUBLIC
 target_link_libraries(mirrage_asset
 	PUBLIC
 		mirrage::utils
+		mirrage::error
 		gsl
 		physfs-static
+		Async++
+		robin-map
 )
    
 
@@ -38,11 +42,7 @@ install(TARGETS mirrage_asset EXPORT mirrage_asset_targets
 	LIBRARY DESTINATION lib
 	RUNTIME DESTINATION bin
 )
-install(
-	DIRECTORY ${CMAKE_SOURCE_DIR}/include/
-	DESTINATION include
-	FILES_MATCHING PATTERN "*.h*"
-)
+install(DIRECTORY include/ DESTINATION include)
 install(EXPORT mirrage_asset_targets
 	FILE mirrage_asset.cmake
 	NAMESPACE mirrage::

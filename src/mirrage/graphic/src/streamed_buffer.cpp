@@ -6,7 +6,8 @@
 namespace mirrage::graphic {
 
 	Streamed_buffer::Streamed_buffer(Device& device, std::size_t capacity, vk::BufferUsageFlags usage)
-	  : _capacity(capacity) {
+	  : _capacity(capacity)
+	{
 
 		auto create_info = vk::BufferCreateInfo({}, capacity, usage);
 
@@ -16,13 +17,13 @@ namespace mirrage::graphic {
 
 			auto buffer = device.create_buffer(create_info, true, Memory_lifetime::normal, true);
 			auto mapped_memory =
-			        static_cast<char*>(device.vk_device()->mapMemory(buffer.memory().memory(), 0, capacity))
-			        + buffer.memory().offset();
+			        buffer.memory().mapped_addr().get_or_throw("Streamed_buffer GPU memory is not mapped!");
 			_buffers.emplace_back(std::move(buffer), mapped_memory);
 		}
 	}
 
-	void Streamed_buffer::update(vk::DeviceSize dest_offset, gsl::span<const char> data) {
+	void Streamed_buffer::update(vk::DeviceSize dest_offset, gsl::span<const char> data)
+	{
 		MIRRAGE_INVARIANT(data.size_bytes() + dest_offset <= _capacity, "Buffer overflow!");
 
 		auto& buffer = _buffers[_current_buffer_idx];
@@ -33,7 +34,8 @@ namespace mirrage::graphic {
 
 	void Streamed_buffer::flush(Command_buffer         cb,
 	                            vk::PipelineStageFlags next_stage,
-	                            vk::AccessFlags        next_access) {
+	                            vk::AccessFlags        next_access)
+	{
 		_read_buffer        = _buffers[_current_buffer_idx].buffer;
 		_current_buffer_idx = (_current_buffer_idx + 1) % _buffers.size();
 
@@ -49,5 +51,7 @@ namespace mirrage::graphic {
 	}
 
 	Streamed_buffer::Buffer_entry::Buffer_entry(Backed_buffer buffer, char* data)
-	  : buffer(std::move(buffer)), data(data) {}
+	  : buffer(std::move(buffer)), data(data)
+	{
+	}
 } // namespace mirrage::graphic

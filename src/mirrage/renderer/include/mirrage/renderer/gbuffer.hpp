@@ -28,11 +28,11 @@ namespace mirrage::renderer {
 		util::maybe<graphic::Texture_2D&> ambient_occlusion;
 
 		vk::UniqueDescriptorSetLayout shadowmaps_layout;
-		vk::UniqueDescriptorSet       shadowmaps;
+		graphic::DescriptorSet        shadowmaps;
 
 		util::maybe<graphic::Texture_2D_array&> voxels;
 
-		util::maybe<graphic::Texture_2D&> avg_log_luminance;
-		util::maybe<graphic::Texture_2D&> bloom;
+		float min_luminance = 1e-4f;
+		float max_luminance = 1e6f;
 	};
 } // namespace mirrage::renderer

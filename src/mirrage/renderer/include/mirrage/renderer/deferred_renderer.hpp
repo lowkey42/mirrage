@@ -30,19 +30,24 @@ namespace mirrage::renderer {
 		int shadowmap_resolution = 2048;
 		int shadow_quality       = 99; // 0 = lowest
 
-		bool  gi                         = true;
-		bool  gi_highres                 = true;
-		int   gi_diffuse_mip_level       = 1;
-		int   gi_min_mip_level           = 0;
-		int   gi_samples                 = 128;
-		float gi_prioritise_near_samples = 0.8f;
-		int   gi_low_quality_mip_levels  = 0;
-		float exposure_override          = 0.f;
+		bool gi                        = true;
+		bool gi_highres                = true;
+		int  gi_diffuse_mip_level      = 1;
+		int  gi_min_mip_level          = 0;
+		int  gi_samples                = 64;
+		int  gi_lowres_samples         = 512;
+		bool gi_jitter_samples         = false;
+		int  gi_low_quality_mip_levels = 0;
+
+		bool  tonemapping           = true;
+		float exposure_override     = 0.f;
+		float min_display_luminance = 2.f;
+		float max_display_luminance = 150.0f;
 
 		bool ssao  = true;
 		bool bloom = true;
 
-		float background_intensity = 1.f;
+		float background_intensity = 0.f;
 
 		bool dynamic_shadows = false;
 		bool debug_disect    = false;
@@ -95,17 +100,21 @@ namespace mirrage::renderer {
 
 		virtual auto rank_device(vk::PhysicalDevice,
 		                         util::maybe<std::uint32_t> graphics_queue,
-		                         int                        current_score) -> int {
+		                         int                        current_score) -> int
+		{
 			return current_score;
 		}
 
 		virtual void configure_device(vk::PhysicalDevice,
 		                              util::maybe<std::uint32_t> graphics_queue,
-		                              graphic::Device_create_info&) {}
+		                              graphic::Device_create_info&)
+		{
+		}
 	};
 
 	template <class T, class... Args>
-	auto make_pass_factory(Args&&... args) {
+	auto make_pass_factory(Args&&... args)
+	{
 		return std::unique_ptr<Pass_factory>(new T(std::forward<Args>(args)...));
 	}
 
@@ -114,14 +123,23 @@ namespace mirrage::renderer {
 	class Deferred_renderer_factory {
 	  public:
 		Deferred_renderer_factory(graphic::Context&,
-		                          graphic::Window& window,
+		                          graphic::Window&      window,
+		                          asset::Asset_manager& assets,
 		                          std::vector<std::unique_ptr<Pass_factory>>);
+		~Deferred_renderer_factory();
 
 		auto create_renderer(ecs::Entity_manager&, util::maybe<Meta_system&>)
 		        -> std::unique_ptr<Deferred_renderer>;
 
 		void queue_commands(vk::CommandBuffer);
 		auto queue_temporary_command_buffer() -> vk::CommandBuffer;
+
+		auto create_compute_command_buffer() -> vk::UniqueCommandBuffer;
+
+		auto model_material_sampler() const noexcept { return *_model_material_sampler; }
+		auto model_descriptor_set_layout() const noexcept { return *_model_desc_set_layout; }
+
+		auto compute_queue() const noexcept { return _compute_queue; }
 
 		void finish_frame();
 
@@ -131,23 +149,31 @@ namespace mirrage::renderer {
 
 	  private:
 		friend class Deferred_renderer;
+		struct Asset_loaders;
 		using Pass_factories = std::vector<std::unique_ptr<Pass_factory>>;
-		using Settings_ptr   = std::shared_ptr<const Renderer_settings>;
+		using Settings_ptr   = asset::Ptr<Renderer_settings>;
 
+		asset::Asset_manager&           _assets;
 		Settings_ptr                    _settings;
 		Pass_factories                  _pass_factories;
 		graphic::Window&                _window;
 		graphic::Device_ptr             _device;
 		graphic::Swapchain&             _swapchain;
-		std::uint32_t                   _queue_family;
-		vk::Queue                       _queue;
+		std::uint32_t                   _draw_queue_family;
+		std::uint32_t                   _compute_queue_family;
+		vk::Queue                       _draw_queue;
+		vk::Queue                       _compute_queue;
 		vk::UniqueSemaphore             _image_acquired;
 		vk::UniqueSemaphore             _image_presented;
 		graphic::Command_buffer_pool    _command_buffer_pool;
+		graphic::Command_buffer_pool    _compute_command_buffer_pool;
 		util::maybe<std::size_t>        _aquired_swapchain_image;
 		std::vector<vk::CommandBuffer>  _queued_commands;
 		std::vector<Deferred_renderer*> _renderer_instances;
 		bool                            _recreation_pending = false;
+		vk::UniqueSampler               _model_material_sampler;
+		vk::UniqueDescriptorSetLayout   _model_desc_set_layout;
+		std::unique_ptr<Asset_loaders>  _asset_loaders;
 
 		void _present();
 		auto _rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> gqueue) -> int;
@@ -170,7 +196,8 @@ namespace mirrage::renderer {
 		void recreate();
 
 		template <class T>
-		auto find_pass() -> util::tracking_ptr<T> {
+		auto find_pass() -> util::tracking_ptr<T>
+		{
 			auto pass = std::find_if(
 			        _passes.begin(), _passes.end(), [](auto& p) { return dynamic_cast<T*>(&*p) != nullptr; });
 
@@ -183,21 +210,29 @@ namespace mirrage::renderer {
 
 		void shrink_to_fit();
 
-		auto texture_cache() -> auto& { return *_texture_cache; }
-		auto model_loader() -> auto& { return *_model_loader; }
-
 		auto gbuffer() noexcept -> auto& { return *_gbuffer; }
 		auto gbuffer() const noexcept -> auto& { return *_gbuffer; }
 		auto global_uniforms() const noexcept -> auto& { return _global_uniforms; }
 		auto global_uniforms_layout() const noexcept { return *_global_uniform_descriptor_set_layout; }
 
+		auto asset_manager() noexcept -> auto& { return _factory->_assets; }
 		auto device() noexcept -> auto& { return *_factory->_device; }
 		auto window() noexcept -> auto& { return _factory->_window; }
 		auto swapchain() noexcept -> auto& { return _factory->_swapchain; }
-		auto queue_family() const noexcept { return _factory->_queue_family; }
+		auto queue_family() const noexcept { return _factory->_draw_queue_family; }
+		auto compute_queue_family() const noexcept { return _factory->_compute_queue_family; }
 
-		auto create_descriptor_set(vk::DescriptorSetLayout) -> vk::UniqueDescriptorSet;
+		auto compute_queue() const noexcept { return _factory->compute_queue(); }
+		auto create_compute_command_buffer() { return _factory->create_compute_command_buffer(); }
+
+		auto create_descriptor_set(vk::DescriptorSetLayout, std::uint32_t bindings) -> graphic::DescriptorSet;
 		auto descriptor_pool() noexcept -> auto& { return _descriptor_set_pool; }
+
+		auto noise_descriptor_set_layout() const noexcept { return *_noise_descriptor_set_layout; }
+		auto noise_descriptor_set() const noexcept { return *_noise_descriptor_set; }
+
+		auto model_material_sampler() const noexcept { return _factory->model_material_sampler(); }
+		auto model_descriptor_set_layout() const noexcept { return _factory->model_descriptor_set_layout(); }
 
 		auto active_camera() noexcept -> util::maybe<Camera_state&>;
 
@@ -220,15 +255,18 @@ namespace mirrage::renderer {
 		std::unique_ptr<GBuffer> _gbuffer;
 		Global_uniforms          _global_uniforms;
 		graphic::Profiler        _profiler;
-		float                    _time_acc   = 0.f;
-		float                    _delta_time = 0.f;
-
-		std::unique_ptr<graphic::Texture_cache> _texture_cache;
-		std::unique_ptr<Model_loader>           _model_loader;
+		float                    _time_acc      = 0.f;
+		float                    _delta_time    = 0.f;
+		std::uint32_t            _frame_counter = 0;
 
 		vk::UniqueDescriptorSetLayout _global_uniform_descriptor_set_layout;
-		vk::UniqueDescriptorSet       _global_uniform_descriptor_set;
+		graphic::DescriptorSet        _global_uniform_descriptor_set;
 		graphic::Dynamic_buffer       _global_uniform_buffer;
+
+		graphic::Texture_ptr                 _blue_noise;
+		vk::UniqueSampler                    _noise_sampler;
+		graphic::Image_descriptor_set_layout _noise_descriptor_set_layout;
+		graphic::DescriptorSet               _noise_descriptor_set;
 
 		std::vector<util::trackable<Pass>> _passes;
 

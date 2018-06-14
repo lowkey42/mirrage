@@ -29,7 +29,7 @@ void main() {
 	vec2 uv = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
 	gl_Position = vec4(uv * 2.0f + -1.0f, 0.0f, 1.0f);
 
-	vec2 size = textureSize(color_sampler, int(pcs.options.y+0.5));
+	vec2 size = textureSize(color_sampler, int(round(pcs.options.x)));
 
 	vec2 tex_offset = (HORIZONTAL==1 ? vec2(1,0) : vec2(0,1)) / size;
 

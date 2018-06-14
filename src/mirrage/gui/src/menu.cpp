@@ -5,11 +5,13 @@
 
 namespace mirrage::gui {
 
-	void begin_menu(nk_context*, int& active) {
+	void begin_menu(nk_context*, int& active)
+	{
 		// TODO
 	}
 
-	bool menu_button(nk_context* ctx, const char* text, bool enabled) {
+	bool menu_button(nk_context* ctx, const char* text, bool enabled)
+	{
 		if(!enabled)
 			return false;
 
@@ -17,7 +19,8 @@ namespace mirrage::gui {
 		return nk_button_label(ctx, text);
 	}
 
-	void end_menu(nk_context*) {
+	void end_menu(nk_context*)
+	{
 		// TODO
 	}
 } // namespace mirrage::gui

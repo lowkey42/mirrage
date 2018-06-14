@@ -65,7 +65,8 @@ namespace mirrage::util {
 			 * Deletes all elements. Invalidates all iterators and references.
 			 * O(N)
 			 */
-		void clear() noexcept {
+		void clear() noexcept
+		{
 			for(auto& inst : *this) {
 				inst.~T();
 			}
@@ -77,7 +78,8 @@ namespace mirrage::util {
 			 * Deletes the last element. Invalidates all iterators and references to the last element.
 			 * O(1)
 			 */
-		void pop_back() {
+		void pop_back()
+		{
 			MIRRAGE_INVARIANT(_used_elements > 0, "pop_back on empty pool");
 #ifdef _NDEBUG
 			std::memset(get(_usedElements - 1), 0xdead, element_size);
@@ -91,11 +93,13 @@ namespace mirrage::util {
 			 * Invalidates all iterators and references to the specified and the last element.
 			 * O(1)
 			 */
-		void erase(IndexType i) {
+		void erase(IndexType i)
+		{
 			erase(i, [](auto, auto) {});
 		}
 		template <typename F>
-		void erase(IndexType i, F&& relocation) {
+		void erase(IndexType i, F&& relocation)
+		{
 			MIRRAGE_INVARIANT(i < _used_elements, "erase is out of range: " << i << ">=" << _used_elements);
 
 			if(i < (_used_elements - 1)) {
@@ -112,11 +116,13 @@ namespace mirrage::util {
 			 * relocation = func(original:IndexType, T& value, new:IndexType)->void
 			 * O(1)
 			 */
-		void shrink_to_fit() {
+		void shrink_to_fit()
+		{
 			shrink_to_fit([](auto, auto) {});
 		}
 		template <typename F>
-		void shrink_to_fit(F&&) {
+		void shrink_to_fit(F&&)
+		{
 			auto min_chunks = std::ceil(static_cast<float>(_used_elements) / chunk_len);
 			_chunks.resize(static_cast<std::size_t>(min_chunks));
 		}
@@ -126,7 +132,8 @@ namespace mirrage::util {
 			 * O(1)
 			 */
 		template <class... Args>
-		auto emplace_back(Args&&... args) -> std::tuple<T&, IndexType> {
+		auto emplace_back(Args&&... args) -> std::tuple<T&, IndexType>
+		{
 			const auto i = _used_elements++;
 
 			auto addr = [&] {
@@ -134,7 +141,6 @@ namespace mirrage::util {
 
 				if(chunk < static_cast<IndexType>(_chunks.size())) {
 					return _chunks[chunk].get() + ((i % chunk_len) * element_size);
-
 				} else {
 					auto new_chunk = std::make_unique<unsigned char[]>(chunk_size);
 					auto addr      = new_chunk.get();
@@ -165,7 +171,8 @@ namespace mirrage::util {
 			 * @return The last element
 			 */
 		T&       back() { return const_cast<T&>(static_cast<const pool*>(this)->back()); }
-		const T& back() const {
+		const T& back() const
+		{
 			MIRRAGE_INVARIANT(_used_elements > 0, "back on empty pool");
 			auto i = _used_elements - 1;
 			return reinterpret_cast<const T&>(_chunks.back()[(i % chunk_len) * element_size]);
@@ -177,23 +184,27 @@ namespace mirrage::util {
 		IndexType               _used_elements = 0;
 
 		// get_raw is required to avoid UB if their is no valid object at the index
-		unsigned char* get_raw(IndexType i) {
+		unsigned char* get_raw(IndexType i)
+		{
 			return const_cast<unsigned char*>(static_cast<const pool*>(this)->get_raw(i));
 		}
-		const unsigned char* get_raw(IndexType i) const {
+		const unsigned char* get_raw(IndexType i) const
+		{
 			MIRRAGE_INVARIANT(i < _used_elements,
 			                  "Pool-Index out of bounds " + to_string(i) + ">=" + to_string(_used_elements));
 
 			return _chunks[i / chunk_len].get() + (i % chunk_len) * element_size;
 		}
 
-		T* _chunk(IndexType chunk_idx) noexcept {
+		T* _chunk(IndexType chunk_idx) noexcept
+		{
 			if(chunk_idx * chunk_len < _used_elements)
 				return reinterpret_cast<T*>(_chunks.at(chunk_idx).get());
 			else
 				return nullptr;
 		}
-		T* _chunk_end(T* begin, IndexType chunk_idx) noexcept {
+		T* _chunk_end(T* begin, IndexType chunk_idx) noexcept
+		{
 			if(chunk_idx < _used_elements / chunk_len) {
 				return begin + chunk_len;
 			} else {
@@ -220,7 +231,8 @@ namespace mirrage::util {
 		IndexType size() const noexcept { return this->_used_elements - _freelist.size(); }
 		bool      empty() const noexcept { return size() == 0; }
 
-		void clear() noexcept {
+		void clear() noexcept
+		{
 			for(auto& inst : *this) {
 				inst.~T();
 			}
@@ -231,18 +243,19 @@ namespace mirrage::util {
 			_freelist.clear();
 		}
 
-		auto erase(IndexType i) {
+		auto erase(IndexType i)
+		{
 			erase(i, [](auto, auto) {});
 		}
 		template <typename F>
-		auto erase(IndexType i, F&&) {
+		auto erase(IndexType i, F&&)
+		{
 			T&   instance      = this->get(i);
 			auto instance_addr = &instance;
 			MIRRAGE_INVARIANT(_valid(instance_addr), "double free");
 
 			if(i >= (this->_used_elements - 1)) {
 				this->pop_back();
-
 			} else {
 				instance.~T();
 				set_free(instance_addr);
@@ -252,7 +265,8 @@ namespace mirrage::util {
 		}
 
 		template <class... Args>
-		auto emplace_back(Args&&... args) -> std::tuple<T&, IndexType> {
+		auto emplace_back(Args&&... args) -> std::tuple<T&, IndexType>
+		{
 			if(!_freelist.empty()) {
 				auto i = _freelist.back();
 				_freelist.pop_back();
@@ -266,11 +280,13 @@ namespace mirrage::util {
 			return base_t::emplace_back(std::forward<Args>(args)...);
 		}
 
-		void shrink_to_fit() {
+		void shrink_to_fit()
+		{
 			shrink_to_fit([](auto, auto) {});
 		}
 		template <typename F>
-		void shrink_to_fit(F&& relocation) {
+		void shrink_to_fit(F&& relocation)
+		{
 			if(_freelist.size() > ValueTraits::max_free) {
 				std::sort(_freelist.begin(), _freelist.end(), std::greater<>{});
 				for(auto i : _freelist) {
@@ -287,11 +303,13 @@ namespace mirrage::util {
 		std::vector<IndexType> _freelist;
 
 		static auto& get_marker(const T* obj) noexcept { return *ValueTraits::marker_addr(obj); }
-		static void  set_free(const T* obj) noexcept {
-            const_cast<typename ValueTraits::Marker_type&>(get_marker(obj)) = ValueTraits::free_mark;
-            MIRRAGE_INVARIANT(!_valid(obj), "set_free failed");
+		static void  set_free(const T* obj) noexcept
+		{
+			const_cast<typename ValueTraits::Marker_type&>(get_marker(obj)) = ValueTraits::free_mark;
+			MIRRAGE_INVARIANT(!_valid(obj), "set_free failed");
 		}
-		static bool _valid(const T* obj) noexcept {
+		static bool _valid(const T* obj) noexcept
+		{
 			if(obj == nullptr)
 				return true;
 
@@ -310,14 +328,17 @@ namespace mirrage::util {
 		  , _chunk_index(pool._chunks.size())
 		  , _element_iter(nullptr)
 		  , _element_iter_begin(nullptr)
-		  , _element_iter_end(nullptr) {}
+		  , _element_iter_end(nullptr)
+		{
+		}
 
 		pool_iterator(Pool& pool, typename Pool::index_t index)
 		  : _pool(&pool)
 		  , _chunk_index(0)
 		  , _element_iter(pool._chunk(0))
 		  , _element_iter_begin(_element_iter)
-		  , _element_iter_end(pool._chunk_end(_element_iter_begin, 0)) {
+		  , _element_iter_end(pool._chunk_end(_element_iter_begin, 0))
+		{
 
 			if(_element_iter) {
 				if(!Pool::_valid(_element_iter)) {
@@ -331,16 +352,19 @@ namespace mirrage::util {
 			}
 		}
 
-		value_type& operator*() noexcept {
+		value_type& operator*() noexcept
+		{
 			MIRRAGE_INVARIANT(Pool::_valid(_element_iter), "access to invalid pool_iterator");
 			return *_element_iter;
 		}
-		value_type* operator->() noexcept {
+		value_type* operator->() noexcept
+		{
 			MIRRAGE_INVARIANT(Pool::_valid(_element_iter), "access to invalid pool_iterator");
 			return _element_iter;
 		}
 
-		pool_iterator& operator++() {
+		pool_iterator& operator++()
+		{
 			MIRRAGE_INVARIANT(_element_iter != nullptr, "iterator overflow");
 			do {
 				++_element_iter;
@@ -354,13 +378,15 @@ namespace mirrage::util {
 			return *this;
 		}
 
-		pool_iterator operator++(int) {
+		pool_iterator operator++(int)
+		{
 			pool_iterator t = *this;
 			++*this;
 			return t;
 		}
 
-		pool_iterator& operator--() {
+		pool_iterator& operator--()
+		{
 			do {
 				if(_element_iter == _element_iter_begin) {
 					MIRRAGE_INVARIANT(_chunk_index > 0, "iterator underflow");
@@ -373,7 +399,6 @@ namespace mirrage::util {
 					} else {
 						_element_iter = _element_iter_begin;
 					}
-
 				} else {
 					--_element_iter;
 				}
@@ -382,7 +407,8 @@ namespace mirrage::util {
 			return *this;
 		}
 
-		pool_iterator operator--(int) {
+		pool_iterator operator--(int)
+		{
 			pool_iterator t = *this;
 			--*this;
 			return t;
@@ -401,23 +427,27 @@ namespace mirrage::util {
 	};
 
 	template <class T, std::size_t ElementsPerChunk, class Index_type, class ValueTraits, bool use_empty_values>
-	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, use_empty_values>::begin() noexcept -> iterator {
+	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, use_empty_values>::begin() noexcept -> iterator
+	{
 		return iterator{*this, 0};
 	}
 
 	template <class T, std::size_t ElementsPerChunk, class Index_type, class ValueTraits, bool use_empty_values>
-	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, use_empty_values>::end() noexcept -> iterator {
+	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, use_empty_values>::end() noexcept -> iterator
+	{
 		return iterator{*this};
 	}
 
 
 	template <class T, std::size_t ElementsPerChunk, class Index_type, class ValueTraits>
-	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, true>::begin() noexcept -> iterator {
+	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, true>::begin() noexcept -> iterator
+	{
 		return iterator{*this, 0};
 	}
 
 	template <class T, std::size_t ElementsPerChunk, class Index_type, class ValueTraits>
-	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, true>::end() noexcept -> iterator {
+	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, true>::end() noexcept -> iterator
+	{
 		return iterator{*this};
 	}
 } // namespace mirrage::util

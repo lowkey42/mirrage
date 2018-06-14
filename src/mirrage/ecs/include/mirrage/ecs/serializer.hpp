@@ -29,7 +29,9 @@ namespace mirrage::ecs {
 		           asset::Asset_manager& assets,
 		           util::any_ptr         userdata,
 		           Component_filter      filter = {})
-		  : sf2::JsonSerializer(stream), manager(m), assets(assets), userdata(userdata), filter(filter) {}
+		  : sf2::JsonSerializer(stream), manager(m), assets(assets), userdata(userdata), filter(filter)
+		{
+		}
 
 		Entity_manager&       manager;
 		asset::Asset_manager& assets;
@@ -62,12 +64,14 @@ namespace mirrage::ecs {
 
 	// Fallbacks for components that don't require/provide a serialization
 	template <class T>
-	void load_component(ecs::Deserializer& state, T&) {
+	void load_component(ecs::Deserializer& state, T&)
+	{
 		state.read_lambda([](auto&&) { return true; });
 	}
 
 	template <class T>
-	void save_component(ecs::Serializer& state, const T&) {
+	void save_component(ecs::Serializer& state, const T&)
+	{
 		state.write_virtual();
 	}
 } // namespace mirrage::ecs

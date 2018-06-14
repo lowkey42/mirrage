@@ -12,9 +12,12 @@ namespace mirrage::net::detail {
 	  : _host(std::move(host))
 	  , _channels(std::move(channels))
 	  , _on_connected_callback(std::move(on_connected))
-	  , _on_disconnected_callback(std::move(on_disconencted)) {}
+	  , _on_disconnected_callback(std::move(on_disconencted))
+	{
+	}
 
-	auto Connection::_poll_packet() -> util::maybe<Received_packet> {
+	auto Connection::_poll_packet() -> util::maybe<Received_packet>
+	{
 		auto event = ENetEvent{};
 		auto ret   = 0;
 
@@ -39,21 +42,21 @@ namespace mirrage::net::detail {
 					if(c.is_nothing())
 						break;
 
-					return std::make_tuple(c.get_or_throw().name,
-					                       event.peer,
-					                       Packet(event.packet, &enet_packet_destroy));
+					return std::make_tuple(
+					        c.get_or_throw().name, event.peer, Packet(event.packet, &enet_packet_destroy));
 				}
 				case ENET_EVENT_TYPE_NONE: return util::nothing;
 			}
 		}
 
 		if(ret < 0) {
-			MIRRAGE_ERROR("An unknown error occured in ENet while receiving incoming packets");
+			LOG(plog::error) << "An unknown error occured in ENet while receiving incoming packets";
 		}
 
 		return util::nothing;
 	}
-	auto Connection::_packet_data(const ENetPacket& packet) -> gsl::span<const gsl::byte> {
+	auto Connection::_packet_data(const ENetPacket& packet) -> gsl::span<const gsl::byte>
+	{
 		return {reinterpret_cast<const gsl::byte*>(packet.data),
 		        static_cast<std::ptrdiff_t>(packet.dataLength)};
 	}

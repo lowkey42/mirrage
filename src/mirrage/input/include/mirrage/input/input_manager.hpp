@@ -58,7 +58,8 @@ namespace mirrage::input {
 		void add_event_filter(Sdl_event_filter&);
 		void remove_event_filter(Sdl_event_filter&);
 
-		void screen_to_world_coords(std::function<glm::vec2(glm::vec2)> func) {
+		void screen_to_world_coords(std::function<glm::vec2(glm::vec2)> func)
+		{
 			_screen_to_world_coords = func;
 		}
 
@@ -66,18 +67,22 @@ namespace mirrage::input {
 		void viewport(glm::vec4 v) { _viewport = v; }
 		void window(SDL_Window* w) { _sdl_window = w; }
 
-		auto last_pointer_world_position(int idx = 0) const noexcept {
+		auto last_pointer_world_position(int idx = 0) const noexcept
+		{
 			return _pointer_world_pos[gsl::narrow<std::size_t>(idx)];
 		}
-		auto last_pointer_screen_position(int idx = 0) const noexcept {
+		auto last_pointer_screen_position(int idx = 0) const noexcept
+		{
 			return _pointer_screen_pos[gsl::narrow<std::size_t>(idx)];
 		}
 
-		auto pointer_world_position(int idx = 0) const noexcept {
+		auto pointer_world_position(int idx = 0) const noexcept
+		{
 			auto uidx = gsl::narrow<std::size_t>(idx);
 			return _pointer_active[uidx] ? util::justCopy(_pointer_world_pos[uidx]) : util::nothing;
 		}
-		auto pointer_screen_position(int idx = 0) const noexcept {
+		auto pointer_screen_position(int idx = 0) const noexcept
+		{
 			auto uidx = gsl::narrow<std::size_t>(idx);
 			return _pointer_active[uidx] ? util::justCopy(_pointer_screen_pos[uidx]) : util::nothing;
 		}

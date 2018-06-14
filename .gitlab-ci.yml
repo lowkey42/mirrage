@@ -1,0 +1,53 @@
+image: lowkey42/build-env:latest
+
+stages:
+  - build
+  
+variables:
+  GIT_SUBMODULE_STRATEGY: recursive
+  
+build_gcc:
+  stage: build
+  script:
+    - export CC=gcc
+    - export CXX=g++
+    - mkdir build
+    - cd build
+    - mkdir bin
+    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
+    - cmake --build . --target src/install
+  artifacts:
+    paths:
+      - build/bin
+    expire_in: 1 day
+
+build_clang:
+  stage: build
+  script:
+    - export CC=clang
+    - export CXX=clang++
+    - mkdir build
+    - cd build
+    - mkdir bin
+    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
+    - cmake --build . --target src/install
+  artifacts:
+    paths:
+      - build/bin
+    expire_in: 1 week
+
+build_scanbuild:
+  stage: build
+  script: 
+    - export CC=clang
+    - export CXX=clang++
+    - mkdir build
+    - cd build
+    - scan-build --use-c++=clang++ --use-cc=clang cmake -DMIRRAGE_FORCE_LIBCPP=ON -G "Unix Makefiles" ..
+    - scan-build --use-c++=clang++ --use-cc=clang -enable-checker deadcode.DeadStores -enable-checker security.insecureAPI.UncheckedReturn --status-bugs -v cmake --build .
+  artifacts:
+    paths:
+      - /tmp/scan-build-*
+    expire_in: 1 week
+
+

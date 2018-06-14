@@ -15,7 +15,8 @@ namespace mirrage::renderer {
 		                       vk::Format                 depth_buffer_format,
 		                       Deferred_geometry_subpass& gpass,
 		                       Deferred_lighting_subpass& lpass,
-		                       graphic::Framebuffer&      out_framebuffer) {
+		                       graphic::Framebuffer&      out_framebuffer)
+		{
 			auto  builder = renderer.device().create_render_pass_builder();
 			auto& gbuffer = renderer.gbuffer();
 
@@ -188,17 +189,21 @@ namespace mirrage::renderer {
 	                                   renderer.device().get_depth_format(),
 	                                   _gpass,
 	                                   _lpass,
-	                                   _gbuffer_framebuffer)) {}
+	                                   _gbuffer_framebuffer))
+	{
+	}
 
 
-	void Deferred_pass::update(util::Time dt) {
+	void Deferred_pass::update(util::Time dt)
+	{
 		_gpass.update(dt);
 		_lpass.update(dt);
 	}
 	void Deferred_pass::draw(vk::CommandBuffer& command_buffer,
 	                         Command_buffer_source&,
 	                         vk::DescriptorSet global_uniform_set,
-	                         std::size_t) {
+	                         std::size_t)
+	{
 
 		if(!_first_frame) {
 			graphic::blit_texture(command_buffer,
@@ -241,7 +246,8 @@ namespace mirrage::renderer {
 	auto Deferred_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                        ecs::Entity_manager&      entities,
 	                                        util::maybe<Meta_system&> meta_system,
-	                                        bool& use_first_pp_buffer) -> std::unique_ptr<Pass> {
+	                                        bool& use_first_pp_buffer) -> std::unique_ptr<Pass>
+	{
 		auto& color_target = use_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		auto& color_target_diff = use_first_pp_buffer ? renderer.gbuffer().colorB : renderer.gbuffer().colorA;
@@ -252,11 +258,14 @@ namespace mirrage::renderer {
 	}
 
 	auto Deferred_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
-	        -> int {
+	        -> int
+	{
 		return current_score;
 	}
 
 	void Deferred_pass_factory::configure_device(vk::PhysicalDevice,
 	                                             util::maybe<std::uint32_t>,
-	                                             graphic::Device_create_info&) {}
+	                                             graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

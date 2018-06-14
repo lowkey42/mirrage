@@ -6,7 +6,8 @@ namespace mirrage::renderer {
 	namespace {
 		auto build_render_pass(Deferred_renderer&                 renderer,
 		                       vk::DescriptorSetLayout            desc_set_layout,
-		                       std::vector<graphic::Framebuffer>& out_framebuffers) {
+		                       std::vector<graphic::Framebuffer>& out_framebuffers)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -67,7 +68,7 @@ namespace mirrage::renderer {
 
 			auto render_pass = builder.build();
 
-			for(auto& sc_image : renderer.swapchain().get_images()) {
+			for(auto& sc_image : renderer.swapchain().get_image_views()) {
 				out_framebuffers.emplace_back(builder.build_framebuffer({*sc_image, util::Rgba{}},
 				                                                        renderer.swapchain().image_width(),
 				                                                        renderer.swapchain().image_height()));
@@ -77,7 +78,8 @@ namespace mirrage::renderer {
 		}
 
 		auto create_descriptor_set_layout(graphic::Device& device, vk::Sampler sampler)
-		        -> vk::UniqueDescriptorSetLayout {
+		        -> vk::UniqueDescriptorSetLayout
+		{
 			auto binding = vk::DescriptorSetLayoutBinding{0,
 			                                              vk::DescriptorType::eCombinedImageSampler,
 			                                              1,
@@ -100,10 +102,12 @@ namespace mirrage::renderer {
 	                                               vk::SamplerMipmapMode::eNearest))
 	  , _descriptor_set_layout(create_descriptor_set_layout(drenderer.device(), *_sampler))
 	  , _render_pass(build_render_pass(drenderer, *_descriptor_set_layout, _framebuffers))
-	  , _descriptor_set(drenderer.create_descriptor_set(*_descriptor_set_layout))
+	  , _descriptor_set(drenderer.create_descriptor_set(*_descriptor_set_layout, 1))
 	  , _mesh_buffer(drenderer.device(),
 	                 max_render_buffer_size,
-	                 vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer) {}
+	                 vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer)
+	{
+	}
 
 
 	void Gui_pass::update(util::Time dt) {}
@@ -111,7 +115,8 @@ namespace mirrage::renderer {
 	void Gui_pass::draw(vk::CommandBuffer& command_buffer,
 	                    Command_buffer_source&,
 	                    vk::DescriptorSet,
-	                    std::size_t swapchain_image) {
+	                    std::size_t swapchain_image)
+	{
 
 		MIRRAGE_INVARIANT(_current_command_buffer.is_nothing(), "Gui_pass::draw calls cannot be nested!");
 
@@ -141,9 +146,10 @@ namespace mirrage::renderer {
 	                                         vk::Sampler             sampler,
 	                                         Deferred_renderer&      renderer,
 	                                         vk::DescriptorSetLayout desc_layout)
-	  : descriptor_set(renderer.create_descriptor_set(desc_layout))
+	  : descriptor_set(renderer.create_descriptor_set(desc_layout, 1))
 	  , texture(std::move(texture))
-	  , handle{nk_image_id(handle)} {
+	  , handle{nk_image_id(handle)}
+	{
 
 		auto desc_image = vk::DescriptorImageInfo{
 		        sampler, this->texture->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
@@ -155,20 +161,22 @@ namespace mirrage::renderer {
 	}
 
 	auto Gui_pass::load_texture(int width, int height, int channels, const std::uint8_t* data)
-	        -> std::shared_ptr<struct nk_image> {
+	        -> std::shared_ptr<struct nk_image>
+	{
 		auto handle = _next_texture_handle++;
 
 		auto dimensions = graphic::Image_dimensions_t<graphic::Image_type::single_2d>{
 		        gsl::narrow<std::uint32_t>(width), gsl::narrow<std::uint32_t>(height)};
 
-		auto texture = std::make_shared<graphic::Texture_2D>(
-		        _renderer.device(),
-		        dimensions,
-		        false,
-		        gsl::narrow<std::uint32_t>(channels),
-		        true,
-		        gsl::span<const std::uint8_t>{data, width * height * channels},
-		        _renderer.queue_family());
+		auto texture = asset::make_ready_asset(
+		        "tex:$in_memory_gui_texture$"_aid,
+		        graphic::Texture_2D(_renderer.device(),
+		                            dimensions,
+		                            false,
+		                            gsl::narrow<std::uint32_t>(channels),
+		                            true,
+		                            gsl::span<const std::uint8_t>{data, width * height * channels},
+		                            _renderer.queue_family()));
 
 		auto entry = std::make_shared<Loaded_texture>(
 		        handle, std::move(texture), *_sampler, _renderer, *_descriptor_set_layout);
@@ -182,7 +190,8 @@ namespace mirrage::renderer {
 		return return_value;
 	}
 
-	auto Gui_pass::load_texture(const asset::AID& aid) -> std::shared_ptr<struct nk_image> {
+	auto Gui_pass::load_texture(const asset::AID& aid) -> std::shared_ptr<struct nk_image>
+	{
 		auto cache_entry = _loaded_textures_by_aid[aid];
 		if(auto sp = cache_entry.lock()) {
 			return sp;
@@ -190,8 +199,12 @@ namespace mirrage::renderer {
 
 		auto handle = _next_texture_handle++;
 
-		auto entry = std::make_shared<Loaded_texture>(
-		        handle, _renderer.texture_cache().load(aid), *_sampler, _renderer, *_descriptor_set_layout);
+		auto entry =
+		        std::make_shared<Loaded_texture>(handle,
+		                                         _renderer.asset_manager().load<graphic::Texture_2D>(aid),
+		                                         *_sampler,
+		                                         _renderer,
+		                                         *_descriptor_set_layout);
 
 		_loaded_textures_by_handle.emplace(handle, entry);
 
@@ -206,7 +219,8 @@ namespace mirrage::renderer {
 
 	void Gui_pass::prepare_draw(gsl::span<const std::uint16_t>   indices,
 	                            gsl::span<const gui::Gui_vertex> vertices,
-	                            glm::mat4                        view_proj) {
+	                            glm::mat4                        view_proj)
+	{
 
 		auto& cb = _current_command_buffer.get_or_throw(
 		        "Gui_pass::prepare_draw ha to be "
@@ -235,7 +249,8 @@ namespace mirrage::renderer {
 	void Gui_pass::draw_elements(int           texture_handle,
 	                             glm::vec4     clip_rect,
 	                             std::uint32_t offset,
-	                             std::uint32_t count) {
+	                             std::uint32_t count)
+	{
 		auto& cb = _current_command_buffer.get_or_throw(
 		        "Gui_pass::prepare_draw ha to be "
 		        "called inside a draw call!");
@@ -244,7 +259,7 @@ namespace mirrage::renderer {
 			auto texture = _loaded_textures_by_handle[texture_handle].lock();
 			MIRRAGE_INVARIANT(texture, "The requested texture has not been loaded or already been freed!");
 
-			_render_pass.bind_descriptor_sets(0, {&*texture->descriptor_set, 1});
+			_render_pass.bind_descriptor_sets(0, {texture->descriptor_set.get_ptr(), 1});
 			_bound_texture_handle = texture_handle;
 		}
 
@@ -261,17 +276,21 @@ namespace mirrage::renderer {
 	auto Gui_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                   ecs::Entity_manager&      entities,
 	                                   util::maybe<Meta_system&> meta_system,
-	                                   bool&) -> std::unique_ptr<Pass> {
+	                                   bool&) -> std::unique_ptr<Pass>
+	{
 		return std::make_unique<Gui_pass>(renderer, entities, meta_system);
 	}
 
 	auto Gui_pass_factory::rank_device(vk::PhysicalDevice,
 	                                   util::maybe<std::uint32_t> graphics_queue,
-	                                   int                        current_score) -> int {
+	                                   int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Gui_pass_factory::configure_device(vk::PhysicalDevice,
 	                                        util::maybe<std::uint32_t>,
-	                                        graphic::Device_create_info&) {}
+	                                        graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

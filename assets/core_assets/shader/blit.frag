@@ -13,9 +13,9 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 out_color;
 
-layout(set=1, binding = 0) uniform sampler2D color_sampler;
-layout(set=1, binding = 1) uniform sampler2D avg_log_luminance_sampler;
-layout(set=1, binding = 2) uniform sampler2D bloom_sampler;
+layout(set=1, binding = 0) uniform sampler2D blue_noise;
+
+layout(set=2, binding = 0) uniform sampler2D color_sampler;
 
 layout(push_constant) uniform Settings {
 	vec4 options;
@@ -43,14 +43,22 @@ vec3 ToneMapFilmicALU(vec3 color) {
     return pow(color, vec3(2.2));
 }
 
+float ha_luminance(vec3 c) {
+	vec3 cie_color = rgb2cie(c);
+	return cie_color.y * (1.33*(1+(cie_color.y+cie_color.z)/cie_color.x)-1.68);
+
+//	vec3 f = vec3(0.2126,0.7152,0.0722);
+//	return max(dot(c, f), 0.0);
+}
+/*
 vec3 expose(vec3 color, float threshold) {
-	float avg_luminance = max(exp(texture(avg_log_luminance_sampler, vec2(0.5, 0.5)).r), 0.001);
+	float exposure = pcs.options.z;
 
-	float key = 1.03f - (2.0f / (2 + log(avg_luminance + 1)/log(10)));
-	float exposure = clamp(key/avg_luminance, 0.1, 5.0) + 0.5;
+	if(exposure<=0) {
+		float avg_luminance = max(exp(texture(avg_log_luminance_sampler, vec2(0.5, 0.5)).r), 0.001);
 
-	if(pcs.options.z>0) {
-		exposure = pcs.options.z;
+		float key = 1.03f - (2.0f / (2 + log(avg_luminance + 1)/log(10)));
+		exposure = clamp(key/avg_luminance, 0.1, 5.0) + 0.5;
 	}
 
 	exposure = log2(exposure);
@@ -60,7 +68,9 @@ vec3 expose(vec3 color, float threshold) {
 }
 
 vec3 tone_mapping(vec3 color) {
-	if(pcs.options.x<=0.1)
+//	color = textureLod(bloom_sampler, vertex_out.tex_coords, 0).rgb*0.087;
+
+	if(pcs.options.x<=0.1 && pcs.options.z<=0)
 		return color;
 
 	// float exposure = settings.options.r;
@@ -69,12 +79,12 @@ vec3 tone_mapping(vec3 color) {
 	color = ToneMapFilmicALU(color);
 
 	if(pcs.options.y >= 0.01) {
-		color += textureLod(bloom_sampler, vertex_out.tex_coords, 0).rgb * pcs.options.y;
+//		color = textureLod(bloom_sampler, vertex_out.tex_coords, 0).rgb * pcs.options.y;
 	}
 
 	return color;
 }
-
+*/
 vec3 resolve_fxaa() {
 	float FXAA_SPAN_MAX = 8.0;
 	float FXAA_REDUCE_MUL = 1.0/8.0;
@@ -127,7 +137,28 @@ vec3 resolve_fxaa() {
 	}
 }
 
+vec3 highlow_mix(vec3 color, float cutoff, vec3 low, vec3 high) {
+	return mix(high, low, lessThan(color, vec3(cutoff)));
+}
+
+// Based on http://momentsingraphics.de/?p=127
+vec3 dither(vec3 color) {
+	vec3 color_srgb = highlow_mix(color, 0.0031308, 12.92*color, 1.055*pow(color, vec3(1.0/2.4))-0.055);
+
+	vec3 rand = texture(blue_noise, vertex_out.tex_coords*vec2(1920,1080)/128.0).rgb;
+
+	vec3 rand_tri = rand*2.0-1.0;
+	rand_tri = sign(rand_tri) * (1.0-sqrt(1.0-abs(rand_tri)));
+
+	color_srgb += rand / 253.0;
+
+	return highlow_mix(color_srgb, 0.04045, color_srgb/12.92, pow(color_srgb/1.055 + 0.055/1.055, vec3(2.4)));
+}
+
 void main() {
-	//out_color = vec4(tone_mapping(texture(color_sampler, vertex_out.tex_coords).rgb), 1.0);
-	out_color = vec4(tone_mapping(resolve_fxaa().rgb) + random(vec4(vertex_out.tex_coords,global_uniforms.time.x,0))/255.0/2.0, 1.0);
+	vec3 color = resolve_fxaa();
+	if(pcs.options.z>0)
+		color *= pcs.options.z;
+
+	out_color = vec4(dither(color), 1.0);
 }

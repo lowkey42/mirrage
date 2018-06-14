@@ -12,7 +12,8 @@ namespace mirrage::graphic {
 	  : _name(std::move(name))
 	  , _query_id_begin(qid_begin)
 	  , _query_id_end(qid_end)
-	  , _sub_results(std::move(sub_elements)) {
+	  , _sub_results(std::move(sub_elements))
+	{
 
 		_sub_results_lookup.reserve(_sub_results.size());
 		for(auto i = 0u; i < _sub_results.size(); i++) {
@@ -20,7 +21,8 @@ namespace mirrage::graphic {
 		}
 	}
 
-	void Profiler_result::update_time(double new_time) {
+	void Profiler_result::update_time(double new_time)
+	{
 		if(_time_ms_index < 0) {
 			_time_ms_index = 0;
 			_time_ms.fill(new_time);
@@ -39,7 +41,8 @@ namespace mirrage::graphic {
 		_time_max_ms             = std::max(_time_max_ms, new_time);
 	}
 
-	void Profiler_result::reset() noexcept {
+	void Profiler_result::reset() noexcept
+	{
 		_time_ms_index = -1;
 
 		for(auto& sub : _sub_results) {
@@ -48,10 +51,12 @@ namespace mirrage::graphic {
 	}
 
 
-	Profiler::Push_raii::Push_raii(Push_raii&& rhs) noexcept : _profiler(rhs._profiler) {
+	Profiler::Push_raii::Push_raii(Push_raii&& rhs) noexcept : _profiler(rhs._profiler)
+	{
 		rhs._profiler = nullptr;
 	}
-	auto Profiler::Push_raii::operator=(Push_raii&& rhs) noexcept -> Push_raii& {
+	auto Profiler::Push_raii::operator=(Push_raii&& rhs) noexcept -> Push_raii&
+	{
 		if(&rhs != this) {
 			_profiler     = rhs._profiler;
 			rhs._profiler = nullptr;
@@ -59,7 +64,8 @@ namespace mirrage::graphic {
 		return *this;
 	}
 
-	Profiler::Push_raii::~Push_raii() {
+	Profiler::Push_raii::~Push_raii()
+	{
 		if(_profiler) {
 			_profiler->_pop();
 		}
@@ -71,7 +77,9 @@ namespace mirrage::graphic {
 
 	Profiler::Query_pool_entry::Query_pool_entry(Device& device, std::uint32_t max_count)
 	  : pool(device.vk_device()->createQueryPoolUnique(
-	            vk::QueryPoolCreateInfo{vk::QueryPoolCreateFlags{}, vk::QueryType::eTimestamp, max_count})) {}
+	            vk::QueryPoolCreateInfo{vk::QueryPoolCreateFlags{}, vk::QueryType::eTimestamp, max_count}))
+	{
+	}
 
 	Profiler::Profiler(Device& device, std::size_t max_elements)
 	  : _device(*device.vk_device())
@@ -80,11 +88,14 @@ namespace mirrage::graphic {
 	  , _last_results("All", _generate_query_id(), _generate_query_id())
 	  , _query_pools(device.max_frames_in_flight(),
 	                 [&] { return Query_pool_entry(device, gsl::narrow<std::uint32_t>(_query_ids)); })
-	  , _query_used(max_elements, false) {}
+	  , _query_used(max_elements, false)
+	{
+	}
 
 	void Profiler::reset() noexcept { _last_results.reset(); }
 
-	void Profiler::start(vk::CommandBuffer cb) {
+	void Profiler::start(vk::CommandBuffer cb)
+	{
 		_active = _active_requested;
 
 		if(!_active || _full)
@@ -104,7 +115,8 @@ namespace mirrage::graphic {
 		_current_stack.emplace_back(&_last_results);
 		_current_command_buffer = cb;
 	}
-	void Profiler::end() {
+	void Profiler::end()
+	{
 		if(_active && !_full) {
 			MIRRAGE_INVARIANT(_current_stack.size() == 1, "Unbalanced profiler stack!");
 			auto& cb = _current_command_buffer.get_or_throw(
@@ -152,14 +164,15 @@ namespace mirrage::graphic {
 		if(_active || _full) {
 			_full = !_query_pools.advance_head();
 			if(_full) {
-				MIRRAGE_INFO("full");
+				LOG(plog::info) << "profiler stack is full";
 			}
 		}
 
 		_current_command_buffer = util::nothing;
 	}
 
-	void Profiler::_update_result(Profiler_result& result, const std::vector<std::uint32_t>& data) {
+	void Profiler::_update_result(Profiler_result& result, const std::vector<std::uint32_t>& data)
+	{
 		auto begin = data[result.query_id_begin()];
 		auto end   = data[result.query_id_end()];
 		auto diff  = end - begin;
@@ -170,7 +183,8 @@ namespace mirrage::graphic {
 		}
 	}
 
-	auto Profiler::push(const std::string& name, vk::PipelineStageFlagBits stage) -> Push_raii {
+	auto Profiler::push(const std::string& name, vk::PipelineStageFlagBits stage) -> Push_raii
+	{
 		if(!_active || _full)
 			return {};
 
@@ -188,7 +202,8 @@ namespace mirrage::graphic {
 		return Push_raii(*this);
 	}
 
-	void Profiler::_pop() {
+	void Profiler::_pop()
+	{
 		MIRRAGE_INVARIANT(_current_stack.size() > 1, "Profiler::_pop called without calling push first!");
 		auto& cb = _current_command_buffer.get_or_throw(
 		        "No active command buffer! Has Profiler::start been called?");
@@ -202,7 +217,8 @@ namespace mirrage::graphic {
 		_current_stack.pop_back();
 	}
 
-	auto Profiler::_generate_query_id() -> std::uint32_t {
+	auto Profiler::_generate_query_id() -> std::uint32_t
+	{
 		MIRRAGE_INVARIANT(_next_query_id < _query_ids,
 		                  "More Profiler::push calls than supported!"
 		                  "Requested "

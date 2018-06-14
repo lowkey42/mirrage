@@ -20,12 +20,21 @@ namespace mirrage {
 	using Category_id = std::string;
 	using Language_id = std::string;
 
+	struct Localisation_data {
+		using Translation_table = std::unordered_map<std::string, std::string>;
+		using Category_table    = std::unordered_map<Category_id, Translation_table>;
+
+		Category_table categories;
+	};
+
+
 	class Translator {
 	  public:
 		Translator(asset::Asset_manager&);
 		~Translator();
 
-		void language(const Language_id& l) {
+		void language(const Language_id& l)
+		{
 			auto changed = _language != l;
 			_language    = l;
 			if(changed) {
@@ -42,24 +51,21 @@ namespace mirrage {
 
 	  private:
 		struct string_pair_hash {
-			inline std::size_t operator()(const std::pair<std::string, std::string>& v) const {
+			inline std::size_t operator()(const std::pair<std::string, std::string>& v) const
+			{
 				std::hash<std::string> h{};
 				return h(v.first) * 31 + h(v.second);
 			}
 		};
-
-		using Translation_table = std::unordered_map<std::string, std::string>;
-		using Category_table    = std::unordered_map<Category_id, Translation_table>;
 
 		using Missing_categories = std::unordered_set<std::string>;
 		using Missing_translations =
 		        std::unordered_set<std::pair<std::string, std::string>, string_pair_hash>;
 
 
-		asset::Asset_manager& _assets;
-		Language_id           _language;
-		Category_table        _categories;
-		std::vector<uint32_t> _loc_files_watchids;
+		asset::Asset_manager&                      _assets;
+		Language_id                                _language;
+		std::vector<asset::Ptr<Localisation_data>> _files;
 
 		mutable Missing_categories   _missing_categories;
 		mutable Missing_translations _missing_translations;
@@ -69,3 +75,20 @@ namespace mirrage {
 		void _print_missing() const;
 	};
 } // namespace mirrage
+
+namespace mirrage::asset {
+	/**
+	 * Specialize this template for each asset-type
+	 * Instances should be lightweight
+	 * Implementations should NEVER return nullptr
+	 */
+	template <>
+	struct Loader<Localisation_data> {
+		static auto              load(istream in) -> Localisation_data;
+		[[noreturn]] static void save(ostream, const Localisation_data&)
+		{
+			MIRRAGE_FAIL("store<Localisation_data>(...) not supported!");
+		}
+	};
+
+} // namespace mirrage::asset

@@ -27,37 +27,44 @@ namespace mirrage {
 
 			Sub_mesh_data() = default;
 			Sub_mesh_data(std::uint32_t index_offset, std::uint32_t index_count, std::string material_id)
-			  : index_offset(index_offset), index_count(index_count), material_id(std::move(material_id)) {}
+			  : index_offset(index_offset), index_count(index_count), material_id(std::move(material_id))
+			{
+			}
 		};
 
-		auto last_of(const std::string& str, char c) {
+		auto last_of(const std::string& str, char c)
+		{
 			auto idx = str.find_last_of(c);
 			return idx != std::string::npos ? util::just(idx + 1) : util::nothing;
 		}
 
-		auto extract_file_name(const std::string& path) {
-			auto filename_delim_begin = last_of(path, '/').get_or_other(last_of(path, '\\').get_or_other(0));
+		auto extract_file_name(const std::string& path)
+		{
+			auto filename_delim_begin = last_of(path, '/').get_or(last_of(path, '\\').get_or(0));
 
 			auto filename_delim_end = path.find_last_of('.');
 
 			return path.substr(filename_delim_begin, filename_delim_end - filename_delim_begin);
 		}
 
-		auto extract_dir(const std::string& path) {
-			auto filename_delim_end = last_of(path, '/').get_or_other(last_of(path, '\\').get_or_other(0));
+		auto extract_dir(const std::string& path)
+		{
+			auto filename_delim_end = last_of(path, '/').get_or(last_of(path, '\\').get_or(0));
 
 			return path.substr(0, filename_delim_end - 1);
 		}
 
 		template <typename T>
-		void write(std::ostream& out, const T& value) {
+		void write(std::ostream& out, const T& value)
+		{
 			static_assert(!std::is_pointer<T>::value,
 			              "T is a pointer. That is DEFINITLY not what you wanted!");
 			out.write(reinterpret_cast<const char*>(&value), sizeof(T));
 		}
 
 		template <typename T>
-		void write(std::ostream& out, const std::vector<T>& value) {
+		void write(std::ostream& out, const std::vector<T>& value)
+		{
 			static_assert(!std::is_pointer<T>::value,
 			              "T is a pointer. That is DEFINITLY not what you wanted!");
 
@@ -66,8 +73,9 @@ namespace mirrage {
 	} // namespace
 
 
-	void convert_model(const std::string& path, const std::string& output) {
-		MIRRAGE_INFO("Convert model \"" << path << "\" with output directory \"" << output << "\"");
+	void convert_model(const std::string& path, const std::string& output)
+	{
+		LOG(plog::info) << "Convert model \"" << path << "\" with output directory \"" << output << "\"";
 
 		auto base_dir   = extract_dir(path);
 		auto model_name = extract_file_name(path);
@@ -90,14 +98,14 @@ namespace mirrage {
 		for(auto& mat : materials) {
 			aiString name;
 			if(mat->Get(AI_MATKEY_NAME, name) != aiReturn_SUCCESS) {
-				MIRRAGE_WARN("material number " << loaded_material_ids.size() << " has no name!");
+				LOG(plog::warning) << "material number " << loaded_material_ids.size() << " has no name!";
 				loaded_material_ids.emplace_back(util::nothing);
 				continue;
 			}
 
 			auto mat_id = model_name + "_" + name.C_Str();
 			if(!convert_material(mat_id, *mat, base_dir, output)) {
-				MIRRAGE_WARN("Unable to parse material \"" << name.C_Str() << "\"!");
+				LOG(plog::warning) << "Unable to parse material \"" << name.C_Str() << "\"!";
 				loaded_material_ids.emplace_back(util::nothing);
 				continue;
 			}
@@ -139,7 +147,7 @@ namespace mirrage {
 				if(mat.is_some()) {
 					sub_meshes.emplace_back(indices.size(), mesh->mNumFaces * 3, mat.get_or_throw());
 				} else {
-					MIRRAGE_WARN("Required material is missing/defect!");
+					LOG(plog::warning) << "Required material is missing/defect!";
 				}
 			}
 
@@ -185,6 +193,6 @@ namespace mirrage {
 		// write footer
 		write(model_out_file, renderer::Model_file_header::type_tag_value);
 
-		MIRRAGE_INFO("Done.");
+		LOG(plog::info) << "Done.";
 	}
 } // namespace mirrage

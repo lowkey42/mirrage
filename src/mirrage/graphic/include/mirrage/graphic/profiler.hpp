@@ -23,7 +23,8 @@ namespace mirrage::graphic {
 		                         std::vector<Profiler_result> sub_elements = {});
 
 		template <typename F>
-		auto get_or_add(const std::string& name, F&& id_source) -> Profiler_result& {
+		auto get_or_add(const std::string& name, F&& id_source) -> Profiler_result&
+		{
 			auto iter = _sub_results_lookup.find(name);
 			if(iter != _sub_results_lookup.end()) {
 				return _sub_results.at(iter->second);
@@ -53,7 +54,7 @@ namespace mirrage::graphic {
 		auto end() noexcept { return _sub_results.end(); }
 
 	  private:
-		static constexpr auto history_size = 8;
+		static constexpr auto history_size = 60;
 		using Lookup_table                 = std::unordered_map<std::string, std::size_t>;
 		using Time_history                 = std::array<double, history_size>;
 
@@ -120,7 +121,8 @@ namespace mirrage::graphic {
 		auto push(const std::string& name,
 		          vk::PipelineStageFlagBits = vk::PipelineStageFlagBits::eAllCommands) -> Push_raii;
 		auto push(const char* name, vk::PipelineStageFlagBits stage = vk::PipelineStageFlagBits::eAllCommands)
-		        -> Push_raii {
+		        -> Push_raii
+		{
 			if(_active)
 				return push(std::string(name), stage);
 			else
@@ -140,8 +142,11 @@ namespace mirrage::graphic {
 			Query_pool_entry() = default;
 			Query_pool_entry(Device& device, std::uint32_t max_count);
 			Query_pool_entry(Query_pool_entry&& rhs) noexcept
-			  : pool(std::move(rhs.pool)), requested_queries(rhs.requested_queries) {}
-			Query_pool_entry& operator=(Query_pool_entry&& rhs) noexcept {
+			  : pool(std::move(rhs.pool)), requested_queries(rhs.requested_queries)
+			{
+			}
+			Query_pool_entry& operator=(Query_pool_entry&& rhs) noexcept
+			{
 				pool              = std::move(rhs.pool);
 				requested_queries = std::move(rhs.requested_queries);
 				return *this;

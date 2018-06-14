@@ -22,7 +22,8 @@ namespace mirrage::renderer {
 		                       graphic::Render_target_2D& depth_buffer,
 		                       vk::Format                 depth_format,
 		                       vk::Format                 shadowmap_format,
-		                       std::vector<Shadowmap>&    shadowmaps) {
+		                       std::vector<Shadowmap>&    shadowmaps)
+		{
 			auto builder = renderer.device().create_render_pass_builder();
 
 			auto depth = builder.add_attachment(
@@ -65,8 +66,7 @@ namespace mirrage::renderer {
 
 
 			auto model_pipeline = pipeline;
-			model_pipeline.add_descriptor_set_layout(
-			        renderer.model_loader().material_descriptor_set_layout());
+			model_pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 			model_pipeline.vertex<Model_vertex>(0,
 			                                    false,
 			                                    0,
@@ -117,7 +117,8 @@ namespace mirrage::renderer {
 		}
 
 
-		auto get_shadowmap_format(graphic::Device& device) {
+		auto get_shadowmap_format(graphic::Device& device)
+		{
 			auto format = device.get_supported_format(
 			        {vk::Format::eR32Sfloat, vk::Format::eR16Sfloat, vk::Format::eR32G32B32A32Sfloat},
 			        vk::FormatFeatureFlagBits::eColorAttachment
@@ -127,7 +128,8 @@ namespace mirrage::renderer {
 
 			return format.get_or_throw();
 		}
-		auto get_depth_format(graphic::Device& device) {
+		auto get_depth_format(graphic::Device& device)
+		{
 			auto format = device.get_supported_format({vk::Format::eD16Unorm,
 			                                           vk::Format::eD16UnormS8Uint,
 			                                           vk::Format::eD24UnormS8Uint,
@@ -148,13 +150,17 @@ namespace mirrage::renderer {
 	            format,
 	            vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
 	                    | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst,
-	            vk::ImageAspectFlagBits::eColor) {}
+	            vk::ImageAspectFlagBits::eColor)
+	{
+	}
 	Shadowmap::Shadowmap(Shadowmap&& rhs) noexcept
 	  : texture(std::move(rhs.texture))
 	  , framebuffer(std::move(rhs.framebuffer))
 	  , owner(std::move(rhs.owner))
 	  , light_source_position(std::move(rhs.light_source_position))
-	  , light_source_orientation(std::move(rhs.light_source_orientation)) {}
+	  , light_source_orientation(std::move(rhs.light_source_orientation))
+	{
+	}
 
 	Shadowmapping_pass::Shadowmapping_pass(Deferred_renderer&   renderer,
 	                                       ecs::Entity_manager& entities,
@@ -188,7 +194,8 @@ namespace mirrage::renderer {
 	            Shadowmap(renderer.device(), renderer.settings().shadowmap_resolution, _shadowmap_format),
 	            Shadowmap(renderer.device(), renderer.settings().shadowmap_resolution, _shadowmap_format)))
 	  , _render_pass(build_render_pass(
-	            renderer, _depth, get_depth_format(renderer.device()), _shadowmap_format, _shadowmaps)) {
+	            renderer, _depth, get_depth_format(renderer.device()), _shadowmap_format, _shadowmaps))
+	{
 
 		entities.register_component_type<Shadowcaster_comp>();
 
@@ -205,7 +212,8 @@ namespace mirrage::renderer {
 		                  "More than one shadowmapping implementation active!");
 		renderer.gbuffer().shadowmaps_layout =
 		        renderer.device().create_descriptor_set_layout(shadowmap_bindings);
-		renderer.gbuffer().shadowmaps = renderer.create_descriptor_set(*renderer.gbuffer().shadowmaps_layout);
+		renderer.gbuffer().shadowmaps = renderer.create_descriptor_set(*renderer.gbuffer().shadowmaps_layout,
+		                                                               shadowmap_bindings.size());
 
 
 		auto shadowmap_infos = std::vector<vk::DescriptorImageInfo>();
@@ -239,7 +247,8 @@ namespace mirrage::renderer {
 	void Shadowmapping_pass::draw(vk::CommandBuffer& command_buffer,
 	                              Command_buffer_source&,
 	                              vk::DescriptorSet global_uniform_set,
-	                              std::size_t) {
+	                              std::size_t)
+	{
 
 		// free shadowmaps of deleted lights
 		for(auto& sm : _shadowmaps) {
@@ -269,7 +278,6 @@ namespace mirrage::renderer {
 				if(light.shadowmap_id() == -1) {
 					continue;
 				}
-
 			} else if(!_renderer.settings().dynamic_shadows) {
 				auto& shadowmap = _shadowmaps.at(light.shadowmap_id());
 
@@ -315,17 +323,21 @@ namespace mirrage::renderer {
 	auto Shadowmapping_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                             ecs::Entity_manager&      entities,
 	                                             util::maybe<Meta_system&> meta_system,
-	                                             bool&) -> std::unique_ptr<Pass> {
+	                                             bool&) -> std::unique_ptr<Pass>
+	{
 		return std::make_unique<Shadowmapping_pass>(renderer, entities, meta_system);
 	}
 
 	auto Shadowmapping_pass_factory::rank_device(vk::PhysicalDevice,
 	                                             util::maybe<std::uint32_t> graphics_queue,
-	                                             int                        current_score) -> int {
+	                                             int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Shadowmapping_pass_factory::configure_device(vk::PhysicalDevice,
 	                                                  util::maybe<std::uint32_t>,
-	                                                  graphic::Device_create_info&) {}
+	                                                  graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

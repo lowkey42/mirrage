@@ -1,0 +1,70 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+
+layout (constant_id = 0) const int HISTOGRAM_SLOTS = 256;
+layout (constant_id = 1) const int WORKGROUP_SIZE = 16;
+layout (constant_id = 2) const float HISTOGRAM_MIN = -10;
+layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
+
+layout (local_size_x_id = 1, local_size_y_id = 1, local_size_z = 1 ) in;
+
+layout (set=1, binding = 0, rgba16f) uniform readonly image2D input_image;
+
+layout(set=1, binding = 1) buffer Data
+{
+	uint histogram[HISTOGRAM_SLOTS + 1];
+};
+
+#include "color_conversion.glsl"
+
+
+float tm_luminance(vec3 c) {
+	return rgb2cie(c).y;
+}
+
+uint calc_histogram_index(float luminance) {
+	luminance = (luminance-HISTOGRAM_MIN) / (HISTOGRAM_MAX-HISTOGRAM_MIN);
+	return uint(clamp(int(round(luminance * (HISTOGRAM_SLOTS-1))), 0, HISTOGRAM_SLOTS-1));
+}
+
+shared uint local_histogram[HISTOGRAM_SLOTS];
+
+void main() {
+	ivec2 data_size = imageSize(input_image);
+
+	uint group_id = gl_WorkGroupID.x + gl_WorkGroupID.y*gl_NumWorkGroups.x;
+	uint num_groups = gl_NumWorkGroups.x*gl_NumWorkGroups.y;
+
+	uint local_id = gl_LocalInvocationID.x + gl_LocalInvocationID.y*gl_WorkGroupSize.x;
+	uint local_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+	uvec2 stride = gl_WorkGroupSize.xy * gl_NumWorkGroups.xy;
+
+	// zero initialize local histogram
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size){
+		local_histogram[i] = 0;
+	}
+
+	barrier();
+
+	// build local histogram
+	for(uint x=gl_GlobalInvocationID.x; x<data_size.x; x+=stride.x) {
+		for(uint y=gl_GlobalInvocationID.y; y<data_size.y; y+=stride.y) {
+			vec2 rel_p = (vec2(x,y) - vec2(data_size)) / min(data_size.x, data_size.y)*2;
+			float dist2 = dot(rel_p,rel_p);
+			if(dist2 < 0.75) {
+				vec3 color = imageLoad(input_image, ivec2(x,y)).rgb;
+				float lum = log(tm_luminance(color*10));
+				atomicAdd(local_histogram[calc_histogram_index(lum)], 1);
+			}
+		}
+	}
+
+	barrier();
+
+	// copy local histogram to global memory
+	for(uint i=max(1,local_id); i<HISTOGRAM_SLOTS; i+=local_size){
+		atomicAdd(histogram[i], local_histogram[i]);
+	}
+}
+

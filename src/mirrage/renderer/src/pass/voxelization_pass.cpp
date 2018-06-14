@@ -21,7 +21,8 @@ namespace mirrage::renderer {
 		auto build_render_pass(Deferred_renderer&               renderer,
 		                       vk::Format                       data_format,
 		                       graphic::Render_target_2D_array& data,
-		                       graphic::Framebuffer&            out_framebuffer) {
+		                       graphic::Framebuffer&            out_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -45,7 +46,7 @@ namespace mirrage::renderer {
 			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
-			pipeline.add_descriptor_set_layout(renderer.model_loader().material_descriptor_set_layout());
+			pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 			pipeline.vertex<Model_vertex>(0,
 			                              false,
 			                              0,
@@ -92,7 +93,8 @@ namespace mirrage::renderer {
 			return render_pass;
 		}
 
-		auto get_voxel_format(graphic::Device& device) {
+		auto get_voxel_format(graphic::Device& device)
+		{
 			auto format = device.get_supported_format(
 			        {vk::Format::eR32G32B32A32Uint},
 			        vk::FormatFeatureFlagBits::eColorAttachment | vk::FormatFeatureFlagBits::eSampledImage);
@@ -117,7 +119,8 @@ namespace mirrage::renderer {
 	                                              vk::Filter::eLinear,
 	                                              vk::SamplerMipmapMode::eLinear))
 	  , _render_pass(build_render_pass(renderer, _data_format, _voxel_data, _framebuffer))
-	  , _shadowcasters(entities.list<Shadowcaster_comp>()) {
+	  , _shadowcasters(entities.list<Shadowcaster_comp>())
+	{
 
 		MIRRAGE_INVARIANT(renderer.gbuffer().voxels.is_nothing(),
 		                  "More than one voxelization implementation active!");
@@ -130,7 +133,8 @@ namespace mirrage::renderer {
 	void Voxelization_pass::draw(vk::CommandBuffer& command_buffer,
 	                             Command_buffer_source&,
 	                             vk::DescriptorSet global_uniform_set,
-	                             std::size_t) {
+	                             std::size_t)
+	{
 
 		_render_pass.execute(command_buffer, _framebuffer, [&] {
 			auto descriptor_sets = std::array<vk::DescriptorSet, 1>{global_uniform_set};
@@ -157,17 +161,21 @@ namespace mirrage::renderer {
 	auto Voxelization_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                            ecs::Entity_manager&      entities,
 	                                            util::maybe<Meta_system&> meta_system,
-	                                            bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
+	                                            bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	{
 		return std::make_unique<Voxelization_pass>(renderer, entities);
 	}
 
 	auto Voxelization_pass_factory::rank_device(vk::PhysicalDevice,
 	                                            util::maybe<std::uint32_t> graphics_queue,
-	                                            int                        current_score) -> int {
+	                                            int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Voxelization_pass_factory::configure_device(vk::PhysicalDevice,
 	                                                 util::maybe<std::uint32_t>,
-	                                                 graphic::Device_create_info&) {}
+	                                                 graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mirrage/graphic/descriptor_sets.hpp>
+
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/purgatory.hpp>
 #include <mirrage/utils/ring_buffer.hpp>
@@ -10,6 +12,7 @@
 
 #include <initializer_list>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -25,7 +28,6 @@ namespace mirrage::graphic {
 	// fwd:
 	class Device;
 	class Render_pass_builder;
-	class Device;
 	class Render_pass;
 	class Render_pass_builder;
 	class Subpass_builder;
@@ -55,7 +57,9 @@ namespace mirrage::graphic {
 
 	struct Image_dimensions {
 		Image_dimensions(std::uint32_t width, std::uint32_t height, std::uint32_t depth, std::uint32_t layers)
-		  : width(width), height(height), depth(depth), layers(layers) {}
+		  : width(width), height(height), depth(depth), layers(layers)
+		{
+		}
 
 		std::uint32_t width;
 		std::uint32_t height;
@@ -71,18 +75,22 @@ namespace mirrage::graphic {
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::single_2d> : Image_dimensions {
-		Image_dimensions_t(std::uint32_t width, std::uint32_t height)
-		  : Image_dimensions(width, height, 1, 1) {}
+		Image_dimensions_t(std::uint32_t width, std::uint32_t height) : Image_dimensions(width, height, 1, 1)
+		{
+		}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::array_2d> : Image_dimensions {
 		Image_dimensions_t(std::uint32_t width, std::uint32_t height, std::uint32_t layers)
-		  : Image_dimensions(width, height, 1, layers) {}
+		  : Image_dimensions(width, height, 1, layers)
+		{
+		}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::cubemap> : Image_dimensions {
-		Image_dimensions_t(std::uint32_t width, std::uint32_t height)
-		  : Image_dimensions(width, height, 1, 6) {}
+		Image_dimensions_t(std::uint32_t width, std::uint32_t height) : Image_dimensions(width, height, 1, 6)
+		{
+		}
 	};
 
 
@@ -104,51 +112,6 @@ namespace mirrage::graphic {
 		Command_buffer_pool(const vk::Device& device, vk::UniqueCommandPool pool);
 	};
 
-	class Descriptor_pool {
-	  public:
-		Descriptor_pool(Descriptor_pool&& rhs) : _device(rhs._device), _pool(std::move(rhs._pool)) {}
-		Descriptor_pool& operator=(Descriptor_pool&& rhs) {
-			_pool = std::move(rhs._pool);
-			return *this;
-		}
-		~Descriptor_pool() = default;
-
-		auto create_descriptor(vk::DescriptorSetLayout) -> vk::UniqueDescriptorSet;
-
-	  private:
-		friend class Device;
-
-		const vk::Device&        _device;
-		vk::UniqueDescriptorPool _pool;
-
-		Descriptor_pool(const vk::Device& device, vk::UniqueDescriptorPool pool);
-	};
-
-	class Image_descriptor_set_layout {
-	  public:
-		Image_descriptor_set_layout(graphic::Device& device,
-		                            vk::Sampler      sampler,
-		                            std::uint32_t    image_number,
-		                            vk::ShaderStageFlags = vk::ShaderStageFlagBits::eFragment);
-
-		auto layout() const noexcept { return *_layout; }
-		auto operator*() const noexcept { return *_layout; }
-
-		auto create_set(Descriptor_pool& pool, std::initializer_list<vk::ImageView> images)
-		        -> vk::UniqueDescriptorSet {
-			auto set = pool.create_descriptor(layout());
-			update_set(*set, images);
-			return set;
-		}
-
-		void update_set(vk::DescriptorSet, std::initializer_list<vk::ImageView>);
-
-	  private:
-		graphic::Device&              _device;
-		vk::Sampler                   _sampler;
-		std::uint32_t                 _image_number;
-		vk::UniqueDescriptorSetLayout _layout;
-	};
 
 	class Fence {
 	  public:
@@ -167,7 +130,7 @@ namespace mirrage::graphic {
 		const vk::Device& _device;
 		vk::UniqueFence   _fence;
 
-		Fence(const vk::Device& device);
+		Fence(const vk::Device& device, bool signaled);
 	};
 
 	extern auto create_fence(Device&) -> Fence;
@@ -182,7 +145,9 @@ namespace mirrage::graphic {
 		  : _device(device)
 		  , _warn_on_full(warn_on_full)
 		  , _queues(max_frames, [&] { return create_fence(_device); })
-		  , _callback(callback) {}
+		  , _callback(callback)
+		{
+		}
 		template <typename Factory>
 		Per_frame_queue(Device&     device,
 		                Callback    callback,
@@ -195,12 +160,15 @@ namespace mirrage::graphic {
 		            [&] {
 			            return Entry{create_fence(_device), factory()};
 		            })
-		  , _callback(callback) {}
+		  , _callback(callback)
+		{
+		}
 		~Per_frame_queue() { clear(); }
 
 		auto capacity() const noexcept { return _queues.capacity(); }
 
-		void clear() {
+		void clear()
+		{
 			_queues.pop_while([&](auto& e) {
 				e.fence.wait();
 				_callback(e.data);
@@ -208,7 +176,8 @@ namespace mirrage::graphic {
 			});
 		}
 
-		auto start_new_frame() -> vk::Fence {
+		auto start_new_frame() -> vk::Fence
+		{
 			// free unused data from prev frames
 			_queues.pop_while([&](auto& e) {
 				if(!e.fence)
@@ -222,10 +191,9 @@ namespace mirrage::graphic {
 			auto& fence = _queues.head().fence;
 
 			while(!_queues.advance_head()) { // no free slot
-				if(_warn_on_full)
-					MIRRAGE_DEBUG(
-					        "Delete_queue is full. Increase max_frames or "
-					        "reduce amount of frames in flight.");
+				LOG_IF(plog::debug, _warn_on_full)
+				        << "Delete_queue is full. Increase max_frames or reduce amount of "
+				           "frames in flight.";
 
 				_queues.pop([&](auto& e) {
 					e.fence.wait();
@@ -258,10 +226,13 @@ namespace mirrage::graphic {
 	class Delete_queue : public Per_frame_queue<util::purgatory> {
 	  public:
 		Delete_queue(Device& device, std::size_t max_frames = 4, bool warn_on_full = true)
-		  : Per_frame_queue(device, +[](util::purgatory& p) { p.clear(); }, max_frames, warn_on_full) {}
+		  : Per_frame_queue(device, +[](util::purgatory& p) { p.clear(); }, max_frames, warn_on_full)
+		{
+		}
 
 		template <typename T>
-		auto destroy_later(T&& obj) -> T& {
+		auto destroy_later(T&& obj) -> T&
+		{
 			return current().add(std::forward<T>(obj));
 		}
 	};
@@ -320,13 +291,42 @@ namespace mirrage::graphic {
 	                         vk::ImageLayout             final_src_layout,
 	                         detail::Base_texture&       dst,
 	                         vk::ImageLayout             initial_dst_layout,
-	                         vk::ImageLayout             final_dst_layout);
+	                         vk::ImageLayout             final_dst_layout,
+	                         std::int32_t                src_mip = 0,
+	                         std::int32_t                dst_mip = 0);
 
 	extern void clear_texture(vk::CommandBuffer           cb,
-	                          const detail::Base_texture& src,
+	                          const detail::Base_texture& img,
 	                          util::Rgba                  color,
 	                          vk::ImageLayout             initial_layout,
 	                          vk::ImageLayout             final_layout,
 	                          std::uint32_t               initial_mip_level = 0,
 	                          std::uint32_t               mip_levels        = 0);
+
+	extern void clear_texture(vk::CommandBuffer cb,
+	                          vk::Image         img,
+	                          std::uint32_t     width,
+	                          std::uint32_t     height,
+	                          util::Rgba        color,
+	                          vk::ImageLayout   initial_layout,
+	                          vk::ImageLayout   final_layout,
+	                          std::uint32_t     initial_mip_level = 0,
+	                          std::uint32_t     mip_levels        = 0);
+
+	template <typename P>
+	auto find_queue_family(vk::PhysicalDevice& gpu, P&& predicat) -> util::maybe<std::uint32_t>
+	{
+		auto i = 0u;
+
+		for(auto& queue_family : gpu.getQueueFamilyProperties()) {
+			if(queue_family.queueCount > 0 && predicat(queue_family)) {
+				return i;
+			}
+
+			i++;
+		}
+
+		return util::nothing;
+	}
+
 } // namespace mirrage::graphic

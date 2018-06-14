@@ -53,22 +53,26 @@ namespace mirrage {
 		};
 
 		template <typename T>
-		auto operator+(const Pixel<T>& lhs, const Pixel<T>& rhs) {
+		auto operator+(const Pixel<T>& lhs, const Pixel<T>& rhs)
+		{
 			return Pixel<T>{lhs.r + rhs.r, lhs.g + rhs.g, lhs.b + rhs.b, lhs.a + rhs.a};
 		}
 
 		template <typename T>
-		auto operator*(const Pixel<T>& lhs, T rhs) {
+		auto operator*(const Pixel<T>& lhs, T rhs)
+		{
 			return Pixel<T>{lhs.r * rhs, lhs.g * rhs, lhs.b * rhs, lhs.a * rhs};
 		}
 
 		template <typename T>
-		auto operator*(T lhs, const Pixel<T>& rhs) {
+		auto operator*(T lhs, const Pixel<T>& rhs)
+		{
 			return Pixel<T>{lhs * rhs.r, lhs * rhs.g, lhs * rhs.b, lhs * rhs.a};
 		}
 
 		template <typename T>
-		auto operator/(const Pixel<T>& lhs, T rhs) {
+		auto operator/(const Pixel<T>& lhs, T rhs)
+		{
 			return Pixel<T>{lhs.r / rhs, lhs.g / rhs, lhs.b / rhs, lhs.a / rhs};
 		}
 
@@ -83,7 +87,8 @@ namespace mirrage {
 
 			Image_data() = default;
 			Image_data(std::uint32_t width, std::uint32_t height)
-			  : width(width), height(height), mip_levels(std::floor(std::log2(std::min(width, height))) + 1) {
+			  : width(width), height(height), mip_levels(std::floor(std::log2(std::min(width, height))) + 1)
+			{
 				for(auto i = 0u; i < mip_levels.size(); i++) {
 					auto width  = std::max(1u, this->width >> i);
 					auto height = std::max(1u, this->height >> i);
@@ -92,12 +97,14 @@ namespace mirrage {
 				}
 			}
 
-			auto& pixel(std::uint32_t level, std::uint32_t x, std::uint32_t y) {
+			auto& pixel(std::uint32_t level, std::uint32_t x, std::uint32_t y)
+			{
 				return mip_levels.at(level).at(y * (width >> level) + x);
 			}
 
 			template <typename F>
-			void foreach(F&& f) {
+			void foreach(F&& f)
+			{
 				for(std::uint32_t i = 0u; i < mip_levels.size(); i++) {
 					auto width  = std::max(1u, this->width >> i);
 					auto height = std::max(1u, this->height >> i);
@@ -110,7 +117,8 @@ namespace mirrage {
 			}
 		};
 
-		auto get_texture_name(const aiMaterial& material, aiTextureType type) -> util::maybe<std::string> {
+		auto get_texture_name(const aiMaterial& material, aiTextureType type) -> util::maybe<std::string>
+		{
 			auto count = material.GetTextureCount(type);
 			if(count == 0)
 				return util::nothing;
@@ -121,7 +129,8 @@ namespace mirrage {
 			return std::string(str.C_Str());
 		}
 
-		auto load_texture2d(const std::string path, bool srgb = true) -> Image_data<float> {
+		auto load_texture2d(const std::string path, bool srgb = true) -> Image_data<float>
+		{
 			int  width  = 0;
 			int  height = 0;
 			auto data   = stbi_load(path.c_str(), &width, &height, nullptr, 4);
@@ -154,7 +163,8 @@ namespace mirrage {
 		}
 
 		template <typename T, typename F>
-		void generate_mip_maps(Image_data<T>& image, F&& f) {
+		void generate_mip_maps(Image_data<T>& image, F&& f)
+		{
 			for(std::uint32_t i = 1u; i < image.mip_levels.size(); i++) {
 				auto width  = std::max(1u, image.width >> i);
 				auto height = std::max(1u, image.height >> i);
@@ -169,7 +179,8 @@ namespace mirrage {
 			}
 		}
 
-		void store_texture(Image_data<float>& image, const std::string& ouput, bool srgb = true) {
+		void store_texture(Image_data<float>& image, const std::string& ouput, bool srgb = true)
+		{
 			if(srgb) {
 				for(auto& level_data : image.mip_levels) {
 					for(auto& pixel : level_data) {
@@ -234,12 +245,13 @@ namespace mirrage {
 	bool convert_material(const std::string& name,
 	                      const aiMaterial&  material,
 	                      const std::string& base_dir,
-	                      const std::string& output) {
+	                      const std::string& output)
+	{
 
 		auto texture_dir = output + "/textures/";
 
 		auto substance_id =
-		        util::Str_id(get_texture_name(material, substamce_id_texture_type).get_or_other("default"));
+		        util::Str_id(get_texture_name(material, substamce_id_texture_type).get_or("default"));
 
 		// load and combine textures
 		auto albedo_name_mb = get_texture_name(material, albedo_texture_type);

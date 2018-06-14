@@ -1,5 +1,7 @@
-#include <SDL_vulkan.h> // has to be includes before vulkan
-#include <sf2/sf2.hpp>  // has to be first so he sf2_struct define is set
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h>
+
+#include <sf2/sf2.hpp> // has to be first so he sf2_struct define is set
 
 #include <mirrage/graphic/context.hpp>
 #include <mirrage/graphic/device.hpp>
@@ -9,21 +11,22 @@
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
-#include <SDL2/SDL.h>
 #include <gsl/gsl>
 
 #include <cstdio>
 #include <iostream>
 #include <sstream>
+#include <unordered_set>
 
 
 extern "C" {
 VkResult vkCreateDebugReportCallbackEXT(VkInstance                                instance,
                                         const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
                                         const VkAllocationCallbacks*              pAllocator,
-                                        VkDebugReportCallbackEXT*                 pCallback) {
-	auto func = (PFN_vkCreateDebugReportCallbackEXT) vkGetInstanceProcAddr(instance,
-	                                                                       "vkCreateDebugReportCallbackEXT");
+                                        VkDebugReportCallbackEXT*                 pCallback)
+{
+	auto func = reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>(
+	        vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT"));
 	if(func != nullptr) {
 		return func(instance, pCreateInfo, pAllocator, pCallback);
 	} else {
@@ -33,9 +36,10 @@ VkResult vkCreateDebugReportCallbackEXT(VkInstance                              
 
 void vkDestroyDebugReportCallbackEXT(VkInstance                   instance,
                                      VkDebugReportCallbackEXT     callback,
-                                     const VkAllocationCallbacks* pAllocator) {
-	auto func = (PFN_vkDestroyDebugReportCallbackEXT) vkGetInstanceProcAddr(
-	        instance, "vkDestroyDebugReportCallbackEXT");
+                                     const VkAllocationCallbacks* pAllocator)
+{
+	auto func = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(
+	        vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"));
 	if(func != nullptr) {
 		func(instance, callback, pAllocator);
 	}
@@ -47,7 +51,8 @@ namespace mirrage::graphic {
 	using namespace util::unit_literals;
 
 	namespace {
-		void sdl_error_check() {
+		void sdl_error_check()
+		{
 			const char* err = SDL_GetError();
 			if(*err != '\0') {
 				std::string errorStr(err);
@@ -56,22 +61,48 @@ namespace mirrage::graphic {
 			}
 		}
 
-		void add_present_extensions(std::vector<const char*>& extensions) {
-			auto present_extensions      = std::vector<const char*>(4);
-			auto present_extensions_size = static_cast<unsigned int>(present_extensions.size());
-			if(!SDL_GetVulkanInstanceExtensions(&present_extensions_size, present_extensions.data())) {
+		void add_presnet_extensions(std::vector<const char*>& extensions, SDL_Window* window)
+		{
+			auto count = static_cast<unsigned int>(0);
+			if(!SDL_Vulkan_GetInstanceExtensions(window, &count, nullptr)) {
 				MIRRAGE_FAIL("Unable to determine present extensions: " << SDL_GetError());
 			}
 
-			if(present_extensions_size > 0) {
-				extensions.insert(extensions.end(),
-				                  present_extensions.begin(),
-				                  present_extensions.begin() + present_extensions_size);
+			auto begin = extensions.size();
+			extensions.resize(begin + count);
+
+			if(!SDL_Vulkan_GetInstanceExtensions(window, &count, extensions.data() + begin)) {
+				MIRRAGE_FAIL("Unable to determine present extensions: " << SDL_GetError());
 			}
 		}
 
+		void add_present_extensions(std::vector<const char*>&                          extensions,
+		                            const std::unordered_map<std::string, Window_ptr>& windows)
+		{
+
+			extensions.reserve(extensions.size() + windows.size() * 4);
+
+			for(auto&& [_, window] : windows) {
+				(void) _;
+				add_presnet_extensions(extensions, window->window_handle());
+			}
+		}
+
+		void sort_and_unique(std::vector<const char*>& extensions)
+		{
+			std::sort(extensions.begin(), extensions.end(), [](auto lhs, auto rhs) {
+				return std::strcmp(lhs, rhs) < 0;
+			});
+			auto new_end = std::unique(extensions.begin(), extensions.end(), [](auto lhs, auto rhs) {
+				return std::strcmp(lhs, rhs) == 0;
+			});
+
+			extensions.erase(new_end, extensions.end());
+		}
+
 		auto check_extensions(const std::vector<const char*>& required,
-		                      const std::vector<const char*>& optional) -> std::vector<const char*> {
+		                      const std::vector<const char*>& optional) -> std::vector<const char*>
+		{
 			auto extensions = std::vector<const char*>();
 			extensions.reserve(required.size() + optional.size());
 
@@ -99,7 +130,7 @@ namespace mirrage::graphic {
 			bool all_supported = true;
 			for(auto i = 0u; i < support_confirmed.size(); i++) {
 				if(!support_confirmed[i]) {
-					MIRRAGE_WARN("Unsupported extension \"" << required[i] << "\"!");
+					LOG(plog::warning) << "Unsupported extension \"" << required[i] << "\"!";
 					all_supported = false;
 				}
 			}
@@ -111,7 +142,8 @@ namespace mirrage::graphic {
 			return extensions;
 		}
 
-		auto check_layers(const std::vector<const char*>& requested) -> std::vector<const char*> {
+		auto check_layers(const std::vector<const char*>& requested) -> std::vector<const char*>
+		{
 			auto validation_layers = std::vector<const char*>();
 			validation_layers.reserve(requested.size());
 
@@ -127,18 +159,23 @@ namespace mirrage::graphic {
 				}
 
 				if(!layer_requested) {
-					MIRRAGE_DEBUG("Additional validation layer is available, that hasn't been requested: "
-					              << l.layerName);
+					LOG(plog::debug) << "Additional validation layer is available, that hasn't been "
+					                    "requested: "
+					                 << l.layerName;
 				}
 			}
 
 			if(validation_layers.size() != requested.size()) {
-				auto log = util::error(__func__, __FILE__, __LINE__);
-				log << "Some requested validation layers are not supported: \n";
-				for(auto& l : validation_layers) {
-					log << "  - " << l << "\n";
+				IF_LOG(plog::error)
+				{
+					auto msg = std::stringstream{};
+					msg << "Some requested validation layers are not supported: \n";
+					for(auto& l : validation_layers) {
+						msg << "  - " << l << "\n";
+					}
+
+					LOG(plog::error) << msg.str();
 				}
-				log << std::endl;
 			}
 
 			return validation_layers;
@@ -151,7 +188,8 @@ namespace mirrage::graphic {
 		                                             int32_t                    code,
 		                                             const char*                layerPrefix,
 		                                             const char*                msg,
-		                                             void*                      userData) {
+		                                             void*                      userData)
+		{
 
 			// silences: DescriptorSet 0x3f previously bound as set #1 is incompatible with set
 			//             0x1cc99c0 newly bound as set #1 so set #2 and any subsequent sets were
@@ -161,12 +199,12 @@ namespace mirrage::graphic {
 
 
 			if(flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-				MIRRAGE_ERROR("[VK | " << layerPrefix << "] " << msg);
+				LOG(plog::error) << "[VK | " << layerPrefix << "] " << msg;
 			} else if(flags & VK_DEBUG_REPORT_WARNING_BIT_EXT
 			          || flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
-				MIRRAGE_WARN("[VK | " << layerPrefix << "] " << msg);
+				LOG(plog::warning) << "[VK | " << layerPrefix << "] " << msg;
 			} else {
-				MIRRAGE_INFO("[VK | " << layerPrefix << "] " << msg);
+				LOG(plog::info) << "[VK | " << layerPrefix << "] " << msg;
 			}
 
 			return VK_FALSE;
@@ -180,7 +218,8 @@ namespace mirrage::graphic {
 	                 uint32_t              engineVersion,
 	                 bool                  debug,
 	                 asset::Asset_manager& assets)
-	  : _assets(assets), _name(appName) {
+	  : _assets(assets), _name(appName)
+	{
 
 		auto maybe_settings = assets.load_maybe<Graphics_settings>("cfg:graphics"_aid);
 		if(maybe_settings.is_nothing()) {
@@ -197,12 +236,22 @@ namespace mirrage::graphic {
 
 		sdl_error_check();
 
+		for(auto&& [title, win] : _settings->windows) {
+			_windows.emplace(title,
+			                 std::make_unique<Window>(title,
+			                                          app_name() + " | " + title,
+			                                          win.display,
+			                                          win.width,
+			                                          win.height,
+			                                          win.fullscreen));
+		}
+
 		auto instanceCreateInfo = vk::InstanceCreateInfo{};
 		auto appInfo            = vk::ApplicationInfo{
                 appName.c_str(), appVersion, engineName.c_str(), engineVersion, VK_API_VERSION_1_0};
 
 		auto required_extensions = std::vector<const char*>{VK_KHR_SURFACE_EXTENSION_NAME};
-		add_present_extensions(required_extensions);
+		add_present_extensions(required_extensions, _windows);
 		auto optional_extensions = std::vector<const char*>{};
 
 
@@ -212,19 +261,25 @@ namespace mirrage::graphic {
 			required_extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		}
 
+		sort_and_unique(required_extensions);
+		sort_and_unique(optional_extensions);
 		auto extensions = check_extensions(required_extensions, optional_extensions);
 
-		auto log = util::info(__func__, __FILE__, __LINE__);
-		log << "Initializing vulkan...\n";
-		log << "Enabled extensions:\n";
-		for(auto e : extensions) {
-			log << "  - " << e << "\n";
+		IF_LOG(plog::info)
+		{
+			auto msg = std::stringstream{};
+			msg << "Initializing vulkan...\n";
+			msg << "Enabled extensions:\n";
+			for(auto e : extensions) {
+				msg << "  - " << e << "\n";
+			}
+			msg << "Enabled validation layers:\n";
+			for(auto l : _enabled_layers) {
+				msg << "  - " << l << "\n";
+			}
+
+			LOG(plog::info) << msg.str();
 		}
-		log << "Enabled validation layers:\n";
-		for(auto l : _enabled_layers) {
-			log << "  - " << l << "\n";
-		}
-		log << std::endl;
 
 		instanceCreateInfo.setPApplicationInfo(&appInfo);
 		instanceCreateInfo.setEnabledExtensionCount(gsl::narrow<uint32_t>(extensions.size()));
@@ -240,37 +295,29 @@ namespace mirrage::graphic {
 			                 | vk::DebugReportFlagBitsEXT::eWarning,
 			         debugCallback});
 		}
+
+		for(auto&& [_, window] : _windows) {
+			(void) _;
+			window->create_surface(*this);
+		}
 	}
 	Context::~Context() = default;
 
-	bool Context::settings(Graphics_settings new_settings) {
-		// TODO: update windows
-		/*
-		for(auto device : children()) {
-			if(!device->settings_changed(new_settings)) {
-				MIRRAGE_WARN("New graphics settings are not supported");
-				return false;
-			}
-		}*/
-
+	bool Context::settings(Graphics_settings new_settings)
+	{
 		_assets.save<Graphics_settings>("cfg:graphics"_aid, new_settings);
 		_settings = _assets.load<Graphics_settings>("cfg:graphics"_aid);
 
 		return true;
 	}
 
-	auto Context::create_window(std::string name, int width, int height) -> Window_ptr {
-		auto settings = _find_window_settings(name, width, height);
-
-		return std::make_unique<Window>(*this,
-		                                name,
-		                                app_name() + " | " + name,
-		                                settings.display,
-		                                settings.width,
-		                                settings.height,
-		                                settings.fullscreen);
+	auto Context::find_window(std::string name) -> util::maybe<Window&>
+	{
+		auto iter = _windows.find(name);
+		return iter == _windows.end() ? util::nothing : util::justPtr(&*iter->second);
 	}
-	auto Context::_find_window_settings(const std::string& name, int width, int height) -> Window_settings {
+	auto Context::_find_window_settings(const std::string& name, int width, int height) -> Window_settings
+	{
 		auto& cfg = settings();
 
 		auto win_cfg = std::find_if(
@@ -294,7 +341,8 @@ namespace mirrage::graphic {
 	}
 
 	namespace {
-		bool supports_present(vk::PhysicalDevice& gpu, const std::vector<Window*>& can_present_to) {
+		bool supports_present(vk::PhysicalDevice& gpu, const std::vector<Window*>& can_present_to)
+		{
 			auto supported_extensions = gpu.enumerateDeviceExtensionProperties();
 			auto sc_ext = std::find_if(supported_extensions.begin(), supported_extensions.end(), [](auto& e) {
 				return std::strcmp(e.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME) == 0;
@@ -316,7 +364,8 @@ namespace mirrage::graphic {
 		}
 
 		auto find_graphics_queue(vk::PhysicalDevice& gpu, const std::vector<Window*>& can_present_to)
-		        -> util::maybe<std::uint32_t> {
+		        -> util::maybe<std::uint32_t>
+		{
 			auto i = 0;
 
 			for(auto& queue_family : gpu.getQueueFamilyProperties()) {
@@ -339,7 +388,8 @@ namespace mirrage::graphic {
 			return util::nothing;
 		}
 
-		auto find_transfer_queue(vk::PhysicalDevice& gpu) -> std::uint32_t {
+		auto find_transfer_queue(vk::PhysicalDevice& gpu) -> std::uint32_t
+		{
 			auto families = gpu.getQueueFamilyProperties();
 
 			auto i = 0;
@@ -372,18 +422,25 @@ namespace mirrage::graphic {
 		auto find_surface_format(vk::PhysicalDevice& gpu,
 		                         Window&             window,
 		                         vk::Format          target_format,
-		                         vk::ColorSpaceKHR   target_space) -> vk::SurfaceFormatKHR {
+		                         vk::ColorSpaceKHR   target_space) -> vk::SurfaceFormatKHR
+		{
 
 			auto formats = gpu.getSurfaceFormatsKHR(window.surface());
 			if(formats.size() == 1 && formats.front().format == vk::Format::eUndefined) {
-				return {target_format, target_space};
+				auto surface_format       = vk::SurfaceFormatKHR{};
+				surface_format.format     = target_format;
+				surface_format.colorSpace = target_space;
+				return surface_format;
 			}
 
 			auto opt_found = std::find_if(formats.begin(), formats.end(), [&](auto& f) {
 				return f.format == target_format && f.colorSpace == target_space;
 			});
 			if(opt_found != formats.end()) {
-				return {target_format, target_space};
+				auto surface_format       = vk::SurfaceFormatKHR{};
+				surface_format.format     = target_format;
+				surface_format.colorSpace = target_space;
+				return surface_format;
 			}
 
 			opt_found = std::find_if(
@@ -393,9 +450,8 @@ namespace mirrage::graphic {
 			}
 
 			if(!formats.empty()) {
-				MIRRAGE_WARN(
-				        "Requested format is not supported by the device, fallback to first reported "
-				        "format");
+				LOG(plog::warning) << "Requested format is not supported by the device, fallback to first "
+				                      "reported format";
 				return formats.front();
 			} else {
 				MIRRAGE_FAIL("The device doesn't support any surface formats!");
@@ -404,7 +460,8 @@ namespace mirrage::graphic {
 
 		auto create_swapchain_create_info(vk::PhysicalDevice          gpu,
 		                                  bool                        srgb,
-		                                  const std::vector<Window*>& can_present_to) {
+		                                  const std::vector<Window*>& can_present_to)
+		{
 			auto swapchains = Swapchain_create_infos();
 
 			for(auto window : can_present_to) {
@@ -416,9 +473,10 @@ namespace mirrage::graphic {
 				sc_info.setClipped(true);
 				sc_info.setPreTransform(capabilities.currentTransform);
 				sc_info.setImageSharingMode(vk::SharingMode::eExclusive);
-				sc_info.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment);
+				sc_info.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment
+				                      | vk::ImageUsageFlagBits::eTransferDst);
 				sc_info.setImageArrayLayers(1);
-				sc_info.setMinImageCount(std::max(2u, capabilities.minImageCount));
+				sc_info.setMinImageCount(std::max(3u, capabilities.minImageCount));
 				if(capabilities.maxImageCount > 0 && capabilities.maxImageCount < sc_info.minImageCount) {
 					sc_info.setMinImageCount(capabilities.maxImageCount);
 				}
@@ -465,7 +523,8 @@ namespace mirrage::graphic {
 	auto Context::instantiate_device(Device_selector             selector,
 	                                 Device_factory              factory,
 	                                 const std::vector<Window*>& can_present_to,
-	                                 bool                        srgb) -> Device_ptr {
+	                                 bool                        srgb) -> Device_ptr
+	{
 		auto top_score = std::numeric_limits<int>::min();
 		auto top_gpu   = vk::PhysicalDevice{};
 
@@ -477,6 +536,14 @@ namespace mirrage::graphic {
 			auto graphics_queue = find_graphics_queue(gpu, can_present_to);
 
 			auto score = selector(gpu, graphics_queue);
+
+			auto gpu_name = std::string(gpu.getProperties().deviceName);
+			LOG(plog::info) << "Detected GPU: " << gpu_name;
+
+			if(!_settings->gpu_preference.empty() && _settings->gpu_preference == gpu_name) {
+				score = std::numeric_limits<int>::max();
+			}
+
 			if(score > top_score) {
 				top_score = score;
 				top_gpu   = gpu;
@@ -486,6 +553,8 @@ namespace mirrage::graphic {
 		if(!top_gpu) {
 			MIRRAGE_FAIL("Couldn't find a GPU that supports vulkan and all required features.");
 		}
+
+		LOG(plog::info) << "Selected GPU: " << top_gpu.getProperties().deviceName;
 
 		auto cfg = vk::DeviceCreateInfo{};
 		cfg.setEnabledLayerCount(gsl::narrow<uint32_t>(_enabled_layers.size()));
@@ -532,6 +601,8 @@ namespace mirrage::graphic {
 		create_info.queue_families.emplace(transfer_queue_tag,
 		                                   Queue_create_info{find_transfer_queue(top_gpu), 0.2f});
 
+		auto draw_queue_tag = util::maybe<util::Str_id>(util::nothing);
+
 		for(auto& qf : create_info.queue_families) {
 			auto tag      = qf.first;
 			auto family   = qf.second.family_id;
@@ -539,13 +610,19 @@ namespace mirrage::graphic {
 
 			auto& entry = queue_families[family];
 
+			if(available_families[family].queueFlags & vk::QueueFlagBits::eGraphics) {
+				draw_queue_tag = qf.first;
+			} else if(draw_queue_tag.is_nothing()
+			          && (available_families[family].queueFlags & vk::QueueFlagBits::eCompute))
+				draw_queue_tag = qf.first;
+
 			if(available_families[family].queueCount > 0) {
 				available_families[family].queueCount--;
 				std::get<0>(entry) += 1;
 				std::get<1>(entry).emplace_back(priority);
 			} else {
-				MIRRAGE_WARN("More queues requested than are availbalbe from family "
-				             << family << ". Collapsed with previous queue!");
+				LOG(plog::warning) << "More queues requested than are availbalbe from family " << family
+				                   << ". Collapsed with previous queue!";
 			}
 
 			queue_mapping.emplace(tag, std::make_tuple(family, std::get<1>(entry).size() - 1));
@@ -567,13 +644,15 @@ namespace mirrage::graphic {
 
 		auto swapchains = create_swapchain_create_info(top_gpu, srgb, can_present_to);
 
-		return std::make_unique<Device>(*this,
-		                                _assets,
-		                                top_gpu.createDeviceUnique(cfg),
-		                                top_gpu,
-		                                transfer_queue_tag,
-		                                std::move(queue_mapping),
-		                                std::move(swapchains),
-		                                dedicated_alloc_supported);
+		return std::make_unique<Device>(
+		        *this,
+		        _assets,
+		        top_gpu.createDeviceUnique(cfg),
+		        top_gpu,
+		        transfer_queue_tag,
+		        draw_queue_tag.get_or_throw("No draw or compute queue! That doesn't seem right."),
+		        std::move(queue_mapping),
+		        std::move(swapchains),
+		        dedicated_alloc_supported);
 	}
 } // namespace mirrage::graphic

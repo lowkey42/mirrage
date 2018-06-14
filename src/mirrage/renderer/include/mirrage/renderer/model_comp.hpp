@@ -20,19 +20,17 @@ namespace mirrage::renderer {
 		friend void                  save_component(ecs::Serializer& state, const Model_comp&);
 
 		Model_comp() = default;
-		Model_comp(ecs::Entity_manager& manager,
-		           ecs::Entity_handle   owner,
-		           asset::AID           model_aid = {},
-		           Model_ptr            model     = {})
-		  : Component(manager, owner), _model_aid(std::move(model_aid)), _model(std::move(model)) {}
+		Model_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner, Model_ptr model = {})
+		  : Component(manager, owner), _model(std::move(model))
+		{
+		}
 
-		auto model_aid() const -> auto& { return _model_aid; }
+		auto model_aid() const -> auto& { return _model.aid(); }
 		auto model() const -> auto& { return _model; }
 		void model(Model_ptr model) { _model = std::move(model); }
 
 	  private:
-		asset::AID _model_aid;
-		Model_ptr  _model;
+		Model_ptr _model;
 	};
 
 	class Model_unloaded_comp : public ecs::Component<Model_unloaded_comp> {
@@ -43,7 +41,9 @@ namespace mirrage::renderer {
 
 		Model_unloaded_comp() = default;
 		Model_unloaded_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner, asset::AID model_aid = {})
-		  : Component(manager, owner), _model_aid(std::move(model_aid)) {}
+		  : Component(manager, owner), _model_aid(std::move(model_aid))
+		{
+		}
 
 		auto model_aid() const -> auto& { return _model_aid; }
 
@@ -59,18 +59,16 @@ namespace mirrage::renderer {
 		friend void                  save_component(ecs::Serializer& state, const Model_loading_comp&);
 
 		Model_loading_comp() = default;
-		Model_loading_comp(ecs::Entity_manager& manager,
-		                   ecs::Entity_handle   owner,
-		                   asset::AID           model_aid = {},
-		                   future<Model_ptr>    model     = {})
-		  : Component(manager, owner), _model_aid(std::move(model_aid)), _model(std::move(model)) {}
+		Model_loading_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner, Model_ptr model = {})
+		  : Component(manager, owner), _model(std::move(model))
+		{
+		}
 
-		auto model_aid() const -> auto& { return _model_aid; }
+		auto model_aid() const -> auto& { return _model.aid(); }
 		auto model() const -> auto& { return _model; }
 		auto model() -> auto& { return _model; }
 
 	  private:
-		asset::AID        _model_aid;
-		future<Model_ptr> _model;
+		Model_ptr _model;
 	};
 } // namespace mirrage::renderer

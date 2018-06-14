@@ -95,6 +95,7 @@ namespace mirrage::gui {
 		~Gui();
 
 		void draw();
+		void start_frame();
 
 		auto ctx() -> nk_context*;
 		auto renderer() noexcept -> auto& { return _renderer; }

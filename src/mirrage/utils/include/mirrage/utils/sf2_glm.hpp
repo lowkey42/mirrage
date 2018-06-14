@@ -13,17 +13,20 @@
 
 namespace glm {
 
-	inline void load(sf2::JsonDeserializer& s, vec2& v) {
+	inline void load(sf2::JsonDeserializer& s, vec2& v)
+	{
 		s.read_virtual(sf2::vmember("x", v.x),
 		               sf2::vmember("y", v.y),
 		               sf2::vmember("w", v.x),
 		               sf2::vmember("h", v.y));
 	}
-	inline void save(sf2::JsonSerializer& s, const vec2& v) {
+	inline void save(sf2::JsonSerializer& s, const vec2& v)
+	{
 		s.write_virtual(sf2::vmember("x", v.x), sf2::vmember("y", v.y));
 	}
 
-	inline void load(sf2::JsonDeserializer& s, vec3& v) {
+	inline void load(sf2::JsonDeserializer& s, vec3& v)
+	{
 		s.read_virtual(sf2::vmember("x", v.x),
 		               sf2::vmember("y", v.y),
 		               sf2::vmember("z", v.z),
@@ -32,11 +35,13 @@ namespace glm {
 		               sf2::vmember("g", v.y),
 		               sf2::vmember("b", v.z));
 	}
-	inline void save(sf2::JsonSerializer& s, const vec3& v) {
+	inline void save(sf2::JsonSerializer& s, const vec3& v)
+	{
 		s.write_virtual(sf2::vmember("x", v.x), sf2::vmember("y", v.y), sf2::vmember("z", v.z));
 	}
 
-	inline void load(sf2::JsonDeserializer& s, vec4& v) {
+	inline void load(sf2::JsonDeserializer& s, vec4& v)
+	{
 		s.read_virtual(sf2::vmember("x", v.x),
 		               sf2::vmember("y", v.y),
 		               sf2::vmember("z", v.z),
@@ -47,7 +52,8 @@ namespace glm {
 		               sf2::vmember("b", v.z),
 		               sf2::vmember("a", v.a));
 	}
-	inline void save(sf2::JsonSerializer& s, const vec4& v) {
+	inline void save(sf2::JsonSerializer& s, const vec4& v)
+	{
 		s.write_virtual(sf2::vmember("x", v.x),
 		                sf2::vmember("y", v.y),
 		                sf2::vmember("z", v.z),
@@ -55,7 +61,8 @@ namespace glm {
 	}
 
 
-	inline void load(sf2::JsonDeserializer& s, quat& v) {
+	inline void load(sf2::JsonDeserializer& s, quat& v)
+	{
 		auto r = 0.f;
 		auto p = 0.f;
 		auto y = 0.f;
@@ -64,7 +71,8 @@ namespace glm {
 
 		v = quat(glm::vec3(r, p, y));
 	}
-	inline void save(sf2::JsonSerializer& s, const quat& v) {
+	inline void save(sf2::JsonSerializer& s, const quat& v)
+	{
 		auto r = roll(v);
 		auto p = pitch(v);
 		auto y = yaw(v);

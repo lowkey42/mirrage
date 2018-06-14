@@ -23,9 +23,12 @@ namespace mirrage::graphic {
 		class Base_texture {
 		  public:
 			Base_texture(Base_texture&& rhs) noexcept
-			  : _image(std::move(rhs._image)), _image_view(std::move(rhs._image_view)) {}
+			  : _image(std::move(rhs._image)), _image_view(std::move(rhs._image_view))
+			{
+			}
 
-			Base_texture& operator=(Base_texture&& rhs) noexcept {
+			Base_texture& operator=(Base_texture&& rhs) noexcept
+			{
 				_image      = std::move(rhs._image);
 				_image_view = std::move(rhs._image_view);
 				return *this;
@@ -38,6 +41,15 @@ namespace mirrage::graphic {
 			auto height() const noexcept { return _image.height(); }
 			auto depth() const noexcept { return _image.depth(); }
 			auto layers() const noexcept { return _image.layers(); }
+
+			auto width(std::uint32_t level) const noexcept
+			{
+				return this->width() / (std::uint32_t(1) << level);
+			}
+			auto height(std::uint32_t level) const noexcept
+			{
+				return this->height() / (std::uint32_t(1) << level);
+			}
 
 		  protected:
 			// construct as render target
@@ -81,14 +93,18 @@ namespace mirrage::graphic {
 	class Texture : public detail::Base_texture {
 	  public:
 		Texture(Device& device, Static_image image, vk::Format format)
-		  : Base_texture(device, std::move(image), format) {}
+		  : Base_texture(device, std::move(image), format)
+		{
+		}
 		Texture(Device&                  device,
 		        Image_dimensions_t<Type> dim,
 		        bool                     generate_mipmaps,
 		        vk::Format               format,
 		        gsl::span<gsl::byte>     data,
 		        std::uint32_t            owner_qfamily)
-		  : Base_texture(device, Type, dim, generate_mipmaps, format, data, owner_qfamily) {}
+		  : Base_texture(device, Type, dim, generate_mipmaps, format, data, owner_qfamily)
+		{
+		}
 		Texture(Device&                       device,
 		        Image_dimensions_t<Type>      dim,
 		        bool                          generate_mipmaps,
@@ -102,7 +118,9 @@ namespace mirrage::graphic {
 		            generate_mipmaps,
 		            detail::format_from_channels(device, channels, srgb),
 		            data,
-		            owner_qfamily) {}
+		            owner_qfamily)
+		{
+		}
 
 	  protected:
 		using detail::Base_texture::Base_texture;
@@ -122,9 +140,13 @@ namespace mirrage::graphic {
 		                                    detail::clamp_mip_levels(dim.width, dim.height, mip_levels),
 		                                    this->image(),
 		                                    format,
-		                                    aspects)) {}
+		                                    aspects))
+		{
+		}
 		Render_target(Render_target&& rhs) noexcept
-		  : Texture<Type>(std::move(rhs)), _single_mip_level_views(std::move(rhs._single_mip_level_views)) {}
+		  : Texture<Type>(std::move(rhs)), _single_mip_level_views(std::move(rhs._single_mip_level_views))
+		{
+		}
 
 		Render_target& operator=(Render_target&&) = default;
 
@@ -133,11 +155,8 @@ namespace mirrage::graphic {
 		using Texture<Type>::view;
 
 		auto view(std::uint32_t level) const noexcept { return *_single_mip_level_views.at(level); }
-		auto width(std::uint32_t level) const noexcept { return this->width() / (std::uint32_t(1) << level); }
-		auto height(std::uint32_t level) const noexcept {
-			return this->height() / (std::uint32_t(1) << level);
-		}
-		auto mip_levels() const noexcept {
+		auto mip_levels() const noexcept
+		{
 			return gsl::narrow<std::uint32_t>(_single_mip_level_views.size());
 		}
 
@@ -154,20 +173,46 @@ namespace mirrage::graphic {
 	using Texture_cube           = Texture<Image_type::cubemap>;
 	using Render_target_cube     = Render_target<Image_type::cubemap>;
 
-	using Texture_ptr = std::shared_ptr<Texture_2D>;
+	using Texture_ptr = asset::Ptr<Texture_2D>;
+
+	namespace detail {
+		extern auto load_image_data(Device& device, std::uint32_t owner_qfamily, asset::istream)
+		        -> std::tuple<Static_image, vk::Format, Image_type>;
+	}
+} // namespace mirrage::graphic
 
 
-	class Texture_cache {
+namespace mirrage::asset {
+
+	template <graphic::Image_type Type>
+	struct Loader<graphic::Texture<Type>> {
 	  public:
-		Texture_cache(Device& device, std::uint32_t owner_qfamily);
+		Loader(graphic::Device& device, std::uint32_t owner_qfamily)
+		  : _device(device), _owner_qfamily(owner_qfamily)
+		{
+		}
 
-		auto load(const asset::AID& id) -> Texture_ptr;
+		auto load(istream in)
+		{
+			auto data = graphic::detail::load_image_data(_device, _owner_qfamily, std::move(in));
+			auto&& [image, format, real_type] = data;
+			(void) format;
 
-		void shrink_to_fit();
+			if(real_type != Type)
+				throw std::system_error(asset::Asset_error::loading_failed,
+				                        "Requested image-type doesn't match type read from file: "
+				                                + std::to_string(static_cast<int>(Type))
+				                                + " != " + std::to_string(static_cast<int>(real_type)));
+
+			return image.transfer_task().then([this, data{std::move(data)}]() mutable {
+				return graphic::Texture<Type>{_device, std::move(std::get<0>(data)), std::get<1>(data)};
+			});
+		}
+		void save(ostream, const graphic::Texture<Type>&) { MIRRAGE_FAIL("Save of textures not supported!"); }
 
 	  private:
-		Device*                                     _device;
-		std::uint32_t                               _owner_qfamily;
-		std::unordered_map<asset::AID, Texture_ptr> _textures;
+		graphic::Device& _device;
+		std::uint32_t    _owner_qfamily;
 	};
-} // namespace mirrage::graphic
+
+} // namespace mirrage::asset

@@ -1,0 +1,274 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+
+layout (constant_id = 0) const int HISTOGRAM_SLOTS = 256;
+layout (constant_id = 2) const float HISTOGRAM_MIN = -10;
+layout (constant_id = 3) const float HISTOGRAM_MAX = 10;
+
+layout (local_size_x = 128, local_size_y = 1, local_size_z = 1 ) in;
+
+layout(set=1, binding = 1) buffer Data {
+	uint histogram[HISTOGRAM_SLOTS + 2];
+};
+
+layout (set=1, binding = 2, r16f) uniform image2D adjustment_factor;
+
+layout(set=1, binding = 3) buffer PrevData {
+	uint prev_histogram[HISTOGRAM_SLOTS + 2];
+};
+
+layout(push_constant) uniform Push_constants {
+	// min/max log display luminance
+	vec4 parameters;
+} pcs;
+
+#include "global_uniforms.glsl"
+
+shared int ceilings[HISTOGRAM_SLOTS];
+shared int local_histogram[HISTOGRAM_SLOTS];
+shared int total;
+shared int ceil_sum;
+shared int cuts;
+shared int free_histograms;
+shared float sigma;
+
+#include "tone_mapping_prefix_sum.glsl"
+
+
+float delta_L_t(float La) {
+	// Table 1 of "A Visibility Matching Tone Reproduction Operator for High Dynamic Range Scenes"
+	float x = log(La)/log(10); // to log_10
+	float r = 0;
+
+	if     (x<=-3.94  ) r = -2.86;
+	else if(x<=-1.44  ) r = pow(0.405*x+1.6, 2.18) - 2.86;
+	else if(x<=-0.0184) r = x - 0.395;
+	else if(x<=1.9    ) r = pow(0.249*x+0.65, 2.7) - 0.72;
+	else                r = x - 1.255;
+
+	return pow(10.0, r);
+}
+
+float index_to_log_lum(uint index) {
+	return float(index)/HISTOGRAM_SLOTS * (HISTOGRAM_MAX-HISTOGRAM_MIN) + HISTOGRAM_MIN;
+}
+
+float R(float L, float sigma_La) {
+	return L / (L + sigma_La);
+}
+
+void main() {
+	float DISPLAY_MIN = pcs.parameters.x;
+	float DISPLAY_MAX = pcs.parameters.y;
+
+	// calculate constants and initialize shared memory
+	uint local_id = gl_LocalInvocationID.x + gl_LocalInvocationID.y*gl_WorkGroupSize.x;
+	uint local_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+
+	float world_range = HISTOGRAM_MAX - HISTOGRAM_MIN;
+	float display_range = DISPLAY_MAX - DISPLAY_MIN;
+
+	total = 0;
+	ceil_sum = 0;
+	cuts = 0;
+	free_histograms = 0;
+
+	// copy histogram to shared memory and sum up total
+	int sub_total = 0;
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		int h = int(histogram[i]);
+		local_histogram[i] = h;
+		sub_total += h;
+	}
+
+	memoryBarrierShared();
+	barrier();
+
+	atomicAdd(total, sub_total);
+	barrier();
+
+	// adaption
+	if(local_id==0) {
+		float L0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS]);
+		float p0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+1]);
+		float t  = global_uniforms.time.z;
+		float t0_pigment = 100; // pigment bleaching/regeneration time
+		float t0_neural  = 1.08; // neural adaption time
+		float pigment_regen_speed = 0.01;
+
+		float n = total;
+		uint median = 0;
+		if(n>0) {
+			float median_idx = (n+1)/2.0;
+			float sum = 0;
+			for(uint i=0; i<HISTOGRAM_SLOTS; i++) {
+				sum += local_histogram[i];
+				if(sum >= median_idx) {
+					median = i;
+					break;
+				}
+			}
+		}
+
+		float La = exp(index_to_log_lum(clamp(int(median), 0, HISTOGRAM_SLOTS-1)));
+		La = clamp(La, 0.001, 15);
+
+		// correction faktor based on observations in various lighting conditions.
+		//   for some reason the original equation is too dark in bright but correct in dark environments
+		float La_scale = 100.8225 - 99.99274*exp(-0.4800563*La);
+		La /= max(1, La_scale);
+
+		float pLa = 0.0001 / (0.0001 + La);
+		float p = pLa + (p0-pLa) * exp(-t/(t0_pigment*max(pLa,pigment_regen_speed)));
+		float L = La + (L0-La)*exp(-t/t0_neural);
+
+		float sigma_b = 1.0 / p;
+
+
+		// rods
+		float sigma_n = pow(10, (2.311*pow(L,0.3604))
+							   /(pow(L, 0.3604) + pow(0.008061,0.3604)) -2.749);
+		float sigma_c = pow(10, (1.735*pow(L,0.9524))
+							   /(pow(L, 0.9524) + pow(1.277,0.9524)) +0.005684);
+
+		/*
+		// cones
+		float sigma_n = pow(10, (2.027*pow(L,0.6406))
+							   /(pow(L, 0.6406) + pow(5.859,0.6406)) +0.01711);
+		float sigma_c = pow(10, (1.929*pow(L,0.8471))
+							   /(pow(L, 0.8471) + pow(1048.0,0.8471)) +0.01820);
+		*/
+		sigma = sigma_b * sigma_n * sigma_c;
+
+		histogram[HISTOGRAM_SLOTS] = floatBitsToUint(L);
+		histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(p);
+	}
+
+	// constant calculated with doc/tonemapping/calc_delta_r.cpp
+	// depends on exponent used in R, min/max world luminance and bucket count
+	float delta_R = 0.0135218;
+
+
+	build_prefix_sum();
+
+	barrier();
+
+	float ceil_const = float(total) / HISTOGRAM_SLOTS * (world_range/display_range);
+
+	float bin_width = world_range / HISTOGRAM_SLOTS;
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		float L_w = exp(index_to_log_lum(i));
+		float L_d = exp(DISPLAY_MIN + display_range * float(prefix_sum[i])/total);
+
+		float r = R(L_w, sigma) + delta_R;
+		float delta_L = r>1 ? 1.0/0.0
+		                    : sigma * (r/(1-r)) - L_w;
+
+		float x = (delta_L_t(L_d)/L_d);
+		ceilings[i] = int(round(ceil_const * x / (delta_L/L_w)));
+
+		atomicAdd(ceil_sum, ceilings[i]);
+	}
+
+	barrier();
+
+	float display_range_factor = 1.f;
+
+	if(ceil_sum<total) {
+		display_range_factor = float(ceil_sum) / float(total);
+	}
+
+
+	cuts = 0;
+	barrier();
+
+	// cut histogram
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		int ceiling = int(round(ceilings[i]/display_range_factor));
+		int cut = max(0, local_histogram[i]-ceiling);
+		local_histogram[i] -= cut;
+		atomicAdd(cuts, int(cut));
+	}
+
+	barrier();
+	int org_cuts = cuts;
+	barrier();
+
+	// redistribute
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		int ceiling = int(round(ceilings[i]/display_range_factor));
+		int remainder = ceiling - local_histogram[i];
+
+		float fill_percentage = float(local_histogram[i]) / total;
+		int fill = min(int(round(fill_percentage * org_cuts)),  remainder);
+
+		atomicAdd(cuts, -fill);
+		local_histogram[i] += fill;
+
+		if(local_histogram[i] < ceiling) {
+			atomicAdd(free_histograms, 1);
+		}
+	}
+
+	barrier();
+
+	// redistribute the remainder equaly
+	for(int i = 0; i<10; i++) {
+		if(cuts>0 && free_histograms>0) {
+			org_cuts = cuts;
+			int org_free_histograms = free_histograms;
+			barrier();
+
+			float fill_percentage = 1.f / org_free_histograms;
+
+			for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+				int ceiling = int(ceil(ceilings[i]/display_range_factor));
+				int remainder = ceiling - local_histogram[i];
+
+				int fill = min(int(ceil(fill_percentage * org_cuts)),  remainder);
+
+				local_histogram[i] += fill;
+				atomicAdd(cuts, -fill);
+
+				if(fill>0 && local_histogram[i] >= ceiling) {
+					atomicAdd(free_histograms, -1);
+				}
+			}
+		}
+
+		barrier();
+	}
+
+
+	// write back adjustment result (for debugging and lerp/smoothing)
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		histogram[i] = local_histogram[i];
+	}
+	if(local_id==0) {
+		//histogram[HISTOGRAM_SLOTS] = floatBitsToUint(1.0-display_range_factor);
+		//histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(0);
+	}
+
+
+	memoryBarrierShared();
+	barrier();
+	build_prefix_sum();
+	float sum = prefix_sum[HISTOGRAM_SLOTS];
+
+
+	// calc output texture
+	for(uint i=local_id; i<HISTOGRAM_SLOTS; i+=local_size) {
+		float prev = imageLoad(adjustment_factor, ivec2(i,0)).r;
+
+		float curr_lum = exp(index_to_log_lum(i));
+		float factor = exp(DISPLAY_MIN + display_range * float(prefix_sum[i])/sum);
+		factor = (factor - exp(DISPLAY_MIN)) / (exp(DISPLAY_MAX)-exp(DISPLAY_MIN));
+		factor = clamp(factor / curr_lum, 0.001, 1);
+
+		if(!isnan(prev) && !isinf(prev))
+			factor = mix(prev, factor, global_uniforms.time.z/0.5);
+
+		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
+	}
+}

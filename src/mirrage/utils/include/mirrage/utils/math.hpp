@@ -39,12 +39,14 @@ namespace mirrage::util {
 
 	// min
 	template <typename FirstT>
-	constexpr auto min(FirstT&& first) {
+	constexpr auto min(FirstT&& first)
+	{
 		return first;
 	}
 
 	template <typename FirstT, typename SecondT>
-	constexpr auto min(FirstT&& first, SecondT&& second) {
+	constexpr auto min(FirstT&& first, SecondT&& second)
+	{
 		using result_t = details::min_max_result_t<FirstT, SecondT>;
 
 		if(static_cast<result_t>(first) < static_cast<result_t>(second))
@@ -55,19 +57,22 @@ namespace mirrage::util {
 
 	template <typename FirstT, typename SecondT, typename... Ts>
 	constexpr auto min(FirstT&& first, SecondT&& second, Ts&&... rest)
-	        -> details::min_max_result_t<FirstT, SecondT, Ts...> {
+	        -> details::min_max_result_t<FirstT, SecondT, Ts...>
+	{
 		return min(min(std::forward<FirstT>(first), std::forward<SecondT>(second)),
 		           std::forward<Ts>(rest)...);
 	}
 
 	// max
 	template <typename FirstT>
-	constexpr auto max(FirstT&& first) {
+	constexpr auto max(FirstT&& first)
+	{
 		return first;
 	}
 
 	template <typename FirstT, typename SecondT>
-	constexpr auto max(FirstT&& first, SecondT&& second) {
+	constexpr auto max(FirstT&& first, SecondT&& second)
+	{
 		using result_t = details::min_max_result_t<FirstT, SecondT>;
 
 		if(static_cast<result_t>(second) < static_cast<result_t>(first))
@@ -78,14 +83,16 @@ namespace mirrage::util {
 
 	template <typename FirstT, typename SecondT, typename... Ts>
 	constexpr auto max(FirstT&& first, SecondT&& second, Ts&&... rest)
-	        -> details::min_max_result_t<FirstT, SecondT, Ts...> {
+	        -> details::min_max_result_t<FirstT, SecondT, Ts...>
+	{
 		return max(max(std::forward<FirstT>(first), std::forward<SecondT>(second)),
 		           std::forward<Ts>(rest)...);
 	}
 
 
 	template <typename Pos, typename Vel>
-	auto spring(Pos source, Vel v, Pos target, float damping, float freq, Time t) -> std::tuple<Pos, Vel> {
+	auto spring(Pos source, Vel v, Pos target, float damping, float freq, Time t) -> std::tuple<Pos, Vel>
+	{
 		auto f      = remove_unit(1 + 2 * t * damping * freq);
 		auto tff    = remove_unit(t * freq * freq);
 		auto ttff   = remove_unit(t * tff);
@@ -102,61 +109,4 @@ namespace mirrage::util {
 		return std::make_tuple(new_pos, new_vel);
 	}
 
-
-	enum class Interpolation_type { linear, constant };
-
-	template <typename T>
-	struct Interpolation {
-		Interpolation(
-		        T begin, T end, Interpolation_type type, T max_deviation, std::vector<T> cpoints) noexcept;
-
-		auto operator()(float t, int32_t seed = 0) const noexcept -> T;
-
-		auto max() const noexcept -> T;
-		auto avg(int32_t seed = 0) const noexcept -> T;
-
-		T                  initial_value;
-		T                  final_value;
-		Interpolation_type type;
-		T                  max_deviation;
-		std::vector<T>     cpoints;
-	};
-
-	template <typename T>
-	using Xerp = Interpolation<T>;
-
-	/**
-	 * linear interpolation
-	 */
-	template <typename T>
-	auto lerp(T begin, T end, T max_deviation = T(0)) -> Interpolation<T>;
-
-	/**
-	 * constant 'interpolation'
-	 */
-	template <typename T>
-	auto cerp(std::vector<T> values, T max_deviation = T(0)) -> Interpolation<T>;
-
-	/**
-	 * single constant 'interpolation'
-	 */
-	template <typename T>
-	auto scerp(T value, T max_deviation = T(0)) -> Interpolation<T>;
-
-
-	template <typename T>
-	auto operator*(Interpolation<T> i, float f) -> Interpolation<T> {
-		auto cpoints = std::vector<T>(i.cpoints);
-		for(auto& p : cpoints)
-			p *= f;
-
-		return {i.initial_value * f, i.final_value * f, i.type, i.max_deviation * f, std::move(cpoints)};
-	}
-	template <typename T>
-	auto operator/(Interpolation<T> i, float f) -> Interpolation<T> {
-		return i * (1 / f);
-	}
 } // namespace mirrage::util
-
-#define UTIL_MATH_INCLUDED
-#include "math.hxx"

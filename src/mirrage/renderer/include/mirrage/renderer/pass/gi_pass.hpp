@@ -22,11 +22,11 @@ namespace mirrage::renderer {
 
 	  private:
 		Deferred_renderer&                   _renderer;
-		const int                            _highres_base_mip_level;
-		const int                            _base_mip_level;
-		const int                            _max_mip_level;
-		const int                            _diffuse_mip_level;
-		const int                            _min_mip_level;
+		const std::uint32_t                  _highres_base_mip_level;
+		const std::uint32_t                  _base_mip_level;
+		const std::uint32_t                  _max_mip_level;
+		const std::uint32_t                  _diffuse_mip_level;
+		const std::uint32_t                  _min_mip_level;
 		vk::UniqueSampler                    _gbuffer_sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
 		graphic::Render_target_2D&           _color_in_out;
@@ -36,9 +36,15 @@ namespace mirrage::renderer {
 		glm::mat4                            _prev_proj;
 		glm::vec3                            _prev_eye_position;
 
-		// current GI result + history buffer (diffuse only)
-		graphic::Render_target_2D _gi_diffuse;
+		/// current GI result (diffuse only)
+		///                     HISTORY  SAMPLES  RESULT
+		/// reproject pass        out               in
+		/// sample pass	                   out
+		/// upsample pass                in/out     in (prev MIP)
+		/// blend history pass    in        in     out
 		graphic::Render_target_2D _gi_diffuse_history;
+		graphic::Render_target_2D _gi_diffuse_samples;
+		graphic::Render_target_2D _gi_diffuse_result;
 
 		// current GI result + history buffer (specular only)
 		graphic::Render_target_2D _gi_specular;
@@ -46,6 +52,7 @@ namespace mirrage::renderer {
 
 		vk::Format                _history_weight_format;
 		graphic::Render_target_2D _history_weight;
+		graphic::Render_target_2D _history_weight_prev;
 
 		// preintegration of BRDF. Based on:
 		//     http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
@@ -56,31 +63,41 @@ namespace mirrage::renderer {
 		graphic::Render_pass      _brdf_integration_renderpass;
 
 		// blend reprojected history into current current frame to simulate multiple bounces
-		graphic::Framebuffer    _reproject_framebuffer;
-		graphic::Render_pass    _reproject_renderpass;
-		vk::UniqueDescriptorSet _reproject_descriptor_set;
+		graphic::Framebuffer   _reproject_framebuffer;
+		graphic::Render_pass   _reproject_renderpass;
+		graphic::DescriptorSet _reproject_descriptor_set;
+
+		// reproject higher diffuse MIP levels (for temporal smoothing of results)
+		std::vector<graphic::Framebuffer> _diffuse_reproject_framebuffers;
+		graphic::Render_pass              _diffuse_reproject_renderpass;
 
 		// GI sampling for diffuse illumination
-		std::vector<graphic::Framebuffer>    _sample_framebuffers;
-		graphic::Render_pass                 _sample_renderpass;
-		std::vector<vk::UniqueDescriptorSet> _sample_descriptor_sets;
+		std::vector<graphic::Framebuffer>   _sample_framebuffers;
+		std::vector<graphic::Framebuffer>   _sample_framebuffers_blend;
+		graphic::Render_pass                _sample_renderpass;
+		std::vector<graphic::DescriptorSet> _sample_descriptor_sets;
 
 		// SS cone tracing for specular illumination
-		graphic::Framebuffer    _sample_spec_framebuffer;
-		graphic::Render_pass    _sample_spec_renderpass;
-		vk::UniqueDescriptorSet _sample_spec_descriptor_set;
+		graphic::Framebuffer   _sample_spec_framebuffer;
+		graphic::Render_pass   _sample_spec_renderpass;
+		graphic::DescriptorSet _sample_spec_descriptor_set;
+
+		// median filter to remove noise from specular illumination
+		graphic::Framebuffer   _median_spec_framebuffer;
+		graphic::Render_pass   _median_spec_renderpass;
+		graphic::DescriptorSet _median_spec_descriptor_set;
 
 		// blur pass for specular illumination
-		graphic::Framebuffer    _blur_horizonal_framebuffer;
-		graphic::Framebuffer    _blur_vertical_framebuffer;
-		graphic::Render_pass    _blur_render_pass;
-		vk::UniqueDescriptorSet _blur_descriptor_set_horizontal;
-		vk::UniqueDescriptorSet _blur_descriptor_set_vertical;
+		graphic::Framebuffer   _blur_horizonal_framebuffer;
+		graphic::Framebuffer   _blur_vertical_framebuffer;
+		graphic::Render_pass   _blur_render_pass;
+		graphic::DescriptorSet _blur_descriptor_set_horizontal;
+		graphic::DescriptorSet _blur_descriptor_set_vertical;
 
 		// write back GI results
-		graphic::Framebuffer    _blend_framebuffer;
-		graphic::Render_pass    _blend_renderpass;
-		vk::UniqueDescriptorSet _blend_descriptor_set;
+		graphic::Framebuffer   _blend_framebuffer;
+		graphic::Render_pass   _blend_renderpass;
+		graphic::DescriptorSet _blend_descriptor_set;
 
 
 		// calculates the texture with the preintegrated BRDF
@@ -94,7 +111,7 @@ namespace mirrage::renderer {
 		void _generate_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
 
 		// calculates GI samples and stores them into the levels of _gi_diffuse and _gi_specular
-		void _generate_gi_samples(vk::CommandBuffer& command_buffer);
+		void _generate_gi_samples(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
 
 		// blurs the specular samples
 		void _blur_spec_gi(vk::CommandBuffer& command_buffer);

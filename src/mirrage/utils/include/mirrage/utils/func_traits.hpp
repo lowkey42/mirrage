@@ -50,6 +50,12 @@ namespace mirrage::util {
 		using arg_t = typename arg<i>::type;
 	};
 
+	template <typename Return, typename... Arg>
+	constexpr func_type func_trait<Return (*)(Arg...)>::type;
+	template <typename Return, typename... Arg>
+	constexpr std::size_t func_trait<Return (*)(Arg...)>::argument_count;
+
+
 	template <typename T, std::size_t i>
 	using nth_func_arg_t = typename func_trait<std::decay_t<T>>::template arg_t<i>;
 
@@ -61,7 +67,8 @@ namespace mirrage::util {
 	[S];
 
 	template <class P, class M>
-	std::size_t get_member_offset(const M P::*member) {
+	std::size_t get_member_offset(const M P::*member)
+	{
 		static_assert(std::is_standard_layout<P>::value && std::is_default_constructible<P>::value,
 		              "The class has to be a standard layout type and provide a default constructor!");
 		constexpr P dummy{};
@@ -69,24 +76,31 @@ namespace mirrage::util {
 	}
 
 	template <typename F>
-	inline void apply(F&&) {}
+	inline void apply(F&&)
+	{
+	}
 	template <typename F, typename FirstArg, typename... Arg>
-	inline void apply(F&& func, FirstArg&& first, Arg&&... arg) {
+	inline void apply(F&& func, FirstArg&& first, Arg&&... arg)
+	{
 		func(std::forward<FirstArg>(first));
 		util::apply(std::forward<F>(func), std::forward<Arg>(arg)...);
 	}
 
 	template <typename F>
-	inline void apply2(F&&) {}
+	inline void apply2(F&&)
+	{
+	}
 
 	template <typename F, typename FirstArg, typename SecondArg, typename... Arg>
-	inline void apply2(F&& func, FirstArg&& first, SecondArg&& second, Arg&&... arg) {
+	inline void apply2(F&& func, FirstArg&& first, SecondArg&& second, Arg&&... arg)
+	{
 		func(std::forward<FirstArg>(first), std::forward<SecondArg>(second));
 		util::apply2(std::forward<F>(func), std::forward<Arg>(arg)...);
 	}
 
 	template <typename O, typename F>
-	auto member_fptr(O* self, F&& f) -> decltype(auto) {
+	auto member_fptr(O* self, F&& f) -> decltype(auto)
+	{
 		if constexpr(std::is_same<void, typename func_trait<F>::return_t>::value) {
 			return [self, &f](auto&&... args) -> decltype(auto) {
 				std::invoke(f, self, std::forward<decltype(args)>(args)...);

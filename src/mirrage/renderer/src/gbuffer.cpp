@@ -5,21 +5,26 @@
 namespace mirrage::renderer {
 
 	namespace {
-		auto get_hdr_format(graphic::Device& device) {
-			auto format = device.get_supported_format(
-			        {vk::Format::eR16G16B16Sfloat, vk::Format::eR16G16B16A16Sfloat},
-			        vk::FormatFeatureFlagBits::eColorAttachmentBlend
-			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
+		auto get_hdr_format(graphic::Device& device)
+		{
+			auto format =
+			        device.get_supported_format({vk::Format::eR16G16B16A16Sfloat},
+			                                    vk::FormatFeatureFlagBits::eColorAttachmentBlend
+			                                            | vk::FormatFeatureFlagBits::eSampledImageFilterLinear
+			                                            | vk::FormatFeatureFlagBits::eStorageImage
+			                                            | vk::FormatFeatureFlagBits::eTransferDst
+			                                            | vk::FormatFeatureFlagBits::eTransferSrc);
 
 			if(format.is_some())
 				return format.get_or_throw();
 
-			MIRRAGE_WARN("HDR render targets are not supported! Falling back to LDR rendering!");
+			LOG(plog::warning) << "HDR render targets are not supported! Falling back to LDR rendering!";
 
 			return device.get_texture_rgb_format().get_or_throw("No rgb-format supported");
 		}
 
-		auto get_depth_format(graphic::Device& device) {
+		auto get_depth_format(graphic::Device& device)
+		{
 			auto format = device.get_supported_format(
 			        {vk::Format::eR16Unorm, vk::Format::eR16Sfloat, vk::Format::eR32Sfloat},
 			        vk::FormatFeatureFlagBits::eColorAttachment
@@ -28,8 +33,8 @@ namespace mirrage::renderer {
 			if(format.is_some())
 				return format.get_or_throw();
 
-			MIRRAGE_WARN(
-			        "Depth (R16 / R32) render targets are not supported! Falling back to LDR rendering!");
+			LOG(plog::warning) << "Depth (R16 / R32) render targets are not supported! Falling back to LDR "
+			                      "rendering!";
 
 			return get_hdr_format(device);
 		}
@@ -81,7 +86,7 @@ namespace mirrage::renderer {
 	           color_format,
 	           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
 	                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
-	                   | vk::ImageUsageFlagBits::eTransferDst,
+	                   | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eStorage,
 	           vk::ImageAspectFlagBits::eColor)
 
 	  , colorB(device,
@@ -90,6 +95,8 @@ namespace mirrage::renderer {
 	           color_format,
 	           vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
 	                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
-	                   | vk::ImageUsageFlagBits::eTransferDst,
-	           vk::ImageAspectFlagBits::eColor) {}
+	                   | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eStorage,
+	           vk::ImageAspectFlagBits::eColor)
+	{
+	}
 } // namespace mirrage::renderer

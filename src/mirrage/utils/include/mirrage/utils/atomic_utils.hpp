@@ -19,7 +19,8 @@ namespace mirrage::util {
 			atomic_wrapper() = default;
 			atomic_wrapper(T v) : _val(v) {}
 			atomic_wrapper(const atomic_wrapper& rhs) noexcept : _val(rhs._val.load()) {}
-			auto& operator=(const atomic_wrapper& rhs) noexcept {
+			auto& operator=(const atomic_wrapper& rhs) noexcept
+			{
 				_val.store(rhs._val.load());
 				return *this;
 			}
@@ -41,11 +42,13 @@ namespace mirrage::util {
 	using vector_atomic = std::vector<detail::atomic_wrapper<T>>;
 
 	template <typename T>
-	std::atomic<T>& at(vector_atomic<T>& v, std::size_t i) {
+	std::atomic<T>& at(vector_atomic<T>& v, std::size_t i)
+	{
 		return v.at(i).get();
 	}
 	template <typename T>
-	const std::atomic<T>& at(const vector_atomic<T>& v, std::size_t i) {
+	const std::atomic<T>& at(const vector_atomic<T>& v, std::size_t i)
+	{
 		return v.at(i).get();
 	}
 } // namespace mirrage::util

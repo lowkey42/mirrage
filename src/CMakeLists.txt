@@ -14,11 +14,24 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 endif()
 
 
-if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic -Werror -Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic -Wextra-semi
+		-Wzero-as-null-pointer-constant -Wold-style-cast -Werror
+		-Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
+
+elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic
+		-Wlogical-op -Werror -Wno-unused-parameter
+		-Wno-missing-braces)
+	# TODO: removed (for now) because of false-positives: -Wzero-as-null-pointer-constant
+
 elseif(MSVC)
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS /Za)
 endif()
+
+
+add_definitions(-DHPC_HISTOGRAM_DEBUG_VIEW)
+
 
 if(MIRRAGE_BUILD_DEMO)
 	add_subdirectory(demo)

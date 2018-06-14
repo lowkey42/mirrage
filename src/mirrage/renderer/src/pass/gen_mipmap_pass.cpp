@@ -15,7 +15,8 @@ namespace mirrage::renderer {
 
 		auto build_mip_render_pass(Deferred_renderer&        renderer,
 		                           vk::DescriptorSetLayout   desc_set_layout,
-		                           std::vector<Framebuffer>& out_framebuffers) {
+		                           std::vector<Framebuffer>& out_framebuffers)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -104,7 +105,8 @@ namespace mirrage::renderer {
 	  , _descriptor_set_layout(renderer.device(), *_gbuffer_sampler, 2)
 
 	  , _mipmap_gen_renderpass(
-	            build_mip_render_pass(renderer, *_descriptor_set_layout, _mipmap_gen_framebuffers)) {
+	            build_mip_render_pass(renderer, *_descriptor_set_layout, _mipmap_gen_framebuffers))
+	{
 
 		for(auto i : util::range(_renderer.gbuffer().mip_levels)) {
 			_descriptor_sets.emplace_back(_descriptor_set_layout.create_set(
@@ -119,7 +121,8 @@ namespace mirrage::renderer {
 	void Gen_mipmap_pass::draw(vk::CommandBuffer& command_buffer,
 	                           Command_buffer_source&,
 	                           vk::DescriptorSet global_uniform_set,
-	                           std::size_t) {
+	                           std::size_t)
+	{
 
 		const auto low_quality_levels = glm::clamp(_renderer.settings().gi_low_quality_mip_levels + 1,
 		                                           1,
@@ -205,17 +208,21 @@ namespace mirrage::renderer {
 	auto Gen_mipmap_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                          ecs::Entity_manager&      entities,
 	                                          util::maybe<Meta_system&> meta_system,
-	                                          bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
+	                                          bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	{
 		return std::make_unique<Gen_mipmap_pass>(renderer);
 	}
 
 	auto Gen_mipmap_pass_factory::rank_device(vk::PhysicalDevice,
 	                                          util::maybe<std::uint32_t> graphics_queue,
-	                                          int                        current_score) -> int {
+	                                          int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Gen_mipmap_pass_factory::configure_device(vk::PhysicalDevice,
 	                                               util::maybe<std::uint32_t>,
-	                                               graphic::Device_create_info&) {}
+	                                               graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

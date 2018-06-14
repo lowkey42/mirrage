@@ -23,11 +23,11 @@ BraceWrapping: {AfterClass: false, AfterControlStatement: false, AfterEnum: true
   AfterUnion: false, BeforeCatch: false, BeforeElse: false, IndentBraces: false}
 BreakAfterJavaFieldAnnotations: true
 BreakBeforeBinaryOperators: NonAssignment
-BreakBeforeBraces: Attach
+BreakBeforeBraces: WebKit
 BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: true
 BreakStringLiterals: true
-ColumnLimit: 100
+ColumnLimit: 110
 CommentPragmas: '^ IWYU pragma:'
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 2
@@ -61,7 +61,7 @@ PenaltyBreakComment: 400
 PenaltyBreakFirstLessLess: 200
 PenaltyBreakString: 150
 PenaltyExcessCharacter: 100
-PenaltyReturnTypeOnItsOwnLine: 10000
+PenaltyReturnTypeOnItsOwnLine: 1000000
 PointerAlignment: Left
 ReflowComments: false
 SortIncludes: true

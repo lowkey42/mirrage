@@ -19,27 +19,31 @@ namespace mirrage::util {
 	  public:
 		ring_buffer(std::size_t capacity) : _data(capacity) {}
 		template <typename Factory>
-		ring_buffer(std::size_t capacity, Factory&& f) {
+		ring_buffer(std::size_t capacity, Factory&& f)
+		{
 			_data.reserve(capacity);
 			for(auto i = std::size_t(0); i < capacity; i++) {
 				_data.emplace_back(f());
 			}
 		}
 
-		auto peek() const noexcept {
+		auto peek() const noexcept
+		{
 			return _tail != _head ? util::justPtr(&_data.at(_tail)) : util::nothing;
 		}
 		auto peek() noexcept { return _tail != _head ? util::justPtr(&_data.at(_tail)) : util::nothing; }
 
 		template <typename Consumer>
-		void pop(Consumer&& c) noexcept {
+		void pop(Consumer&& c) noexcept
+		{
 			MIRRAGE_INVARIANT(_tail != _head, "ring_buffer underflow: " << _tail << " == " << _head);
 			c(_data.at(_tail));
 			_tail = (_tail + 1) % _data.size();
 		}
 
 		template <typename Consumer>
-		auto pop_while(Consumer&& c) noexcept {
+		auto pop_while(Consumer&& c) noexcept
+		{
 			while(!empty()) {
 				if(!c(_data.at(_tail)))
 					return false;
@@ -52,7 +56,8 @@ namespace mirrage::util {
 
 		auto empty() const noexcept { return _tail == _head; }
 
-		auto advance_head() {
+		auto advance_head()
+		{
 			auto new_head = (_head + 1) % _data.size();
 			if(new_head == _tail)
 				return false;

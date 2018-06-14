@@ -13,11 +13,12 @@ namespace mirrage::net {
 		unspecified_network_error
 	};
 
-	std::error_code make_error_code(Net_error e);
+	extern std::error_code make_error_code(Net_error e);
 
 } // namespace mirrage::net
 
 namespace std {
 	template <>
-	struct is_error_code_enum<mirrage::net::Net_error> : true_type {};
+	struct is_error_code_enum<mirrage::net::Net_error> : true_type {
+	};
 } // namespace std

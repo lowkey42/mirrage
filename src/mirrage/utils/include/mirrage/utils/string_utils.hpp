@@ -18,7 +18,8 @@
 
 namespace mirrage::util {
 
-	inline maybe<std::string> read_file_to_string(std::string path) {
+	inline maybe<std::string> read_file_to_string(std::string path)
+	{
 		std::ifstream stream(path, std::ios::in);
 		if(!stream.is_open()) {
 			std::cerr << "Unable to load from '" << path << "'." << std::endl;
@@ -30,7 +31,8 @@ namespace mirrage::util {
 
 	inline std::string& replace_inplace(std::string&       subject,
 	                                    const std::string& search,
-	                                    const std::string& replace) {
+	                                    const std::string& replace)
+	{
 		size_t pos = 0;
 		while((pos = subject.find(search, pos)) != std::string::npos) {
 			subject.replace(pos, search.length(), replace);
@@ -40,26 +42,30 @@ namespace mirrage::util {
 		return subject;
 	}
 
-	inline std::string replace(std::string subject, const std::string& search, const std::string& replace) {
+	inline std::string replace(std::string subject, const std::string& search, const std::string& replace)
+	{
 		replace_inplace(subject, search, replace);
 		return subject;
 	}
 
 	template <class T>
-	inline std::string to_string(const T& t) {
+	inline std::string to_string(const T& t)
+	{
 		std::stringstream ss;
 		ss << t;
 		return ss.str();
 	}
 
 	// trim from start
-	inline std::string& ltrim(std::string& s) {
+	inline std::string& ltrim(std::string& s)
+	{
 		s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](auto c) { return !std::isspace(c); }));
 		return s;
 	}
 
 	// trim from end
-	inline std::string& rtrim(std::string& s) {
+	inline std::string& rtrim(std::string& s)
+	{
 		s.erase(std::find_if(s.rbegin(), s.rend(), [](auto c) { return !std::isspace(c); }).base(), s.end());
 		return s;
 	}
@@ -68,7 +74,8 @@ namespace mirrage::util {
 	inline std::string& trim(std::string& s) { return ltrim(rtrim(s)); }
 	inline std::string  trim_copy(std::string s) { return trim(s); }
 
-	inline std::pair<std::string, std::string> split(const std::string& line, const std::string& delim) {
+	inline std::pair<std::string, std::string> split(const std::string& line, const std::string& delim)
+	{
 		auto delIter = line.find(delim);
 
 		if(delIter != std::string::npos)
@@ -79,7 +86,8 @@ namespace mirrage::util {
 	}
 
 	inline std::pair<std::string, std::string> split_on_last(const std::string& line,
-	                                                         const std::string& delim) {
+	                                                         const std::string& delim)
+	{
 		auto delIter = line.find_last_of(delim);
 
 		if(delIter != std::string::npos)
@@ -89,20 +97,24 @@ namespace mirrage::util {
 			return std::make_pair(trim_copy(line), trim_copy(""));
 	}
 
-	inline void to_lower_inplace(std::string& str) {
+	inline void to_lower_inplace(std::string& str)
+	{
 		std::transform(str.begin(), str.end(), str.begin(), ::tolower);
 	}
 
-	inline std::string to_lower(std::string str) {
+	inline std::string to_lower(std::string str)
+	{
 		std::transform(str.begin(), str.end(), str.begin(), ::tolower);
 		return str;
 	}
 
 	template <class T>
-	bool contains(const std::string& str, T&& pattern) {
+	bool contains(const std::string& str, T&& pattern)
+	{
 		return str.find(pattern) != std::string::npos;
 	}
-	inline bool starts_with(const std::string& str, const std::string& pattern) {
+	inline bool starts_with(const std::string& str, const std::string& pattern)
+	{
 		if(pattern.length() > str.length())
 			return false;
 
@@ -112,7 +124,8 @@ namespace mirrage::util {
 
 		return true;
 	}
-	inline bool ends_with(const std::string& str, const std::string& pattern) {
+	inline bool ends_with(const std::string& str, const std::string& pattern)
+	{
 		if(pattern.length() > str.length())
 			return false;
 

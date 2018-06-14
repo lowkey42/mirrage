@@ -1,7 +1,7 @@
-[![Mirrage logo](/logo.svg)]()
+[![Mirrage logo](https://github.com/lowkey42/mirrage/raw/develop/logo.svg?sanitize=true)]()
 
-[![Build Status](https://travis-ci.org/lowkey42/mirrage.svg?branch=develop)](https://travis-ci.org/lowkey42/mirrage)
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg)](/LICENSE)
+[![pipeline status](https://gitlab.com/lowkey42/mirrage/badges/develop/pipeline.svg)](https://gitlab.com/lowkey42/mirrage/commits/develop)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](/LICENSE)
 
 ## Mirrage
 
@@ -15,14 +15,14 @@ Mirrage (Mirrage Indirect Radiance Renderer And Game Engine) is a Vulkan based d
 | ![](screenshots/top_down.jpeg) | ![](screenshots/hallway_1.jpeg) |
 |------------------|------------------|
 | ![](screenshots/metal.jpeg) | ![](screenshots/cornell.jpeg) |
-| ![](screenshots/hallway_2.jpeg) | ![](screenshots/light_cube.jpeg) |
+| ![](screenshots/front.jpeg) | ![](screenshots/light_cube.jpeg) |
 
 
 ### Dependencies
 Required:
 - CMake >= 3.8
-- SDL2 >= 2.0.5
-- Vulkan >= 1.0.59
+- SDL2 >= 2.0.7
+- Vulkan + Vulkan-HPP >= 1.1.70
 - GLSLC (if MIRRAGE_COMPILE_SHADERS is ON)
 
 
@@ -58,3 +58,4 @@ The project can be further configured by setting the following CMake-Properties 
 - MIRRAGE_ENABLE_LTO: Activates link time optimizations on gcc/clang (Default: OFF)
 - MIRRAGE_SAN: Build with clang sanatizers (address, integer, undefined and address-use-after-scope) (Default: OFF)
 - MIRRAGE_USE_LIBCPP: Uses libc++ instead of libstdc++ when compiling with clang (Default: ON)
+

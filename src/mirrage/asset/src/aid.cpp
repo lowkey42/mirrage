@@ -7,7 +7,8 @@ namespace mirrage::asset {
 
 	AID::AID(Asset_type t, std::string n) : _type(t), _name(std::move(n)) {}
 
-	AID::AID(std::string n) {
+	AID::AID(std::string n)
+	{
 		auto r = util::split(n, ":");
 		util::to_lower_inplace(r.first);
 		util::to_lower_inplace(r.second);

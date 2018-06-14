@@ -13,12 +13,11 @@ float luminance_norm(vec3 c) {
 }
 
 vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
-                  sampler2D albedo_sampler, sampler2D mat_sampler, sampler2D brdf_sampler,
-                  out vec3 diffuse) {
+                  sampler2D albedo_sampler, sampler2D mat_sampler, sampler2D brdf_sampler) {
 	const float PI = 3.14159265359;
 
-	radiance /= max(1, 1 - luminance_norm(radiance));
-	specular /= max(1, 1 - luminance_norm(specular));
+//	radiance /= max(1, 1 - luminance_norm(radiance)/1);
+//	specular /= max(1, 1 - luminance_norm(specular)/1);
 
 	// load / calculate material properties and factors
 	vec3 albedo = textureLod(albedo_sampler, uv, 0.0).rgb;
@@ -43,19 +42,16 @@ vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
 	vec3 diff = albedo * radiance*(1.0 - F0*brdf.x) / PI;
 	vec3 spec = specular.rgb * (F0*brdf.x + brdf.y);
 
-	diffuse = albedo * radiance/PI + F0*radiance/(2.0*PI);
-
-	return clamp(diff + spec, vec3(0,0,0), vec3(10,10,10));
+	return max(diff + spec, vec3(0,0,0))*1000.0;
 }
 
 vec3 calculate_gi(vec2 uv, vec2 gi_uv, int gi_lod, sampler2D diff_sampler, sampler2D spec_sampler,
-                  sampler2D albedo_sampler, sampler2D mat_sampler, sampler2D brdf_sampler,
-                  out vec3 diffuse) {
+                  sampler2D albedo_sampler, sampler2D mat_sampler, sampler2D brdf_sampler) {
     // load diff + spec GI
     vec3 radiance = textureLod(diff_sampler, gi_uv, 0).rgb;
 	vec3 specular = textureLod(spec_sampler, gi_uv, 0).rgb;
 
-    return calculate_gi(uv, radiance, specular, albedo_sampler, mat_sampler, brdf_sampler, diffuse);
+    return calculate_gi(uv, radiance, specular, albedo_sampler, mat_sampler, brdf_sampler);
 }
 
 #endif

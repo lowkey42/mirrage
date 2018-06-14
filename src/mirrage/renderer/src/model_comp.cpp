@@ -12,16 +12,16 @@
 
 namespace mirrage::renderer {
 
-	void load_component(ecs::Deserializer& state, Model_comp& comp) {
-		MIRRAGE_FAIL("Shouldn't be called directly");
+	void load_component(ecs::Deserializer&, Model_comp&) { MIRRAGE_FAIL("Shouldn't be called directly"); }
+
+	void save_component(ecs::Serializer& state, const Model_comp& comp)
+	{
+		state.write_virtual(sf2::vmember("aid", comp.model_aid().str()));
 	}
 
-	void save_component(ecs::Serializer& state, const Model_comp& comp) {
-		state.write_virtual(sf2::vmember("aid", comp._model_aid.str()));
-	}
 
-
-	void load_component(ecs::Deserializer& state, Model_unloaded_comp& comp) {
+	void load_component(ecs::Deserializer& state, Model_unloaded_comp& comp)
+	{
 		auto aid_str = std::string{};
 
 		state.read_virtual(sf2::vmember("aid", aid_str));
@@ -35,16 +35,19 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void save_component(ecs::Serializer& state, const Model_unloaded_comp& comp) {
+	void save_component(ecs::Serializer& state, const Model_unloaded_comp& comp)
+	{
 		state.write_virtual(sf2::vmember("aid", comp._model_aid.str()));
 	}
 
 
-	void load_component(ecs::Deserializer&, Model_loading_comp&) {
+	void load_component(ecs::Deserializer&, Model_loading_comp&)
+	{
 		MIRRAGE_FAIL("Shouldn't be called directly");
 	}
 
-	void save_component(ecs::Serializer& state, const Model_loading_comp& comp) {
-		state.write_virtual(sf2::vmember("aid", comp._model_aid.str()));
+	void save_component(ecs::Serializer& state, const Model_loading_comp& comp)
+	{
+		state.write_virtual(sf2::vmember("aid", comp.model_aid().str()));
 	}
 } // namespace mirrage::renderer

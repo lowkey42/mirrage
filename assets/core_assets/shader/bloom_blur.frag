@@ -29,7 +29,7 @@ layout(push_constant) uniform Settings {
 
 
 vec3 read(vec2 uv, float static_weight) {
-	return textureLod(color_sampler, uv, pcs.options.y).rgb * static_weight;
+	return textureLod(color_sampler, uv, round(pcs.options.x)).rgb * static_weight;
 }
 
 void main() {
@@ -43,13 +43,11 @@ void main() {
 	result += read(vertex_out.uv_r2, 0.09447039785044732);
 	result += read(vertex_out.uv_r3, 0.010381362401148057);
 
-	color_out = vec4(result, 1.0);
-
 	if(COMBINE>0) {
-		for(int i=0; i<COMBINE; i++) {
-			color_out.rgb += textureLod(downsampled_color_sampler, vertex_out.uv_center, i).rgb;
-		}
+		result += textureLod(downsampled_color_sampler, vertex_out.uv_center, 0).rgb;
 	}
+
+	color_out = vec4(result, 1.0);
 
 //	color_out.rgb = read(vertex_out.uv_center, center_depth, weight_sum, 1.0).rgb;
 }

@@ -11,10 +11,10 @@
 #include <mirrage/info.hpp>
 
 #include <mirrage/asset/asset_manager.hpp>
-#include <mirrage/utils/log.hpp>
-#include <mirrage/utils/stacktrace.hpp>
 
 #include <SDL2/SDL.h>
+#include <plog/Appenders/ColorConsoleAppender.h>
+#include <plog/Log.h>
 #include <glm/vec2.hpp>
 
 #include <exception>
@@ -35,11 +35,13 @@ namespace {
 
 
 #ifdef main
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
 	char*  noEnv = nullptr;
 	char** env   = &noEnv;
 #else
-int main(int argc, char** argv, char** env) {
+int main(int argc, char** argv, char** env)
+{
 #endif
 
 	init_env(argc, argv, env);
@@ -55,92 +57,62 @@ int main(int argc, char** argv, char** env) {
 }
 
 namespace {
-	constexpr auto app_name = "BachelorProject";
+	constexpr auto org_name = "secondsystem";
+	constexpr auto app_name = "Mirrage";
 	int            argc;
 	char**         argv;
 	char**         env;
 
 
-	void init_env(int argc, char** argv, char** env) {
+	void init_env(int argc, char** argv, char** env)
+	{
+		auto write_dir = asset::write_dir(argv[0], org_name, app_name);
 
-		//auto testC = glm::vec2{1,2} - glm::vec2{1,1}; (void)testC;
-		//MIRRAGE_INVARIANT(testC.y==(testA.y - testB.y), "XXX: "<<testC.y<<" != "<<(testA.y - testB.y));
+		static auto fileAppender = plog::RollingFileAppender<plog::TxtFormatter>(
+		        (write_dir + "/mirrage.log").c_str(), 1024L * 1024L, 4);
+		static auto consoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>();
+		plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender);
+
 
 		::argc = argc;
 		::argv = argv;
 		::env  = env;
 
-		MIRRAGE_INFO("Game started from: " << argv[0] << "\n"
-		                                   << "Working dir: " << asset::pwd() << "\n"
-		                                   << "Version: " << version_info::name << "\n"
-		                                   << "Version-Hash: " << version_info::hash << "\n"
-		                                   << "Version-Date: " << version_info::date << "\n"
-		                                   << "Version-Subject: " << version_info::subject << "\n");
-
-		try {
-			util::init_stacktrace(argv[0]);
-			mirrage::asset::setup_storage();
-
-		} catch(const util::Error& ex) {
-			MIRRAGE_CRASH_REPORT("Exception in init: " << ex.what());
-			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in init", nullptr);
-			shutdown();
-			exit(1);
-		}
+		LOG(plog::debug) << "Game started from: " << argv[0] << "\n"
+		                 << "Working dir: " << asset::pwd() << "\n"
+		                 << "Write dir: " << write_dir << "\n"
+		                 << "Version: " << version_info::name << "\n"
+		                 << "Version-Hash: " << version_info::hash << "\n"
+		                 << "Version-Date: " << version_info::date << "\n"
+		                 << "Version-Subject: " << version_info::subject << "\n";
 	}
 
-	void init_engine() {
-		try {
-			bool debug = false;
+	void init_engine()
+	{
+		bool debug = false;
 #ifndef NDEBUG
-			debug = true;
+		debug = true;
 #endif
 
-			for(auto i = 1; i < argc; i++) {
-				if(argv[i] == "--debug"s) {
-					debug = true;
-				}
-				if(argv[i] == "--no-debug"s) {
-					debug = false;
-				}
+		for(auto i = 1; i < argc; i++) {
+			if(argv[i] == "--debug"s) {
+				debug = true;
 			}
-
-
-			engine = std::make_unique<Game_engine>(app_name, 0, 1, debug, argc, argv, env);
-
-			if(argc > 1 && argv[1] == "test"s)
-				engine->screens().enter<Test_screen>();
-			else
-				engine->screens().enter<Test_screen>();
-
-		} catch(const util::Error& ex) {
-			MIRRAGE_CRASH_REPORT("Exception in init: " << ex.what());
-			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in init", nullptr);
-			shutdown();
-			exit(1);
+			if(argv[i] == "--no-debug"s) {
+				debug = false;
+			}
 		}
+
+
+		engine = std::make_unique<Game_engine>(org_name, app_name, 0, 1, debug, argc, argv, env);
+
+		if(argc > 1 && argv[1] == "test"s)
+			engine->screens().enter<Test_screen>();
+		else
+			engine->screens().enter<Test_screen>();
 	}
 
-	void onFrame() {
-		try {
-			engine->on_frame();
+	void onFrame() { engine->on_frame(); }
 
-		} catch(const util::Error& ex) {
-			MIRRAGE_CRASH_REPORT("Exception in onFrame: " << ex.what());
-			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in onFrame", nullptr);
-			shutdown();
-			exit(2);
-		}
-	}
-
-	void shutdown() {
-		try {
-			engine.reset();
-
-		} catch(const util::Error& ex) {
-			MIRRAGE_CRASH_REPORT("Exception in shutdown: " << ex.what());
-			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Sorry :-(", "Error in shutdown", nullptr);
-			exit(3);
-		}
-	}
+	void shutdown() { engine.reset(); }
 } // namespace

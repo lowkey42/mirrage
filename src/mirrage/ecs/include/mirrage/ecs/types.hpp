@@ -35,7 +35,8 @@ namespace mirrage::ecs {
 	}
 
 	template <typename t>
-	auto component_type_id() {
+	auto component_type_id()
+	{
 		static const auto type_id = detail::id_generator();
 		return type_id;
 	}

@@ -15,8 +15,8 @@ layout(location = 0) out vec4 out_color;
 layout(set=1, binding = 0) uniform sampler2D color_sampler;
 layout(set=1, binding = 1) uniform sampler2D depth_sampler;
 layout(set=1, binding = 2) uniform sampler2D mat_data_sampler;
-layout(set=1, binding = 3) uniform sampler2D result_sampler;
-layout(set=1, binding = 4) uniform sampler2D history_weight_sampler;
+layout(set=1, binding = 3) uniform sampler2D history_weight_sampler;
+layout(set=1, binding = 4) uniform sampler2D diffuse_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 projection;
@@ -41,7 +41,7 @@ float luminance_norm(vec3 c) {
 
 float roughness_to_spec_lobe_angle(float roughness) {
 	// see: http://graphicrants.blogspot.de/2013/08/specular-brdf-reference.html
-	float power = clamp(2/max(0.0001, roughness*roughness) - 2, 4.0, 1024*16);
+	float power = 2/max(0.0001, roughness*roughness) - 2;
 
 	return acos(pow(0.244, 1.0/(power + 1.0)));
 }
@@ -98,24 +98,24 @@ void main() {
 	vec3 dir = -reflect(V, N);
 	P += dir*0.1;
 
-	bool spec_visible = metallic>0.01 || (max(0, dot(normalize(V+dir), dir))<0.6);
-
 	// convert to cone angle (maximum extent of the specular lobe aperture)
 	// only want half the full cone angle since we're slicing the isosceles triangle in half to get a right triangle
 	float coneTheta = roughness_to_spec_lobe_angle(roughness) * 0.5f;
 
+	bool spec_visible = metallic>0.01 || (max(0, dot(normalize(V+dir), dir))<0.6 && coneTheta<0.2*PI);
+
 	// calculate max distance based on roughness
 	float max_distance = min(32, 4 / (tan(coneTheta)*2));
-	float max_steps = max_distance*16;
+	float max_steps = max_distance*8;
 
-	vec3 jitter = PDnrand3(vertex_out.tex_coords);
+	vec3 jitter = PDnrand3(vertex_out.tex_coords + global_uniforms.time.x);
 
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
 	if(spec_visible &&
-	   traceScreenSpaceRay1(P+dir*0.25, dir, pcs.projection, depth_sampler,
+	   traceScreenSpaceRay1(P+(dir*0.25+jitter*0.1), dir, pcs.projection, depth_sampler,
 							depthSize, 1.0, global_uniforms.proj_planes.x,
-							10, 0.5*jitter.z, max_distance, max_steps, int(startLod + 0.5),
+							20, 0.5*jitter.z, max_steps, max_distance, int(startLod + 0.5),
 							raycast_hit_uv, raycast_hit_point)) {
 
 		vec3 L = raycast_hit_point - P;
@@ -129,24 +129,21 @@ void main() {
 
 		float factor_normal = mix(1, 1.0 - smoothstep(0.6, 0.9, abs(dot(N, hit_N))), step(0.0001, hit_mat_data.b));
 
-		vec3 color = sample_color_lod(roughness, hit_uv, dir, coneTheta);
+		vec3 color = sample_color_lod(roughness, hit_uv, dir, coneTheta)/1000.0;
 
 		out_color.rgb = max(color * factor_distance * factor_normal, vec3(0));
 
-		out_color.rgb /= (1 + luminance_norm(out_color.rgb));
+//		out_color.rgb /= (1 + luminance_norm(out_color.rgb)/1);
 
 	} else {
-		out_color.rgb = textureLod(result_sampler, vertex_out.tex_coords, pcs.prev_projection[0][3]).rgb / (PI*PI*4);
+		out_color.rgb = textureLod(diffuse_sampler, vertex_out.tex_coords, pcs.prev_projection[0][3]).rgb / (PI*PI*2);
 	}
 
 	float history_weight = texelFetch(history_weight_sampler,
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 	                                  0).r;
 
-	float weight_measure = smoothstep(1.0/120.0, 1.0/30.0, global_uniforms.time.z);
-	float weight_min = mix(0.85, 0.1, weight_measure);
-	float weight_max = mix(0.95, 0.85, weight_measure);
-	out_color *= 1.0 - (history_weight*0.92);
+	out_color *= 1.0 - (history_weight*0.96);
 
 	out_color = max(out_color, vec4(0));
 }

@@ -11,12 +11,14 @@
 
 #include <algorithm>
 #include <functional>
+#include <memory>
 #include <vector>
 
 namespace mirrage::util {
 
 	template <typename T>
-	struct void_t {};
+	struct void_t {
+	};
 
 	struct no_move {
 	  protected:
@@ -49,14 +51,16 @@ namespace mirrage::util {
 		Func f;
 	};
 	template <class Func>
-	inline auto cleanup_later(Func&& f) noexcept {
+	inline auto cleanup_later(Func&& f) noexcept
+	{
 		return cleanup<Func>{std::forward<Func>(f)};
 	}
 
 	namespace detail {
 		enum class cleanup_scope_guard {};
 		template <class Func>
-		auto operator+(cleanup_scope_guard, Func&& f) {
+		auto operator+(cleanup_scope_guard, Func&& f)
+		{
 			return cleanup<Func>{std::forward<Func>(f)};
 		}
 	} // namespace detail
@@ -65,23 +69,25 @@ namespace mirrage::util {
 #define CLEANUP_CONCATENATE(s1, s2) CLEANUP_CONCATENATE_DIRECT(s1, s2)
 #define CLEANUP_ANONYMOUS_VARIABLE(str) CLEANUP_CONCATENATE(str, __LINE__)
 
-#define ON_EXIT                                       \
-	auto CLEANUP_ANONYMOUS_VARIABLE(_on_scope_exit) = \
-	        ::mirrage::util::detail::cleanup_scope_guard() + [&]
+#define ON_EXIT \
+	auto CLEANUP_ANONYMOUS_VARIABLE(_on_scope_exit) = ::mirrage::util::detail::cleanup_scope_guard() + [&]
 
 
 	template <typename T>
-	constexpr bool dependent_false() {
+	constexpr bool dependent_false()
+	{
 		return false;
 	}
 
 	template <typename T>
-	T identity(T t) {
+	T identity(T t)
+	{
 		return t;
 	}
 
 	template <typename T>
-	void erase_fast(std::vector<T>& c, const T& v) {
+	void erase_fast(std::vector<T>& c, const T& v)
+	{
 		using std::swap;
 
 		auto e = std::find(c.begin(), c.end(), v);
@@ -91,7 +97,8 @@ namespace mirrage::util {
 		}
 	}
 	template <typename T>
-	void erase_fast_stable(std::vector<T>& c, const T& v) {
+	void erase_fast_stable(std::vector<T>& c, const T& v)
+	{
 		auto ne = std::remove(c.begin(), c.end(), v);
 
 		if(ne != c.end()) {
@@ -100,12 +107,14 @@ namespace mirrage::util {
 	}
 
 	template <typename T, typename PredicateT>
-	void erase_if(std::vector<T>& items, const PredicateT& predicate) {
+	void erase_if(std::vector<T>& items, const PredicateT& predicate)
+	{
 		items.erase(std::remove_if(items.begin(), items.end(), predicate), items.end());
 	}
 
 	template <typename ContainerT, typename PredicateT>
-	void erase_if(ContainerT& items, const PredicateT& predicate) {
+	void erase_if(ContainerT& items, const PredicateT& predicate)
+	{
 		for(auto it = items.begin(); it != items.end();) {
 			if(predicate(*it))
 				it = items.erase(it);
@@ -115,7 +124,8 @@ namespace mirrage::util {
 	}
 
 	template <typename T, typename F>
-	auto map(std::vector<T>& c, F&& f) {
+	auto map(std::vector<T>& c, F&& f)
+	{
 		auto result = std::vector<decltype(f(std::declval<T&>()))>();
 		result.reserve(c.size());
 
@@ -127,7 +137,8 @@ namespace mirrage::util {
 	}
 
 	template <typename... Ts>
-	auto make_vector(Ts&&... values) {
+	auto make_vector(Ts&&... values)
+	{
 		auto vec = std::vector<std::common_type_t<Ts...>>();
 		vec.reserve(sizeof...(values));
 
@@ -139,14 +150,41 @@ namespace mirrage::util {
 
 	namespace detail {
 		template <std::size_t N, std::size_t... I, class F>
-		auto build_array_impl(F&& factory, std::index_sequence<I...>) {
+		auto build_array_impl(F&& factory, std::index_sequence<I...>)
+		{
 			return std::array<std::common_type_t<decltype(factory(I))...>, N>{{factory(I)...}};
 		}
 	} // namespace detail
 
 	template <std::size_t N, class F>
-	auto build_array(F&& factory) {
+	auto build_array(F&& factory)
+	{
 		return detail::build_array_impl<N>(factory, std::make_index_sequence<N>());
+	}
+
+	template <typename T, class SizeT, class F>
+	auto build_vector(SizeT n, F&& factory)
+	{
+		auto vec = std::vector<T>();
+		vec.reserve(n);
+
+		for(auto i = SizeT(0); i < n; i++) {
+			factory(i, vec);
+		}
+
+		return vec;
+	}
+	template <class SizeT, class F>
+	auto build_vector(SizeT n, F&& factory)
+	{
+		auto vec = std::vector<decltype(factory(std::declval<SizeT>()))>();
+		vec.reserve(n);
+
+		for(auto i = SizeT(0); i < n; i++) {
+			vec.push_back(factory(i));
+		}
+
+		return vec;
 	}
 
 
@@ -159,7 +197,8 @@ namespace mirrage::util {
 		};
 
 		template <typename T>
-		type_id_t type_id() {
+		type_id_t type_id()
+		{
 			return reinterpret_cast<type_id_t>(&type<T>::id);
 		}
 	} // namespace detail
@@ -184,17 +223,19 @@ namespace mirrage::util {
 		trackable() = default;
 		trackable(std::unique_ptr<T> obj) : _obj(std::move(obj)) {}
 		trackable(trackable&&) = default;
-		auto& operator         =(trackable&& rhs) noexcept {
-            reset();
+		auto& operator         =(trackable&& rhs) noexcept
+		{
+			reset();
 
-            _obj      = std::move(rhs._obj);
-            _obj_addr = std::move(rhs._obj_addr);
+			_obj      = std::move(rhs._obj);
+			_obj_addr = std::move(rhs._obj_addr);
 
-            return *this;
+			return *this;
 		}
 		~trackable() { reset(); }
 
-		auto& operator=(std::unique_ptr<T> obj) {
+		auto& operator=(std::unique_ptr<T> obj)
+		{
 			_obj = std::move(obj);
 			if(_obj_addr) {
 				_obj_addr->obj_addr = _obj.get();
@@ -204,7 +245,8 @@ namespace mirrage::util {
 			return *this;
 		}
 
-		auto reset() {
+		auto reset()
+		{
 			if(_obj_addr) {
 				_obj_addr->obj_addr = nullptr;
 				_obj_addr->revision++;
@@ -221,23 +263,27 @@ namespace mirrage::util {
 		operator T*() { return get(); }
 		operator const T*() const { return get(); }
 
-		auto operator*() -> T& {
+		auto operator*() -> T&
+		{
 			auto ptr = get();
 			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return *ptr;
 		}
-		auto operator*() const -> T& {
+		auto operator*() const -> T&
+		{
 			auto ptr = get();
 			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return *ptr;
 		}
 
-		auto operator-> () -> T* {
+		auto operator-> () -> T*
+		{
 			auto ptr = get();
 			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return ptr;
 		}
-		auto operator-> () const -> T* {
+		auto operator-> () const -> T*
+		{
 			auto ptr = get();
 			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return ptr;
@@ -250,7 +296,8 @@ namespace mirrage::util {
 		std::unique_ptr<T>                      _obj;
 		std::shared_ptr<detail::trackable_data> _obj_addr;
 
-		auto _get_obj_addr() {
+		auto _get_obj_addr()
+		{
 			if(!_obj_addr) {
 				_obj_addr = std::make_shared<detail::trackable_data>(_obj.get(), 0);
 			}
@@ -260,7 +307,8 @@ namespace mirrage::util {
 	};
 
 	template <typename T, typename... Args>
-	auto make_trackable(Args&&... args) {
+	auto make_trackable(Args&&... args)
+	{
 		return trackable<T>(std::make_unique<T>(std::forward<Args>(args)...));
 	}
 
@@ -269,8 +317,9 @@ namespace mirrage::util {
 	  public:
 		tracking_ptr() = default;
 		tracking_ptr(trackable<T>& t)
-		  : _trackable(t._get_obj_addr())
-		  , _last_seen_revision(_trackable ? _trackable->revision : 0) {}
+		  : _trackable(t._get_obj_addr()), _last_seen_revision(_trackable ? _trackable->revision : 0)
+		{
+		}
 
 		tracking_ptr(const tracking_ptr<T>& t) = default;
 		tracking_ptr(tracking_ptr<T>&& t)      = default;
@@ -281,19 +330,21 @@ namespace mirrage::util {
 		explicit tracking_ptr(tracking_ptr<I> t)
 		  : _trackable(t._trackable)
 		  , _caster(+[](void* ptr) { return dynamic_cast<T*>(static_cast<I*>(ptr)); })
-		  , _last_seen_revision(_trackable ? _trackable->revision : 0) {
+		  , _last_seen_revision(_trackable ? _trackable->revision : 0)
+		{
 			MIRRAGE_INVARIANT(t._caster == nullptr,
 			                  "Casting tracking_ptrs can't be nested! Nice try though.");
 		}
 
-		auto modified(T* last_seen) {
+		auto modified(T* last_seen)
+		{
 			if(!_trackable) {
 				return last_seen == nullptr ? false : true;
 			}
 
 			auto current_revision = _trackable->revision;
 			if(_last_seen_revision != current_revision || last_seen == nullptr) {
-				MIRRAGE_DEBUG("Modified " << _last_seen_revision << " != " << current_revision);
+				LOG(plog::debug) << "Modified " << _last_seen_revision << " != " << current_revision;
 				_last_seen_revision = current_revision;
 				return true;
 			}
@@ -301,7 +352,8 @@ namespace mirrage::util {
 			return false;
 		}
 
-		auto get() -> T* {
+		auto get() -> T*
+		{
 			if(!_trackable)
 				return nullptr;
 
@@ -320,23 +372,27 @@ namespace mirrage::util {
 		explicit operator bool() const { return get() != nullptr; }
 		auto     operator!() const { return get() != nullptr; }
 
-		auto operator*() -> T& {
+		auto operator*() -> T&
+		{
 			auto ptr = get();
 			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return *ptr;
 		}
-		auto operator*() const -> T& {
+		auto operator*() const -> T&
+		{
 			auto ptr = get();
 			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return *ptr;
 		}
 
-		auto operator-> () -> T* {
+		auto operator-> () -> T*
+		{
 			auto ptr = get();
 			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return ptr;
 		}
-		auto operator-> () const -> T* {
+		auto operator-> () const -> T*
+		{
 			auto ptr = get();
 			MIRRAGE_INVARIANT(ptr, "Null-Pointer dereferenced!");
 			return ptr;
@@ -354,7 +410,8 @@ namespace mirrage::util {
 	};
 
 	template <typename T>
-	auto trackable<T>::create_ptr() -> tracking_ptr<T> {
+	auto trackable<T>::create_ptr() -> tracking_ptr<T>
+	{
 		return tracking_ptr<T>(*this);
 	}
 
@@ -364,22 +421,27 @@ namespace mirrage::util {
 		any_ptr() : _ptr(nullptr), _type_id(0) {}
 		any_ptr(std::nullptr_t) : _ptr(nullptr), _type_id(0) {}
 		template <typename T>
-		any_ptr(T* ptr) : _ptr(ptr), _type_id(detail::type_id<T>()) {}
+		any_ptr(T* ptr) : _ptr(ptr), _type_id(detail::type_id<T>())
+		{
+		}
 
-		any_ptr& operator=(std::nullptr_t) {
+		any_ptr& operator=(std::nullptr_t)
+		{
 			_ptr     = nullptr;
 			_type_id = 0;
 			return *this;
 		}
 		template <typename T>
-		any_ptr& operator=(T* ptr) {
+		any_ptr& operator=(T* ptr)
+		{
 			_ptr     = ptr;
 			_type_id = detail::type_id<T>();
 			return *this;
 		}
 
 		template <typename T>
-		auto try_extract() const -> T* {
+		auto try_extract() const -> T*
+		{
 			if(detail::type_id<T>() == _type_id)
 				return static_cast<T*>(_ptr);
 			else
@@ -418,23 +480,27 @@ namespace mirrage::util {
 		struct iterator : std::iterator<std::random_access_iterator_tag, T, T> {
 			T p;
 			T s;
-			constexpr iterator(T v, T s = 1) noexcept : p(v), s(s){};
+			constexpr iterator(T v, T s = 1) noexcept : p(v), s(s) {}
 			constexpr iterator(const iterator&) noexcept = default;
 			constexpr iterator(iterator&&) noexcept      = default;
-			iterator& operator++() noexcept {
+			iterator& operator++() noexcept
+			{
 				p += s;
 				return *this;
 			}
-			iterator operator++(int) noexcept {
+			iterator operator++(int) noexcept
+			{
 				auto t = *this;
 				*this ++;
 				return t;
 			}
-			iterator& operator--() noexcept {
+			iterator& operator--() noexcept
+			{
 				p -= s;
 				return *this;
 			}
-			iterator operator--(int) noexcept {
+			iterator operator--(int) noexcept
+			{
 				auto t = *this;
 				*this --;
 				return t;
@@ -462,37 +528,43 @@ namespace mirrage::util {
 		T b, e, s;
 	};
 	template <class Iter, typename = std::enable_if_t<!std::is_arithmetic<Iter>::value>>
-	constexpr iter_range<Iter> range(Iter b, Iter e) {
+	constexpr iter_range<Iter> range(Iter b, Iter e)
+	{
 		return {b, e};
 	}
 	template <class B, class E, typename = std::enable_if_t<std::is_arithmetic<B>::value>>
-	constexpr auto range(B b, E e, std::common_type_t<B, E> s = 1) {
+	constexpr auto range(B b, E e, std::common_type_t<B, E> s = 1)
+	{
 		using T = std::common_type_t<B, E>;
 		return numeric_range<T>{T(b), std::max(T(e + 1), T(b)), T(s)};
 	}
 	template <class T, typename = std::enable_if_t<std::is_arithmetic<T>::value>>
-	constexpr numeric_range<T> range(T num) {
+	constexpr numeric_range<T> range(T num)
+	{
 		return {0, static_cast<T>(num)};
 	}
 	template <class Container, typename = std::enable_if_t<!std::is_arithmetic<Container>::value>>
-	auto range(Container& c) -> iter_range<typename Container::iterator> {
+	auto range(Container& c) -> iter_range<typename Container::iterator>
+	{
 		using namespace std;
 		return {begin(c), end(c)};
 	}
 	template <class Container, typename = std::enable_if_t<!std::is_arithmetic<Container>::value>>
-	auto range(const Container& c) -> iter_range<typename Container::const_iterator> {
+	auto range(const Container& c) -> iter_range<typename Container::const_iterator>
+	{
 		using namespace std;
 		return {begin(c), end(c)};
 	}
 
 	template <class Container, typename = std::enable_if_t<!std::is_arithmetic<Container>::value>>
-	auto range_reverse(Container& c) -> iter_range<typename Container::reverse_iterator> {
+	auto range_reverse(Container& c) -> iter_range<typename Container::reverse_iterator>
+	{
 		using namespace std;
 		return {rbegin(c), rend(c)};
 	}
 	template <class Container, typename = std::enable_if_t<!std::is_arithmetic<Container>::value>>
-	auto range_reverse(const Container& c)
-	        -> iter_range<typename Container::const_reverse_iterator> {
+	auto range_reverse(const Container& c) -> iter_range<typename Container::const_reverse_iterator>
+	{
 		using namespace std;
 		return {rbegin(c), rend(c)};
 	}
@@ -508,27 +580,31 @@ namespace mirrage::util {
 		typedef Type&                            reference;
 
 
-		cast_iterator(Iter iter) : iter(iter){};
+		cast_iterator(Iter iter) : iter(iter) {}
 
 		reference operator*() { return *reinterpret_cast<pointer>(*iter); }
 		pointer   operator->() { return reinterpret_cast<pointer>(*iter); }
 
-		cast_iterator& operator++() {
+		cast_iterator& operator++()
+		{
 			++iter;
 			return *this;
 		}
-		cast_iterator& operator--() {
+		cast_iterator& operator--()
+		{
 			--iter;
 			return *this;
 		}
 
-		cast_iterator operator++(int) {
+		cast_iterator operator++(int)
+		{
 			cast_iterator t = *this;
 			++*this;
 			return t;
 		}
 
-		cast_iterator operator--(int) {
+		cast_iterator operator--(int)
+		{
 			cast_iterator t = *this;
 			--*this;
 			return t;
@@ -545,7 +621,8 @@ namespace mirrage::util {
 
 
 	template <typename F>
-	void doOnce(F f) {
+	void doOnce(F f)
+	{
 		static bool first = true;
 		if(first) {
 			first = false;
@@ -561,19 +638,22 @@ namespace mirrage::util {
 	class Registration {
 	  public:
 		Registration() = default;
-		Registration(Registration&& rhs) noexcept : _children(std::move(rhs._children)) {
+		Registration(Registration&& rhs) noexcept : _children(std::move(rhs._children))
+		{
 			for(auto& c : _children) {
 				Registered<ChildT, CCTP>::asRegistered(c)->_parent = this;
 			}
 		}
 		Registration(const Registration& rhs) = delete;
-		~Registration() {
+		~Registration()
+		{
 			for(auto& c : _children) {
 				Registered<ChildT, CCTP>::asRegistered(c)->_parent = nullptr;
 			}
 		}
 
-		Registration& operator=(Registration&& rhs) noexcept {
+		Registration& operator=(Registration&& rhs) noexcept
+		{
 			for(auto& c : _children) {
 				Registered<ChildT, CCTP>::asRegistered(c)->_parent = nullptr;
 			}
@@ -602,10 +682,12 @@ namespace mirrage::util {
 	class Registered {
 	  public:
 		Registered() noexcept : _parent(nullptr) {}
-		Registered(ParentT& p) noexcept : _parent(&p) {
+		Registered(ParentT& p) noexcept : _parent(&p)
+		{
 			_registration()->_children.push_back(static_cast<CCTP*>(this));
 		}
-		Registered(Registered&& rhs) noexcept : _parent(rhs._parent) {
+		Registered(Registered&& rhs) noexcept : _parent(rhs._parent)
+		{
 			rhs._parent = nullptr;
 
 			if(_parent) {
@@ -613,19 +695,22 @@ namespace mirrage::util {
 				_registration()->_children.push_back(static_cast<CCTP*>(this));
 			}
 		}
-		Registered(const Registered& rhs) noexcept : _parent(rhs._parent) {
+		Registered(const Registered& rhs) noexcept : _parent(rhs._parent)
+		{
 			if(_parent) {
 				_registration()->_children.push_back(static_cast<CCTP*>(this));
 			}
 		}
-		~Registered() {
+		~Registered()
+		{
 			if(_parent) {
 				// safe unless the casted this ptr is dereferenced
 				util::erase_fast(_registration()->_children, static_cast<CCTP*>(this));
 			}
 		}
 
-		Registered& operator=(Registered&& rhs) noexcept {
+		Registered& operator=(Registered&& rhs) noexcept
+		{
 			if(_parent) {
 				util::erase_fast(_registration()->_children, static_cast<CCTP*>(this));
 			}
@@ -639,7 +724,8 @@ namespace mirrage::util {
 
 			return *this;
 		}
-		Registered& operator=(const Registered& rhs) noexcept {
+		Registered& operator=(const Registered& rhs) noexcept
+		{
 			if(_parent) {
 				util::erase_fast(_registration()->_children, static_cast<CCTP*>(this));
 			}
@@ -653,7 +739,8 @@ namespace mirrage::util {
 		}
 
 	  protected:
-		auto parent() noexcept -> auto& {
+		auto parent() noexcept -> auto&
+		{
 			MIRRAGE_INVARIANT(_parent, "Deref nullptr");
 			return *_parent;
 		}

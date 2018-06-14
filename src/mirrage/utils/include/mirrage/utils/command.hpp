@@ -7,8 +7,6 @@
 
 #pragma once
 
-#include <mirrage/utils/log.hpp>
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,8 +15,8 @@
 namespace mirrage::util {
 
 	struct Command {
-		Command()          = default;
-		virtual ~Command() = default;
+		Command() = default;
+		virtual ~Command();
 
 		virtual void execute()                          = 0;
 		virtual void undo()                             = 0;
@@ -32,7 +30,8 @@ namespace mirrage::util {
 		void execute(std::unique_ptr<Command> cmd);
 
 		template <class T, class... Args>
-		T& execute(Args&&... args) {
+		T& execute(Args&&... args)
+		{
 			auto  ptr = std::make_unique<T>(std::forward<Args>(args)...);
 			auto& ref = *ptr;
 			execute(std::move(ptr));
@@ -40,7 +39,8 @@ namespace mirrage::util {
 			return ref;
 		}
 
-		void clear() {
+		void clear()
+		{
 			_commands.clear();
 			_history_size = 0;
 		}

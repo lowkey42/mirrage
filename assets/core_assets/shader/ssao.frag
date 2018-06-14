@@ -13,8 +13,8 @@ layout(location = 0) out vec4 out_color;
 layout (constant_id = 0) const int SAMPLES = 16;
 layout (constant_id = 1) const int LOG_MAX_OFFSET = 4;
 layout (constant_id = 2) const int SPIRAL_TURNS = 7;
-layout (constant_id = 3) const float RADIUS = 1.8;
-layout (constant_id = 4) const float BIAS = 0.04;
+layout (constant_id = 3) const float RADIUS = 1.0;
+layout (constant_id = 4) const float BIAS = 0.03;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
@@ -56,7 +56,7 @@ vec2 to_uv(vec3 pos) {
 vec2 tap_location(int i, float spin_angle, out float out_ss_radius) {
 	// Radius relative to ssR
 	float alpha = float(i + 0.5) * (1.0 / SAMPLES);
-	float angle = alpha * (SPIRAL_TURNS * 6.28) + spin_angle;
+	float angle = i * (3.14159265359*(3.0-sqrt(5.0))) + spin_angle;
 
 	out_ss_radius = alpha;
 	return vec2(cos(angle), sin(angle));
@@ -86,7 +86,7 @@ float sample_ao(ivec2 ss_center, vec3 C, vec3 n_C, float ss_disk_radius, int i, 
 	vec3 N = get_normal(ss_p, mip);
 	float occluder_angle = abs(dot(N, n_C));
 	float boost = smoothstep(0.01, 0.2, occluder_angle)*0.6+0.4;
-	boost += smoothstep(0.8, 1.0, occluder_angle)*2;
+	boost += smoothstep(0.8, 1.0, occluder_angle);
 
 	float f = max(RADIUS*RADIUS - vv, 0.0);
 
@@ -122,7 +122,7 @@ void main() {
 
 	vec3 N = decode_normal(texelFetch(mat_data_sampler, center_px_normal, 0).rg);
 
-	float random_pattern_rotation_angle = random(vec4(center_px.x, center_px.y, 0, 0));
+	float random_pattern_rotation_angle = random(vec4(center_px.x, center_px.y, global_uniforms.time.x, 0));
 
 	// Choose the screen-space sample radius
 	// proportional to the projected area of the sphere
@@ -135,7 +135,7 @@ void main() {
 
 	float temp = RADIUS * RADIUS * RADIUS;
 	sum /= temp * temp;
-	out_color.r = pow(max(0.0, 1.0 - sum * (5.0 / SAMPLES)), 2);
+	out_color.r = max(0.0, 1.0 - sum * (5.0 / SAMPLES));
 
 	// Bilateral box-filter over a quad for free, respecting depth edges
 	// (the difference that this makes is subtle)

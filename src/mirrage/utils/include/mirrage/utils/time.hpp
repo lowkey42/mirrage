@@ -15,7 +15,8 @@
 
 namespace mirrage::util {
 
-	inline double current_time_sec() {
+	inline double current_time_sec()
+	{
 #ifdef SDL_FRAMETIME
 		return static_cast<float>(SDL_GetTicks()) / 1000.f;
 #else

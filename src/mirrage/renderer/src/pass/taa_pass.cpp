@@ -13,7 +13,8 @@ namespace mirrage::renderer {
 		auto build_render_pass(Deferred_renderer&         renderer,
 		                       vk::DescriptorSetLayout    desc_set_layout,
 		                       graphic::Render_target_2D& write_tex,
-		                       graphic::Framebuffer&      out_framebuffer) {
+		                       graphic::Framebuffer&      out_framebuffer)
+		{
 
 			auto builder = renderer.device().create_render_pass_builder();
 
@@ -73,7 +74,8 @@ namespace mirrage::renderer {
 			return render_pass;
 		}
 
-		constexpr float halton_seq(int prime, int index = 1) {
+		constexpr float halton_seq(int prime, int index = 1)
+		{
 			float r = 0.0f;
 			float f = 1.0f;
 			int   i = index;
@@ -88,18 +90,21 @@ namespace mirrage::renderer {
 
 		template <class Function, std::size_t... Indices>
 		constexpr auto make_array_helper(Function f, std::index_sequence<Indices...>)
-		        -> std::array<typename std::result_of<Function(std::size_t)>::type, sizeof...(Indices)> {
+		        -> std::array<typename std::result_of<Function(std::size_t)>::type, sizeof...(Indices)>
+		{
 			return {{f(Indices)...}};
 		}
 
 		template <int N, class Function>
 		constexpr auto make_array(Function f)
-		        -> std::array<typename std::result_of<Function(std::size_t)>::type, N> {
+		        -> std::array<typename std::result_of<Function(std::size_t)>::type, N>
+		{
 			return make_array_helper(f, std::make_index_sequence<N>{});
 		}
 
 		template <std::size_t Size>
-		constexpr auto build_halton_2_3() {
+		constexpr auto build_halton_2_3()
+		{
 			return make_array<Size * 2>(
 			        [](std::size_t i) { return halton_seq(i % 2 == 0 ? 2 : 3, i + 1) - 0.5f; });
 		}
@@ -134,7 +139,9 @@ namespace mirrage::renderer {
 	                                                      {renderer.gbuffer().depth.view(0),
 	                                                       _read_frame.view(),
 	                                                       _prev_frame.view(),
-	                                                       renderer.gbuffer().prev_depth.view(0)})) {}
+	                                                       renderer.gbuffer().prev_depth.view(0)}))
+	{
+	}
 
 
 	void Taa_pass::update(util::Time dt) { _time_acc += dt.value(); }
@@ -142,7 +149,8 @@ namespace mirrage::renderer {
 	void Taa_pass::draw(vk::CommandBuffer& command_buffer,
 	                    Command_buffer_source&,
 	                    vk::DescriptorSet global_uniform_set,
-	                    std::size_t) {
+	                    std::size_t)
+	{
 
 		if(_first_frame) {
 			_first_frame = false;
@@ -176,7 +184,8 @@ namespace mirrage::renderer {
 		_offset_idx = (_offset_idx + 2) % (offsets.size());
 	}
 
-	void Taa_pass::process_camera(Camera_state& cam) {
+	void Taa_pass::process_camera(Camera_state& cam)
+	{
 		// update fov and push constants
 		cam.fov_vertical = cam.fov_vertical + 5.0_deg;
 		cam.fov_horizontal =
@@ -203,10 +212,11 @@ namespace mirrage::renderer {
 		_constants.reprojection = _prev_view_proj * cam.inv_view;
 		_prev_view_proj         = cam.view_projection;
 
-		cam.projection      = glm::translate(glm::mat4(), glm::vec3(-offset, 0.f)) * cam.projection;
+		cam.projection      = glm::translate(glm::mat4(1.f), glm::vec3(-offset, 0.f)) * cam.projection;
 		cam.view_projection = cam.projection * cam.view;
 	}
-	auto Taa_pass::_calc_offset(const Camera_state& cam) const -> glm::vec2 {
+	auto Taa_pass::_calc_offset(const Camera_state& cam) const -> glm::vec2
+	{
 		auto offset = glm::vec2{offsets[_offset_idx], offsets[_offset_idx + 1]} * offset_factor;
 
 		float texelSizeX = 1.f / (0.5f * cam.viewport.z - cam.viewport.x);
@@ -220,7 +230,8 @@ namespace mirrage::renderer {
 	auto Taa_pass_factory::create_pass(Deferred_renderer&        renderer,
 	                                   ecs::Entity_manager&      entities,
 	                                   util::maybe<Meta_system&> meta_system,
-	                                   bool& write_first_pp_buffer) -> std::unique_ptr<Pass> {
+	                                   bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	{
 		auto& write = write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		auto& read = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
@@ -232,11 +243,14 @@ namespace mirrage::renderer {
 
 	auto Taa_pass_factory::rank_device(vk::PhysicalDevice,
 	                                   util::maybe<std::uint32_t> graphics_queue,
-	                                   int                        current_score) -> int {
+	                                   int                        current_score) -> int
+	{
 		return current_score;
 	}
 
 	void Taa_pass_factory::configure_device(vk::PhysicalDevice,
 	                                        util::maybe<std::uint32_t>,
-	                                        graphic::Device_create_info&) {}
+	                                        graphic::Device_create_info&)
+	{
+	}
 } // namespace mirrage::renderer

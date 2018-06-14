@@ -9,9 +9,12 @@
 
 #include <mirrage/asset/aid.hpp>
 
+#include <mirrage/utils/log.hpp>
 #include <mirrage/utils/maybe.hpp>
-#include <mirrage/utils/stacktrace.hpp>
 #include <mirrage/utils/template_utils.hpp>
+
+#include <plog/Log.h>
+#include <gsl/gsl>
 
 #include <iostream>
 #include <memory>
@@ -24,10 +27,6 @@ namespace mirrage::asset {
 	struct File_handle;
 	class Asset_manager;
 
-	struct Loading_failed : public util::Error {
-		explicit Loading_failed(const std::string& msg) noexcept : util::Error(msg) {}
-		virtual ~Loading_failed();
-	};
 
 	class stream {
 	  public:
@@ -43,8 +42,6 @@ namespace mirrage::asset {
 
 		auto  aid() const noexcept { return _aid; }
 		auto& manager() noexcept { return _manager; }
-
-		auto physical_location() const noexcept -> util::maybe<std::string>;
 
 		void close();
 
@@ -79,6 +76,7 @@ namespace mirrage::asset {
 
 		auto operator=(ostream &&) -> ostream&;
 	};
+
 } // namespace mirrage::asset
 
 #ifdef ENABLE_SF2_ASSETS
@@ -95,30 +93,22 @@ namespace mirrage::asset {
 		static_assert(sf2::is_loadable<T, sf2::format::Json_reader>::value,
 		              "Required AssetLoader specialization not provided.");
 
-		static auto load(istream in) -> std::shared_ptr<T> {
-			auto r = std::make_shared<T>();
+		static auto load(istream in) -> T
+		{
+			auto r = T();
 
 			sf2::deserialize_json(in,
 			                      [&](auto& msg, uint32_t row, uint32_t column) {
-				                      MIRRAGE_ERROR("Error parsing JSON from " << in.aid().str() << " at "
-				                                                               << row << ":" << column << ": "
-				                                                               << msg);
+				                      LOG(plog::error) << "Error parsing JSON from " << in.aid().str()
+				                                       << " at " << row << ":" << column << ": " << msg;
 			                      },
-			                      *r);
+			                      r);
 
 			return r;
 		}
-		static void store(ostream out, const T& asset) { sf2::serialize_json(out, asset); }
+		static void save(ostream out, const T& asset) { sf2::serialize_json(out, asset); }
 	};
 
-	template <class T>
-	struct Interceptor {
-		static auto on_intercept(Asset_manager&, const AID& interceptor_aid, const AID& org_aid)
-		        -> std::shared_ptr<T> {
-			MIRRAGE_FAIL("Required Interceptor specialization not found loading '"
-			             << org_aid.str() << "' via '" << interceptor_aid.str() << "'");
-		}
-	};
 } // namespace mirrage::asset
 #else
 
@@ -132,8 +122,23 @@ namespace mirrage::asset {
 	struct Loader {
 		static_assert(util::dependent_false<T>(), "Required AssetLoader specialization not provided.");
 
-		static auto load(istream in) throw(Loading_failed) -> std::shared_ptr<T>;
-		static void store(ostream out, const T& asset) throw(Loading_failed);
+		static auto load(istream in) -> T;
+		static void save(ostream out, const T& asset);
 	};
 } // namespace mirrage::asset
 #endif
+
+namespace mirrage::asset {
+
+	using Bytes = std::vector<char>;
+
+	template <>
+	struct Loader<Bytes> {
+		static auto load(istream in) -> Bytes { return in.bytes(); }
+		void        save(ostream out, const Bytes& data)
+		{
+			out.write(data.data(), gsl::narrow<std::streamsize>(data.size()));
+		}
+	};
+
+} // namespace mirrage::asset

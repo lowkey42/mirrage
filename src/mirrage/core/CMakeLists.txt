@@ -37,7 +37,6 @@ target_link_libraries(mirrage
 	PUBLIC
 		mirrage::utils
 		sdl2::sdl2
-		SDL_vulkan
 		mirrage::asset
 		mirrage::ecs
 		mirrage::graphic
@@ -53,11 +52,7 @@ install(TARGETS mirrage EXPORT mirrage_targets
 	LIBRARY DESTINATION lib
 	RUNTIME DESTINATION bin
 )
-install(
-	DIRECTORY ${CMAKE_SOURCE_DIR}/include/
-	DESTINATION include
-	FILES_MATCHING PATTERN "*.h*"
-)
+install(DIRECTORY include/ DESTINATION include)
 install(EXPORT mirrage_targets
 	FILE mirrage.cmake
 	NAMESPACE mirrage::

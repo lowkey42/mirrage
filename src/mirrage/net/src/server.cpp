@@ -13,9 +13,12 @@ namespace mirrage::net {
 	                               std::string                hostname,
 	                               std::uint16_t              port,
 	                               const Channel_definitions& channels)
-	  : _type(type), _hostname(std::move(hostname)), _port(port), _channels(channels) {}
+	  : _type(type), _hostname(std::move(hostname)), _port(port), _channels(channels)
+	{
+	}
 
-	auto Server_builder::create() -> Server {
+	auto Server_builder::create() -> Server
+	{
 		return {_type,
 		        _hostname,
 		        _port,
@@ -36,7 +39,8 @@ namespace mirrage::net {
 		                      std::size_t               channel_count,
 		                      int                       max_clients,
 		                      int                       max_in_bandwidth,
-		                      int                       max_out_bandwidth) {
+		                      int                       max_out_bandwidth)
+		{
 
 			ENetAddress address;
 			address.port = port;
@@ -54,7 +58,7 @@ namespace mirrage::net {
 					auto ec = enet_address_set_host(&address, hostname.c_str());
 					if(ec != 0) {
 						const auto msg = "Couldn't resolve host \"" + hostname + "\".";
-						MIRRAGE_WARN(msg);
+						LOG(plog::warning) << msg;
 						throw std::system_error(Net_error::unknown_host, msg);
 					}
 					break;
@@ -68,7 +72,7 @@ namespace mirrage::net {
 
 			if(!host) {
 				constexpr auto msg = "Couldn't create the host data structure (out of memory?)";
-				MIRRAGE_WARN(msg);
+				LOG(plog::warning) << msg;
 				throw std::system_error(Net_error::unspecified_network_error, msg);
 			}
 
@@ -95,23 +99,27 @@ namespace mirrage::net {
 	                                max_out_bandwidth),
 	               channels,
 	               std::move(on_connected),
-	               std::move(on_disconnected)) {}
+	               std::move(on_disconnected))
+	{
+	}
 
-	auto Server::broadcast_channel(util::Str_id channel) -> Channel {
+	auto Server::broadcast_channel(util::Str_id channel) -> Channel
+	{
 		auto&& c = _channels.by_name(channel);
 		if(c.is_nothing()) {
 			const auto msg = "Unknown channel \"" + channel.str() + "\".";
-			MIRRAGE_WARN(msg);
+			LOG(plog::warning) << msg;
 			throw std::system_error(Net_error::unknown_channel, msg);
 		}
 
 		return Channel(_host.get(), c.get_or_throw());
 	}
-	auto Server::client_channel(util::Str_id channel, Client_handle client) -> Channel {
+	auto Server::client_channel(util::Str_id channel, Client_handle client) -> Channel
+	{
 		auto&& c = _channels.by_name(channel);
 		if(c.is_nothing()) {
 			const auto msg = "Unknown channel \"" + channel.str() + "\".";
-			MIRRAGE_WARN(msg);
+			LOG(plog::warning) << msg;
 			throw std::system_error(Net_error::unknown_channel, msg);
 		}
 
@@ -119,8 +127,6 @@ namespace mirrage::net {
 	}
 
 	void Server::_on_connected(Client_handle client) { _clients.emplace_back(client); }
-	void Server::_on_disconnected(Client_handle client, std::uint32_t) {
-		util::erase_fast(_clients, client);
-	}
+	void Server::_on_disconnected(Client_handle client, std::uint32_t) { util::erase_fast(_clients, client); }
 
 } // namespace mirrage::net

@@ -30,7 +30,8 @@ namespace mirrage {
 		void _on_enter(util::maybe<Screen&> prev) override;
 		void _on_leave(util::maybe<Screen&> next) override;
 
-		auto _prev_screen_policy() const noexcept -> Prev_screen_policy override {
+		auto _prev_screen_policy() const noexcept -> Prev_screen_policy override
+		{
 			return Prev_screen_policy::discard;
 		}
 
@@ -60,8 +61,9 @@ namespace mirrage {
 		systems::Nim_sequence _current_seq;
 		util::Time            _record_timer{0};
 
-		bool _show_ui       = true;
-		bool _show_profiler = false;
+		bool        _show_ui                 = true;
+		bool        _show_profiler           = false;
+		std::size_t _last_selected_histogram = 0;
 
 		util::maybe<asset::ostream> _performance_log;
 		util::Time                  _performance_log_delay_left{1};
@@ -76,5 +78,6 @@ namespace mirrage {
 
 		void _draw_settings_window();
 		void _draw_profiler_window();
+		void _draw_histogram_window();
 	};
 } // namespace mirrage

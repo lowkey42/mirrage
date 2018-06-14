@@ -27,13 +27,10 @@ layout(push_constant) uniform Push_constants {
 
 
 void main() {
-	vec3 diffuse;
-	vec3 radiance = upsampled_result(depth_sampler, mat_data_sampler,
-	                                 lowres_depth_sampler, lowres_mat_data_sampler,
-	                                 result_diff_sampler, vertex_out.tex_coords);
+	vec3 radiance = textureLod(result_diff_sampler, vertex_out.tex_coords, 0).rgb;
 	vec3 specular = textureLod(result_spec_sampler, vertex_out.tex_coords, 0).rgb;
 
-	out_color = vec4(calculate_gi(vertex_out.tex_coords, radiance, specular, albedo_sampler, mat_data_sampler, brdf_sampler, diffuse), 0);
+	out_color = vec4(calculate_gi(vertex_out.tex_coords, radiance, specular, albedo_sampler, mat_data_sampler, brdf_sampler), 0);
 
 
 	if(pcs.prev_projection[2][3]==0) {

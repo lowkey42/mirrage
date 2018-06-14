@@ -43,16 +43,9 @@ namespace mirrage::graphic {
 		virtual void on_window_modified(Window&) = 0;
 	};
 
-	class Window : public util::Registered<Window, Context>,
-	               public util::Registration<Window, Window_modification_handler> {
+	class Window : public util::Registration<Window, Window_modification_handler> {
 	  public:
-		Window(Context&    context,
-		       std::string name,
-		       std::string title,
-		       int         display,
-		       int         width,
-		       int         height,
-		       Fullscreen  fullscreen);
+		Window(std::string name, std::string title, int display, int width, int height, Fullscreen fullscreen);
 		~Window();
 
 		void on_present();
@@ -71,6 +64,8 @@ namespace mirrage::graphic {
 		auto fullscreen() const noexcept { return _fullscreen; }
 		auto viewport() const noexcept { return glm::vec4(0.f, 0.f, width(), height()); }
 
+		void create_surface(Context& context);
+
 	  private:
 		std::string _name;
 		std::string _title;
@@ -83,7 +78,6 @@ namespace mirrage::graphic {
 
 		double _frame_start_time           = 0;
 		float  _delta_time_smoothed        = 0;
-		float  _cpu_delta_time_smoothed    = 0;
 		float  _time_since_last_FPS_output = 0;
 
 		void _update_fps_timer(double present_started);

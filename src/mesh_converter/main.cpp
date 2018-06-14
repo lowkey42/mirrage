@@ -7,6 +7,8 @@
 #include <mirrage/utils/stacktrace.hpp>
 #include <mirrage/utils/string_utils.hpp>
 
+#include <plog/Appenders/ColorConsoleAppender.h>
+#include <plog/Log.h>
 #include <gsl/gsl>
 
 #include <string>
@@ -18,18 +20,22 @@ auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util
 
 // ./mesh_converter sponza.obj
 // ./mesh_converter --output=/foo/bar sponza.obj
-int main(int argc, char** argv) {
-	mirrage::util::init_stacktrace(argv[0]);
+int main(int argc, char** argv)
+{
+	static auto fileAppender =
+	        plog::RollingFileAppender<plog::TxtFormatter>("mesh_converter.log", 4L * 1024L, 4);
+	static auto consoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>();
+	plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender);
 
 	if(argc < 1) {
-		std::cerr << "Too few arguments!\n"
-		          << "Usage ./mesh_converter [--output=DIR] INPUT [...]" << std::endl;
+		LOG(plog::error) << "Too few arguments!\n"
+		                 << "Usage ./mesh_converter [--output=DIR] INPUT [...]";
 		return 1;
 	}
 
 	auto args   = std::vector<std::string>{const_cast<const char**>(argv + 1),
                                          const_cast<const char**>(argv + argc)};
-	auto output = extract_arg(args, "--output").get_or_other("output");
+	auto output = extract_arg(args, "--output").get_or("output");
 
 	create_directory(output);
 	create_directory(output + "/models");
@@ -41,7 +47,8 @@ int main(int argc, char** argv) {
 	}
 }
 
-auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string> {
+auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string>
+{
 	auto found =
 	        std::find_if(args.begin(), args.end(), [&](auto& str) { return util::starts_with(str, key); });
 

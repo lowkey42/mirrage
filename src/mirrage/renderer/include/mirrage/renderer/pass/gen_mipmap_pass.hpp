@@ -30,9 +30,9 @@ namespace mirrage::renderer {
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
 
 		// used to generate mipmaps of layer N, based on layer N-1
-		std::vector<vk::UniqueDescriptorSet> _descriptor_sets;
-		std::vector<graphic::Framebuffer>    _mipmap_gen_framebuffers;
-		graphic::Render_pass                 _mipmap_gen_renderpass;
+		std::vector<graphic::DescriptorSet> _descriptor_sets;
+		std::vector<graphic::Framebuffer>   _mipmap_gen_framebuffers;
+		graphic::Render_pass                _mipmap_gen_renderpass;
 	};
 
 	class Gen_mipmap_pass_factory : public Pass_factory {

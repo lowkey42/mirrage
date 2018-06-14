@@ -45,9 +45,9 @@ namespace mirrage::net {
 	 *                          .build();
 	 *
 	 *  auto c = Client_builder("example.org", 4242, channels)
-	 *                   .on_connect([](auto peer) { MIRRAGE_DEBUG("connected to server"); })
+	 *                   .on_connect([](auto peer) { LOG(plog::debug) << "connected to server"; })
 	 *                   .on_disconnect(
-	 *                           [](auto peer, auto arg) { MIRRAGE_DEBUG("disconnected from server"); })
+	 *                           [](auto peer, auto arg) { LOG(plog::debug) << "disconnected from server"; })
 	 *                   .connect();
 	 */
 	class Client final : public detail::Connection {

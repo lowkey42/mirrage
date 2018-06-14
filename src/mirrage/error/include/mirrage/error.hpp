@@ -14,6 +14,8 @@ namespace mirrage {
 
 	enum class Error_type {
 		asset_not_found = 1,
+		asset_io_error,
+		asset_usage_error,
 		network_invalid_host,
 		network_usage_error,
 		network_unkown_error
@@ -28,15 +30,17 @@ namespace mirrage {
 		unknown   // everyone screwed up
 	};
 
-	std::error_condition make_error_condition(Error_type e);
-	std::error_condition make_error_condition(Error_source e);
+	extern std::error_condition make_error_condition(Error_type e);
+	extern std::error_condition make_error_condition(Error_source e);
 
 } // namespace mirrage
 
 namespace std {
 	template <>
-	struct is_error_condition_enum<mirrage::Error_type> : true_type {};
+	struct is_error_condition_enum<mirrage::Error_type> : true_type {
+	};
 
 	template <>
-	struct is_error_condition_enum<mirrage::Error_source> : true_type {};
+	struct is_error_condition_enum<mirrage::Error_source> : true_type {
+	};
 } // namespace std

@@ -31,14 +31,16 @@ namespace mirrage::gui {
 		sf2_structDef(Font_desc, aid, size, default_font);
 		sf2_structDef(Gui_cfg, fonts);
 
-		void nk_sdl_clipbard_paste(nk_handle, struct nk_text_edit* edit) {
+		void nk_sdl_clipbard_paste(nk_handle, struct nk_text_edit* edit)
+		{
 			auto text = SDL_GetClipboardText();
 			if(text) {
 				nk_textedit_paste(edit, text, nk_strlen(text));
 			}
 		}
 
-		void nk_sdl_clipbard_copy(nk_handle, const char* text, int len) {
+		void nk_sdl_clipbard_copy(nk_handle, const char* text, int len)
+		{
 			if(len <= 0)
 				return;
 
@@ -46,7 +48,8 @@ namespace mirrage::gui {
 			SDL_SetClipboardText(str.c_str());
 		}
 
-		auto sdl_to_nk_mb(Uint8 button) -> util::maybe<nk_buttons> {
+		auto sdl_to_nk_mb(Uint8 button) -> util::maybe<nk_buttons>
+		{
 			switch(button) {
 				case SDL_BUTTON_LEFT: return NK_BUTTON_LEFT;
 				case SDL_BUTTON_MIDDLE: return NK_BUTTON_MIDDLE;
@@ -65,9 +68,12 @@ namespace mirrage::gui {
 			  , _input_mgr(input_mgr)
 			  , _ctx(ctx)
 			  , _viewport(viewport)
-			  , _ui_matrix(ui_matrix) {}
+			  , _ui_matrix(ui_matrix)
+			{
+			}
 
-			void pre_input_events() override {
+			void pre_input_events() override
+			{
 				_grab_clicks = nk_window_is_any_hovered(_ctx);
 				_grab_inputs = nk_item_is_any_active(_ctx);
 
@@ -75,8 +81,9 @@ namespace mirrage::gui {
 			}
 			void post_input_events() override { nk_input_end(_ctx); }
 
-			bool handle_key(bool down, SDL_Keycode key) {
-				const auto state = SDL_GetKeyboardState(0);
+			bool handle_key(bool down, SDL_Keycode key)
+			{
+				const auto state = SDL_GetKeyboardState(nullptr);
 				const auto ctrl  = state[SDL_SCANCODE_LCTRL] || state[SDL_SCANCODE_RCTRL];
 
 				switch(key) {
@@ -127,7 +134,8 @@ namespace mirrage::gui {
 				}
 			}
 
-			bool propagate(SDL_Event& evt) override {
+			bool propagate(SDL_Event& evt) override
+			{
 				switch(evt.type) {
 					case SDL_KEYUP:
 					case SDL_KEYDOWN:
@@ -198,11 +206,12 @@ namespace mirrage::gui {
 		struct Wnk_Context {
 			nk_context ctx;
 
-			Wnk_Context() {
+			Wnk_Context()
+			{
 				nk_init_default(&ctx, nullptr);
 				ctx.clip.copy     = nk_sdl_clipbard_copy;
 				ctx.clip.paste    = nk_sdl_clipbard_paste;
-				ctx.clip.userdata = nk_handle_ptr(0);
+				ctx.clip.userdata = nk_handle_ptr(nullptr);
 			}
 			~Wnk_Context() { nk_free(&ctx); }
 		};
@@ -214,7 +223,8 @@ namespace mirrage::gui {
 		};
 
 		template <class T>
-		auto get_buffer_data_ref(nk_buffer& src) -> gsl::span<const T> {
+		auto get_buffer_data_ref(nk_buffer& src) -> gsl::span<const T>
+		{
 			nk_memory_status info;
 			nk_buffer_info(&info, &src);
 
@@ -246,7 +256,8 @@ namespace mirrage::gui {
 
 			Nk_renderer(Gui_renderer& renderer) : renderer(renderer) {}
 
-			void draw(nk_context& ctx, glm::vec4 viewport, glm::vec2 screen_size, const glm::mat4& ui_matrix) {
+			void draw(nk_context& ctx, glm::vec4 viewport, glm::vec2 screen_size, const glm::mat4& ui_matrix)
+			{
 
 				glm::vec2 scale = glm::vec2(viewport.z - viewport.x, viewport.w - viewport.y) / screen_size;
 
@@ -287,7 +298,9 @@ namespace mirrage::gui {
 
 					auto cmd    = static_cast<const nk_draw_command*>(nullptr);
 					int  offset = 0;
-					nk_draw_foreach(cmd, &ctx, &commands.buffer) {
+					for(cmd = nk__draw_begin(&ctx, &commands.buffer); cmd;
+					    cmd = nk__draw_next(cmd, &commands.buffer, &ctx)) {
+
 						if(cmd->elem_count == 0)
 							continue;
 
@@ -302,7 +315,7 @@ namespace mirrage::gui {
 					}
 				}
 
-				nk_clear(&ctx);
+				//nk_clear(&ctx);
 			}
 		};
 	} // namespace detail
@@ -314,29 +327,30 @@ namespace mirrage::gui {
 			int            width;
 			int            height;
 
-			Wnk_font_atlas(asset::Asset_manager& assets) {
+			Wnk_font_atlas(asset::Asset_manager& assets)
+			{
 				nk_font_atlas_init_default(&atlas);
 				nk_font_atlas_begin(&atlas);
 
-				assets.load_maybe<Gui_cfg>("cfg:gui"_aid).process([&](auto& cfg) {
+				assets.load_maybe<Gui_cfg>("cfg:gui"_aid, false).process([&](auto& cfg) {
 					for(auto& font : cfg->fonts) {
-						auto stream = assets.load_raw(font.aid);
-						if(stream.is_some()) {
-							auto data = stream.get_or_throw().bytes();
-							auto f    = nk_font_atlas_add_from_memory(
-                                    &atlas, data.data(), data.size(), font.size, nullptr);
+						assets.load_maybe<asset::Bytes>(font.aid, false).process([&](auto&& data) {
+							auto f = nk_font_atlas_add_from_memory(
+							        &atlas, const_cast<char*>(data->data()), data->size(), font.size, nullptr);
 							if(font.default_font) {
 								atlas.default_font = f;
 							}
-							MIRRAGE_DEBUG("Loaded font \"" << font.aid << "\" in fontsize " << font.size);
-						}
+							LOG(plog::debug)
+							        << "Loaded font \"" << font.aid << "\" in fontsize " << font.size;
+						});
 					}
 				});
 
 				data = static_cast<const uint8_t*>(
 				        nk_font_atlas_bake(&atlas, &width, &height, NK_FONT_ATLAS_RGBA32));
 			}
-			void post_init(nk_context& ctx, nk_draw_null_texture& null_tex, struct nk_image tex) {
+			void post_init(nk_context& ctx, nk_draw_null_texture& null_tex, struct nk_image tex)
+			{
 				data   = nullptr;
 				width  = 0;
 				height = 0;
@@ -349,7 +363,8 @@ namespace mirrage::gui {
 			~Wnk_font_atlas() { nk_font_atlas_clear(&atlas); }
 		};
 
-		glm::vec2 normalize_screen_size(int window_width, int window_height, int target_height) {
+		glm::vec2 normalize_screen_size(int window_width, int window_height, int target_height)
+		{
 			auto width  = static_cast<float>(window_width);
 			auto height = static_cast<float>(window_height);
 
@@ -360,14 +375,14 @@ namespace mirrage::gui {
 			if(width < height) { // special case for portrait-mode
 				float vheight = std::round(height * (static_cast<float>(target_height)) / width);
 				return {target_height, vheight};
-
 			} else {
 				float vwidth = std::round(width * (static_cast<float>(target_height)) / height);
 				return {vwidth, target_height};
 			}
 		}
 
-		auto build_ui_mat(glm::vec2 size) {
+		auto build_ui_mat(glm::vec2 size)
+		{
 			auto m = glm::ortho(-size.x / 2.f, size.x / 2.f, size.y / 2.f, -size.y / 2.f, -1.f, 1.f);
 			m[1][1] *= -1.f;
 
@@ -393,7 +408,8 @@ namespace mirrage::gui {
 		  : renderer(renderer)
 		  , atlas(assets)
 		  , atlas_tex(renderer.load_texture(atlas.width, atlas.height, 4, atlas.data))
-		  , input_filter(input, &ctx.ctx, this->viewport, ui_matrix) {
+		  , input_filter(input, &ctx.ctx, this->viewport, ui_matrix)
+		{
 
 			change_viewport(viewport);
 
@@ -409,7 +425,8 @@ namespace mirrage::gui {
 		}
 		~PImpl() {}
 
-		void change_viewport(glm::vec4 new_viewport) {
+		void change_viewport(glm::vec4 new_viewport)
+		{
 			viewport    = new_viewport;
 			screen_size = normalize_screen_size(static_cast<int>(viewport.z - viewport.x),
 			                                    static_cast<int>(viewport.w - viewport.y),
@@ -426,45 +443,50 @@ namespace mirrage::gui {
 	  , _assets(assets)
 	  , _input(input)
 	  , _renderer(renderer)
-	  , _last_renderer(_renderer.get()) {
+	  , _last_renderer(_renderer.get())
+	{
 
 		_init();
 	}
-	Gui::~Gui() {
+	Gui::~Gui()
+	{
 		if(_renderer) {
 			_renderer->_gui = nullptr;
 		}
 	}
 
-	void Gui::_init() {
+	void Gui::_init()
+	{
 		_last_renderer = _renderer.get();
 		if(_last_renderer) {
 			_impl                = std::make_unique<PImpl>(_viewport, _assets, _input, *_last_renderer);
 			_last_renderer->_gui = this;
-
 		} else {
-			MIRRAGE_WARN("Gui initialized without a valid renderer. Nothing will be drawn!");
+			LOG(plog::warning) << "Gui initialized without a valid renderer. Nothing will be drawn!";
 		}
 	}
 
-	void Gui::viewport(glm::vec4 new_viewport) {
+	void Gui::viewport(glm::vec4 new_viewport)
+	{
 		_viewport = new_viewport;
 		_impl->change_viewport(new_viewport);
 	}
 
-	void Gui_renderer::draw_gui() {
+	void Gui_renderer::draw_gui()
+	{
 		if(_gui) {
 			_gui->draw();
 		}
 	}
 
-	void Gui::draw() {
+	void Gui::draw()
+	{
 		if(_renderer.modified(_last_renderer)) {
 			_init();
 		}
 
 		if(!_impl) {
-			MIRRAGE_INFO("no impl");
+			LOG(plog::info) << "no impl";
 			return;
 		}
 
@@ -472,8 +494,10 @@ namespace mirrage::gui {
 
 		_impl->renderer.draw(_impl->ctx.ctx, _impl->viewport, _impl->screen_size, _impl->ui_matrix);
 	}
+	void Gui::start_frame() { nk_clear(&_impl->ctx.ctx); }
 
-	auto Gui::ctx() -> nk_context* {
+	auto Gui::ctx() -> nk_context*
+	{
 		if(_renderer.modified(_last_renderer)) {
 			_init();
 		}

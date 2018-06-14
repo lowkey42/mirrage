@@ -28,11 +28,9 @@ namespace mirrage::renderer {
 		graphic::Texture_2D&                 _src;
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
-		vk::UniqueDescriptorSet              _descriptor_set;
+		graphic::DescriptorSet               _descriptor_set;
 		std::vector<graphic::Framebuffer>    _framebuffers;
 		graphic::Render_pass                 _render_pass;
-		const bool                           _tone_mapping_enabled;
-		const bool                           _bloom_enabled;
 	};
 
 	class Blit_pass_factory : public Pass_factory {

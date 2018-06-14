@@ -36,7 +36,8 @@ namespace mirrage::input {
 		Action_id    id;
 		Input_source src;
 	};
-	inline bool operator==(const Once_action& lhs, const Once_action& rhs) {
+	inline bool operator==(const Once_action& lhs, const Once_action& rhs)
+	{
 		return lhs.id == rhs.id && lhs.src == rhs.src;
 	}
 

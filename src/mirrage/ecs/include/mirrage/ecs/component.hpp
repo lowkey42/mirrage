@@ -79,7 +79,8 @@ namespace mirrage::ecs {
 	class Component {
 		template <class>
 		friend class Component_container;
-		static constexpr void _validate_type_helper() {
+		static constexpr void _validate_type_helper()
+		{
 			static_assert(std::is_base_of<component_base_t, T>::value, "");
 			static_assert(std::is_default_constructible<T>::value, "");
 			static_assert(std::is_move_assignable<T>::value, "");
@@ -87,7 +88,8 @@ namespace mirrage::ecs {
 		}
 
 	  public:
-		static constexpr const Entity_handle* marker_addr(const Component* inst) {
+		static constexpr const Entity_handle* marker_addr(const Component* inst)
+		{
 			static_assert(std::is_standard_layout<Component>::value,
 			              "standard layout is required for the pool storage policy");
 			return reinterpret_cast<const Entity_handle*>(reinterpret_cast<const char*>(inst)
@@ -106,18 +108,21 @@ namespace mirrage::ecs {
 		Component(Component&&) noexcept = default;
 		Component& operator=(Component&&) = default;
 
-		auto owner_handle() const noexcept -> Entity_handle {
+		auto owner_handle() const noexcept -> Entity_handle
+		{
 			MIRRAGE_INVARIANT(_owner, "invalid component");
 			return _owner;
 		}
-		auto manager() const noexcept -> Entity_manager& {
+		auto manager() const noexcept -> Entity_manager&
+		{
 			MIRRAGE_INVARIANT(_manager, "invalid component");
 			return *_manager;
 		}
 		auto owner() const -> Entity_facet { return {manager(), owner_handle()}; }
 
 	  protected:
-		~Component() noexcept { //< protected destructor to avoid destruction by base-class
+		~Component() noexcept
+		{ //< protected destructor to avoid destruction by base-class
 			_validate_type_helper();
 		}
 

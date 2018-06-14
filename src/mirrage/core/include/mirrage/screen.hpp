@@ -47,7 +47,8 @@ namespace mirrage {
 		~Screen_manager() noexcept;
 
 		template <class T, typename... Args>
-		auto enter(Args&&... args) -> T& {
+		auto enter(Args&&... args) -> T&
+		{
 			return static_cast<T&>(enter(std::make_unique<T>(_engine, std::forward<Args>(args)...)));
 		}
 

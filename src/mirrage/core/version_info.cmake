@@ -26,5 +26,5 @@ execute_process(COMMAND
   ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 # generate info.cpp
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/info.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/info.cpp" @ONLY)
+configure_file("${CMAKE_CURRENT_SOURCE_DIR}/info.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/info.cpp" ESCAPE_QUOTES @ONLY)
 
