@@ -33,6 +33,7 @@ target_link_libraries(mirrage_asset
 		physfs-static
 		Async++
 		robin-map
+		glm::glm
 )
    
 
@@ -49,3 +50,7 @@ install(EXPORT mirrage_asset_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage_asset)
+endif()

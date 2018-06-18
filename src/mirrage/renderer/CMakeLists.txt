@@ -50,7 +50,7 @@ target_link_libraries(mirrage_renderer
 		mirrage::graphic
 		mirrage::gui
 		mirrage::utils
-		glm
+		glm::glm
 		gsl
 		sf2
 )
@@ -69,3 +69,7 @@ install(EXPORT mirrage_renderer_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage_renderer)
+endif()

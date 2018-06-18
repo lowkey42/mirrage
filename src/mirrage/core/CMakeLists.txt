@@ -43,6 +43,7 @@ target_link_libraries(mirrage
 		mirrage::gui
 		mirrage::input
 		mirrage::net
+		glm::glm
 )
 
 
@@ -59,3 +60,7 @@ install(EXPORT mirrage_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage)
+endif()

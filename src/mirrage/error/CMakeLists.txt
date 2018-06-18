@@ -41,3 +41,7 @@ install(EXPORT mirrage_error_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage_error)
+endif()

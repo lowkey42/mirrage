@@ -15,7 +15,6 @@ add_executable(demo ${HEADER_FILES}
 	src/test_screen.cpp
 	${BACKWARD_ENABLE}
 )
-
 add_backward(demo)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
@@ -26,6 +25,7 @@ target_link_libraries(demo
 		mirrage::mirrage
 		mirrage::renderer
 		plog
+		glm::glm
 )
 
 option(MIRRAGE_COMPILE_SHADERS "Compile demo shaders" OFF)
@@ -38,4 +38,8 @@ option(MIRRAGE_EXPORT_EXECUTABLE "Export executable" OFF)
 if(MIRRAGE_EXPORT_EXECUTABLE)
 	install(DIRECTORY ${ROOT_DIR}/assets/ DESTINATION bin)
 	install(TARGETS demo RUNTIME DESTINATION bin)
+endif()
+
+if(COMMAND cotire)
+	cotire(demo)
 endif()

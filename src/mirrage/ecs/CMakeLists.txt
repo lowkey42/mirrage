@@ -30,6 +30,7 @@ target_include_directories(mirrage_ecs PUBLIC
 target_link_libraries(mirrage_ecs
 	PUBLIC
 		mirrage::utils
+		glm::glm
 		gsl
 		mirrage::asset
 		moodycamel
@@ -50,3 +51,7 @@ install(EXPORT mirrage_ecs_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage_ecs)
+endif()

@@ -29,7 +29,7 @@ target_link_libraries(mirrage_gui
 	PUBLIC
 		mirrage::utils
 		gsl
-		glm
+		glm::glm
 		nuklear
 		mirrage::asset
 		mirrage::input
@@ -50,3 +50,7 @@ install(EXPORT mirrage_gui_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage_gui)
+endif()

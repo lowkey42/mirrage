@@ -31,6 +31,7 @@ target_include_directories(mirrage_net PUBLIC
 target_link_libraries(mirrage_net
 	PUBLIC
 		mirrage::utils
+		glm::glm
 		mirrage::error
 		enet
 		boost::magic_get
@@ -50,3 +51,7 @@ install(EXPORT mirrage_net_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage_net)
+endif()

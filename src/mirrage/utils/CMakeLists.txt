@@ -37,7 +37,7 @@ add_backward(mirrage_utils)
 target_link_libraries(mirrage_utils
 	PUBLIC
 		gsl
-		glm
+		glm::glm
 		moodycamel
 		sf2
 		plog
@@ -57,3 +57,7 @@ install(EXPORT mirrage_utils_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage_utils)
+endif()

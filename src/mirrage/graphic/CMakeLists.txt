@@ -48,7 +48,7 @@ target_include_directories(mirrage_graphic PUBLIC
 target_link_libraries(mirrage_graphic
 	PUBLIC
 		mirrage::utils
-		glm
+		glm::glm
 		gsl
 		mirrage::asset
 		sf2
@@ -70,3 +70,7 @@ install(EXPORT mirrage_graphic_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage_graphic)
+endif()

@@ -69,6 +69,20 @@ else()
 	option(MIRRAGE_BUILD_DEMO "Build the demo application" OFF)
 endif()
 
+
+option(MIRRAGE_ENABLE_COTIRE "Enable cotire" ON)
+if(MIRRAGE_ENABLE_COTIRE)
+	include(cotire OPTIONAL)
+
+	if(COMMAND cotire)
+		add_definitions(-DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ON -DGLM_ENABLE_EXPERIMENTAL -DGLM_FORCE_CXX14)
+		add_compile_options(-pthread)
+		set_property(GLOBAL PROPERTY COTIRE_PREFIX_HEADER_INCLUDE_PATH "${ROOT_DIR}/dependencies")
+		set_property(GLOBAL PROPERTY COTIRE_PREFIX_HEADER_IGNORE_PATH "${ROOT_DIR}/dependencies/nuklear;${ROOT_DIR}/src")
+		set_property(GLOBAL PROPERTY COTIRE_ADD_UNITY_BUILD FALSE)
+	endif()
+endif()
+
 add_subdirectory(dependencies)
 add_subdirectory(src)
 
