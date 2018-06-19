@@ -16,10 +16,9 @@ add_subdirectory(backward-cpp)
 add_subdirectory(enet)
 include(glm_interface.cmake)
 include(gsl_interface.cmake)
+include(magic_get_interface.cmake)
 add_subdirectory(moodycamel)
 include(nuklear_interface.cmake)
-
-add_subdirectory(magic_get)
 
 SET(PHYSFS_ARCHIVE_7Z FALSE CACHE BOOL "" FORCE)
 SET(PHYSFS_BUILD_SHARED FALSE CACHE BOOL "" FORCE)
