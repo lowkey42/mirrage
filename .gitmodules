@@ -7,3 +7,6 @@
 [submodule "dependencies/assimp"]
 	path = dependencies/assimp
 	url = https://github.com/assimp/assimp.git
+[submodule "dependencies/asyncplusplus"]
+	path = dependencies/asyncplusplus
+	url = https://github.com/lowkey42/asyncplusplus.git

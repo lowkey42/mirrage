@@ -10,6 +10,7 @@ if(MIRRAGE_BUILD_MESH_CONVERTER)
 	add_subdirectory(stb_image)
 endif()
 
+SET(BUILD_SHARED_LIBS FALSE CACHE BOOL "" FORCE)
 add_subdirectory(asyncplusplus)
 add_subdirectory(backward-cpp)
 add_subdirectory(enet)
