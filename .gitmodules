@@ -19,3 +19,6 @@
 [submodule "dependencies/magic_get"]
 	path = dependencies/magic_get
 	url = https://github.com/apolukhin/magic_get.git
+[submodule "dependencies/nuklear"]
+	path = dependencies/nuklear
+	url = https://github.com/vurtun/nuklear.git
