@@ -10,3 +10,6 @@
 [submodule "dependencies/asyncplusplus"]
 	path = dependencies/asyncplusplus
 	url = https://github.com/lowkey42/asyncplusplus.git
+[submodule "dependencies/glm"]
+	path = dependencies/glm
+	url = https://github.com/g-truc/glm.git
