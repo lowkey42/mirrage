@@ -59,5 +59,6 @@ build_scanbuild:
     paths:
       - /tmp/scan-build-*
     expire_in: 1 week
+    when: on_failure
 
 
