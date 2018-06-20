@@ -13,9 +13,7 @@ add_executable(mesh_converter
 	filesystem.cpp
 )
 
-set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
-target_compile_options(mesh_converter PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
-
+add_backward(mesh_converter)
 
 target_link_libraries(mesh_converter
 	PRIVATE

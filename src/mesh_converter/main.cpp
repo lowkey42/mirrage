@@ -4,7 +4,6 @@
 
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/maybe.hpp>
-#include <mirrage/utils/stacktrace.hpp>
 #include <mirrage/utils/string_utils.hpp>
 
 #include <plog/Appenders/ColorConsoleAppender.h>

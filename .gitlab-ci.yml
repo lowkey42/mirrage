@@ -14,12 +14,17 @@ build_gcc:
     - mkdir build
     - cd build
     - mkdir bin
+    - rm -r /build/src
     - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
   artifacts:
     paths:
       - build/bin
     expire_in: 1 day
+  cache:
+    key: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_SLUG}"
+    paths:
+    - /build
 
 build_clang:
   stage: build
@@ -29,12 +34,17 @@ build_clang:
     - mkdir build
     - cd build
     - mkdir bin
+    - rm -r /build/src
     - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
   artifacts:
     paths:
       - build/bin
     expire_in: 1 week
+  cache:
+    key: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_SLUG}"
+    paths:
+    - /build
 
 build_scanbuild:
   stage: build

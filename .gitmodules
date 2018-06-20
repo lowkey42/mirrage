@@ -22,3 +22,6 @@
 [submodule "dependencies/nuklear"]
 	path = dependencies/nuklear
 	url = https://github.com/vurtun/nuklear.git
+[submodule "dependencies/physfs"]
+	path = dependencies/physfs
+	url = https://github.com/lowkey42/physfs.git

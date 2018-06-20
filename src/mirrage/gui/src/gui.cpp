@@ -11,6 +11,7 @@
 #include <glm/gtx/transform.hpp>
 #include <sf2/sf2.hpp>
 
+#include <cstdint>
 #include <string>
 
 

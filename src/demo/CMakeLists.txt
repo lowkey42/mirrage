@@ -26,6 +26,7 @@ target_link_libraries(demo
 		mirrage::renderer
 		plog
 		glm::glm
+		sf2
 )
 
 option(MIRRAGE_COMPILE_SHADERS "Compile demo shaders" OFF)
