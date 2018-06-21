@@ -11,18 +11,18 @@ build_gcc:
   script:
     - export CC=gcc
     - export CXX=g++
-    - mkdir build
-    - cd build
+    - mkdir /build
+    - cd /build
     - mkdir bin
     - rm -rf /build/src
     - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
-    - wget -nc -O /build/model_data.tar.xz https://github.com/lowkey42/mirrage/releases/download/v0.2/model_data.tar.xz
+    - wget -nc -O/build/model_data.tar.xz https://github.com/lowkey42/mirrage/releases/download/v0.2/model_data.tar.xz
     - cd bin/bin
     - tar xf /build/model_data.tar.xz
   artifacts:
     paths:
-      - build/bin
+      - /build/bin
     expire_in: 1 day
   cache:
     key: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_SLUG}"
@@ -34,8 +34,8 @@ build_clang:
   script:
     - export CC=clang
     - export CXX=clang++
-    - mkdir build
-    - cd build
+    - mkdir /build
+    - cd /build
     - mkdir bin
     - rm -rf /build/src
     - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
@@ -45,7 +45,7 @@ build_clang:
     - tar xf /build/model_data.tar.xz
   artifacts:
     paths:
-      - build/bin
+      - /build/bin
     expire_in: 1 week
   cache:
     key: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_SLUG}"
