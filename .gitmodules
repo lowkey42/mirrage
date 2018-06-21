@@ -25,3 +25,6 @@
 [submodule "dependencies/physfs"]
 	path = dependencies/physfs
 	url = https://github.com/lowkey42/physfs.git
+[submodule "dependencies/robin-map"]
+	path = dependencies/robin-map
+	url = https://github.com/Tessil/robin-map.git
