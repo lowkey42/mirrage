@@ -10,7 +10,7 @@
 #include <mirrage/utils/atomic_utils.hpp>
 #include <mirrage/utils/log.hpp>
 
-#include <moodycamel/concurrentqueue.hpp>
+#include <concurrentqueue.h>
 
 #include <cstdint>
 #include <string>

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <moodycamel/concurrentqueue.hpp>
+#include <concurrentqueue.h>
 
 #ifndef ECS_COMPONENT_INCLUDED
 #include "component.hpp"

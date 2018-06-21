@@ -6,7 +6,7 @@ add_subdirectory(backward-cpp)
 add_subdirectory(enet)
 include(glm_interface.cmake)
 include(gsl_interface.cmake)
-add_subdirectory(moodycamel)
+include(moodycamel_interface.cmake)
 include(nuklear_interface.cmake)
 
 include(magic_get_interface.cmake)

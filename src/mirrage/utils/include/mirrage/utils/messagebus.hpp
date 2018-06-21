@@ -12,7 +12,7 @@
 #include <mirrage/utils/reflection.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
-#include <moodycamel/concurrentqueue.hpp>
+#include <concurrentqueue.h>
 
 #include <algorithm>
 #include <atomic>

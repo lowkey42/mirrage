@@ -31,3 +31,6 @@
 [submodule "dependencies/sf2"]
 	path = dependencies/sf2
 	url = https://github.com/lowkey42/sf2.git
+[submodule "dependencies/moodycamel"]
+	path = dependencies/moodycamel
+	url = https://github.com/cameron314/concurrentqueue.git

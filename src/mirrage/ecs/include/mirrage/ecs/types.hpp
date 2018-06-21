@@ -13,7 +13,7 @@
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/pool.hpp>
 
-#include <moodycamel/concurrentqueue.hpp>
+#include <concurrentqueue.h>
 
 #include <cstdint>
 #include <string>

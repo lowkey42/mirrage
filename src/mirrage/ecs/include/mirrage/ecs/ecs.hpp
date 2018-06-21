@@ -17,7 +17,7 @@
 #include <mirrage/utils/string_utils.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
-#include <moodycamel/concurrentqueue.hpp>
+#include <concurrentqueue.h>
 
 #include <memory>
 #include <string>
