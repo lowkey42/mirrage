@@ -28,3 +28,6 @@
 [submodule "dependencies/robin-map"]
 	path = dependencies/robin-map
 	url = https://github.com/Tessil/robin-map.git
+[submodule "dependencies/sf2"]
+	path = dependencies/sf2
+	url = https://github.com/lowkey42/sf2.git
