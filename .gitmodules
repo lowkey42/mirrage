@@ -34,3 +34,6 @@
 [submodule "dependencies/moodycamel"]
 	path = dependencies/moodycamel
 	url = https://github.com/cameron314/concurrentqueue.git
+[submodule "dependencies/doctest"]
+	path = dependencies/doctest
+	url = https://github.com/onqtam/doctest.git

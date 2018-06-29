@@ -76,4 +76,18 @@ namespace mirrage::ecs {
 		return util::nothing;
 	}
 	void Compact_index_policy::clear() { _table.clear(); }
+
+
+	void Sparse_void_index_policy::attach(Entity_id owner, Component_index) { _table.emplace(owner); }
+	void Sparse_void_index_policy::detach(Entity_id owner) { _table.erase(owner); }
+	void Sparse_void_index_policy::shrink_to_fit() {}
+	auto Sparse_void_index_policy::find(Entity_id owner) const -> util::maybe<Component_index>
+	{
+		if(_table.count(owner) > 0)
+			return Component_index(0);
+		else
+			return util::nothing;
+	}
+	void Sparse_void_index_policy::clear() { _table.clear(); }
+
 } // namespace mirrage::ecs

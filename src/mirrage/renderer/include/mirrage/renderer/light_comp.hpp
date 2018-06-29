@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mirrage/ecs/component.hpp>
+#include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/utils/units.hpp>
 
 
@@ -13,10 +14,7 @@ namespace mirrage::renderer {
 		friend void                  save_component(ecs::Serializer& state, const Directional_light_comp&);
 
 		Directional_light_comp() = default;
-		Directional_light_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner)
-		  : Component(manager, owner)
-		{
-		}
+		Directional_light_comp(ecs::Entity_handle owner, ecs::Entity_manager&) : Component(owner) {}
 
 		void temperature(float kelvin);
 		void source_radius(util::Distance v) noexcept { _source_radius = v; }
@@ -32,7 +30,7 @@ namespace mirrage::renderer {
 		auto color() const noexcept { return _color; }
 		auto shadowmap_id() const noexcept { return _shadowmap_id; }
 
-		auto calc_shadowmap_view_proj() const -> glm::mat4;
+		auto calc_shadowmap_view_proj(ecs::components::Transform_comp& transform) const -> glm::mat4;
 
 	  private:
 		util::Distance _source_radius;
@@ -54,8 +52,6 @@ namespace mirrage::renderer {
 		// friend void save_component(ecs::Serializer& state, const Directional_light_comp&);
 
 		Shadowcaster_comp() = default;
-		Shadowcaster_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner) : Component(manager, owner)
-		{
-		}
+		Shadowcaster_comp(ecs::Entity_handle owner, ecs::Entity_manager&) : Component(owner) {}
 	};
 } // namespace mirrage::renderer

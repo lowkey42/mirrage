@@ -17,7 +17,7 @@ namespace mirrage::renderer {
 		friend void                  save_component(ecs::Serializer& state, const Camera_comp&);
 
 		Camera_comp() = default;
-		Camera_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner) : Component(manager, owner) {}
+		Camera_comp(ecs::Entity_handle owner, ecs::Entity_manager&) : Component(owner) {}
 
 		auto calc_projection(glm::vec4 viewport) const -> glm::mat4;
 		void priority(float p) { _priority = p; }
@@ -35,7 +35,6 @@ namespace mirrage::renderer {
 
 	struct Camera_state {
 	  public:
-		Camera_state(const Camera_comp&, glm::vec4 viewport);
 		Camera_state(const Camera_comp&, const ecs::components::Transform_comp&, glm::vec4 viewport);
 		Camera_state(const Camera_comp&, glm::vec3 position, glm::quat orientation, glm::vec4 viewport);
 

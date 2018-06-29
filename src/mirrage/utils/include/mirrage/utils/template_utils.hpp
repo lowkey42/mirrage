@@ -16,10 +16,6 @@
 
 namespace mirrage::util {
 
-	template <typename T>
-	struct void_t {
-	};
-
 	struct no_move {
 	  protected:
 		no_move()           = default;
@@ -84,6 +80,51 @@ namespace mirrage::util {
 	{
 		return t;
 	}
+
+	template <typename... Ts>
+	using void_t = void;
+
+	namespace detail {
+		template <typename, template <typename...> class, typename...>
+		struct is_detected : std::false_type {
+		};
+
+		template <template <class...> class Operation, typename... Arguments>
+		struct is_detected<void_t<Operation<Arguments...>>, Operation, Arguments...> : std::true_type {
+		};
+	} // namespace detail
+
+	template <template <class...> class Operation, typename... Arguments>
+	using is_detected = detail::is_detected<void_t<>, Operation, Arguments...>;
+
+	template <template <class...> class Operation, typename... Arguments>
+	constexpr bool is_detected_v = detail::is_detected<void_t<>, Operation, Arguments...>::value;
+
+
+	template <typename T, typename InT>
+	T bit_cast(InT&& in)
+	{
+		static_assert(sizeof(InT) <= sizeof(T), "The result type has to be at least as large as the input.");
+		static_assert(std::is_standard_layout_v<T>, "The result type has to be a standard layout type.");
+		static_assert(std::is_standard_layout_v<InT>, "The input type has to be a standard layout type.");
+		static_assert(std::is_trivially_copyable_v<T>, "The result type has to be trivial.");
+
+		auto r = T();
+		std::memcpy(&r, &in, sizeof(T));
+		return r;
+	}
+
+	template <typename T>
+	T bit_cast(const char* addr)
+	{
+		static_assert(std::is_standard_layout_v<T>, "The result type has to be a standard layout type.");
+		static_assert(std::is_trivially_copyable_v<T>, "The result type has to be trivial.");
+
+		auto r = T();
+		std::memcpy(&r, addr, sizeof(T));
+		return r;
+	}
+
 
 	template <typename T>
 	void erase_fast(std::vector<T>& c, const T& v)

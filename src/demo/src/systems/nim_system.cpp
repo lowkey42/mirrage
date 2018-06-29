@@ -114,7 +114,7 @@ namespace mirrage::systems {
 		s.write_virtual(sf2::vmember("frames", frames));
 	}
 
-	Nim_system::Nim_system(ecs::Entity_manager& ecs) : _nim_components(ecs.list<Nim_comp>()) {}
+	Nim_system::Nim_system(ecs::Entity_manager& ecs) : _ecs(ecs), _nim_components(ecs.list<Nim_comp>()) {}
 
 	namespace {
 		template <class T>
@@ -281,7 +281,7 @@ namespace mirrage::systems {
 	{
 		_affected_entities.clear();
 		for(auto& nim_comp : _nim_components) {
-			_affected_entities.emplace(nim_comp.uid(), nim_comp.owner());
+			_affected_entities.emplace(nim_comp.uid(), nim_comp.owner(_ecs));
 		}
 	}
 } // namespace mirrage::systems

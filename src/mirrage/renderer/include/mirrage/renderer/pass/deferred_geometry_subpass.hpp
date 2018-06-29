@@ -23,7 +23,8 @@ namespace mirrage::renderer {
 		void draw(vk::CommandBuffer&, graphic::Render_pass&);
 
 	  private:
-		Deferred_renderer& _renderer;
-		Model_comp::Pool&  _models;
+		ecs::Entity_manager& _ecs;
+		Deferred_renderer&   _renderer;
+		Model_comp::Pool&    _models;
 	};
 } // namespace mirrage::renderer

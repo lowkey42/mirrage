@@ -36,7 +36,8 @@ namespace mirrage::renderer {
 	Deferred_lighting_subpass::Deferred_lighting_subpass(Deferred_renderer&   renderer,
 	                                                     ecs::Entity_manager& entities,
 	                                                     graphic::Texture_2D& depth)
-	  : _renderer(renderer)
+	  : _ecs(entities)
+	  , _renderer(renderer)
 	  , _gbuffer(renderer.gbuffer())
 	  , _lights_directional(entities.list<Directional_light_comp>())
 	  , _input_attachment_descriptor_set_layout(
@@ -114,10 +115,10 @@ namespace mirrage::renderer {
 		auto inv_view = _renderer.global_uniforms().inv_view_mat;
 
 		for(auto& light : _lights_directional) {
-			auto& transform = light.owner().get<ecs::components::Transform_comp>().get_or_throw(
+			auto& transform = light.owner(_ecs).get<ecs::components::Transform_comp>().get_or_throw(
 			        "Missing required Transform_comp");
 
-			dpc.model         = light.calc_shadowmap_view_proj() * inv_view;
+			dpc.model         = light.calc_shadowmap_view_proj(transform) * inv_view;
 			dpc.light_color   = glm::vec4(light.color(), light.intensity());
 			dpc.light_data.r  = light.source_radius() / 1_m;
 			auto dir          = _renderer.global_uniforms().view_mat * glm::vec4(-transform.direction(), 0.f);

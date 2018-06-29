@@ -47,10 +47,6 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	Camera_state::Camera_state(const Camera_comp& cam, glm::vec4 viewport)
-	  : Camera_state(cam, cam.owner().get<ecs::components::Transform_comp>().get_or_throw(), viewport)
-	{
-	}
 	Camera_state::Camera_state(const Camera_comp&                     cam,
 	                           const ecs::components::Transform_comp& transform,
 	                           glm::vec4                              viewport)

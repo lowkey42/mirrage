@@ -22,6 +22,7 @@ namespace mirrage::renderer {
 		void draw(vk::CommandBuffer&, graphic::Render_pass&);
 
 	  private:
+		ecs::Entity_manager&          _ecs;
 		Deferred_renderer&            _renderer;
 		GBuffer&                      _gbuffer;
 		Directional_light_comp::Pool& _lights_directional;

@@ -31,40 +31,66 @@ namespace mirrage::ecs {
 	  private:
 		std::vector<Component_index> _table;
 	};
+	class Sparse_void_index_policy {
+	  public:
+		Sparse_void_index_policy() = default;
+		void attach(Entity_id, Component_index);
+		void detach(Entity_id);
+		void shrink_to_fit();
+		auto find(Entity_id) const -> util::maybe<Component_index>;
+		void clear();
 
-
-	template <class T>
-	struct Pool_storage_policy_value_traits {
-		static constexpr bool         supports_empty_values = true;
-		static constexpr int_fast32_t max_free              = 8;
-		using Marker_type                                   = Entity_handle;
-		static constexpr Marker_type free_mark              = invalid_entity;
-
-		static constexpr const Marker_type* marker_addr(const T* inst)
-		{
-			return T::component_base_t::marker_addr(inst);
-		}
+	  private:
+		std::unordered_set<Entity_id> _table;
 	};
-	template <class T>
-	constexpr bool Pool_storage_policy_value_traits<T>::supports_empty_values;
-	template <class T>
-	constexpr int_fast32_t Pool_storage_policy_value_traits<T>::max_free;
-	template <class T>
-	constexpr typename Pool_storage_policy_value_traits<T>::Marker_type
-	        Pool_storage_policy_value_traits<T>::free_mark;
+
+
+	namespace detail {
+		template <class T, typename = void>
+		struct Pool_storage_policy_sparse {
+			static constexpr int_fast32_t max_free = 0;
+		};
+		template <class T>
+		struct Pool_storage_policy_sparse<T,
+		                                  util::void_t<decltype(T::is_alive(std::declval<const T*>())),
+		                                               decltype(T::set_dead(std::declval<T*>()))>> {
+
+			static constexpr int_fast32_t max_free = 16;
+
+			static constexpr bool is_free(const T* inst) { return !T::is_alive(inst); }
+			static constexpr void mark_free(T* inst) { T::set_dead(inst); }
+		};
+
+		template <class T, typename = void>
+		struct Pool_storage_policy_sort {
+			static constexpr bool sorted = false;
+		};
+		template <class T>
+		struct Pool_storage_policy_sort<T, util::void_t<decltype(T::sort_key), decltype(T::sort_key_index)>> {
+			static constexpr bool sorted                   = true;
+			static constexpr auto sort_key                 = T::sort_key;
+			static constexpr auto sort_key_constructor_idx = T::sort_key_index;
+		};
+
+		template <class T>
+		struct Pool_storage_policy_value_traits : Pool_storage_policy_sparse<T>, Pool_storage_policy_sort<T> {
+		};
+	} // namespace detail
+
 
 
 	template <std::size_t Chunk_size, class T>
 	class Pool_storage_policy {
-		using pool_t = util::pool<T, Chunk_size, Component_index, Pool_storage_policy_value_traits<T>>;
+		using pool_t =
+		        util::pool<T, Chunk_size, detail::Pool_storage_policy_value_traits<T>, Component_index>;
 
 	  public:
 		using iterator = typename pool_t::iterator;
 
-		template <class... Args>
-		auto emplace(Args&&... args) -> std::tuple<T&, Component_index>
+		template <typename F, class... Args>
+		auto emplace(F&& relocate, Args&&... args) -> std::tuple<T&, Component_index>
 		{
-			return _pool.emplace_back(std::forward<Args>(args)...);
+			return _pool.emplace(relocate, std::forward<Args>(args)...);
 		}
 
 		void replace(Component_index idx, T&& new_element) { _pool.replace(idx, std::move(new_element)); }
@@ -95,6 +121,51 @@ namespace mirrage::ecs {
 	};
 
 
+	template <class T>
+	class Void_storage_policy {
+	  public:
+		/// dummy returned by all calls. Can be mutable because it doesn't contain any state
+		static T dummy_instance;
+
+		using iterator = T*;
+
+		template <typename F, class... Args>
+		auto emplace(F&&, Args&&...) -> std::tuple<T&, Component_index>
+		{
+			return std::make_tuple(dummy_instance, 0);
+		}
+
+		void replace(Component_index, T&&) {}
+
+		template <typename F>
+		void erase(Component_index, F&&)
+		{
+		}
+
+		void clear() {}
+
+		template <typename F>
+		void shrink_to_fit(F&&)
+		{
+		}
+
+		auto get(Component_index) -> T& { return dummy_instance; }
+
+		auto begin() noexcept -> iterator
+		{
+			static_assert(util::dependent_false<T>(), "Iteration is not supported by Void_storage_policy.");
+			return &dummy_instance;
+		}
+		auto end() noexcept -> iterator
+		{
+			static_assert(util::dependent_false<T>(), "Iteration is not supported by Void_storage_policy.");
+			return &dummy_instance + 1;
+		}
+		auto size() const -> Component_index { return 1; }
+		auto empty() const -> bool { return false; }
+	};
+
+
 
 	template <class T>
 	class Component_container : public Component_container_base {
@@ -105,7 +176,7 @@ namespace mirrage::ecs {
 	  public:
 		Component_container(Entity_manager& m) : _manager(m)
 		{
-			T::_validate_type_helper();
+			T::_check_type_invariants();
 			_index.clear();
 		}
 
@@ -125,7 +196,11 @@ namespace mirrage::ecs {
 					return _storage.get(comp_idx.get_or_throw());
 				}
 
-				auto comp = _storage.emplace(_manager, owner);
+				auto relocator = [&](auto, auto& comp, auto new_idx) {
+					_index.attach(comp.owner_handle().id(), new_idx);
+				};
+
+				auto comp = _storage.emplace(relocator, owner, _manager);
 				_index.attach(entity_id, std::get<1>(comp));
 				return std::get<0>(comp);
 			}();
@@ -235,7 +310,10 @@ namespace mirrage::ecs {
 							continue;
 						}
 
-						auto comp = _storage.emplace(std::move(std::get<0>(insertions_buffer[i])));
+						auto relocator = [&](auto, auto& comp, auto new_idx) {
+							_index.attach(comp.owner_handle().id(), new_idx);
+						};
+						auto comp = _storage.emplace(relocator, std::move(std::get<0>(insertions_buffer[i])));
 						_index.attach(entity_id, std::get<1>(comp));
 					}
 				} else {
@@ -252,7 +330,7 @@ namespace mirrage::ecs {
 
 			// construct T inplace inside the pair to avoid additional move
 			auto inst = Insertion(std::piecewise_construct,
-			                      std::forward_as_tuple(_manager, owner, std::forward<Args>(args)...),
+			                      std::forward_as_tuple(owner, _manager, std::forward<Args>(args)...),
 			                      std::forward_as_tuple(owner));
 			std::forward<F>(init)(inst.first);
 			_queued_insertions.enqueue(std::move(inst));

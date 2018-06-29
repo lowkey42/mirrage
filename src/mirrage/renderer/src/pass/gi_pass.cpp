@@ -1202,12 +1202,12 @@ namespace mirrage::renderer {
 
 				command_buffer.draw(3, 1, 0, 0);
 			});
-		}
 
-		_median_spec_renderpass.execute(command_buffer, _median_spec_framebuffer, [&] {
-			_median_spec_renderpass.bind_descriptor_set(1, *_median_spec_descriptor_set);
-			command_buffer.draw(3, 1, 0, 0);
-		});
+			_median_spec_renderpass.execute(command_buffer, _median_spec_framebuffer, [&] {
+				_median_spec_renderpass.bind_descriptor_set(1, *_median_spec_descriptor_set);
+				command_buffer.draw(3, 1, 0, 0);
+			});
+		}
 
 
 		auto _ = _renderer.profiler().push("Sample (spec blur)");

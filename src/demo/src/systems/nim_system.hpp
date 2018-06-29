@@ -24,7 +24,7 @@ namespace mirrage::systems {
 		friend void                  save_component(ecs::Serializer& state, const Nim_comp&);
 
 		Nim_comp() = default;
-		Nim_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner) : Component(manager, owner) {}
+		Nim_comp(ecs::Entity_handle owner, ecs::Entity_manager&) : Component(owner) {}
 
 		auto uid() const noexcept { return _uid; }
 
@@ -118,7 +118,8 @@ namespace mirrage::systems {
 	  private:
 		using Entity_lookup_table = std::unordered_map<util::Str_id, ecs::Entity_facet>;
 
-		Nim_comp::Pool& _nim_components;
+		ecs::Entity_manager& _ecs;
+		Nim_comp::Pool&      _nim_components;
 
 		Entity_lookup_table _affected_entities;
 

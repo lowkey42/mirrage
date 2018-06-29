@@ -112,6 +112,7 @@ void main() {
 
 	vec2 raycast_hit_uv;
 	vec3 raycast_hit_point;
+	// TODO: try scaling stride based on startLod for better results at low resolutions
 	if(spec_visible &&
 	   traceScreenSpaceRay1(P+(dir*0.25+jitter*0.1), dir, pcs.projection, depth_sampler,
 							depthSize, 1.0, global_uniforms.proj_planes.x,

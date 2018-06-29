@@ -18,6 +18,7 @@
 #include <atomic>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 
@@ -34,8 +35,9 @@ namespace mirrage::ecs {
 		auto find(Entity_id) const -> util::maybe<Component_index>;
 		void clear();
 	};
-	class Sparse_index_policy;  //< for rarely used components
-	class Compact_index_policy; //< for frequently used components
+	class Sparse_index_policy;      //< for rarely used components
+	class Compact_index_policy;     //< for frequently used components
+	class Sparse_void_index_policy; //< for empty components that are rarely used
 
 	template <class T>
 	struct Storage_policy {
@@ -45,8 +47,8 @@ namespace mirrage::ecs {
 		auto size() const -> Component_index;
 		auto empty() const -> bool;
 
-		template <class... Args>
-		auto emplace(Args&&... args) -> std::tuple<T&, Component_index>;
+		template <typename F, class... Args>
+		auto emplace(F&& relocate, Args&&... args) -> std::tuple<T&, Component_index>;
 		void replace(Component_index, T&&);
 		template <typename F>
 		void erase(Component_index, F&& relocate);
@@ -57,10 +59,48 @@ namespace mirrage::ecs {
 	};
 	template <std::size_t Chunk_size, class T>
 	class Pool_storage_policy;
+	template <class T>
+	class Void_storage_policy; //< for empty components
 
+
+	namespace detail {
+		/**
+		 * Non-template base class for components that know their entity
+		 */
+		class Owned_component_base {
+		  public:
+			static auto is_alive(const Owned_component_base* self) -> bool
+			{
+				return util::bit_cast<Entity_handle>(reinterpret_cast<const char*>(self)
+				                                     + offsetof(Owned_component_base, _owner))
+				       != invalid_entity;
+			}
+			static void set_dead(Owned_component_base* self)
+			{
+				auto addr = reinterpret_cast<char*>(self) + offsetof(Owned_component_base, _owner);
+				new(addr) Entity_handle(invalid_entity);
+			}
+
+			Owned_component_base() : _owner(invalid_entity) {}
+			explicit Owned_component_base(Entity_handle owner) : _owner(owner) {}
+
+			auto owner_handle() const noexcept -> Entity_handle
+			{
+				MIRRAGE_INVARIANT(_owner, "invalid component");
+				return _owner;
+			}
+			auto owner(Entity_manager& manager) const -> Entity_facet { return {manager, owner_handle()}; }
+
+		  protected:
+			Entity_handle _owner;
+		};
+	} // namespace detail
 
 	/**
 	 * Base class for components.
+	 * Should only be used directly by components that need to avoid the additional cost of an
+	 *   Entity_handle and don't need to known their owner.
+	 *
 	 * All components have to be default-constructable, move-assignable and provide a storage_policy,
 	 *   index_policy and a name and a constructor taking only User_data&, Entity_manager&, Entity_handle.
 	 *
@@ -76,64 +116,111 @@ namespace mirrage::ecs {
 	template <class T,
 	          class Index_policy   = Sparse_index_policy,
 	          class Storage_policy = Pool_storage_policy<32, T>>
-	class Component {
+	class Tiny_component {
+	  public:
 		template <class>
 		friend class Component_container;
-		static constexpr void _validate_type_helper()
-		{
-			static_assert(std::is_base_of<component_base_t, T>::value, "");
-			static_assert(std::is_default_constructible<T>::value, "");
-			static_assert(std::is_move_assignable<T>::value, "");
-			static_assert(std::is_move_constructible<T>::value, "");
-		}
 
-	  public:
-		static constexpr const Entity_handle* marker_addr(const Component* inst)
-		{
-			static_assert(std::is_standard_layout<Component>::value,
-			              "standard layout is required for the pool storage policy");
-			return reinterpret_cast<const Entity_handle*>(reinterpret_cast<const char*>(inst)
-			                                              + offsetof(Component, _owner));
-		}
-
-		using component_base_t = Component;
+		using component_base_t = Tiny_component;
 		using index_policy     = Index_policy;
 		using storage_policy   = Storage_policy;
 		using Pool             = Component_container<T>;
 		// static constexpr auto name() {return "Component";}
 		static constexpr const char* name_save_as() { return T::name(); }
 
-		Component() : _manager(nullptr), _owner(invalid_entity) {}
-		Component(Entity_manager& manager, Entity_handle owner) : _manager(&manager), _owner(owner) {}
-		Component(Component&&) noexcept = default;
-		Component& operator=(Component&&) = default;
+		// required for pool storage policies. is_alive has to return true for every living instance
+		//   and false if set_dead has been called.
+		// the argument of set_dead is a pointer to a destroyed instance.
+		//     static auto is_alive(const T*) -> bool
+		//     static void set_dead(T*)
 
-		auto owner_handle() const noexcept -> Entity_handle
-		{
-			MIRRAGE_INVARIANT(_owner, "invalid component");
-			return _owner;
-		}
-		auto manager() const noexcept -> Entity_manager&
-		{
-			MIRRAGE_INVARIANT(_manager, "invalid component");
-			return *_manager;
-		}
-		auto owner() const -> Entity_facet { return {manager(), owner_handle()}; }
+		Tiny_component()                 = default;
+		Tiny_component(Tiny_component&&) = default;
+		Tiny_component& operator=(Tiny_component&&) = default;
 
 	  protected:
-		~Component() noexcept
-		{ //< protected destructor to avoid destruction by base-class
-			_validate_type_helper();
-		}
+		~Tiny_component() = default;
 
 	  private:
-		Entity_manager* _manager;
-		Entity_handle   _owner;
+		static constexpr void _check_type_invariants()
+		{
+			static_assert(std::is_base_of<Tiny_component, T>::value, "");
+			static_assert(std::is_move_assignable<T>::value, "");
+			static_assert(std::is_move_constructible<T>::value, "");
+		}
+	};
+
+	/**
+	 * Base class of all components that know their own entity.
+	 */
+	template <class T,
+	          class Index_policy   = Sparse_index_policy,
+	          class Storage_policy = Pool_storage_policy<32, T>>
+	class Component : public Tiny_component<T, Index_policy, Storage_policy>,
+	                  public detail::Owned_component_base {
+	  public:
+		using component_base_t               = Component;
+		static constexpr auto sort_key       = &Component::_owner;
+		static constexpr auto sort_key_index = 0;
+
+		Component() = default;
+		explicit Component(Entity_handle owner) : Owned_component_base(owner) {}
+		Component(Component&&) = default;
+		Component& operator=(Component&&) = default;
+
+	  protected:
+		~Component() = default;
+	};
+
+	template <class T, class TagType, TagType invalid_tag>
+	class Tag_component : public Tiny_component<T, Sparse_index_policy, Pool_storage_policy<128, T>> {
+	  public:
+		using component_base_t = Tag_component;
+
+		TagType value;
+
+		// TODO: load/save
+
+		static auto is_alive(const T* self) -> bool
+		{
+			return util::bit_cast<TagType>(reinterpret_cast<const char*>(self) + offsetof(T, value))
+			       != invalid_tag;
+		}
+		static void set_dead(T* self)
+		{
+			auto addr = reinterpret_cast<char*>(self) + offsetof(T, value);
+			new(addr) TagType(invalid_tag);
+		}
+
+		Tag_component()                = default;
+		Tag_component(Tag_component&&) = default;
+		explicit Tag_component(TagType value) : value(value) {}
+		Tag_component& operator=(Tag_component&&) = default;
+
+	  protected:
+		~Tag_component() = default;
+	};
+
+	template <class T>
+	class Stateless_tag_component
+	  : public Tiny_component<T, Sparse_void_index_policy, Void_storage_policy<T>> {
+	  public:
+		using component_base_t = Stateless_tag_component;
+
+		// TODO: load/save
+
+		Stateless_tag_component()                          = default;
+		Stateless_tag_component(Stateless_tag_component&&) = default;
+		Stateless_tag_component& operator=(Stateless_tag_component&&) = default;
+
+	  protected:
+		~Stateless_tag_component() = default;
 	};
 
 
+
 	/**
-	 * All operations except for emplace_now, find_now and process_queued_actions are deferred
+	 * All operations puplic mutating operations are deferred
 	 *   and inherently thread safe.
 	 */
 	class Component_container_base {

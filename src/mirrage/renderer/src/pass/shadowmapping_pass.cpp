@@ -261,10 +261,11 @@ namespace mirrage::renderer {
 		auto pcs = Push_constants{};
 
 		for(auto& light : _lights_directional) {
-			if(!light.owner().has<Shadowcaster_comp>())
+			if(!light.owner(_entities).has<Shadowcaster_comp>())
 				continue;
 
-			auto& light_transform = light.owner().get<ecs::components::Transform_comp>().get_or_throw();
+			auto& light_transform =
+			        light.owner(_entities).get<ecs::components::Transform_comp>().get_or_throw();
 
 			if(light.shadowmap_id() == -1) {
 				for(auto i = 0; i < gsl::narrow<int>(_shadowmaps.size()); i++) {
@@ -295,16 +296,17 @@ namespace mirrage::renderer {
 			shadowmap.light_source_orientation = light_transform.orientation();
 			shadowmap.caster_count             = _entities.list<Model_comp>().size();
 
-			pcs.light_view_proj = light.calc_shadowmap_view_proj();
+			pcs.light_view_proj = light.calc_shadowmap_view_proj(light_transform);
 
 			auto& target_fb = shadowmap.framebuffer;
 			_render_pass.execute(command_buffer, target_fb, [&] {
 				_render_pass.bind_descriptor_sets(0, {&global_uniform_set, 1});
 
 				for(auto& caster : _shadowcasters) {
-					caster.owner().get<Model_comp>().process([&](Model_comp& model) {
-						auto& transform = model.owner().get<ecs::components::Transform_comp>().get_or_throw(
-						        "Required Transform_comp missing");
+					caster.owner(_entities).get<Model_comp>().process([&](Model_comp& model) {
+						auto& transform =
+						        model.owner(_entities).get<ecs::components::Transform_comp>().get_or_throw(
+						                "Required Transform_comp missing");
 
 						pcs.model = transform.to_mat4();
 						_render_pass.push_constant("pcs"_strid, pcs);

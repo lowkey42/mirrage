@@ -16,7 +16,7 @@ namespace mirrage::ecs::components {
 		friend void                  save_component(ecs::Serializer& state, const Transform_comp&);
 
 		Transform_comp() = default;
-		Transform_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner) : Component(manager, owner) {}
+		Transform_comp(ecs::Entity_handle owner, ecs::Entity_manager&) : Component(owner) {}
 
 		auto position() const noexcept { return _position; }
 		auto orientation() const noexcept { return _orientation; }

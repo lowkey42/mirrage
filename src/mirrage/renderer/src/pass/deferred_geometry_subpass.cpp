@@ -11,7 +11,7 @@
 namespace mirrage::renderer {
 
 	Deferred_geometry_subpass::Deferred_geometry_subpass(Deferred_renderer& r, ecs::Entity_manager& entities)
-	  : _renderer(r), _models(entities.list<Model_comp>())
+	  : _ecs(entities), _renderer(r), _models(entities.list<Model_comp>())
 	{
 	}
 
@@ -45,7 +45,7 @@ namespace mirrage::renderer {
 		Deferred_push_constants dpc{};
 
 		for(auto& model : _models) {
-			auto& transform = model.owner().get<ecs::components::Transform_comp>().get_or_throw(
+			auto& transform = model.owner(_ecs).get<ecs::components::Transform_comp>().get_or_throw(
 			        "Required Transform_comp missing");
 
 			dpc.model        = transform.to_mat4();
