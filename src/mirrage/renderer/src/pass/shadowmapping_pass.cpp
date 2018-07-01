@@ -282,9 +282,9 @@ namespace mirrage::renderer {
 			} else if(!_renderer.settings().dynamic_shadows) {
 				auto& shadowmap = _shadowmaps.at(light.shadowmap_id());
 
-				auto pos_diff = glm::length2(light_transform.position() - shadowmap.light_source_position);
+				auto pos_diff = glm::length2(light_transform.position - shadowmap.light_source_position);
 				auto orientation_diff = glm::abs(
-				        glm::dot(light_transform.orientation(), shadowmap.light_source_orientation) - 1);
+				        glm::dot(light_transform.orientation, shadowmap.light_source_orientation) - 1);
 				if(pos_diff <= 0.0001f && orientation_diff <= 0.001f
 				   && shadowmap.caster_count == _entities.list<Model_comp>().size()) {
 					continue; // skip update
@@ -292,8 +292,8 @@ namespace mirrage::renderer {
 			}
 
 			auto& shadowmap                    = _shadowmaps.at(light.shadowmap_id());
-			shadowmap.light_source_position    = light_transform.position();
-			shadowmap.light_source_orientation = light_transform.orientation();
+			shadowmap.light_source_position    = light_transform.position;
+			shadowmap.light_source_orientation = light_transform.orientation;
 			shadowmap.caster_count             = _entities.list<Model_comp>().size();
 
 			pcs.light_view_proj = light.calc_shadowmap_view_proj(light_transform);

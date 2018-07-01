@@ -13,8 +13,7 @@ namespace mirrage::renderer {
 		friend void                  load_component(ecs::Deserializer& state, Directional_light_comp&);
 		friend void                  save_component(ecs::Serializer& state, const Directional_light_comp&);
 
-		Directional_light_comp() = default;
-		Directional_light_comp(ecs::Entity_handle owner, ecs::Entity_manager&) : Component(owner) {}
+		using Component::Component;
 
 		void temperature(float kelvin);
 		void source_radius(util::Distance v) noexcept { _source_radius = v; }
@@ -51,7 +50,6 @@ namespace mirrage::renderer {
 		// friend void load_component(ecs::Deserializer& state, Directional_light_comp&);
 		// friend void save_component(ecs::Serializer& state, const Directional_light_comp&);
 
-		Shadowcaster_comp() = default;
-		Shadowcaster_comp(ecs::Entity_handle owner, ecs::Entity_manager&) : Component(owner) {}
+		using Component::Component;
 	};
 } // namespace mirrage::renderer

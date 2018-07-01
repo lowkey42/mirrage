@@ -15,6 +15,7 @@
 
 #include <doctest.h>
 
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -278,8 +279,6 @@ namespace mirrage::util::tests {
 
 	struct pool_value_traits {
 		static constexpr int_fast32_t max_free = 8;
-		static bool is_free(const T* inst) { return *reinterpret_cast<const int*>(inst) == 0; }
-		static void mark_free(T* inst) { new(inst) int(0); }
 
 		static constexpr bool sorted                   = true;
 		static constexpr auto sort_key                 = &T::id;
@@ -333,12 +332,12 @@ namespace mirrage::util::tests {
 
 		// removal
 		{
-			p.erase(1, [](auto...) {});
+			p.erase(0, [](auto...) {});
 			CHECK_EQ(p.size(), 2);
 			CHECK(!p.empty());
 
 			auto iter = p.begin();
-			CHECK_EQ(iter->id, 1);
+			CHECK_EQ(iter->id, 2);
 			iter++;
 
 			CHECK_EQ(iter->id, 3);
@@ -347,7 +346,7 @@ namespace mirrage::util::tests {
 			CHECK_EQ(iter, p.end());
 
 
-			p.erase(0, [](auto...) {});
+			p.erase(1, [](auto...) {});
 			CHECK_EQ(p.size(), 1);
 			CHECK(!p.empty());
 			p.erase(2, [](auto...) {});

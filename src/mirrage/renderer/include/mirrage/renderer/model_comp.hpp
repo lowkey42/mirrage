@@ -20,8 +20,8 @@ namespace mirrage::renderer {
 		friend void                  save_component(ecs::Serializer& state, const Model_comp&);
 
 		Model_comp() = default;
-		Model_comp(ecs::Entity_handle owner, ecs::Entity_manager&, Model_ptr model = {})
-		  : Component(owner), _model(std::move(model))
+		Model_comp(ecs::Entity_handle owner, ecs::Entity_manager& em, Model_ptr model = {})
+		  : Component(owner, em), _model(std::move(model))
 		{
 		}
 
@@ -40,8 +40,8 @@ namespace mirrage::renderer {
 		friend void                  save_component(ecs::Serializer& state, const Model_unloaded_comp&);
 
 		Model_unloaded_comp() = default;
-		Model_unloaded_comp(ecs::Entity_handle owner, ecs::Entity_manager&, asset::AID model_aid = {})
-		  : Component(owner), _model_aid(std::move(model_aid))
+		Model_unloaded_comp(ecs::Entity_handle owner, ecs::Entity_manager& em, asset::AID model_aid = {})
+		  : Component(owner, em), _model_aid(std::move(model_aid))
 		{
 		}
 
@@ -59,8 +59,8 @@ namespace mirrage::renderer {
 		friend void                  save_component(ecs::Serializer& state, const Model_loading_comp&);
 
 		Model_loading_comp() = default;
-		Model_loading_comp(ecs::Entity_handle owner, ecs::Entity_manager&, Model_ptr model = {})
-		  : Component(owner), _model(std::move(model))
+		Model_loading_comp(ecs::Entity_handle owner, ecs::Entity_manager& em, Model_ptr model = {})
+		  : Component(owner, em), _model(std::move(model))
 		{
 		}
 

@@ -16,8 +16,7 @@ namespace mirrage::renderer {
 		friend void                  load_component(ecs::Deserializer& state, Camera_comp&);
 		friend void                  save_component(ecs::Serializer& state, const Camera_comp&);
 
-		Camera_comp() = default;
-		Camera_comp(ecs::Entity_handle owner, ecs::Entity_manager&) : Component(owner) {}
+		using Component::Component;
 
 		auto calc_projection(glm::vec4 viewport) const -> glm::mat4;
 		void priority(float p) { _priority = p; }

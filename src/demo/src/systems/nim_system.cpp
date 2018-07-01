@@ -203,12 +203,12 @@ namespace mirrage::systems {
 
 				auto light_color = catmull_rom(_current_position, colors, _loop);
 
-				auto pos_diff         = glm::distance2(transform.position(), position);
-				auto orientation_diff = glm::abs(glm::dot(transform.orientation(), orientation) - 1);
+				auto pos_diff         = glm::distance2(transform.position, position);
+				auto orientation_diff = glm::abs(glm::dot(transform.orientation, orientation) - 1);
 
 				if(pos_diff > 0.00001f || orientation_diff > 0.0001f) {
-					transform.orientation(orientation);
-					transform.position(position);
+					transform.orientation = orientation;
+					transform.position    = position;
 				}
 
 				entity.get<renderer::Directional_light_comp>().process([&](auto& light) {
@@ -273,7 +273,7 @@ namespace mirrage::systems {
 				                light.color().r, light.color().g, light.color().b, light.intensity());
 			        });
 
-			return std::make_tuple(transform.position(), transform.orientation(), color);
+			return std::make_tuple(transform.position, transform.orientation, color);
 		});
 	}
 

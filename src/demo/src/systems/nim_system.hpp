@@ -23,8 +23,7 @@ namespace mirrage::systems {
 		friend void                  load_component(ecs::Deserializer& state, Nim_comp&);
 		friend void                  save_component(ecs::Serializer& state, const Nim_comp&);
 
-		Nim_comp() = default;
-		Nim_comp(ecs::Entity_handle owner, ecs::Entity_manager&) : Component(owner) {}
+		using Component::Component;
 
 		auto uid() const noexcept { return _uid; }
 

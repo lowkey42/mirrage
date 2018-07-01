@@ -50,7 +50,7 @@ namespace mirrage::renderer {
 	Camera_state::Camera_state(const Camera_comp&                     cam,
 	                           const ecs::components::Transform_comp& transform,
 	                           glm::vec4                              viewport)
-	  : Camera_state(cam, transform.position(), transform.orientation(), viewport)
+	  : Camera_state(cam, transform.position, transform.orientation, viewport)
 	{
 	}
 	Camera_state::Camera_state(const Camera_comp& cam,

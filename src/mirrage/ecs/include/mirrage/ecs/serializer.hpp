@@ -64,13 +64,24 @@ namespace mirrage::ecs {
 
 	// Fallbacks for components that don't require/provide a serialization
 	template <class T>
-	void load_component(ecs::Deserializer& state, T&)
+	auto load_component(ecs::Deserializer& state, T& inst) -> std::enable_if_t<sf2::is_annotated<T>::value>
+	{
+		state.read(inst);
+	}
+	template <class T>
+	auto load_component(ecs::Deserializer& state, T&) -> std::enable_if_t<!sf2::is_annotated<T>::value>
 	{
 		state.read_lambda([](auto&&) { return true; });
 	}
 
 	template <class T>
-	void save_component(ecs::Serializer& state, const T&)
+	auto save_component(ecs::Serializer& state, const T& inst)
+	        -> std::enable_if_t<sf2::is_annotated<T>::value>
+	{
+		state.write(inst);
+	}
+	template <class T>
+	auto save_component(ecs::Serializer& state, const T&) -> std::enable_if_t<!sf2::is_annotated<T>::value>
 	{
 		state.write_virtual();
 	}

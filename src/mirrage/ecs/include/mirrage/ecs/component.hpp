@@ -35,9 +35,10 @@ namespace mirrage::ecs {
 		auto find(Entity_id) const -> util::maybe<Component_index>;
 		void clear();
 	};
-	class Sparse_index_policy;      //< for rarely used components
-	class Compact_index_policy;     //< for frequently used components
-	class Sparse_void_index_policy; //< for empty components that are rarely used
+	class Sparse_index_policy;  //< for rarely used components
+	class Compact_index_policy; //< for frequently used components
+	template <class Storage_policy>
+	class Pool_based_index_policy; //< no additional storage, but O(log N) access and requires entity_handle in component
 
 	template <class T>
 	struct Storage_policy {
@@ -57,7 +58,7 @@ namespace mirrage::ecs {
 		auto get(Component_index) -> T&;
 		void clear();
 	};
-	template <std::size_t Chunk_size, class T>
+	template <std::size_t Chunk_size, std::size_t Holes, class T>
 	class Pool_storage_policy;
 	template <class T>
 	class Void_storage_policy; //< for empty components
@@ -69,18 +70,6 @@ namespace mirrage::ecs {
 		 */
 		class Owned_component_base {
 		  public:
-			static auto is_alive(const Owned_component_base* self) -> bool
-			{
-				return util::bit_cast<Entity_handle>(reinterpret_cast<const char*>(self)
-				                                     + offsetof(Owned_component_base, _owner))
-				       != invalid_entity;
-			}
-			static void set_dead(Owned_component_base* self)
-			{
-				auto addr = reinterpret_cast<char*>(self) + offsetof(Owned_component_base, _owner);
-				new(addr) Entity_handle(invalid_entity);
-			}
-
 			Owned_component_base() : _owner(invalid_entity) {}
 			explicit Owned_component_base(Entity_handle owner) : _owner(owner) {}
 
@@ -115,7 +104,7 @@ namespace mirrage::ecs {
 	 */
 	template <class T,
 	          class Index_policy   = Sparse_index_policy,
-	          class Storage_policy = Pool_storage_policy<32, T>>
+	          class Storage_policy = Pool_storage_policy<256, 32, T>>
 	class Tiny_component {
 	  public:
 		template <class>
@@ -136,6 +125,7 @@ namespace mirrage::ecs {
 
 		Tiny_component()                 = default;
 		Tiny_component(Tiny_component&&) = default;
+		Tiny_component(Entity_handle, Entity_manager&) {}
 		Tiny_component& operator=(Tiny_component&&) = default;
 
 	  protected:
@@ -155,7 +145,7 @@ namespace mirrage::ecs {
 	 */
 	template <class T,
 	          class Index_policy   = Sparse_index_policy,
-	          class Storage_policy = Pool_storage_policy<32, T>>
+	          class Storage_policy = Pool_storage_policy<128, 32, T>>
 	class Component : public Tiny_component<T, Index_policy, Storage_policy>,
 	                  public detail::Owned_component_base {
 	  public:
@@ -164,7 +154,7 @@ namespace mirrage::ecs {
 		static constexpr auto sort_key_index = 0;
 
 		Component() = default;
-		explicit Component(Entity_handle owner) : Owned_component_base(owner) {}
+		Component(Entity_handle owner, Entity_manager&) : Owned_component_base(owner) {}
 		Component(Component&&) = default;
 		Component& operator=(Component&&) = default;
 
@@ -172,24 +162,29 @@ namespace mirrage::ecs {
 		~Component() = default;
 	};
 
-	template <class T, class TagType, TagType invalid_tag>
-	class Tag_component : public Tiny_component<T, Sparse_index_policy, Pool_storage_policy<128, T>> {
+	/// Example usage:
+	///   struct Player_tag : Stateless_tag_component<Player_tag, int,
+	///                                               Sparse_index_policy,
+	///                                               Pool_storage_policy<1024, 64, T>> {
+	///       static constexpr auto name() { return "Player_tag"; }
+	///   };
+	template <class T,
+	          class TagType,
+	          class Index_policy   = Sparse_index_policy,
+	          class Storage_policy = Pool_storage_policy<1024, 64, T>>
+	class Tag_component : public Tiny_component<T, Sparse_index_policy, Pool_storage_policy<1024, 64, T>> {
 	  public:
 		using component_base_t = Tag_component;
 
 		TagType value;
 
-		// TODO: load/save
-
-		static auto is_alive(const T* self) -> bool
+		friend void load_component(ecs::Deserializer& state, Tag_component& self)
 		{
-			return util::bit_cast<TagType>(reinterpret_cast<const char*>(self) + offsetof(T, value))
-			       != invalid_tag;
+			state.read_value(self.value);
 		}
-		static void set_dead(T* self)
+		friend void save_component(ecs::Serializer& state, const Tag_component& self)
 		{
-			auto addr = reinterpret_cast<char*>(self) + offsetof(T, value);
-			new(addr) TagType(invalid_tag);
+			state.write_value(self.value);
 		}
 
 		Tag_component()                = default;
@@ -201,13 +196,23 @@ namespace mirrage::ecs {
 		~Tag_component() = default;
 	};
 
-	template <class T>
-	class Stateless_tag_component
-	  : public Tiny_component<T, Sparse_void_index_policy, Void_storage_policy<T>> {
+	/// Example usage:
+	///   struct Enemy_tag : Stateless_tag_component<Enemy_tag, Sparse_index_policy> {
+	///       static constexpr auto name() { return "Enemy_tag"; }
+	///   };
+	template <class T, class Index_policy = Sparse_index_policy>
+	class Stateless_tag_component : public Tiny_component<T, Index_policy, Void_storage_policy<T>> {
 	  public:
 		using component_base_t = Stateless_tag_component;
 
-		// TODO: load/save
+		friend void load_component(ecs::Deserializer& state, Stateless_tag_component&)
+		{
+			state.read_virtual();
+		}
+		friend void save_component(ecs::Serializer& state, const Stateless_tag_component&)
+		{
+			state.write_virtual();
+		}
 
 		Stateless_tag_component()                          = default;
 		Stateless_tag_component(Stateless_tag_component&&) = default;
@@ -216,7 +221,6 @@ namespace mirrage::ecs {
 	  protected:
 		~Stateless_tag_component() = default;
 	};
-
 
 
 	/**

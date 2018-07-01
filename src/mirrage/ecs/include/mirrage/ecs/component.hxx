@@ -31,36 +31,22 @@ namespace mirrage::ecs {
 	  private:
 		std::vector<Component_index> _table;
 	};
-	class Sparse_void_index_policy {
+	template <class Storage_policy>
+	class Pool_based_index_policy {
 	  public:
-		Sparse_void_index_policy() = default;
-		void attach(Entity_id, Component_index);
-		void detach(Entity_id);
-		void shrink_to_fit();
-		auto find(Entity_id) const -> util::maybe<Component_index>;
-		void clear();
+		Pool_based_index_policy(Storage_policy& pool) : _pool(&pool) {}
+		void attach(Entity_id, Component_index) {}
+		void detach(Entity_id) {}
+		void shrink_to_fit() {}
+		auto find(Entity_id entity) const -> util::maybe<Component_index> { return _pool->find(entity); }
+		void clear() {}
 
 	  private:
-		std::unordered_set<Entity_id> _table;
+		Storage_policy* _pool;
 	};
 
 
 	namespace detail {
-		template <class T, typename = void>
-		struct Pool_storage_policy_sparse {
-			static constexpr int_fast32_t max_free = 0;
-		};
-		template <class T>
-		struct Pool_storage_policy_sparse<T,
-		                                  util::void_t<decltype(T::is_alive(std::declval<const T*>())),
-		                                               decltype(T::set_dead(std::declval<T*>()))>> {
-
-			static constexpr int_fast32_t max_free = 16;
-
-			static constexpr bool is_free(const T* inst) { return !T::is_alive(inst); }
-			static constexpr void mark_free(T* inst) { T::set_dead(inst); }
-		};
-
 		template <class T, typename = void>
 		struct Pool_storage_policy_sort {
 			static constexpr bool sorted = false;
@@ -72,17 +58,18 @@ namespace mirrage::ecs {
 			static constexpr auto sort_key_constructor_idx = T::sort_key_index;
 		};
 
-		template <class T>
-		struct Pool_storage_policy_value_traits : Pool_storage_policy_sparse<T>, Pool_storage_policy_sort<T> {
+		template <class T, std::size_t Holes>
+		struct Pool_storage_policy_value_traits : Pool_storage_policy_sort<T> {
+			static constexpr int_fast32_t max_free = Holes;
 		};
 	} // namespace detail
 
 
 
-	template <std::size_t Chunk_size, class T>
+	template <std::size_t Chunk_size, std::size_t Holes, class T>
 	class Pool_storage_policy {
 		using pool_t =
-		        util::pool<T, Chunk_size, detail::Pool_storage_policy_value_traits<T>, Component_index>;
+		        util::pool<T, Chunk_size, detail::Pool_storage_policy_value_traits<T, Holes>, Component_index>;
 
 	  public:
 		using iterator = typename pool_t::iterator;
@@ -115,6 +102,13 @@ namespace mirrage::ecs {
 		auto end() noexcept -> iterator { return _pool.end(); }
 		auto size() const -> Component_index { return _pool.size(); }
 		auto empty() const -> bool { return _pool.empty(); }
+
+		template <class Key,
+		          class = std::enable_if_t<std::is_same_v<Key, decltype(std::declval<T>().*T::sort_key)>>>
+		auto find(const Key& key)
+		{
+			return _pool.find(key);
+		}
 
 	  private:
 		pool_t _pool;
@@ -166,6 +160,17 @@ namespace mirrage::ecs {
 	};
 
 
+	namespace detail {
+		template <class Index, class Storage>
+		auto index_constructor_arg(Storage& storage)
+		{
+			if constexpr(std::is_constructible_v<Index, Storage&>) {
+				return Index(storage);
+			} else {
+				return Index();
+			}
+		}
+	} // namespace detail
 
 	template <class T>
 	class Component_container : public Component_container_base {
@@ -174,7 +179,8 @@ namespace mirrage::ecs {
 		friend void save(sf2::JsonSerializer& s, const Entity_handle& e);
 
 	  public:
-		Component_container(Entity_manager& m) : _manager(m)
+		Component_container(Entity_manager& m)
+		  : _storage(), _index(detail::index_constructor_arg<typename T::index_policy>(_storage)), _manager(m)
 		{
 			T::_check_type_invariants();
 			_index.clear();
@@ -369,8 +375,8 @@ namespace mirrage::ecs {
 		template <class E>
 		using Queue = moodycamel::ConcurrentQueue<E>;
 
-		typename T::index_policy   _index;
 		typename T::storage_policy _storage;
+		typename T::index_policy   _index;
 
 		Entity_manager&      _manager;
 		Queue<Entity_handle> _queued_deletions;

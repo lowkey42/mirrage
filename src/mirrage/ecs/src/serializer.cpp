@@ -146,7 +146,7 @@ namespace mirrage::ecs {
 			Blueprint_component(ecs::Entity_handle    owner,
 			                    ecs::Entity_manager&  manager,
 			                    asset::Ptr<Blueprint> blueprint = {}) noexcept
-			  : Component(owner), _manager(&manager), blueprint(std::move(blueprint))
+			  : Component(owner, manager), _manager(&manager), blueprint(std::move(blueprint))
 			{
 			}
 			Blueprint_component(Blueprint_component&&) noexcept = default;

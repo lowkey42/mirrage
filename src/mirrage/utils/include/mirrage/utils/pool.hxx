@@ -341,6 +341,7 @@ namespace mirrage::util {
 
 		} else {
 			if(_next_free != pool._freelist.end() && *_next_free == 0) {
+				++_next_free;
 				++*this; // jump to first valid element
 			}
 
