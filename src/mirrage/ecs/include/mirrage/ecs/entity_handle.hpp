@@ -114,6 +114,15 @@ namespace mirrage::ecs {
 		}
 
 		// thread-safe
+		auto get(Entity_id h) const noexcept -> Entity_handle
+		{
+			if(h == invalid_entity_id || h - 1 >= static_cast<Entity_id>(_slots.size()))
+				return invalid_entity;
+
+			return {h, util::at(_slots, static_cast<std::size_t>(h - 1))};
+		}
+
+		// thread-safe
 		auto valid(Entity_handle h) const noexcept -> bool
 		{
 			return h

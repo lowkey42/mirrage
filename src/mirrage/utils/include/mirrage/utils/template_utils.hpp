@@ -101,6 +101,45 @@ namespace mirrage::util {
 	constexpr bool is_detected_v = detail::is_detected<void_t<>, Operation, Arguments...>::value;
 
 
+	// CTMP-List from https://codereview.stackexchange.com/questions/115740/filtering-variadic-template-arguments
+	template <typename...>
+	struct list {
+	};
+
+	namespace detail {
+		template <typename, typename>
+		struct list_append_impl;
+
+		template <typename... Ts, typename... Us>
+		struct list_append_impl<list<Ts...>, list<Us...>> {
+			using type = list<Ts..., Us...>;
+		};
+
+		template <template <typename> class, typename...>
+		struct filter_impl;
+
+		template <template <typename> class Predicate>
+		struct filter_impl<Predicate> {
+			using type = list<>;
+		};
+
+		template <template <typename> class Predicate, typename T, typename... Rest>
+		struct filter_impl<Predicate, T, Rest...> {
+			using type = typename list_append_impl<std::conditional_t<Predicate<T>::value, list<T>, list<>>,
+			                                       typename filter_impl<Predicate, Rest...>::type>::type;
+		};
+
+		template <template <typename> class Predicate, typename... Ts>
+		auto filter_helper_list(list<Ts...>) -> typename filter_impl<Predicate, Ts...>::type;
+	} // namespace detail
+
+	template <template <typename> class Predicate, typename... Ts>
+	using filter = typename detail::filter_impl<Predicate, Ts...>::type;
+
+	template <template <typename> class Predicate, typename List>
+	using filter_list = decltype(detail::filter_helper_list<Predicate>(std::declval<List>()));
+
+
 	template <typename T, typename InT>
 	T bit_cast(InT&& in)
 	{

@@ -33,6 +33,7 @@ target_link_libraries(mirrage_ecs
 		glm::glm
 		gsl
 		mirrage::asset
+		robin-map
 		moodycamel
 		sf2
 )

@@ -86,6 +86,12 @@ namespace mirrage::util {
 		util::apply(std::forward<F>(func), std::forward<Arg>(arg)...);
 	}
 
+	template <typename F, typename... Args>
+	inline void foreach_in_tuple(std::tuple<Args...>& tuple, F&& func)
+	{
+		std::apply([&](auto&&... args) { apply(func, std::forward<decltype(args)>(args)...); }, tuple);
+	}
+
 	template <typename F>
 	inline void apply2(F&&)
 	{

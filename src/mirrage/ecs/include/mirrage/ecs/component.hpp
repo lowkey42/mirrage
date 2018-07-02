@@ -15,6 +15,8 @@
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/pool.hpp>
 
+#include <tsl/robin_map.h>
+
 #include <atomic>
 #include <memory>
 #include <unordered_map>
@@ -34,6 +36,11 @@ namespace mirrage::ecs {
 		void shrink_to_fit();
 		auto find(Entity_id) const -> util::maybe<Component_index>;
 		void clear();
+
+		// static constexpr bool sorted_iteration_supported
+		// using iterator = iterator<tuple<Entity_id, Component_index>>
+		// sorted_begin() -> iterator
+		// sorted_end()   -> iterator
 	};
 	class Sparse_index_policy;  //< for rarely used components
 	class Compact_index_policy; //< for frequently used components
@@ -42,6 +49,8 @@ namespace mirrage::ecs {
 
 	template <class T>
 	struct Storage_policy {
+		static constexpr auto is_sorted = false;
+
 		using iterator = void;
 		auto begin() -> iterator;
 		auto end() -> iterator;
@@ -271,7 +280,30 @@ namespace mirrage::ecs {
 		// end()
 		// size()
 		// empty()
+
+		// static constexpr bool sorted_iteration_supported
 	};
+
+	/// Iterator into sorted range of components T as std::tuple<Entity_id, T*>
+	template <class T>
+	class Sorted_component_iterator;
+
+	template <class T>
+	using is_sorted_component = std::bool_constant<T::Pool::sorted_iteration_supported>;
+
+	template <class T>
+	constexpr auto is_sorted_component_v = is_sorted_component<T>::value;
+
+	template <class ComponentContainer,
+	          typename = std::enable_if_t<ComponentContainer::sorted_iteration_supported>>
+	auto sorted_begin(ComponentContainer&)
+	        -> Sorted_component_iterator<typename ComponentContainer::component_type>;
+
+	template <class ComponentContainer,
+	          typename = std::enable_if_t<ComponentContainer::sorted_iteration_supported>>
+	auto sorted_end(ComponentContainer&)
+	        -> Sorted_component_iterator<typename ComponentContainer::component_type>;
+
 } // namespace mirrage::ecs
 
 #include "component.hxx"

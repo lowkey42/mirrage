@@ -28,8 +28,12 @@
 namespace mirrage::ecs {
 	struct Serializer;
 
+	/// Iteratable view of entites with a given set of components
+	template <class C1, class... Cs>
+	class Entity_set_view;
 
-	// entity transfer object
+
+	/// entity transfer object
 	using ETO = std::string;
 
 	/**
@@ -44,6 +48,7 @@ namespace mirrage::ecs {
 		auto emplace() noexcept -> Entity_facet;
 		auto emplace(const std::string& blueprint) -> Entity_facet;
 		auto get(Entity_handle entity) -> util::maybe<Entity_facet>;
+		auto get_handle(Entity_id id) -> Entity_handle { return _handles.get(id); }
 		auto validate(Entity_handle entity) -> bool { return _handles.valid(entity); }
 
 		// deferred to next call to process_queued_actions
@@ -52,6 +57,10 @@ namespace mirrage::ecs {
 		template <typename C>
 		auto list() -> Component_container<C>&;
 		auto list(Component_type type) -> Component_container_base&;
+
+		template <typename... Cs, typename = std::enable_if_t<(sizeof...(Cs) > 1)>>
+		auto list() -> Entity_set_view<Cs...>;
+
 		template <typename F>
 		void list_all(F&& handler);
 

@@ -4,9 +4,12 @@
 
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/ecs/ecs.hpp>
+#include <mirrage/ecs/entity_set_view.hpp>
 #include <mirrage/graphic/render_pass.hpp>
 #include <mirrage/renderer/model.hpp>
 
+
+using mirrage::ecs::components::Transform_comp;
 
 namespace mirrage::renderer {
 
@@ -44,10 +47,7 @@ namespace mirrage::renderer {
 
 		Deferred_push_constants dpc{};
 
-		for(auto& model : _models) {
-			auto& transform = model.owner(_ecs).get<ecs::components::Transform_comp>().get_or_throw(
-			        "Required Transform_comp missing");
-
+		for(auto& [model, transform] : _ecs.list<Model_comp, Transform_comp>()) {
 			dpc.model        = transform.to_mat4();
 			dpc.light_data.x = _renderer.settings().debug_disect;
 			render_pass.push_constant("dpc"_strid, dpc);

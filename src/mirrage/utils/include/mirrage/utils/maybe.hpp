@@ -73,6 +73,17 @@ namespace mirrage::util {
 			o._valid = false;
 			return *this;
 		}
+		template <class... Args>
+		maybe& emplace(Args&&... args)
+		{
+			if(_valid)
+				_data.~T();
+
+			new(&_data) T(std::forward<Args>(args)...);
+			_valid = true;
+
+			return *this;
+		}
 
 		static maybe nothing() noexcept { return maybe(); }
 

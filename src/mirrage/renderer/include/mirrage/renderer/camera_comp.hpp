@@ -5,7 +5,7 @@
 
 
 namespace mirrage::ecs::components {
-	class Transform_comp;
+	struct Transform_comp;
 }
 
 namespace mirrage::renderer {
