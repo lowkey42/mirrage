@@ -143,10 +143,10 @@ namespace mirrage::ecs {
 			friend void save_component(ecs::Serializer& state, const Blueprint_component&);
 
 			Blueprint_component() = default;
-			Blueprint_component(ecs::Entity_manager&  manager,
-			                    ecs::Entity_handle    owner,
+			Blueprint_component(ecs::Entity_handle    owner,
+			                    ecs::Entity_manager&  manager,
 			                    asset::Ptr<Blueprint> blueprint = {}) noexcept
-			  : Component(manager, owner), blueprint(std::move(blueprint))
+			  : Component(owner, manager), _manager(&manager), blueprint(std::move(blueprint))
 			{
 			}
 			Blueprint_component(Blueprint_component&&) noexcept = default;
@@ -168,7 +168,10 @@ namespace mirrage::ecs {
 				this->blueprint = std::move(blueprint);
 			}
 
+			auto& manager() { return *_manager; }
+
 		  private:
+			ecs::Entity_manager*  _manager;
 			asset::Ptr<Blueprint> blueprint;
 		};
 
@@ -182,7 +185,7 @@ namespace mirrage::ecs {
 			comp.set(blueprint);
 			blueprint->users.push_back(comp.owner_handle());
 			blueprint->entity_manager = &comp.manager();
-			apply(*blueprint, comp.owner());
+			apply(*blueprint, comp.owner(comp.manager()));
 		}
 
 		void save_component(ecs::Serializer& state, const Blueprint_component& comp)

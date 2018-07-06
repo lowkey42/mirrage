@@ -21,7 +21,7 @@ namespace mirrage::util {
 		template <typename... Ts>
 		struct min_max_result {
 			using common_type    = std::common_type_t<Ts...>;
-			using no_temporaries = std::conjunction<std::negation<std::is_lvalue_reference<Ts>>...>;
+			using no_temporaries = std::conjunction<std::is_lvalue_reference<Ts>...>;
 			using reference_allowed =
 			        std::conjunction<std::is_convertible<std::add_lvalue_reference_t<Ts>,
 			                                             std::add_lvalue_reference_t<common_type>>...>;

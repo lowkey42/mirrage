@@ -26,6 +26,7 @@ namespace mirrage::renderer {
 		void update(util::Time);
 
 	  protected:
+		ecs::Entity_manager&       _ecs;
 		Model_comp::Pool&          _loaded_models;
 		Model_unloaded_comp::Pool& _unloaded_models;
 		Model_loading_comp::Pool&  _loading_models;

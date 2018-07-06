@@ -11,7 +11,7 @@ file(GLOB_RECURSE HEADER_FILES
 add_library(mirrage_ecs STATIC
 	src/components/transform_comp.cpp
 	src/component.cpp
-	src/ecs.cpp
+	src/entity_manager.cpp
 	src/entity_handle.cpp
 	src/serializer.cpp
 	src/types.cpp
@@ -33,6 +33,7 @@ target_link_libraries(mirrage_ecs
 		glm::glm
 		gsl
 		mirrage::asset
+		robin-map
 		moodycamel
 		sf2
 )

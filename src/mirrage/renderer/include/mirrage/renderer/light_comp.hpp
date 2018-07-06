@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mirrage/ecs/component.hpp>
+#include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/utils/units.hpp>
 
 
@@ -12,11 +13,7 @@ namespace mirrage::renderer {
 		friend void                  load_component(ecs::Deserializer& state, Directional_light_comp&);
 		friend void                  save_component(ecs::Serializer& state, const Directional_light_comp&);
 
-		Directional_light_comp() = default;
-		Directional_light_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner)
-		  : Component(manager, owner)
-		{
-		}
+		using Component::Component;
 
 		void temperature(float kelvin);
 		void source_radius(util::Distance v) noexcept { _source_radius = v; }
@@ -32,7 +29,7 @@ namespace mirrage::renderer {
 		auto color() const noexcept { return _color; }
 		auto shadowmap_id() const noexcept { return _shadowmap_id; }
 
-		auto calc_shadowmap_view_proj() const -> glm::mat4;
+		auto calc_shadowmap_view_proj(ecs::components::Transform_comp& transform) const -> glm::mat4;
 
 	  private:
 		util::Distance _source_radius;
@@ -47,15 +44,9 @@ namespace mirrage::renderer {
 	extern auto temperature_to_color(float kelvin) -> util::Rgb;
 
 
-	class Shadowcaster_comp : public ecs::Component<Shadowcaster_comp> {
+	class Shadowcaster_comp : public ecs::Stateless_tag_component<Shadowcaster_comp> {
 	  public:
 		static constexpr const char* name() { return "Shadowcaster"; }
-		// friend void load_component(ecs::Deserializer& state, Directional_light_comp&);
-		// friend void save_component(ecs::Serializer& state, const Directional_light_comp&);
-
-		Shadowcaster_comp() = default;
-		Shadowcaster_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner) : Component(manager, owner)
-		{
-		}
+		using Stateless_tag_component::Stateless_tag_component;
 	};
 } // namespace mirrage::renderer

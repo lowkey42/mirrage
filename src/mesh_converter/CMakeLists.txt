@@ -23,5 +23,6 @@ target_link_libraries(mesh_converter
 		assimp
 		sf2
 		stb_image
+		doctest
 )
 

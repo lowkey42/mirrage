@@ -83,6 +83,12 @@ if(MIRRAGE_ENABLE_COTIRE)
 	endif()
 endif()
 
+
+option(MIRRAGE_ENABLE_TESTS "Enable unit tests" ON)
+if(MIRRAGE_ENABLE_TESTS)
+	enable_testing()
+endif()
+
 add_subdirectory(dependencies)
 add_subdirectory(src)
 

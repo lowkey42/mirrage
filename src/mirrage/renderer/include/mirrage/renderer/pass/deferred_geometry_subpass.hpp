@@ -1,7 +1,6 @@
 #pragma once
 
 #include <mirrage/renderer/deferred_renderer.hpp>
-#include <mirrage/renderer/model_comp.hpp>
 
 
 namespace mirrage::graphic {
@@ -23,7 +22,7 @@ namespace mirrage::renderer {
 		void draw(vk::CommandBuffer&, graphic::Render_pass&);
 
 	  private:
-		Deferred_renderer& _renderer;
-		Model_comp::Pool&  _models;
+		ecs::Entity_manager& _ecs;
+		Deferred_renderer&   _renderer;
 	};
 } // namespace mirrage::renderer

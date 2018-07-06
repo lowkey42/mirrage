@@ -21,7 +21,6 @@ add_library(mirrage_renderer STATIC
 	src/pass/ssao_pass.cpp
 	src/pass/taa_pass.cpp
 	src/pass/tone_mapping_pass.cpp
-	src/pass/voxelization_pass.cpp
 	
 	src/camera_comp.cpp
 	src/deferred_renderer.cpp

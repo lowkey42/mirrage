@@ -1,7 +1,6 @@
 #pragma once
 
 #include <mirrage/renderer/deferred_renderer.hpp>
-#include <mirrage/renderer/light_comp.hpp>
 
 #include <mirrage/graphic/render_pass.hpp>
 
@@ -47,9 +46,6 @@ namespace mirrage::renderer {
 
 		vk::UniqueSampler _shadowmap_sampler;
 		vk::UniqueSampler _shadowmap_depth_sampler;
-
-		Directional_light_comp::Pool& _lights_directional;
-		Shadowcaster_comp::Pool&      _shadowcasters;
 
 		std::vector<Shadowmap> _shadowmaps;
 
