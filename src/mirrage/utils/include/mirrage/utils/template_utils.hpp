@@ -228,6 +228,12 @@ namespace mirrage::util {
 		return vec;
 	}
 
+	template <typename T, typename... Ts>
+	auto make_array(Ts&&... values)
+	{
+		return std::array<T, sizeof...(Ts)>{std::forward<Ts>(values)...};
+	}
+
 	namespace detail {
 		template <std::size_t N, std::size_t... I, class F>
 		auto build_array_impl(F&& factory, std::index_sequence<I...>)

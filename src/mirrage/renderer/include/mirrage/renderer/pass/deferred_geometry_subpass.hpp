@@ -1,7 +1,6 @@
 #pragma once
 
 #include <mirrage/renderer/deferred_renderer.hpp>
-#include <mirrage/renderer/model_comp.hpp>
 
 
 namespace mirrage::graphic {
@@ -25,6 +24,5 @@ namespace mirrage::renderer {
 	  private:
 		ecs::Entity_manager& _ecs;
 		Deferred_renderer&   _renderer;
-		Model_comp::Pool&    _models;
 	};
 } // namespace mirrage::renderer

@@ -1,16 +1,19 @@
 #include <mirrage/renderer/pass/shadowmapping_pass.hpp>
 
+#include <mirrage/renderer/light_comp.hpp>
+#include <mirrage/renderer/model_comp.hpp>
+
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/ecs/ecs.hpp>
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/render_pass.hpp>
-#include <mirrage/renderer/model_comp.hpp>
 
 
 namespace mirrage::renderer {
 
 	using namespace graphic;
 	using namespace util::unit_literals;
+	using ecs::components::Transform_comp;
 
 	namespace {
 		struct Push_constants {
@@ -188,15 +191,13 @@ namespace mirrage::renderer {
 	                                                              vk::Filter::eLinear,
 	                                                              vk::SamplerMipmapMode::eNearest,
 	                                                              false))
-	  , _lights_directional(entities.list<Directional_light_comp>())
-	  , _shadowcasters(entities.list<Shadowcaster_comp>())
 	  , _shadowmaps(util::make_vector(
 	            Shadowmap(renderer.device(), renderer.settings().shadowmap_resolution, _shadowmap_format),
 	            Shadowmap(renderer.device(), renderer.settings().shadowmap_resolution, _shadowmap_format)))
 	  , _render_pass(build_render_pass(
 	            renderer, _depth, get_depth_format(renderer.device()), _shadowmap_format, _shadowmaps))
 	{
-
+		entities.register_component_type<Directional_light_comp>();
 		entities.register_component_type<Shadowcaster_comp>();
 
 		auto shadowmap_bindings = std::array<vk::DescriptorSetLayoutBinding, 3>();
@@ -242,7 +243,7 @@ namespace mirrage::renderer {
 		        desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
 
-	void Shadowmapping_pass::update(util::Time dt) {}
+	void Shadowmapping_pass::update(util::Time) {}
 
 	void Shadowmapping_pass::draw(vk::CommandBuffer& command_buffer,
 	                              Command_buffer_source&,
@@ -260,12 +261,9 @@ namespace mirrage::renderer {
 		// update shadow maps
 		auto pcs = Push_constants{};
 
-		for(auto& light : _lights_directional) {
-			if(!light.owner(_entities).has<Shadowcaster_comp>())
-				continue;
-
-			auto& light_transform =
-			        light.owner(_entities).get<ecs::components::Transform_comp>().get_or_throw();
+		for(auto& [light, transform, _] :
+		    _entities.list<Directional_light_comp, Transform_comp, Shadowcaster_comp>()) {
+			(void) _;
 
 			if(light.shadowmap_id() == -1) {
 				for(auto i = 0; i < gsl::narrow<int>(_shadowmaps.size()); i++) {
@@ -282,9 +280,9 @@ namespace mirrage::renderer {
 			} else if(!_renderer.settings().dynamic_shadows) {
 				auto& shadowmap = _shadowmaps.at(light.shadowmap_id());
 
-				auto pos_diff = glm::length2(light_transform.position - shadowmap.light_source_position);
-				auto orientation_diff = glm::abs(
-				        glm::dot(light_transform.orientation, shadowmap.light_source_orientation) - 1);
+				auto pos_diff = glm::length2(transform.position - shadowmap.light_source_position);
+				auto orientation_diff =
+				        glm::abs(glm::dot(transform.orientation, shadowmap.light_source_orientation) - 1);
 				if(pos_diff <= 0.0001f && orientation_diff <= 0.001f
 				   && shadowmap.caster_count == _entities.list<Model_comp>().size()) {
 					continue; // skip update
@@ -292,29 +290,24 @@ namespace mirrage::renderer {
 			}
 
 			auto& shadowmap                    = _shadowmaps.at(light.shadowmap_id());
-			shadowmap.light_source_position    = light_transform.position;
-			shadowmap.light_source_orientation = light_transform.orientation;
+			shadowmap.light_source_position    = transform.position;
+			shadowmap.light_source_orientation = transform.orientation;
 			shadowmap.caster_count             = _entities.list<Model_comp>().size();
 
-			pcs.light_view_proj = light.calc_shadowmap_view_proj(light_transform);
+			pcs.light_view_proj = light.calc_shadowmap_view_proj(transform);
 
 			auto& target_fb = shadowmap.framebuffer;
 			_render_pass.execute(command_buffer, target_fb, [&] {
 				_render_pass.bind_descriptor_sets(0, {&global_uniform_set, 1});
 
-				for(auto& caster : _shadowcasters) {
-					caster.owner(_entities).get<Model_comp>().process([&](Model_comp& model) {
-						auto& transform =
-						        model.owner(_entities).get<ecs::components::Transform_comp>().get_or_throw(
-						                "Required Transform_comp missing");
+				for(auto&& [transform, model, caster] :
+				    _entities.list<Transform_comp, Model_comp, Shadowcaster_comp>()) {
 
-						pcs.model = transform.to_mat4();
-						_render_pass.push_constant("pcs"_strid, pcs);
+					pcs.model = transform.to_mat4();
+					_render_pass.push_constant("pcs"_strid, pcs);
 
-						model.model()->bind(
-						        command_buffer, _render_pass, 0, [&](auto&, auto offset, auto count) {
-							        command_buffer.drawIndexed(count, 1, offset, 0, 0);
-						        });
+					model.model()->bind(command_buffer, _render_pass, 0, [&](auto&, auto offset, auto count) {
+						command_buffer.drawIndexed(count, 1, offset, 0, 0);
 					});
 				}
 			});

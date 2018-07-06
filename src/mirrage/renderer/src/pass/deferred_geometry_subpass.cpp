@@ -1,5 +1,6 @@
 #include <mirrage/renderer/pass/deferred_geometry_subpass.hpp>
 
+#include <mirrage/renderer/model_comp.hpp>
 #include <mirrage/renderer/pass/deferred_pass.hpp>
 
 #include <mirrage/ecs/components/transform_comp.hpp>
@@ -8,14 +9,14 @@
 #include <mirrage/graphic/render_pass.hpp>
 #include <mirrage/renderer/model.hpp>
 
-
 using mirrage::ecs::components::Transform_comp;
 
 namespace mirrage::renderer {
 
 	Deferred_geometry_subpass::Deferred_geometry_subpass(Deferred_renderer& r, ecs::Entity_manager& entities)
-	  : _ecs(entities), _renderer(r), _models(entities.list<Model_comp>())
+	  : _ecs(entities), _renderer(r)
 	{
+		entities.register_component_type<Model_comp>();
 	}
 
 	void Deferred_geometry_subpass::configure_pipeline(Deferred_renderer&             renderer,
@@ -39,7 +40,7 @@ namespace mirrage::renderer {
 	}
 
 	void Deferred_geometry_subpass::update(util::Time) {}
-	void Deferred_geometry_subpass::pre_draw(vk::CommandBuffer& command_buffer) {}
+	void Deferred_geometry_subpass::pre_draw(vk::CommandBuffer&) {}
 
 	void Deferred_geometry_subpass::draw(vk::CommandBuffer& command_buffer, graphic::Render_pass& render_pass)
 	{

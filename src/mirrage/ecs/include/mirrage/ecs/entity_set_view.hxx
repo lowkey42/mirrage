@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef MIRRAGE_ECS_ENITY_SET_VIEW_INCLUDED
+#ifndef MIRRAGE_ENITY_SET_VIEW_INCLUDED
 #include "entity_set_view.hpp"
 #endif
 
@@ -8,143 +8,58 @@ namespace mirrage::ecs {
 
 	namespace detail {
 
-		template <class C, class SortedPoolIterators, class Unsorted_values>
-		decltype(auto) get_value(Entity_handle entity, SortedPoolIterators& sorted, Unsorted_values& unsorted)
+		template <class C, class Values>
+		decltype(auto) get_value(Entity_manager& entities, Entity_id entity, Values& values)
 		{
+			(void) entities;
 			(void) entity;
-			(void) sorted;
-			(void) unsorted;
+			(void) values;
 
-			if constexpr(std::is_same_v<C, Entity_handle>)
-				return entity;
-			else if constexpr(is_sorted_component_v<C>)
-				return *std::get<C*>(*std::get<Sorted_component_iterator<C>>(sorted));
-			else
-				return *std::get<C*>(unsorted);
+			if constexpr(std::is_same_v<C, Entity_handle>) {
+				return entities.get_handle(entity);
+			} else if constexpr(std::is_same_v<C, Entity_facet>) {
+				return entities.get(entities.get_handle(entity)).get_or_throw();
+
+			} else {
+				return *std::get<C*>(values);
+			}
 		}
 
-		template <class SortedPoolIterators, class UnsortedPools, class C1, class... Cs>
-		auto Entity_set_iterator<SortedPoolIterators, UnsortedPools, C1, Cs...>::get() noexcept -> value_type&
+		template <class SortedPools, class UnsortedPools, class C1, class... Cs>
+		auto Entity_set_iterator<SortedPools, UnsortedPools, C1, Cs...>::get() noexcept -> value_type&
 		{
-			_last_value.emplace(get_value<C1>(_entity, _sorted, _unsorted_values),
-			                    get_value<Cs>(_entity, _sorted, _unsorted_values)...);
+			_last_value.emplace(get_value<C1>(_entities, _entity, _values),
+			                    get_value<Cs>(_entities, _entity, _values)...);
 			return _last_value.get_or_throw();
 		}
 
-		template <std::size_t I = 0, class... Ts>
-		void incr_nth(std::tuple<Ts...>& tuple, std::size_t i)
+		template <class... SortedPools, class... UnsortedPools>
+		auto build_pool_mask(std::tuple<SortedPools*...>&   sorted_pools,
+		                     std::tuple<UnsortedPools*...>& unsorted_pools)
 		{
-			if(i == I)
-				++std::get<I>(tuple);
-			else {
-				if constexpr(I + 1 < sizeof...(Ts))
-					incr_nth<I + 1>(tuple, i);
-				else
-					MIRRAGE_FAIL("index is larger than tuple!");
-			}
-		}
+			auto sorted_sizes =
+			        util::make_array<Component_index>(std::get<SortedPools*>(sorted_pools)->size()...);
+			auto unsorted_sizes =
+			        util::make_array<Component_index>(std::get<UnsortedPools*>(unsorted_pools)->size()...);
 
-		template <std::size_t I = 0, class... Ts>
-		auto get_nth_entity(std::tuple<Ts...>& tuple, std::tuple<Ts...>& end_tuple, std::size_t i)
-		        -> Entity_id
-		{
-			if(i == I) {
-				auto&& iter = std::get<I>(tuple);
-				auto&& end  = std::get<I>(end_tuple);
+			auto min_sorted_size   = std::min_element(sorted_sizes.begin(), sorted_sizes.end());
+			auto min_unsorted_size = std::min_element(unsorted_sizes.begin(), unsorted_sizes.end());
 
-				return iter != end ? std::get<Entity_id>(*iter) : invalid_entity_id;
+			if(min_unsorted_size != unsorted_sizes.end()
+			   && (min_sorted_size == sorted_sizes.end() || *min_unsorted_size <= *min_sorted_size / 10)) {
+				// no sorted pools or one of the unsorted pools is much smaller
+				//  => iterate over smallest unsorted pool in random order and find other components by ID
+				auto i        = 0;
+				auto pool_idx = std::distance(unsorted_sizes.begin(), min_unsorted_size);
+				return std::array<bool, sizeof...(SortedPools) + sizeof...(UnsortedPools)>{
+				        (std::get<SortedPools*>(sorted_pools) && false)...,
+				        ((std::get<UnsortedPools*>(unsorted_pools) && false) || i++ == pool_idx)...};
 
 			} else {
-				if constexpr(I + 1 < sizeof...(Ts))
-					return get_nth_entity<I + 1>(tuple, end_tuple, i);
-				else
-					MIRRAGE_FAIL("index is larger than tuple!");
-			}
-		}
-
-		template <std::size_t I = 0, class... Ts>
-		auto incr_nth_until(std::tuple<Ts...>& tuple,
-		                    std::tuple<Ts...>& end_tuple,
-		                    std::size_t        i,
-		                    Entity_id          entity) -> Entity_id
-		{
-			if(i == I) {
-				auto&& iter = std::get<I>(tuple);
-				auto&& end  = std::get<I>(end_tuple);
-
-				while(iter != end && std::get<Entity_id>(*iter) < entity)
-					++iter;
-
-				return iter != end ? std::get<Entity_id>(*iter) : invalid_entity_id;
-
-			} else {
-				if constexpr(I + 1 < sizeof...(Ts))
-					return incr_nth_until<I + 1>(tuple, end_tuple, i, entity);
-				else
-					MIRRAGE_FAIL("index is larger than tuple!");
-			}
-		}
-
-		template <class SortedPoolIterators, class UnsortedPools, class C1, class... Cs>
-		auto Entity_set_iterator<SortedPoolIterators, UnsortedPools, C1, Cs...>::operator++()
-		        -> Entity_set_iterator&
-		{
-			incr_nth(_sorted, _access_order[0]);
-
-			_find_next_valid();
-			return *this;
-		}
-
-		template <class SortedPoolIterators, class UnsortedPools, class C1, class... Cs>
-		void Entity_set_iterator<SortedPoolIterators, UnsortedPools, C1, Cs...>::_find_next_valid()
-		{
-			auto in_retry = false;
-			auto entity   = invalid_entity_id;
-			{
-			retry:
-				if(!in_retry) {
-					entity = get_nth_entity(_sorted, _sorted_end, _access_order[0]);
-
-				} else if(entity != invalid_entity_id) {
-					entity = incr_nth_until(_sorted, _sorted_end, _access_order[0], entity);
-				}
-				in_retry = true;
-
-				if(entity == invalid_entity_id) {
-					// reached end => set all iterators and give up
-					util::foreach_in_tuple(_sorted, [&](auto& iter) {
-						iter = std::get<std::remove_reference_t<decltype(iter)>>(_sorted_end);
-					});
-					return;
-				}
-
-				// increment sorted pointers 1-N until >= first
-				if constexpr((std::tuple_size_v<SortedPoolIterators>) > 1) {
-					for(auto idx : util::range(_access_order.begin() + 1, _access_order.end())) {
-						auto found_entity = incr_nth_until(_sorted, _sorted_end, idx, entity);
-						if(entity != found_entity) {
-							entity = found_entity;
-							goto retry;
-						}
-					}
-				}
-
-				auto entity_id          = _entities->get_handle(entity);
-				auto all_unsorted_found = true;
-
-				// find each unsorted component
-				util::foreach_in_tuple(*_unsorted_pools, [&](auto& pool) {
-					if(all_unsorted_found) {
-						auto&& value = pool->get(entity_id);
-						std::get<std::remove_reference_t<decltype(value)>*>(_unsorted_values) = value;
-						all_unsorted_found &= value;
-					}
-				});
-
-				if(!all_unsorted_found) {
-					entity++;
-					goto retry;
-				}
+				auto max_size = *min_sorted_size * 10;
+				return std::array<bool, sizeof...(SortedPools) + sizeof...(UnsortedPools)>{
+				        (std::get<SortedPools*>(sorted_pools)->size() <= max_size)...,
+				        (std::get<UnsortedPools*>(unsorted_pools) && false)...};
 			}
 		}
 
@@ -155,33 +70,212 @@ namespace mirrage::ecs {
 			return std::make_tuple(&entities.list<Cs>()...);
 		}
 
-		template <class... Pools>
-		auto get_begin(std::tuple<Pools*...>& pools) -> std::tuple<
-		        Sorted_component_iterator<typename std::remove_pointer_t<Pools>::component_type>...>
+
+		template <std::size_t I, class Mask, class... SortedPools, class... UnsortedPools>
+		auto get_begin_impl_I(std::tuple<SortedPools*...>&   sorted_pools,
+		                      std::tuple<UnsortedPools*...>& unsorted_pools,
+		                      const Mask&                    mask)
 		{
-			return std::make_tuple(sorted_begin(*std::get<Pools*>(pools))...);
+			if(mask[I]) {
+				if constexpr(I < sizeof...(SortedPools))
+					return detail::container_begin(*std::get<I>(sorted_pools));
+				else
+					return detail::container_begin(*std::get<I - sizeof...(SortedPools)>(unsorted_pools));
+			} else {
+				if constexpr(I < sizeof...(SortedPools))
+					return decltype(detail::container_begin(*std::get<I>(sorted_pools))){};
+				else
+					return decltype(
+					        detail::container_begin(*std::get<I - sizeof...(SortedPools)>(unsorted_pools))){};
+			}
 		}
 
-		template <class... Pools>
-		auto get_end(std::tuple<Pools*...>& pools) -> std::tuple<
-		        Sorted_component_iterator<typename std::remove_pointer_t<Pools>::component_type>...>
+
+		template <class Mask, class... SortedPools, class... UnsortedPools, std::size_t... I>
+		auto get_begin_impl(std::tuple<SortedPools*...>&   sorted_pools,
+		                    std::tuple<UnsortedPools*...>& unsorted_pools,
+		                    const Mask&                    mask,
+		                    std::index_sequence<I...>)
+		        -> std::tuple<Sorted_component_iterator<
+		                              typename std::remove_pointer_t<SortedPools>::component_type>...,
+		                      Sorted_component_iterator<
+		                              typename std::remove_pointer_t<UnsortedPools>::component_type>...>
 		{
-			return std::make_tuple(sorted_end(*std::get<Pools*>(pools))...);
+			return std::make_tuple(get_begin_impl_I<I>(sorted_pools, unsorted_pools, mask)...);
+		}
+		template <class Mask, class... SortedPools, class... UnsortedPools>
+		auto get_begin(std::tuple<SortedPools*...>&   sorted_pools,
+		               std::tuple<UnsortedPools*...>& unsorted_pools,
+		               const Mask&                    mask)
+		{
+			return get_begin_impl(sorted_pools,
+			                      unsorted_pools,
+			                      mask,
+			                      std::index_sequence_for<SortedPools..., UnsortedPools...>{});
 		}
 
-		template <class... Pools>
-		auto find_optimal_order(std::tuple<Pools*...>& pools)
+		template <std::size_t I, class Mask, class... SortedPools, class... UnsortedPools>
+		auto get_end_impl_I(std::tuple<SortedPools*...>&   sorted_pools,
+		                    std::tuple<UnsortedPools*...>& unsorted_pools,
+		                    const Mask&                    mask)
 		{
-			auto order = std::array<std::size_t, sizeof...(Pools)>();
-			std::iota(order.begin(), order.end(), 0);
+			if(mask[I]) {
+				if constexpr(I < sizeof...(SortedPools))
+					return detail::container_end(*std::get<I>(sorted_pools));
+				else
+					return detail::container_end(*std::get<I - sizeof...(SortedPools)>(unsorted_pools));
+			} else {
+				if constexpr(I < sizeof...(SortedPools))
+					return decltype(detail::container_end(*std::get<I>(sorted_pools))){};
+				else
+					return decltype(
+					        detail::container_end(*std::get<I - sizeof...(SortedPools)>(unsorted_pools))){};
+			}
+		}
 
-			const auto sizes =
-			        std::array<Component_index, sizeof...(Pools)>{std::get<Pools*>(pools)->size()...};
+		template <class Mask, class... SortedPools, class... UnsortedPools, std::size_t... I>
+		auto get_end_impl(std::tuple<SortedPools*...>&   sorted_pools,
+		                  std::tuple<UnsortedPools*...>& unsorted_pools,
+		                  const Mask&                    mask,
+		                  std::index_sequence<I...>)
+		        -> std::tuple<Sorted_component_iterator<
+		                              typename std::remove_pointer_t<SortedPools>::component_type>...,
+		                      Sorted_component_iterator<
+		                              typename std::remove_pointer_t<UnsortedPools>::component_type>...>
+		{
+			return std::make_tuple(get_end_impl_I<I>(sorted_pools, unsorted_pools, mask)...);
+		}
+		template <class Mask, class... SortedPools, class... UnsortedPools>
+		auto get_end(std::tuple<SortedPools*...>&   sorted_pools,
+		             std::tuple<UnsortedPools*...>& unsorted_pools,
+		             const Mask&                    mask)
+		{
+			return get_end_impl(sorted_pools,
+			                    unsorted_pools,
+			                    mask,
+			                    std::index_sequence_for<SortedPools..., UnsortedPools...>{});
+		}
 
-			std::sort(
-			        order.begin(), order.end(), [&](auto lhs, auto rhs) { return sizes[lhs] < sizes[rhs]; });
 
-			return order;
+		template <class SortedPools, class UnsortedPools, class C1, class... Cs>
+		Entity_set_iterator<SortedPools, UnsortedPools, C1, Cs...>::Entity_set_iterator(
+		        Entity_manager& entities, SortedPools& sorted, UnsortedPools& unsorted, bool begin_iterator)
+		  : _entities(entities)
+		  , _iterator_mask(begin_iterator ? build_pool_mask(sorted, unsorted)
+		                                  : decltype(build_pool_mask(sorted, unsorted)){false})
+		  , _iterators(begin_iterator ? get_begin(sorted, unsorted, _iterator_mask)
+		                              : decltype(get_begin(sorted, unsorted, _iterator_mask)){})
+		  , _iterator_ends(begin_iterator ? get_end(sorted, unsorted, _iterator_mask)
+		                                  : decltype(get_begin(sorted, unsorted, _iterator_mask)){})
+		  , _sorted_pools(sorted)
+		  , _unsorted_pools(unsorted)
+		  , _entity(invalid_entity_id)
+		{
+			if(begin_iterator)
+				_find_next_valid();
+		}
+
+		template <class SortedPools, class UnsortedPools, class C1, class... Cs>
+		auto Entity_set_iterator<SortedPools, UnsortedPools, C1, Cs...>::operator++() -> Entity_set_iterator&
+		{
+			util::foreach_in_tuple(_iterators, [&](auto index, auto& iter) {
+				constexpr auto I   = decltype(index)::value;
+				auto&&         end = std::get<I>(_iterator_ends);
+
+				if(iter != end)
+					++iter;
+			});
+
+			_find_next_valid();
+			return *this;
+		}
+
+		template <class SortedPools, class UnsortedPools, class C1, class... Cs>
+		void Entity_set_iterator<SortedPools, UnsortedPools, C1, Cs...>::_find_next_valid()
+		{
+			auto entity = Entity_id(0);
+			util::foreach_in_tuple(_iterators, [&](auto index, auto& iter) {
+				constexpr auto I = decltype(index)::value;
+				if(!_iterator_mask[I])
+					return;
+
+				auto&& end = std::get<I>(_iterator_ends);
+
+				if(iter != end)
+					entity = util::max(entity, std::get<Entity_id>(*iter));
+			});
+
+			auto success = true;
+			do {
+				success           = true;
+				auto found_entity = entity;
+
+				util::foreach_in_tuple(_iterators, [&](auto index, auto& iter) {
+					constexpr auto I = decltype(index)::value;
+					if(!success || !_iterator_mask[I])
+						return;
+
+					auto&& end = std::get<I>(_iterator_ends);
+
+					while(iter != end && std::get<Entity_id>(*iter) < found_entity)
+						++iter;
+
+					if(iter != end) {
+						auto&& value         = *iter;
+						std::get<I>(_values) = std::get<1>(value);
+						found_entity         = std::get<Entity_id>(value);
+					} else {
+						success = false;
+					}
+				});
+
+				if(!success) {
+					// reached end => set all iterators and give up
+					util::foreach_in_tuple(_iterators, [&](auto index, auto& iter) {
+						iter = std::get<decltype(index)::value>(_iterator_ends);
+					});
+					_entity = invalid_entity_id;
+					return;
+				}
+
+				success = entity == found_entity;
+				entity  = found_entity;
+
+
+				if(success) {
+					// find each unsorted component
+					util::foreach_in_tuple(_unsorted_pools, [&](auto index, auto& pool) {
+						constexpr auto I  = decltype(index)::value;
+						constexpr auto GI = I + std::tuple_size_v<SortedPools>;
+
+						if(success && !_iterator_mask[GI]) {
+							auto value = pool->unsafe_find(entity);
+							success    = value.is_some();
+
+							if(success)
+								std::get<GI>(_values) = &value.get_or_throw();
+						}
+					});
+
+					util::foreach_in_tuple(_sorted_pools, [&](auto index, auto& pool) {
+						constexpr auto I = decltype(index)::value;
+
+						if(success && !_iterator_mask[I]) {
+							auto value = pool->unsafe_find(entity);
+							success    = value.is_some();
+
+							if(value.is_some())
+								std::get<I>(_values) = &value.get_or_throw();
+						}
+					});
+
+					if(!success) {
+						entity++;
+					}
+				}
+			} while(!success);
+
+			_entity = entity;
 		}
 
 	} // namespace detail
@@ -197,28 +291,15 @@ namespace mirrage::ecs {
 	template <class C1, class... Cs>
 	auto Entity_set_view<C1, Cs...>::begin()
 	{
-		// TODO[optimization/fix]: IF MIN(SIZE(unsorted_pool)) < N and MIN(SIZE(sorted_pool)) > M
-		//							=> iterate over unsorted pool and treat sorted_pools as unsorted
-		return detail::
-		        Entity_set_iterator<decltype(get_begin(_sorted_pools)), decltype(_unsorted_pools), C1, Cs...>{
-		                *_entities,
-		                get_begin(_sorted_pools),
-		                get_end(_sorted_pools),
-		                _unsorted_pools,
-		                find_optimal_order(_sorted_pools)};
+		return detail::Entity_set_iterator<decltype(_sorted_pools), decltype(_unsorted_pools), C1, Cs...>{
+		        *_entities, _sorted_pools, _unsorted_pools, true};
 	}
 
 	template <class C1, class... Cs>
 	auto Entity_set_view<C1, Cs...>::end()
 	{
-		// TODO[optimization/fix]: same as begin (for compatible type)
-		return detail::
-		        Entity_set_iterator<decltype(get_begin(_sorted_pools)), decltype(_unsorted_pools), C1, Cs...>{
-		                *_entities,
-		                get_end(_sorted_pools),
-		                get_end(_sorted_pools),
-		                _unsorted_pools,
-		                std::array<std::size_t, std::tuple_size_v<Sorted_pools>>{}};
+		return detail::Entity_set_iterator<decltype(_sorted_pools), decltype(_unsorted_pools), C1, Cs...>{
+		        *_entities, _sorted_pools, _unsorted_pools, false};
 	}
 
 

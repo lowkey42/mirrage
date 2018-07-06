@@ -6,7 +6,7 @@
 \*****************************************************************************/
 
 #pragma once
-#define ECS_COMPONENT_INCLUDED
+#define MIRRAGE_ECS_COMPONENT_INCLUDED
 
 #include <mirrage/ecs/serializer.hpp>
 #include <mirrage/ecs/types.hpp>
@@ -154,7 +154,7 @@ namespace mirrage::ecs {
 	 */
 	template <class T,
 	          class Index_policy   = Sparse_index_policy,
-	          class Storage_policy = Pool_storage_policy<128, 32, T>>
+	          class Storage_policy = Pool_storage_policy<1024, 32, T>>
 	class Component : public Tiny_component<T, Index_policy, Storage_policy>,
 	                  public detail::Owned_component_base {
 	  public:
@@ -198,7 +198,7 @@ namespace mirrage::ecs {
 
 		Tag_component()                = default;
 		Tag_component(Tag_component&&) = default;
-		explicit Tag_component(TagType value) : value(value) {}
+		explicit Tag_component(Entity_handle, Entity_manager&, TagType value) : value(value) {}
 		Tag_component& operator=(Tag_component&&) = default;
 
 	  protected:
@@ -225,6 +225,7 @@ namespace mirrage::ecs {
 
 		Stateless_tag_component()                          = default;
 		Stateless_tag_component(Stateless_tag_component&&) = default;
+		Stateless_tag_component(Entity_handle, Entity_manager&) {}
 		Stateless_tag_component& operator=(Stateless_tag_component&&) = default;
 
 	  protected:
@@ -293,6 +294,16 @@ namespace mirrage::ecs {
 
 	template <class T>
 	constexpr auto is_sorted_component_v = is_sorted_component<T>::value;
+
+	namespace detail {
+		template <class ComponentContainer>
+		auto container_begin(ComponentContainer&)
+		        -> Sorted_component_iterator<typename ComponentContainer::component_type>;
+
+		template <class ComponentContainer>
+		auto container_end(ComponentContainer&)
+		        -> Sorted_component_iterator<typename ComponentContainer::component_type>;
+	} // namespace detail
 
 	template <class ComponentContainer,
 	          typename = std::enable_if_t<ComponentContainer::sorted_iteration_supported>>

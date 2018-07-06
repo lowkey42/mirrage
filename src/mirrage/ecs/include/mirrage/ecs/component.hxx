@@ -2,7 +2,7 @@
 
 #include <concurrentqueue.h>
 
-#ifndef ECS_COMPONENT_INCLUDED
+#ifndef MIRRAGE_ECS_COMPONENT_INCLUDED
 #include "component.hpp"
 #endif
 
@@ -17,6 +17,9 @@ namespace mirrage::ecs {
 		void shrink_to_fit();
 		auto find(Entity_id) const -> util::maybe<Component_index>;
 		void clear();
+
+		auto begin() const { return _table.begin(); }
+		auto end() const { return _table.end(); }
 
 		static constexpr bool sorted_iteration_supported = false;
 
@@ -169,8 +172,11 @@ namespace mirrage::ecs {
 
 		static constexpr bool sorted_iteration_supported = true;
 
-		auto sorted_begin() -> iterator { return {0, _table.begin()}; }
-		auto sorted_end() -> iterator { return {std::int_fast32_t(_table.size()), _table.end()}; }
+		auto sorted_begin() const -> iterator { return {0, _table.begin()}; }
+		auto sorted_end() const -> iterator { return {std::int_fast32_t(_table.size()), _table.end()}; }
+
+		auto begin() const { return sorted_begin(); }
+		auto end() const { return sorted_end(); }
 
 	  private:
 		std::vector<Component_index> _table;
@@ -190,6 +196,9 @@ namespace mirrage::ecs {
 		static constexpr bool sorted_iteration_supported = false;
 		// sorted_begin()
 		// sorted_end()
+
+		auto begin() { return _pool->begin(); }
+		auto end() { return _pool->end(); }
 
 	  private:
 		Storage_policy* _pool;
@@ -281,7 +290,7 @@ namespace mirrage::ecs {
 		auto emplace(F&&, Args&&...) -> std::tuple<T&, Component_index>
 		{
 			_size++;
-			return std::make_tuple(dummy_instance, 0);
+			return {dummy_instance, 0};
 		}
 
 		void replace(Component_index, T&&) {}
@@ -317,6 +326,9 @@ namespace mirrage::ecs {
 	  private:
 		std::size_t _size = 0;
 	};
+
+	template <class T>
+	T Void_storage_policy<T>::dummy_instance;
 
 
 	namespace detail {
@@ -529,16 +541,26 @@ namespace mirrage::ecs {
 		auto size() const noexcept { return _storage.size(); }
 		auto empty() const noexcept { return _storage.empty(); }
 
+
+		auto unsafe_find(Entity_id entity_id) -> util::maybe<T&>
+		{
+			return _index.find(entity_id).process(
+			        util::maybe<T&>(), [&](auto comp_idx) { return util::justPtr(&_storage.get(comp_idx)); });
+		}
+
 		static constexpr auto sorted_iteration_supported =
 		        T::storage_policy::is_sorted || T::index_policy::sorted_iteration_supported;
 
-		template <class ComponentContainer, class>
-		friend auto sorted_begin(ComponentContainer&)
+		template <class ComponentContainer>
+		friend auto detail::container_begin(ComponentContainer&)
 		        -> Sorted_component_iterator<typename ComponentContainer::component_type>;
 
-		template <class ComponentContainer, class>
-		friend auto sorted_end(ComponentContainer&)
+		template <class ComponentContainer>
+		friend auto detail::container_end(ComponentContainer&)
 		        -> Sorted_component_iterator<typename ComponentContainer::component_type>;
+
+		template <class>
+		friend class Sorted_component_iterator;
 
 	  private:
 		using Insertion = std::pair<T, Entity_handle>;
@@ -606,7 +628,7 @@ namespace mirrage::ecs {
 
 		auto operator++() -> auto&
 		{
-			_iterator++;
+			++_iterator;
 			return *this;
 		}
 		auto operator++(int)
@@ -617,7 +639,7 @@ namespace mirrage::ecs {
 		}
 		auto operator--() -> auto&
 		{
-			_iterator--;
+			--_iterator;
 			return *this;
 		}
 
@@ -631,7 +653,7 @@ namespace mirrage::ecs {
 		friend auto operator-(const Sorted_component_iterator& lhs,
 		                      const Sorted_component_iterator& rhs) noexcept
 		{
-			return Sorted_component_iterator(lhs._container, lhs._iterator - rhs._iterator);
+			return lhs._iterator - rhs._iterator;
 		}
 		friend auto operator+(Sorted_component_iterator iter, difference_type offset)
 		{
@@ -686,39 +708,61 @@ namespace mirrage::ecs {
 		value_type        _last_value;
 	};
 
+	namespace detail {
+		template <class ComponentContainer>
+		auto container_begin(ComponentContainer& container)
+		        -> Sorted_component_iterator<typename ComponentContainer::component_type>
+		{
+
+			if constexpr(ComponentContainer::component_type::storage_policy::is_sorted) {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._storage.begin());
+
+			} else if constexpr(ComponentContainer::component_type::index_policy::sorted_iteration_supported) {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._index.sorted_begin());
+
+			} else {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._index.begin());
+			}
+		}
+
+		template <class ComponentContainer>
+		auto container_end(ComponentContainer& container)
+		        -> Sorted_component_iterator<typename ComponentContainer::component_type>
+		{
+			if constexpr(ComponentContainer::component_type::storage_policy::is_sorted) {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._storage.end());
+			} else if constexpr(ComponentContainer::component_type::index_policy::sorted_iteration_supported) {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._index.sorted_end());
+			} else {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._index.end());
+			}
+		}
+	} // namespace detail
+
 	template <class ComponentContainer, typename>
 	auto sorted_begin(ComponentContainer& container)
 	        -> Sorted_component_iterator<typename ComponentContainer::component_type>
 	{
+		static_assert(ComponentContainer::sorted_iteration_supported,
+		              "Sorted iteration is not supported by this component type!");
 
-		if constexpr(ComponentContainer::component_type::storage_policy::is_sorted) {
-			return Sorted_component_iterator<typename ComponentContainer::component_type>(
-			        &container, container._storage.begin());
-
-		} else if constexpr(ComponentContainer::component_type::index_policy::sorted_iteration_supported) {
-			return Sorted_component_iterator<typename ComponentContainer::component_type>(
-			        &container, container._index.sorted_begin());
-
-		} else {
-			static_assert(ComponentContainer::sorted_iteration_supported,
-			              "Sorted iteration is not supported by this component type!");
-		}
+		return detail::container_begin(container);
 	}
 
 	template <class ComponentContainer, typename>
 	auto sorted_end(ComponentContainer& container)
 	        -> Sorted_component_iterator<typename ComponentContainer::component_type>
 	{
-		if constexpr(ComponentContainer::component_type::storage_policy::is_sorted) {
-			return Sorted_component_iterator<typename ComponentContainer::component_type>(
-			        &container, container._storage.end());
-		} else if constexpr(ComponentContainer::component_type::index_policy::sorted_iteration_supported) {
-			return Sorted_component_iterator<typename ComponentContainer::component_type>(
-			        &container, container._index.sorted_end());
-		} else {
-			static_assert(ComponentContainer::sorted_iteration_supported,
-			              "Sorted iteration is not supported by this component type!");
-		}
+		static_assert(ComponentContainer::sorted_iteration_supported,
+		              "Sorted iteration is not supported by this component type!");
+
+		return detail::container_end(container);
 	}
 
 } // namespace mirrage::ecs

@@ -1,9 +1,9 @@
 #include <mirrage/renderer/pass/deferred_lighting_subpass.hpp>
 
+#include <mirrage/renderer/light_comp.hpp>
 #include <mirrage/renderer/pass/deferred_pass.hpp>
 
 #include <mirrage/ecs/components/transform_comp.hpp>
-
 #include <mirrage/ecs/ecs.hpp>
 #include <mirrage/graphic/render_pass.hpp>
 
@@ -11,6 +11,7 @@
 namespace mirrage::renderer {
 
 	using namespace util::unit_literals;
+	using ecs::components::Transform_comp;
 
 	namespace {
 		constexpr auto num_input_attachments = 3;
@@ -39,12 +40,12 @@ namespace mirrage::renderer {
 	  : _ecs(entities)
 	  , _renderer(renderer)
 	  , _gbuffer(renderer.gbuffer())
-	  , _lights_directional(entities.list<Directional_light_comp>())
 	  , _input_attachment_descriptor_set_layout(
 	            create_input_attachment_descriptor_set_layout(renderer.device()))
 	  , _input_attachment_descriptor_set(renderer.create_descriptor_set(
 	            *_input_attachment_descriptor_set_layout, num_input_attachments))
 	{
+		entities.register_component_type<Directional_light_comp>();
 
 		auto& gbuffer    = renderer.gbuffer();
 		auto  depth_info = vk::DescriptorImageInfo(
@@ -114,10 +115,7 @@ namespace mirrage::renderer {
 
 		auto inv_view = _renderer.global_uniforms().inv_view_mat;
 
-		for(auto& light : _lights_directional) {
-			auto& transform = light.owner(_ecs).get<ecs::components::Transform_comp>().get_or_throw(
-			        "Missing required Transform_comp");
-
+		for(auto& [light, transform] : _ecs.list<Directional_light_comp, Transform_comp>()) {
 			dpc.model         = light.calc_shadowmap_view_proj(transform) * inv_view;
 			dpc.light_color   = glm::vec4(light.color(), light.intensity());
 			dpc.light_data.r  = light.source_radius() / 1_m;

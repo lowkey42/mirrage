@@ -44,12 +44,9 @@ namespace mirrage::renderer {
 	extern auto temperature_to_color(float kelvin) -> util::Rgb;
 
 
-	class Shadowcaster_comp : public ecs::Component<Shadowcaster_comp> {
+	class Shadowcaster_comp : public ecs::Stateless_tag_component<Shadowcaster_comp> {
 	  public:
 		static constexpr const char* name() { return "Shadowcaster"; }
-		// friend void load_component(ecs::Deserializer& state, Directional_light_comp&);
-		// friend void save_component(ecs::Serializer& state, const Directional_light_comp&);
-
-		using Component::Component;
+		using Stateless_tag_component::Stateless_tag_component;
 	};
 } // namespace mirrage::renderer

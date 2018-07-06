@@ -1,6 +1,6 @@
 #pragma once
 
-#ifndef ECS_INCLUDED
+#ifndef MIRRAGE_ENTITY_MANAGER_INCLUDED
 #include "ecs.hpp"
 #endif
 

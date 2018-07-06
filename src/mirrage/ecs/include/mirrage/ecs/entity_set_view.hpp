@@ -7,6 +7,8 @@
 
 #pragma once
 
+#define MIRRAGE_ENITY_SET_VIEW_INCLUDED
+
 #include <mirrage/ecs/component.hpp>
 #include <mirrage/ecs/ecs.hpp>
 
@@ -14,6 +16,7 @@
 #include <mirrage/utils/template_utils.hpp>
 
 #include <algorithm>
+#include <array>
 
 
 namespace mirrage::ecs {
@@ -22,6 +25,14 @@ namespace mirrage::ecs {
 		template <class T>
 		using is_unsorted_component = std::bool_constant<!T::Pool::sorted_iteration_supported>;
 
+		template <class T>
+		using has_pool_type = typename T::Pool;
+
+		template <class... Cs>
+		auto is_component_list_helper(util::list<Cs...>)
+		        -> std::conjunction<util::is_detected<has_pool_type, Cs>...>;
+		template <class Comp_list>
+		using is_component_list = decltype(is_component_list_helper(std::declval<Comp_list>()));
 
 		template <class Cs>
 		using sorted_component_types = util::filter_list<is_sorted_component, Cs>;
@@ -38,22 +49,35 @@ namespace mirrage::ecs {
 		using pool_ptrs = decltype(pool_ptrs_helper(std::declval<Component_list>()));
 
 		template <class... Pools>
-		auto pool_value_ptrs_helper(std::tuple<Pools...>) -> std::tuple<typename Pools::component_type*...>;
+		auto pool_value_ptrs_helper(std::tuple<Pools*...>) -> std::tuple<typename Pools::component_type*...>;
 
 		template <class Pool_tuple>
 		using pool_value_ptrs = decltype(pool_value_ptrs_helper(std::declval<Pool_tuple>()));
 
+		template <class... Pools>
+		auto pool_iterator_helper(std::tuple<Pools*...>) -> std::tuple<
+		        Sorted_component_iterator<typename std::remove_pointer_t<Pools>::component_type>...>;
 
-		template <class SortedPoolIterators, class UnsortedPools, class C1, class... Cs>
+		template <class PoolTuple>
+		using pool_iterators = decltype(pool_iterator_helper(std::declval<PoolTuple>()));
+
+
+
+		template <class SortedPools, class UnsortedPools, class C1, class... Cs>
 		class Entity_set_iterator {
-			static_assert(std::tuple_size_v<SortedPoolIterators>> 0,
+			static constexpr auto includes_entity =
+			        std::is_same_v<C1, Entity_handle> || std::is_same_v<C1, Entity_facet>;
+
+			using Pools =
+			        decltype(std::tuple_cat(std::declval<SortedPools>(), std::declval<UnsortedPools>()));
+			using Values         = pool_value_ptrs<Pools>;
+			using Pool_iterators = pool_iterators<Pools>;
+
+			static_assert((std::tuple_size_v<Pool_iterators>) > 0,
 			              "At least one iterator has to be provided!");
 
-			static constexpr auto includes_entity = std::is_same_v<C1, Entity_handle>;
-			using Unsorted_values                 = pool_value_ptrs<UnsortedPools>;
-
 		  public:
-			using Access_order = std::array<std::size_t, std::tuple_size_v<SortedPoolIterators>>;
+			using Sorted_pool_mask = std::array<bool, std::tuple_size_v<Pool_iterators>>;
 
 			using iterator_category = std::input_iterator_tag;
 			using value_type =
@@ -61,19 +85,10 @@ namespace mirrage::ecs {
 			using difference_type = std::int_fast32_t;
 			using reference       = value_type;
 
-			Entity_set_iterator(Entity_manager&       entities,
-			                    SortedPoolIterators&& sorted_begin,
-			                    SortedPoolIterators&& sorted_end,
-			                    UnsortedPools&        unsorted,
-			                    Access_order&&        order)
-			  : _entities(&entities)
-			  , _sorted(std::move(sorted_begin))
-			  , _sorted_end(std::move(sorted_end))
-			  , _unsorted_pools(&unsorted)
-			  , _access_order(std::move(order))
-			{
-				_find_next_valid();
-			}
+			Entity_set_iterator(Entity_manager& entities,
+			                    SortedPools&    sorted,
+			                    UnsortedPools&  unsorted,
+			                    bool            begin_iterator);
 
 			auto operator*() noexcept -> value_type& { return get(); }
 			auto operator-> () noexcept -> value_type* { return &get(); }
@@ -88,7 +103,7 @@ namespace mirrage::ecs {
 
 			friend auto operator==(const Entity_set_iterator& lhs, const Entity_set_iterator& rhs) noexcept
 			{
-				return std::get<0>(lhs._sorted) == std::get<0>(rhs._sorted);
+				return lhs._entity == rhs._entity;
 			}
 			friend auto operator!=(const Entity_set_iterator& lhs, const Entity_set_iterator& rhs) noexcept
 			{
@@ -96,14 +111,16 @@ namespace mirrage::ecs {
 			}
 
 		  private:
-			Entity_manager*         _entities;
-			SortedPoolIterators     _sorted;
-			SortedPoolIterators     _sorted_end;
-			UnsortedPools*          _unsorted_pools;
-			Access_order            _access_order;
+			Entity_manager&        _entities;
+			const Sorted_pool_mask _iterator_mask;
+			Pool_iterators         _iterators;
+			const Pool_iterators   _iterator_ends;
+			SortedPools&           _sorted_pools;
+			UnsortedPools&         _unsorted_pools;
+
 			util::maybe<value_type> _last_value;
-			Entity_handle           _entity;
-			Unsorted_values         _unsorted_values;
+			Entity_id               _entity;
+			Values                  _values;
 
 			void _find_next_valid();
 		};
@@ -114,10 +131,14 @@ namespace mirrage::ecs {
 	/// Iteratable view of entites with a given set of components
 	template <class C1, class... Cs>
 	class Entity_set_view {
-		static constexpr auto includes_entity = std::is_same_v<C1, Entity_handle>;
+		static constexpr auto includes_entity =
+		        std::is_same_v<C1, Entity_handle> || std::is_same_v<C1, Entity_facet>;
 		using Components = std::conditional_t<includes_entity, util::list<Cs...>, util::list<C1, Cs...>>;
 		using Sorted_components   = detail::sorted_component_types<Components>;
 		using Unsorted_components = detail::unsorted_component_types<Components>;
+
+		static_assert(detail::is_component_list<Components>::value,
+		              "The type arguments of ecs::Entity_set_view need to be components!");
 
 	  public:
 		using Sorted_pools   = detail::pool_ptrs<Sorted_components>;
@@ -144,5 +165,4 @@ namespace mirrage::ecs {
 
 } // namespace mirrage::ecs
 
-#define MIRRAGE_ECS_ENITY_SET_VIEW_INCLUDED
 #include "entity_set_view.hxx"
