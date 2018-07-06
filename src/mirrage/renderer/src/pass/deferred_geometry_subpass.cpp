@@ -1,18 +1,22 @@
 #include <mirrage/renderer/pass/deferred_geometry_subpass.hpp>
 
+#include <mirrage/renderer/model_comp.hpp>
 #include <mirrage/renderer/pass/deferred_pass.hpp>
 
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/ecs/ecs.hpp>
+#include <mirrage/ecs/entity_set_view.hpp>
 #include <mirrage/graphic/render_pass.hpp>
 #include <mirrage/renderer/model.hpp>
 
+using mirrage::ecs::components::Transform_comp;
 
 namespace mirrage::renderer {
 
 	Deferred_geometry_subpass::Deferred_geometry_subpass(Deferred_renderer& r, ecs::Entity_manager& entities)
-	  : _renderer(r), _models(entities.list<Model_comp>())
+	  : _ecs(entities), _renderer(r)
 	{
+		entities.register_component_type<Model_comp>();
 	}
 
 	void Deferred_geometry_subpass::configure_pipeline(Deferred_renderer&             renderer,
@@ -36,7 +40,7 @@ namespace mirrage::renderer {
 	}
 
 	void Deferred_geometry_subpass::update(util::Time) {}
-	void Deferred_geometry_subpass::pre_draw(vk::CommandBuffer& command_buffer) {}
+	void Deferred_geometry_subpass::pre_draw(vk::CommandBuffer&) {}
 
 	void Deferred_geometry_subpass::draw(vk::CommandBuffer& command_buffer, graphic::Render_pass& render_pass)
 	{
@@ -44,10 +48,7 @@ namespace mirrage::renderer {
 
 		Deferred_push_constants dpc{};
 
-		for(auto& model : _models) {
-			auto& transform = model.owner().get<ecs::components::Transform_comp>().get_or_throw(
-			        "Required Transform_comp missing");
-
+		for(auto& [model, transform] : _ecs.list<Model_comp, Transform_comp>()) {
 			dpc.model        = transform.to_mat4();
 			dpc.light_data.x = _renderer.settings().debug_disect;
 			render_pass.push_constant("dpc"_strid, dpc);

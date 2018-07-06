@@ -17,6 +17,7 @@ build_gcc:
     - rm -rf src
     - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
+    - cmake --build . --target test
     - wget -nc -Omodel_data.tar.xz https://github.com/lowkey42/mirrage/releases/download/v0.2/model_data.tar.xz
     - cd bin/bin
     - tar xf ../../model_data.tar.xz
@@ -40,6 +41,7 @@ build_clang:
     - rm -rf src
     - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
+    - cmake --build . --target test
     - wget -nc -Omodel_data.tar.xz https://github.com/lowkey42/mirrage/releases/download/v0.2/model_data.tar.xz
     - cd bin/bin
     - tar xf ../../model_data.tar.xz
@@ -60,10 +62,10 @@ build_scanbuild:
     - mkdir build
     - cd build
     - scan-build --use-c++=clang++ --use-cc=clang cmake -DMIRRAGE_FORCE_LIBCPP=ON -DMIRRAGE_ENABLE_COTIRE=OFF -G "Unix Makefiles" ..
-    - scan-build --use-c++=clang++ --use-cc=clang -enable-checker deadcode.DeadStores -enable-checker security.insecureAPI.UncheckedReturn --status-bugs -v cmake --build . || true
+    - scan-build -o result --use-c++=clang++ --use-cc=clang -enable-checker deadcode.DeadStores -enable-checker security.insecureAPI.UncheckedReturn --status-bugs -v cmake --build . || true
   artifacts:
     paths:
-      - /tmp/
+      - build/result
     expire_in: 1 week
     when: always
 

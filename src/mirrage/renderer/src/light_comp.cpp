@@ -40,13 +40,11 @@ namespace mirrage::renderer {
 
 	void Directional_light_comp::temperature(float kelvin) { _color = temperature_to_color(kelvin); }
 
-	auto Directional_light_comp::calc_shadowmap_view_proj() const -> glm::mat4
+	auto Directional_light_comp::calc_shadowmap_view_proj(ecs::components::Transform_comp& transform) const
+	        -> glm::mat4
 	{
-		auto& transform = owner().get<ecs::components::Transform_comp>().get_or_throw(
-		        "Required Transform_comp missing");
-
-		auto inv_view = glm::toMat4(transform.orientation());
-		inv_view[3]   = glm::vec4(transform.position(), 1.f);
+		auto inv_view = glm::toMat4(transform.orientation);
+		inv_view[3]   = glm::vec4(transform.position, 1.f);
 		return glm::ortho(-_shadow_size,
 		                  _shadow_size,
 		                  -_shadow_size,

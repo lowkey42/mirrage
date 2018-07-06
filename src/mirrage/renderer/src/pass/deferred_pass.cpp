@@ -1,5 +1,7 @@
 #include <mirrage/renderer/pass/deferred_pass.hpp>
 
+#include <mirrage/renderer/light_comp.hpp>
+
 #include <mirrage/graphic/render_pass.hpp>
 
 
