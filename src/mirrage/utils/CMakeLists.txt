@@ -12,6 +12,7 @@ add_library(mirrage_utils STATIC
 	src/command.cpp
 	src/log.cpp
 	src/md5.cpp
+	src/pool.cpp
 	src/purgatory.cpp
 	src/reflection.cpp
 	src/types.cpp
@@ -41,8 +42,22 @@ target_link_libraries(mirrage_utils
 		moodycamel
 		sf2
 		plog
+		doctest
 )
-   
+
+if(MIRRAGE_ENABLE_TESTS)
+	file(WRITE "${PROJECT_BINARY_DIR}/generated_test.cpp" "#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN\n#include <doctest.h>\n\n")
+	foreach(file ${HEADER_FILES})
+		STRING(REGEX REPLACE "^include/" "" file_include_path ${file})
+		file(APPEND "${PROJECT_BINARY_DIR}/generated_test.cpp" "#include <${file_include_path}>\n")
+	endforeach(file)
+
+	add_executable(mirrage_utils_tests generated_test.cpp)
+	target_link_libraries(mirrage_utils_tests doctest mirrage_utils)
+	add_backward(mirrage_utils_tests)
+
+	add_test (NAME mirrage_utils_tests COMMAND mirrage_utils_tests)
+endif(MIRRAGE_ENABLE_TESTS)
 
 install(TARGETS mirrage_utils EXPORT mirrage_utils_targets
 	INCLUDES DESTINATION include

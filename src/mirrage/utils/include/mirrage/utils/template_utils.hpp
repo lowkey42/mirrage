@@ -16,10 +16,6 @@
 
 namespace mirrage::util {
 
-	template <typename T>
-	struct void_t {
-	};
-
 	struct no_move {
 	  protected:
 		no_move()           = default;
@@ -85,6 +81,90 @@ namespace mirrage::util {
 		return t;
 	}
 
+	template <typename... Ts>
+	using void_t = void;
+
+	namespace detail {
+		template <typename, template <typename...> class, typename...>
+		struct is_detected : std::false_type {
+		};
+
+		template <template <class...> class Operation, typename... Arguments>
+		struct is_detected<void_t<Operation<Arguments...>>, Operation, Arguments...> : std::true_type {
+		};
+	} // namespace detail
+
+	template <template <class...> class Operation, typename... Arguments>
+	using is_detected = detail::is_detected<void_t<>, Operation, Arguments...>;
+
+	template <template <class...> class Operation, typename... Arguments>
+	constexpr bool is_detected_v = detail::is_detected<void_t<>, Operation, Arguments...>::value;
+
+
+	// CTMP-List from https://codereview.stackexchange.com/questions/115740/filtering-variadic-template-arguments
+	template <typename...>
+	struct list {
+	};
+
+	namespace detail {
+		template <typename, typename>
+		struct list_append_impl;
+
+		template <typename... Ts, typename... Us>
+		struct list_append_impl<list<Ts...>, list<Us...>> {
+			using type = list<Ts..., Us...>;
+		};
+
+		template <template <typename> class, typename...>
+		struct filter_impl;
+
+		template <template <typename> class Predicate>
+		struct filter_impl<Predicate> {
+			using type = list<>;
+		};
+
+		template <template <typename> class Predicate, typename T, typename... Rest>
+		struct filter_impl<Predicate, T, Rest...> {
+			using type = typename list_append_impl<std::conditional_t<Predicate<T>::value, list<T>, list<>>,
+			                                       typename filter_impl<Predicate, Rest...>::type>::type;
+		};
+
+		template <template <typename> class Predicate, typename... Ts>
+		auto filter_helper_list(list<Ts...>) -> typename filter_impl<Predicate, Ts...>::type;
+	} // namespace detail
+
+	template <template <typename> class Predicate, typename... Ts>
+	using filter = typename detail::filter_impl<Predicate, Ts...>::type;
+
+	template <template <typename> class Predicate, typename List>
+	using filter_list = decltype(detail::filter_helper_list<Predicate>(std::declval<List>()));
+
+
+	template <typename T, typename InT>
+	T bit_cast(InT&& in)
+	{
+		static_assert(sizeof(InT) <= sizeof(T), "The result type has to be at least as large as the input.");
+		static_assert(std::is_standard_layout_v<T>, "The result type has to be a standard layout type.");
+		static_assert(std::is_standard_layout_v<InT>, "The input type has to be a standard layout type.");
+		static_assert(std::is_trivially_copyable_v<T>, "The result type has to be trivial.");
+
+		auto r = T();
+		std::memcpy(&r, &in, sizeof(T));
+		return r;
+	}
+
+	template <typename T>
+	T bit_cast(const char* addr)
+	{
+		static_assert(std::is_standard_layout_v<T>, "The result type has to be a standard layout type.");
+		static_assert(std::is_trivially_copyable_v<T>, "The result type has to be trivial.");
+
+		auto r = T();
+		std::memcpy(&r, addr, sizeof(T));
+		return r;
+	}
+
+
 	template <typename T>
 	void erase_fast(std::vector<T>& c, const T& v)
 	{
@@ -146,6 +226,12 @@ namespace mirrage::util {
 		      std::forward<Ts>(values)...);
 
 		return vec;
+	}
+
+	template <typename T, typename... Ts>
+	auto make_array(Ts&&... values)
+	{
+		return std::array<T, sizeof...(Ts)>{std::forward<Ts>(values)...};
 	}
 
 	namespace detail {

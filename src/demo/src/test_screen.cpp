@@ -77,7 +77,7 @@ namespace mirrage {
 		_camera = _meta_system.entities().emplace("camera");
 
 		auto cornell = _meta_system.entities().emplace("cornell");
-		cornell.get<Transform_comp>().process([&](auto& transform) { transform.position({1000, 0, 0}); });
+		cornell.get<Transform_comp>().process([&](auto& transform) { transform.position = {1000, 0, 0}; });
 
 		_meta_system.entities().emplace("sponza");
 
@@ -103,8 +103,8 @@ namespace mirrage {
 				case "create"_strid:
 					_meta_system.entities().emplace("cube").get<Transform_comp>().process(
 					        [&](auto& transform) {
-						        auto& cam = _camera.get<Transform_comp>().get_or_throw();
-						        transform.position(cam.position() + cam.direction());
+						        auto& cam          = _camera.get<Transform_comp>().get_or_throw();
+						        transform.position = cam.position + cam.direction();
 					        });
 
 					break;
@@ -117,7 +117,7 @@ namespace mirrage {
 				}
 
 				case "print"_strid: {
-					auto cam = _camera.get<Transform_comp>().get_or_throw().position();
+					auto cam = _camera.get<Transform_comp>().get_or_throw().position;
 					LOG(plog::info) << "Setup: \n"
 					                << "  Camera position:    " << cam.x << "/" << cam.y << "/" << cam.z
 					                << "\n"
@@ -220,7 +220,7 @@ namespace mirrage {
 		const Preset& p = presets[preset_id - 1];
 
 		_camera.get<Transform_comp>().process(
-		        [&](auto& transform) { transform.position(p.camera_position); });
+		        [&](auto& transform) { transform.position = p.camera_position; });
 
 		_cam_yaw               = p.camera_yaw;
 		_cam_pitch             = p.camera_pitch;
@@ -274,7 +274,7 @@ namespace mirrage {
 			auto direction = glm::vec3{std::cos(_cam_pitch) * std::cos(_cam_yaw),
 			                           std::sin(_cam_pitch),
 			                           std::cos(_cam_pitch) * std::sin(_cam_yaw)};
-			transform.look_at(transform.position() - direction);
+			transform.look_at(transform.position - direction);
 		});
 		_look = {0.f, 0.f};
 
@@ -653,7 +653,8 @@ namespace mirrage {
 				auto lum = std::exp(log_lum);
 				nk_label(ctx, to_fixed_str(lum, 5).c_str(), NK_TEXT_CENTERED);
 
-				auto percentage = static_cast<double>(histogram[_last_selected_histogram]) / histogram_sum;
+				auto percentage = static_cast<double>(histogram[_last_selected_histogram])
+				                  / std::max(1.0, histogram_sum);
 				nk_label(ctx, "Percentage", NK_TEXT_CENTERED);
 				nk_label(ctx, (to_fixed_str(percentage * 100, 4) + " %").c_str(), NK_TEXT_CENTERED);
 
@@ -700,9 +701,9 @@ namespace mirrage {
 	void Test_screen::_update_sun_position()
 	{
 		_sun.get<Transform_comp>().process([&](auto& transform) {
-			transform.orientation(glm::quat(glm::vec3(
-			        (_sun_elevation - 2.f) * glm::pi<float>() / 2.f, glm::pi<float>() * _sun_azimuth, 0.f)));
-			transform.position(transform.direction() * -60.f);
+			transform.orientation = glm::quat(glm::vec3(
+			        (_sun_elevation - 2.f) * glm::pi<float>() / 2.f, glm::pi<float>() * _sun_azimuth, 0.f));
+			transform.position    = transform.direction() * -60.f;
 		});
 	}
 } // namespace mirrage

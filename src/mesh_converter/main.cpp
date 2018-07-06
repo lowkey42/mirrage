@@ -1,4 +1,6 @@
 
+#define DOCTEST_CONFIG_IMPLEMENT
+
 #include "filesystem.hpp"
 #include "model_parser.hpp"
 
@@ -6,6 +8,7 @@
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/string_utils.hpp>
 
+#include <doctest.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
 #include <plog/Log.h>
 #include <gsl/gsl>
@@ -21,6 +24,13 @@ auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util
 // ./mesh_converter --output=/foo/bar sponza.obj
 int main(int argc, char** argv)
 {
+	doctest::Context context;
+	context.setOption("no-run", true);
+	context.applyCommandLine(argc, argv);
+	auto res = context.run();
+	if(context.shouldExit())
+		return res;
+
 	static auto fileAppender =
 	        plog::RollingFileAppender<plog::TxtFormatter>("mesh_converter.log", 4L * 1024L, 4);
 	static auto consoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>();
@@ -44,6 +54,8 @@ int main(int argc, char** argv)
 	for(auto&& input : args) {
 		convert_model(input, output);
 	}
+
+	return res;
 }
 
 auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string>

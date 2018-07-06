@@ -1,4 +1,4 @@
-#include <mirrage/ecs/ecs.hpp>
+#include <mirrage/ecs/entity_manager.hpp>
 
 #include <mirrage/ecs/component.hpp>
 #include <mirrage/ecs/serializer.hpp>

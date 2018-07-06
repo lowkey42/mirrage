@@ -1,5 +1,6 @@
 #include <mirrage/renderer/deferred_renderer.hpp>
 
+#include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/ecs/ecs.hpp>
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/render_pass.hpp>
@@ -220,8 +221,11 @@ namespace mirrage::renderer {
 		}
 
 		if(active) {
-			const auto& viewport = _factory->_window.viewport();
-			_active_camera       = Camera_state(*active, viewport);
+			const auto& viewport  = _factory->_window.viewport();
+			auto&       transform = active->owner(*_entity_manager)
+			                          .get<ecs::components::Transform_comp>()
+			                          .get_or_throw("Camera without transform component!");
+			_active_camera = Camera_state(*active, transform, viewport);
 
 			for(auto& p : _passes) {
 				p->process_camera(_active_camera.get_or_throw());
