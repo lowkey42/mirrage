@@ -51,6 +51,9 @@ namespace mirrage::ecs {
 				//  => iterate over smallest unsorted pool in random order and find other components by ID
 				auto i        = 0;
 				auto pool_idx = std::distance(unsorted_sizes.begin(), min_unsorted_size);
+				(void) pool_idx;
+				(void) i;
+
 				return std::array<bool, sizeof...(SortedPools) + sizeof...(UnsortedPools)>{
 				        (std::get<SortedPools*>(sorted_pools) && false)...,
 				        ((std::get<UnsortedPools*>(unsorted_pools) && false) || i++ == pool_idx)...};

@@ -653,7 +653,8 @@ namespace mirrage {
 				auto lum = std::exp(log_lum);
 				nk_label(ctx, to_fixed_str(lum, 5).c_str(), NK_TEXT_CENTERED);
 
-				auto percentage = static_cast<double>(histogram[_last_selected_histogram]) / histogram_sum;
+				auto percentage = static_cast<double>(histogram[_last_selected_histogram])
+				                  / std::max(1.0, histogram_sum);
 				nk_label(ctx, "Percentage", NK_TEXT_CENTERED);
 				nk_label(ctx, (to_fixed_str(percentage * 100, 4) + " %").c_str(), NK_TEXT_CENTERED);
 
