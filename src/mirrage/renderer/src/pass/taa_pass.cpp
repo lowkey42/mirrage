@@ -106,7 +106,7 @@ namespace mirrage::renderer {
 		constexpr auto build_halton_2_3()
 		{
 			return make_array<Size * 2>(
-			        [](std::size_t i) { return halton_seq(i % 2 == 0 ? 2 : 3, i + 1) - 0.5f; });
+			        [](std::size_t i) { return halton_seq(int(i) % 2 == 0 ? 2 : 3, int(i) + 1) - 0.5f; });
 		}
 
 		constexpr auto offsets       = build_halton_2_3<8>();
@@ -182,6 +182,14 @@ namespace mirrage::renderer {
 		_offset_idx = (_offset_idx + 2) % (offsets.size());
 	}
 
+	namespace {
+		bool is_zero(float v)
+		{
+			constexpr auto epsilon = 0.0000001f;
+			return v > -epsilon && v < epsilon;
+		}
+	} // namespace
+
 	void Taa_pass::process_camera(Camera_state& cam)
 	{
 		// update fov and push constants
@@ -197,7 +205,8 @@ namespace mirrage::renderer {
 
 		// move projection by sub pixel offset and update push constants
 		auto offset = _calc_offset(cam);
-		MIRRAGE_INVARIANT(_constants.fov_reprojection[0][3] == 0 && _constants.fov_reprojection[1][3] == 0,
+		MIRRAGE_INVARIANT(is_zero(_constants.fov_reprojection[0][3])
+		                          && is_zero(_constants.fov_reprojection[1][3]),
 		                  "m[0][3]!=0 or m[1][3]!=0");
 		_constants.fov_reprojection[0][3] = offset.x;
 		_constants.fov_reprojection[1][3] = offset.y;

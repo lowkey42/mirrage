@@ -40,8 +40,8 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	GBuffer::GBuffer(graphic::Device& device, std::uint32_t width, std::uint32_t height)
-	  : mip_levels(gsl::narrow<std::uint32_t>(std::floor(std::log2(std::min(width, height))) - 2))
+	GBuffer::GBuffer(graphic::Device& device, std::int32_t width, std::int32_t height)
+	  : mip_levels(static_cast<std::int32_t>(std::floor(std::log2(std::min(width, height))) - 2))
 	  , depth_format(get_depth_format(device))
 	  , depth(device,
 	          {width, height},

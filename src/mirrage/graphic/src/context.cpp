@@ -190,6 +190,10 @@ namespace mirrage::graphic {
 		                                             const char*                msg,
 		                                             void*                      userData)
 		{
+			(void) obj;
+			(void) location;
+			(void) code;
+			(void) userData;
 
 			// silences: DescriptorSet 0x3f previously bound as set #1 is incompatible with set
 			//             0x1cc99c0 newly bound as set #1 so set #2 and any subsequent sets were
@@ -366,7 +370,7 @@ namespace mirrage::graphic {
 		auto find_graphics_queue(vk::PhysicalDevice& gpu, const std::vector<Window*>& can_present_to)
 		        -> util::maybe<std::uint32_t>
 		{
-			auto i = 0;
+			auto i = 0u;
 
 			for(auto& queue_family : gpu.getQueueFamilyProperties()) {
 				auto can_present =
@@ -392,11 +396,11 @@ namespace mirrage::graphic {
 		{
 			auto families = gpu.getQueueFamilyProperties();
 
-			auto i = 0;
+			auto i = 0u;
 
 			// check for transfer-only queue
 			for(auto& queue_family : families) {
-				if(queue_family.queueCount > 0 && (queue_family.queueFlags & vk::QueueFlagBits::eTransfer)
+				if(queue_family.queueCount > 0u && (queue_family.queueFlags & vk::QueueFlagBits::eTransfer)
 				   && !(queue_family.queueFlags & vk::QueueFlagBits::eGraphics)) {
 					return i;
 				}
@@ -404,9 +408,9 @@ namespace mirrage::graphic {
 				i++;
 			}
 
-			i = 0;
+			i = 0u;
 			for(auto& queue_family : families) {
-				if(queue_family.queueCount > 0
+				if(queue_family.queueCount > 0u
 				   && ((queue_family.queueFlags & vk::QueueFlagBits::eTransfer)
 				       || (queue_family.queueFlags & vk::QueueFlagBits::eGraphics)
 				       || (queue_family.queueFlags & vk::QueueFlagBits::eCompute))) {
@@ -582,7 +586,7 @@ namespace mirrage::graphic {
 			extensions.emplace_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 		}
 
-		cfg.setEnabledExtensionCount(extensions.size());
+		cfg.setEnabledExtensionCount(gsl::narrow<std::uint32_t>(extensions.size()));
 		cfg.setPpEnabledExtensionNames(extensions.data());
 
 		auto create_info = factory(top_gpu, find_graphics_queue(top_gpu, can_present_to));

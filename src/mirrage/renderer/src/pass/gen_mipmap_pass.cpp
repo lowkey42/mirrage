@@ -81,7 +81,7 @@ namespace mirrage::renderer {
 
 			auto render_pass = builder.build();
 
-			for(auto i = 1u; i < renderer.gbuffer().mip_levels; i++) {
+			for(auto i = 1; i < renderer.gbuffer().mip_levels; i++) {
 				auto attachments = std::array<Framebuffer_attachment_desc, 2>{
 				        {{renderer.gbuffer().depth.view(i), util::Rgba{}},
 				         {renderer.gbuffer().mat_data.view(i), util::Rgba{}}}};
@@ -148,8 +148,8 @@ namespace mirrage::renderer {
 		}
 
 		// generate mipmaps for GBuffer
-		for(auto i = low_quality_levels; i < gsl::narrow<int>(_renderer.gbuffer().mip_levels); i++) {
-			auto& fb = _mipmap_gen_framebuffers.at(i - 1);
+		for(auto i = low_quality_levels; i < _renderer.gbuffer().mip_levels; i++) {
+			auto& fb = _mipmap_gen_framebuffers.at(std::size_t(i - 1));
 
 			// barrier against write to previous mipmap level
 			auto subresource = vk::ImageSubresourceRange{
@@ -186,8 +186,8 @@ namespace mirrage::renderer {
 
 
 			_mipmap_gen_renderpass.execute(frame.main_command_buffer, fb, [&] {
-				auto descriptor_sets = std::array<vk::DescriptorSet, 2>{frame.global_uniform_set,
-				                                                        *_descriptor_sets.at(i - 1)};
+				auto descriptor_sets = std::array<vk::DescriptorSet, 2>{
+				        frame.global_uniform_set, *_descriptor_sets.at(std::size_t(i - 1))};
 				_mipmap_gen_renderpass.bind_descriptor_sets(0, descriptor_sets);
 
 				auto pcs        = Push_constants{};

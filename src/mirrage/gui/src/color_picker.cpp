@@ -6,7 +6,7 @@
 namespace mirrage::gui {
 
 	namespace {
-		bool color_picker(nk_context* ctx, nk_colorf& cf, int width, bool hasAlpha)
+		bool color_picker(nk_context* ctx, nk_colorf& cf, float width, bool hasAlpha)
 		{
 			auto c = nk_color{static_cast<nk_byte>(cf.r * 255),
 			                  static_cast<nk_byte>(cf.g * 255),
@@ -32,7 +32,7 @@ namespace mirrage::gui {
 		}
 	} // namespace
 
-	bool color_picker(nk_context* ctx, util::Rgb& color, int width, float factor)
+	bool color_picker(nk_context* ctx, util::Rgb& color, float width, float factor)
 	{
 		nk_colorf c = nk_colorf{color.r / factor, color.g / factor, color.b / factor, 1.f};
 
@@ -47,7 +47,7 @@ namespace mirrage::gui {
 		return false;
 	}
 
-	bool color_picker(nk_context* ctx, util::Rgba& color, int width, float factor)
+	bool color_picker(nk_context* ctx, util::Rgba& color, float width, float factor)
 	{
 		nk_colorf c = nk_colorf{color.r / factor, color.g / factor, color.b / factor, color.a / factor};
 

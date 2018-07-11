@@ -56,41 +56,37 @@ namespace mirrage::graphic {
 	};
 
 	struct Image_dimensions {
-		Image_dimensions(std::uint32_t width, std::uint32_t height, std::uint32_t depth, std::uint32_t layers)
+		Image_dimensions(std::int32_t width, std::int32_t height, std::int32_t depth, std::int32_t layers)
 		  : width(width), height(height), depth(depth), layers(layers)
 		{
 		}
 
-		std::uint32_t width;
-		std::uint32_t height;
-		std::uint32_t depth;
-		std::uint32_t layers;
+		std::int32_t width;
+		std::int32_t height;
+		std::int32_t depth;
+		std::int32_t layers;
 	};
 	template <Image_type Type>
 	struct Image_dimensions_t;
 
 	template <>
 	struct Image_dimensions_t<Image_type::single_1d> : Image_dimensions {
-		Image_dimensions_t(std::uint32_t width) : Image_dimensions(width, 1, 1, 1) {}
+		Image_dimensions_t(std::int32_t width) : Image_dimensions(width, 1, 1, 1) {}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::single_2d> : Image_dimensions {
-		Image_dimensions_t(std::uint32_t width, std::uint32_t height) : Image_dimensions(width, height, 1, 1)
-		{
-		}
+		Image_dimensions_t(std::int32_t width, std::int32_t height) : Image_dimensions(width, height, 1, 1) {}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::array_2d> : Image_dimensions {
-		Image_dimensions_t(std::uint32_t width, std::uint32_t height, std::uint32_t layers)
+		Image_dimensions_t(std::int32_t width, std::int32_t height, std::int32_t layers)
 		  : Image_dimensions(width, height, 1, layers)
 		{
 		}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::cubemap> : Image_dimensions {
-		Image_dimensions_t(std::uint32_t width, std::uint32_t height) : Image_dimensions(width, height, 1, 6)
-		{
-		}
+		Image_dimensions_t(std::int32_t width, std::int32_t height) : Image_dimensions(width, height, 1, 6) {}
 	};
 
 
@@ -100,8 +96,8 @@ namespace mirrage::graphic {
 		Command_buffer_pool& operator=(Command_buffer_pool&&) = default;
 		~Command_buffer_pool();
 
-		auto create_primary(std::size_t count = 1) -> std::vector<vk::UniqueCommandBuffer>;
-		auto create_secondary(std::size_t count = 1) -> std::vector<vk::UniqueCommandBuffer>;
+		auto create_primary(std::int32_t count = 1) -> std::vector<vk::UniqueCommandBuffer>;
+		auto create_secondary(std::int32_t count = 1) -> std::vector<vk::UniqueCommandBuffer>;
 
 	  private:
 		friend class Device;
@@ -245,8 +241,12 @@ namespace mirrage::graphic {
 		Framebuffer& operator=(Framebuffer&&) = default;
 		~Framebuffer()                        = default;
 
-		void viewport(
-		        float x, float y, float width, float height, float min_depth = 0.f, float max_depth = 1.f);
+		void viewport(std::int32_t x,
+		              std::int32_t y,
+		              std::int32_t width,
+		              std::int32_t height,
+		              float        min_depth = 0.f,
+		              float        max_depth = 1.f);
 
 	  private:
 		friend class Render_pass;
@@ -268,18 +268,18 @@ namespace mirrage::graphic {
 	                                    vk::Image         image,
 	                                    vk::ImageLayout   src_layout,
 	                                    vk::ImageLayout   dst_layout,
-	                                    vk::ImageAspectFlags          = vk::ImageAspectFlagBits::eColor,
-	                                    std::uint32_t mip_level       = 0,
-	                                    std::uint32_t mip_level_count = 1);
+	                                    vk::ImageAspectFlags         = vk::ImageAspectFlagBits::eColor,
+	                                    std::int32_t mip_level       = 0,
+	                                    std::int32_t mip_level_count = 1);
 
 	extern void generate_mipmaps(vk::CommandBuffer cb,
 	                             vk::Image         image,
 	                             vk::ImageLayout   src_layout,
 	                             vk::ImageLayout   dst_layout,
-	                             std::uint32_t     width,
-	                             std::uint32_t     height,
-	                             std::uint32_t     mip_count       = 0,
-	                             std::uint32_t     start_mip_level = 0,
+	                             std::int32_t      width,
+	                             std::int32_t      height,
+	                             std::int32_t      mip_count       = 0,
+	                             std::int32_t      start_mip_level = 0,
 	                             bool              filter_linear   = true);
 
 	namespace detail {
@@ -300,18 +300,18 @@ namespace mirrage::graphic {
 	                          util::Rgba                  color,
 	                          vk::ImageLayout             initial_layout,
 	                          vk::ImageLayout             final_layout,
-	                          std::uint32_t               initial_mip_level = 0,
-	                          std::uint32_t               mip_levels        = 0);
+	                          std::int32_t                initial_mip_level = 0,
+	                          std::int32_t                mip_levels        = 0);
 
 	extern void clear_texture(vk::CommandBuffer cb,
 	                          vk::Image         img,
-	                          std::uint32_t     width,
-	                          std::uint32_t     height,
+	                          std::int32_t      width,
+	                          std::int32_t      height,
 	                          util::Rgba        color,
 	                          vk::ImageLayout   initial_layout,
 	                          vk::ImageLayout   final_layout,
-	                          std::uint32_t     initial_mip_level = 0,
-	                          std::uint32_t     mip_levels        = 0);
+	                          std::int32_t      initial_mip_level = 0,
+	                          std::int32_t      mip_levels        = 0);
 
 	template <typename P>
 	auto find_queue_family(vk::PhysicalDevice& gpu, P&& predicat) -> util::maybe<std::uint32_t>

@@ -11,6 +11,7 @@
 #include <mirrage/utils/log.hpp>
 
 #include <concurrentqueue.h>
+#include <gsl/gsl>
 
 #include <cstdint>
 #include <string>
@@ -21,37 +22,32 @@ namespace mirrage::ecs {
 
 	class Entity_manager;
 
-	using Entity_id = int32_t;
+	using Entity_id = uint32_t;
 	class Entity_handle {
 	  public:
 		using packed_t                    = uint32_t;
 		static constexpr uint8_t free_rev = 0b10000; // marks revisions as free,
 		// is cut off when assigned to Entity_handle::revision
 
-		constexpr Entity_handle() : _id(0), _revision(0) {}
-		constexpr Entity_handle(Entity_id id, uint8_t revision) : _id(id), _revision(revision) {}
+		constexpr Entity_handle() : _data(0) {}
+		constexpr Entity_handle(Entity_id id, uint8_t revision) : _data(id << 4 | (revision & 0xfu)) {}
 
-		constexpr explicit operator bool() const noexcept { return _id != 0; }
+		constexpr explicit operator bool() const noexcept { return _data != 0; }
 
-		constexpr Entity_id id() const noexcept { return _id; }
-		constexpr void      id(Entity_id id) noexcept { _id = id; }
+		constexpr Entity_id id() const noexcept { return _data >> 4; }
+		constexpr void      id(Entity_id id) noexcept { _data = id << 4 | revision(); }
 
-		constexpr uint8_t revision() const noexcept { return _revision; }
-		constexpr void    revision(uint8_t revision) noexcept { _revision = revision; }
-		void              increment_revision() noexcept { _revision++; }
+		constexpr uint8_t revision() const noexcept { return _data & 0xf; }
+		constexpr void    revision(uint8_t revision) noexcept { _data = id() << 4 | (revision & 0xfu); }
+		void              increment_revision() noexcept { _data = (_data & (~0xfu)) | ((_data + 1) & 0xfu); }
 
-		constexpr packed_t pack() const noexcept
-		{
-			return static_cast<packed_t>(_id) << 4 | static_cast<packed_t>(_revision);
-		}
-		static constexpr Entity_handle unpack(packed_t d) noexcept
-		{
-			return Entity_handle{static_cast<int32_t>(d >> 4), static_cast<uint8_t>(d & 0b1111)};
-		}
+		constexpr packed_t             pack() const noexcept { return _data; }
+		static constexpr Entity_handle unpack(packed_t d) noexcept { return Entity_handle{d}; }
 
 	  private:
-		int32_t _id : 28;
-		uint8_t _revision : 4;
+		uint32_t _data;
+
+		constexpr Entity_handle(uint32_t data) : _data(data) {}
 	};
 
 	constexpr inline bool operator==(const Entity_handle& lhs, const Entity_handle& rhs) noexcept

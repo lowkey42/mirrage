@@ -232,7 +232,7 @@ namespace mirrage::renderer {
 		}
 	}
 
-	auto Deferred_renderer::create_descriptor_set(vk::DescriptorSetLayout layout, std::uint32_t bindings)
+	auto Deferred_renderer::create_descriptor_set(vk::DescriptorSetLayout layout, std::int32_t bindings)
 	        -> graphic::DescriptorSet
 	{
 		return _descriptor_set_pool.create_descriptor(layout, bindings);

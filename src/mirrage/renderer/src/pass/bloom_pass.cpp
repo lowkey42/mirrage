@@ -207,13 +207,14 @@ namespace mirrage::renderer {
 		});
 
 		_blur_descriptor_set_vertical_final = util::build_vector(_blur_buffer.mip_levels() - 1, [&](auto i) {
-			return _descriptor_set_layout.create_set(renderer.descriptor_pool(),
-			                                         {_blur_buffer.view(), *_downsampled_blur_views.at(i)});
+			return _descriptor_set_layout.create_set(
+			        renderer.descriptor_pool(),
+			        {_blur_buffer.view(), *_downsampled_blur_views.at(std::size_t(i))});
 		});
 	}
 
 
-	void Bloom_pass::update(util::Time dt) {}
+	void Bloom_pass::update(util::Time) {}
 
 	void Bloom_pass::draw(Frame_data& frame)
 	{
@@ -232,7 +233,7 @@ namespace mirrage::renderer {
 			return;
 
 		auto blur_mip_levels = util::max(3, _src.mip_levels() - 6);
-		auto start_mip_level = 3u;
+		auto start_mip_level = 3;
 
 
 		auto pcs = Push_constants{};
@@ -247,34 +248,37 @@ namespace mirrage::renderer {
 		                          util::min(_src.mip_levels(), start_mip_level + blur_mip_levels));
 
 		auto start       = std::min(blur_mip_levels + start_mip_level - 1, _blur_buffer.mip_levels() - 1);
-		pcs.parameters.y = start - start_mip_level;
+		pcs.parameters.y = float(start - start_mip_level);
 
 		for(auto i = start; i >= start_mip_level; i--) {
-			pcs.parameters.x = i - 1;
+			pcs.parameters.x = float(i - 1);
 
 			// blur horizontal
-			_blur_renderpass.execute(frame.main_command_buffer, _blur_framebuffer_horizontal.at(i - 1), [&] {
-				_blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
+			_blur_renderpass.execute(
+			        frame.main_command_buffer, _blur_framebuffer_horizontal.at(std::size_t(i - 1)), [&] {
+				        _blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
 
-				_blur_renderpass.push_constant("pcs"_strid, pcs);
+				        _blur_renderpass.push_constant("pcs"_strid, pcs);
 
-				frame.main_command_buffer.draw(3, 1, 0, 0);
-			});
+				        frame.main_command_buffer.draw(3, 1, 0, 0);
+			        });
 
 			// blur vertical
-			_blur_renderpass.execute(frame.main_command_buffer, _blur_framebuffer_vertical.at(i - 1), [&] {
-				if(i < start) {
-					_blur_renderpass.set_stage("blur_v_last"_strid);
-					_blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_vertical_final.at(i));
-				} else {
-					_blur_renderpass.set_stage("blur_v"_strid);
-					_blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_vertical);
-				}
+			_blur_renderpass.execute(
+			        frame.main_command_buffer, _blur_framebuffer_vertical.at(std::size_t(i - 1)), [&] {
+				        if(i < start) {
+					        _blur_renderpass.set_stage("blur_v_last"_strid);
+					        _blur_renderpass.bind_descriptor_set(
+					                1, *_blur_descriptor_set_vertical_final.at(std::size_t(i)));
+				        } else {
+					        _blur_renderpass.set_stage("blur_v"_strid);
+					        _blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_vertical);
+				        }
 
-				_blur_renderpass.push_constant("pcs"_strid, pcs);
+				        _blur_renderpass.push_constant("pcs"_strid, pcs);
 
-				frame.main_command_buffer.draw(3, 1, 0, 0);
-			});
+				        frame.main_command_buffer.draw(3, 1, 0, 0);
+			        });
 		}
 
 		// apply
@@ -283,7 +287,7 @@ namespace mirrage::renderer {
 			        std::array<vk::DescriptorSet, 2>{frame.global_uniform_set, *_apply_descriptor_set};
 			_apply_renderpass.bind_descriptor_sets(0, descriptor_sets);
 
-			pcs.parameters.x = start_mip_level - 1;
+			pcs.parameters.x = float(start_mip_level - 1);
 			_apply_renderpass.push_constant("pcs"_strid, pcs);
 
 			frame.main_command_buffer.draw(3, 1, 0, 0);
@@ -301,9 +305,8 @@ namespace mirrage::renderer {
 		return std::make_unique<Bloom_pass>(renderer, src);
 	}
 
-	auto Bloom_pass_factory::rank_device(vk::PhysicalDevice,
-	                                     util::maybe<std::uint32_t> graphics_queue,
-	                                     int                        current_score) -> int
+	auto Bloom_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
+	        -> int
 	{
 		return current_score;
 	}

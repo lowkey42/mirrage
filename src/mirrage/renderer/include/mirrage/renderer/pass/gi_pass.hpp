@@ -19,11 +19,11 @@ namespace mirrage::renderer {
 
 	  private:
 		Deferred_renderer&                   _renderer;
-		const std::uint32_t                  _highres_base_mip_level;
-		const std::uint32_t                  _base_mip_level;
-		const std::uint32_t                  _max_mip_level;
-		const std::uint32_t                  _diffuse_mip_level;
-		const std::uint32_t                  _min_mip_level;
+		const std::int32_t                   _highres_base_mip_level;
+		const std::int32_t                   _base_mip_level;
+		const std::int32_t                   _max_mip_level;
+		const std::int32_t                   _diffuse_mip_level;
+		const std::int32_t                   _min_mip_level;
 		vk::UniqueSampler                    _gbuffer_sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
 		graphic::Render_target_2D&           _color_in_out;

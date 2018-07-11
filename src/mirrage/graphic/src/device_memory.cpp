@@ -77,7 +77,7 @@ namespace mirrage::graphic {
 				auto abs_idx = (1L << layer) - 1 + idx;
 
 				MIRRAGE_INVARIANT(abs_idx > 0, "_buddies_different() called for layer 0!");
-				return _free_buddies[(abs_idx - 1) / 2];
+				return _free_buddies[gsl::narrow<std::size_t>((abs_idx - 1) / 2)];
 			}
 		};
 	} // namespace
@@ -320,8 +320,8 @@ namespace mirrage::graphic {
 	}
 	Device_memory_allocator::~Device_memory_allocator() = default;
 
-	auto Device_memory_allocator::alloc(std::size_t     size,
-	                                    std::size_t     alignment,
+	auto Device_memory_allocator::alloc(std::uint32_t   size,
+	                                    std::uint32_t   alignment,
 	                                    std::uint32_t   type_mask,
 	                                    bool            host_visible,
 	                                    Memory_lifetime lifetime) -> util::maybe<Device_memory>
@@ -384,7 +384,7 @@ namespace mirrage::graphic {
 					alloc_info.pNext      = &dedicated_info;
 				}
 #endif
-				LOG(plog::debug) << "Alloc: " << (requirements.size / 1024.f / 1024.f) << " MB";
+				LOG(plog::debug) << "Alloc: " << (float(requirements.size) / 1024.f / 1024.f) << " MB";
 				auto mem      = _device.allocateMemoryUnique(alloc_info);
 				auto mem_addr = host_visible ? static_cast<char*>(_device.mapMemory(*mem, 0, VK_WHOLE_SIZE))
 				                             : nullptr;

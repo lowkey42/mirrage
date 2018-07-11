@@ -181,7 +181,7 @@ namespace mirrage::renderer {
 			auto render_pass = builder.build();
 
 			auto attachments = std::array<Framebuffer_attachment_desc, 4>{
-			        {{input.view(gsl::narrow<std::uint32_t>(min_mip_level)), util::Rgba{}},
+			        {{input.view(min_mip_level), util::Rgba{}},
 			         {diffuse.view(0), util::Rgba{}},
 			         {specular.view(0), util::Rgba{0, 0, 0, 0}},
 			         {history_weight.view(0), util::Rgba{0, 0, 0, 0}}}};
@@ -374,16 +374,16 @@ namespace mirrage::renderer {
 			auto render_pass = builder.build();
 
 			auto end = max_mip_level;
-			for(auto j = 0u; j < static_cast<std::uint32_t>(end - min_mip_level); j++) {
+			for(auto j = 0; j < end - min_mip_level; j++) {
 				out_framebuffers_samples.emplace_back(
 				        builder.build_framebuffer({gi_buffer_samples.view(j), util::Rgba{}},
-				                                  gsl::narrow<int>(gi_buffer_samples.width(j)),
-				                                  gsl::narrow<int>(gi_buffer_samples.height(j))));
+				                                  gi_buffer_samples.width(j),
+				                                  gi_buffer_samples.height(j)));
 
 				out_framebuffers_result.emplace_back(
 				        builder.build_framebuffer({gi_buffer_result.view(j), util::Rgba{}},
-				                                  gsl::narrow<int>(gi_buffer_result.width(j)),
-				                                  gsl::narrow<int>(gi_buffer_result.height(j))));
+				                                  gi_buffer_result.width(j),
+				                                  gi_buffer_result.height(j)));
 			}
 
 			return render_pass;
@@ -682,22 +682,22 @@ namespace mirrage::renderer {
 			return format.get_or_throw();
 		}
 
-		auto calc_base_mip_level(std::uint32_t width, std::uint32_t height, bool highres)
+		auto calc_base_mip_level(std::int32_t width, std::int32_t height, bool highres)
 		{
-			auto x_mip = glm::log2(width / 960.f);
-			auto y_mip = glm::log2(height / 500.f);
+			auto x_mip = glm::log2(float(width) / 960.f);
+			auto y_mip = glm::log2(float(height) / 500.f);
 
 			auto mip = highres ? util::min(x_mip, y_mip) : util::max(x_mip, y_mip);
 
-			return static_cast<std::uint32_t>(util::max(0, static_cast<int>(std::round(mip))));
+			return static_cast<std::int32_t>(util::max(0, static_cast<int>(std::round(mip))));
 		}
-		auto calc_max_mip_level(std::uint32_t width, std::uint32_t height)
+		auto calc_max_mip_level(std::int32_t width, std::int32_t height)
 		{
 			auto w        = static_cast<float>(width);
 			auto h        = static_cast<float>(height);
 			auto diagonal = std::sqrt(w * w + h * h);
 
-			return static_cast<std::uint32_t>(std::ceil(glm::log2(diagonal / 40.f)));
+			return static_cast<std::int32_t>(std::ceil(glm::log2(diagonal / 40.f)));
 		}
 
 		template <class T>
@@ -715,9 +715,8 @@ namespace mirrage::renderer {
 	  , _highres_base_mip_level(calc_base_mip_level(in_out.width(), in_out.height(), true))
 	  , _base_mip_level(calc_base_mip_level(in_out.width(), in_out.height(), renderer.settings().gi_highres))
 	  , _max_mip_level(calc_max_mip_level(in_out.width(), in_out.height()))
-	  , _diffuse_mip_level(_base_mip_level + std::uint32_t(renderer.settings().gi_diffuse_mip_level))
-	  , _min_mip_level(std::min(_diffuse_mip_level,
-	                            _base_mip_level + std::uint32_t(renderer.settings().gi_min_mip_level)))
+	  , _diffuse_mip_level(_base_mip_level + renderer.settings().gi_diffuse_mip_level)
+	  , _min_mip_level(std::min(_diffuse_mip_level, _base_mip_level + renderer.settings().gi_min_mip_level))
 	  , _gbuffer_sampler(renderer.device().create_sampler(12,
 	                                                      vk::SamplerAddressMode::eClampToEdge,
 	                                                      vk::BorderColor::eIntOpaqueBlack,
@@ -871,9 +870,9 @@ namespace mirrage::renderer {
 	{
 
 		auto end = _max_mip_level;
-		_sample_descriptor_sets.reserve(end - _min_mip_level);
+		_sample_descriptor_sets.reserve(gsl::narrow<std::size_t>(end - _min_mip_level));
 
-		for(auto i = 0u; i < end - _min_mip_level; i++) {
+		for(auto i = 0; i < end - _min_mip_level; i++) {
 			auto curr_mip = i + _min_mip_level;
 			auto prev_mip = util::min(curr_mip + 1, renderer.gbuffer().depth.mip_levels());
 
@@ -981,14 +980,22 @@ namespace mirrage::renderer {
 		        command_buffer, _brdf_integration_framebuffer, [&] { command_buffer.draw(3, 1, 0, 0); });
 	}
 
+	namespace {
+		bool is_zero(float v)
+		{
+			constexpr auto epsilon = 0.0000001f;
+			return v > -epsilon && v < epsilon;
+		}
+	} // namespace
+
 	void Gi_pass::_reproject_history(vk::CommandBuffer command_buffer, vk::DescriptorSet globals)
 	{
 		auto _ = _renderer.profiler().push("Reproject");
 
 		auto pcs         = Gi_constants{};
 		pcs.reprojection = _prev_view * glm::inverse(_renderer.global_uniforms().view_mat);
-		MIRRAGE_INVARIANT(pcs.reprojection[0][3] == 0 && pcs.reprojection[1][3] == 0
-		                          && pcs.reprojection[2][3] == 0 && pcs.reprojection[3][3] == 1,
+		MIRRAGE_INVARIANT(is_zero(pcs.reprojection[0][3]) && is_zero(pcs.reprojection[1][3])
+		                          && is_zero(pcs.reprojection[2][3]) && is_zero(pcs.reprojection[3][3] - 1),
 		                  "m[0][3]!=0 or m[1][3]!=0 or m[2][3]!=0 or m[3][3]!=1");
 
 		pcs.reprojection[0][3] = -2.f / _prev_proj[0][0];
@@ -997,12 +1004,12 @@ namespace mirrage::renderer {
 		pcs.reprojection[3][3] = (1.f + _prev_proj[1][2]) / _prev_proj[1][1];
 
 		pcs.prev_projection = _prev_proj;
-		MIRRAGE_INVARIANT(pcs.prev_projection[0][3] == 0 && pcs.prev_projection[1][3] == 0
-		                          && pcs.prev_projection[3][3] == 0,
+		MIRRAGE_INVARIANT(is_zero(pcs.prev_projection[0][3]) && is_zero(pcs.prev_projection[1][3])
+		                          && is_zero(pcs.prev_projection[3][3]),
 		                  "m[0][3]!=0 or m[1][3]!=0 or m[3][3]!=0");
 
-		pcs.prev_projection[0][3] = _min_mip_level;
-		pcs.prev_projection[1][3] = _max_mip_level - 1;
+		pcs.prev_projection[0][3] = float(_min_mip_level);
+		pcs.prev_projection[1][3] = float(_max_mip_level - 1);
 
 		// reproject MIP 0
 		_reproject_renderpass.execute(command_buffer, _reproject_framebuffer, [&] {
@@ -1015,11 +1022,11 @@ namespace mirrage::renderer {
 		});
 
 		// reproject MIP 1-N
-		for(auto i = 1u; i < _gi_diffuse_history.mip_levels(); i++) {
-			auto& fb = _diffuse_reproject_framebuffers[i];
+		for(auto i = 1; i < _gi_diffuse_history.mip_levels(); i++) {
+			auto& fb = _diffuse_reproject_framebuffers[std::size_t(i)];
 
 			_diffuse_reproject_renderpass.execute(command_buffer, fb, [&] {
-				pcs.prev_projection[0][3] = i;
+				pcs.prev_projection[0][3] = float(i);
 				_diffuse_reproject_renderpass.push_constant("pcs"_strid, pcs);
 
 				command_buffer.draw(3, 1, 0, 0);
@@ -1071,7 +1078,7 @@ namespace mirrage::renderer {
 			if(last_sample)
 				dp -= glm::pi<float>() * 20.f * 20.f;
 
-			dp /= samples;
+			dp /= float(samples);
 
 			return (4.0f * glm::tan(fov_h / 2.f) * glm::tan(fov_v / 2.f) * dp)
 			       / (screen_width * screen_height) * proj_y_plane * proj_y_plane;
@@ -1087,11 +1094,11 @@ namespace mirrage::renderer {
 
 
 		auto pcs                  = Gi_constants{};
-		pcs.prev_projection[0][0] = _highres_base_mip_level;
-		pcs.prev_projection[1][0] = end - 1;
-		pcs.prev_projection[2][0] = std::max(1.f, (end - 1) - last_i - 0.8f);
-		pcs.prev_projection[1][3] = _max_mip_level - 1;
-		pcs.prev_projection[3][3] = _min_mip_level;
+		pcs.prev_projection[0][0] = float(_highres_base_mip_level);
+		pcs.prev_projection[1][0] = float(end - 1);
+		pcs.prev_projection[2][0] = float(std::max(1.f, (end - 1) - last_i - 0.8f));
+		pcs.prev_projection[1][3] = float(_max_mip_level - 1);
+		pcs.prev_projection[3][3] = float(_min_mip_level);
 
 		if(_renderer.gbuffer().ambient_occlusion.is_some()) {
 			pcs.reprojection[3][3] = 1.0;
@@ -1104,7 +1111,7 @@ namespace mirrage::renderer {
 			auto first_iteration = true;
 			for(auto i = end - 1; i >= begin; i--) {
 				// render highest MIP to blend buffer, because there is nothing to upsample, yet
-				auto& fb = _sample_framebuffers.at(i - base_mip);
+				auto& fb = _sample_framebuffers.at(gsl::narrow<std::size_t>(i - base_mip));
 
 				_sample_renderpass.execute(command_buffer, fb, [&] {
 					auto sample_count = to_2prod(_renderer.settings().gi_samples);
@@ -1123,9 +1130,10 @@ namespace mirrage::renderer {
 						        std::array<vk::DescriptorSet, 2>{globals, _renderer.noise_descriptor_set()});
 					}
 
-					_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[i - base_mip]);
+					_sample_renderpass.bind_descriptor_set(
+					        2, *_sample_descriptor_sets[std::size_t(i - base_mip)]);
 
-					pcs.prev_projection[0][3] = i;
+					pcs.prev_projection[0][3] = float(i);
 					auto fov_h                = _renderer.global_uniforms().proj_planes.z;
 					auto fov_v                = _renderer.global_uniforms().proj_planes.w;
 
@@ -1133,8 +1141,8 @@ namespace mirrage::renderer {
 					                                           sample_count,
 					                                           fov_h,
 					                                           fov_v,
-					                                           _color_in_out.width(i),
-					                                           _color_in_out.height(i),
+					                                           float(_color_in_out.width(i)),
+					                                           float(_color_in_out.height(i)),
 					                                           _renderer.global_uniforms().proj_planes.y);
 
 					_sample_renderpass.push_constant("pcs"_strid, pcs);
@@ -1150,8 +1158,8 @@ namespace mirrage::renderer {
 			auto _ = _renderer.profiler().push("Sample (blend");
 
 			for(auto i = int(_sample_framebuffers.size() - 1); i >= 0; i--) {
-				auto& fb_upsample = _sample_framebuffers.at(i);
-				auto& fb_final    = _sample_framebuffers_blend.at(i);
+				auto& fb_upsample = _sample_framebuffers.at(std::size_t(i));
+				auto& fb_final    = _sample_framebuffers_blend.at(std::size_t(i));
 
 				// upsample
 				if(i < int(_sample_framebuffers.size() - 1)) {
@@ -1161,7 +1169,7 @@ namespace mirrage::renderer {
 						else
 							_sample_renderpass.set_stage("upsample_only"_strid);
 
-						_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[i]);
+						_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[std::size_t(i)]);
 
 						command_buffer.draw(3, 1, 0, 0);
 					});
@@ -1174,7 +1182,7 @@ namespace mirrage::renderer {
 					else
 						_sample_renderpass.set_stage("blend_last"_strid);
 
-					_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[i]);
+					_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[std::size_t(i)]);
 
 					command_buffer.draw(3, 1, 0, 0);
 				});
@@ -1187,10 +1195,10 @@ namespace mirrage::renderer {
 				_sample_spec_renderpass.bind_descriptor_set(1, *_sample_spec_descriptor_set);
 
 				// Mip-level used by spec.
-				pcs.prev_projection[0][3] = _base_mip_level;
+				pcs.prev_projection[0][3] = float(_base_mip_level);
 
-				auto screen_size = glm::vec2{_color_diffuse_in.width(pcs.prev_projection[0][3]),
-				                             _color_diffuse_in.height(pcs.prev_projection[0][3])};
+				auto screen_size = glm::vec2{_color_diffuse_in.width(_base_mip_level),
+				                             _color_diffuse_in.height(_base_mip_level)};
 				auto ndc_to_uv   = glm::translate(glm::mat4(1.f), glm::vec3(screen_size / 2.f, 0.f))
 				                 * glm::scale(glm::mat4(1.f), glm::vec3(screen_size / 2.f, 1.f));
 				pcs.reprojection = ndc_to_uv * _renderer.global_uniforms().proj_mat;
@@ -1239,9 +1247,9 @@ namespace mirrage::renderer {
 			_blend_renderpass.bind_descriptor_set(1, *_blend_descriptor_set);
 
 			auto pcs                  = Gi_constants{};
-			pcs.prev_projection[0][3] = _min_mip_level;
-			pcs.prev_projection[1][3] = _max_mip_level - 1;
-			pcs.prev_projection[2][3] = _renderer.settings().debug_gi_layer;
+			pcs.prev_projection[0][3] = float(_min_mip_level);
+			pcs.prev_projection[1][3] = float(_max_mip_level - 1);
+			pcs.prev_projection[2][3] = float(_renderer.settings().debug_gi_layer);
 
 			_blend_renderpass.push_constant("pcs"_strid, pcs);
 

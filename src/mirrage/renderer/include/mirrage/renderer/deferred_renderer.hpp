@@ -188,7 +188,7 @@ namespace mirrage::renderer {
 		auto compute_queue() const noexcept { return _factory->compute_queue(); }
 		auto create_compute_command_buffer() { return _factory->create_compute_command_buffer(); }
 
-		auto create_descriptor_set(vk::DescriptorSetLayout, std::uint32_t bindings) -> graphic::DescriptorSet;
+		auto create_descriptor_set(vk::DescriptorSetLayout, std::int32_t bindings) -> graphic::DescriptorSet;
 		auto descriptor_pool() noexcept -> auto& { return _descriptor_set_pool; }
 
 		auto noise_descriptor_set_layout() const noexcept { return *_noise_descriptor_set_layout; }

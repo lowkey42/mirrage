@@ -22,7 +22,7 @@ namespace mirrage::renderer {
 		glm::quat                 light_source_orientation;
 		ecs::Component_index      caster_count = 0;
 
-		Shadowmap(graphic::Device&, std::uint32_t size, vk::Format);
+		Shadowmap(graphic::Device&, std::int32_t size, vk::Format);
 		Shadowmap(Shadowmap&& rhs) noexcept;
 	};
 

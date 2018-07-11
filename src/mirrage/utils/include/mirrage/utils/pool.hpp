@@ -360,15 +360,15 @@ namespace mirrage::util::tests {
 
 			auto mapping   = std::array<int, 30001>();
 			auto relocator = [&](auto from, auto& v, auto to) {
-				CHECK_EQ(mapping[v.id], from);
-				mapping[v.id] = to;
+				CHECK_EQ(mapping[std::size_t(v.id)], from);
+				mapping[std::size_t(v.id)] = int(to);
 				CHECK_EQ(v.id, p.get(to).id);
 			};
 
 			for(auto i : util::range(1, 1024)) {
 				auto r = p.emplace(relocator, i, i);
 
-				mapping[i] = std::get<1>(r);
+				mapping[std::size_t(i)] = int(std::get<1>(r));
 			}
 
 			CHECK_EQ(accessor{p}.chunk_count, 1024 / 16);

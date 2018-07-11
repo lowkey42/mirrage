@@ -50,7 +50,6 @@ namespace mirrage::renderer {
 	{
 		auto _ = _renderer.profiler().push("Geometry");
 
-		//auto eye = _renderer.active_camera().get_or_throw().eye_position;
 
 		auto end = std::partition(frame.geometry_queue.begin(), frame.geometry_queue.end(), [](auto& geo) {
 			return (geo.culling_mask & 1u) != 0;
@@ -67,6 +66,7 @@ namespace mirrage::renderer {
 
 		// TODO: sort by depth, too
 		/*
+		auto eye = _renderer.active_camera().get_or_throw().eye_position;
 		std::sort(geo_range.begin(), geo_range.end(), [&](auto& lhs, auto& rhs) {
 			return glm::distance2(eye, lhs.position) < glm::distance2(eye, rhs.position);
 		});
@@ -96,24 +96,5 @@ namespace mirrage::renderer {
 			render_pass.push_constant("dpc"_strid, dpc);
 			frame.main_command_buffer.drawIndexed(count, 1, offset, 0, 0);
 		}
-		/*
-		for(auto& [model, transform] : _ecs.list<Model_comp, Transform_comp>()) {
-			dpc.model        = transform.to_mat4();
-			dpc.light_data.x = _renderer.settings().debug_disect;
-			render_pass.push_constant("dpc"_strid, dpc);
-
-
-			auto foreach_model = [&](auto& material, auto offset, auto count) {
-				if(!material->material_id()) {
-					render_pass.set_stage("default"_strid);
-				} else {
-					render_pass.set_stage(material->material_id());
-				}
-
-				frame.main_command_buffer.drawIndexed(count, 1, offset, 0, 0);
-			};
-			model.model()->bind(frame.main_command_buffer, render_pass, 0, foreach_model);
-		}
-		*/
 	}
 } // namespace mirrage::renderer

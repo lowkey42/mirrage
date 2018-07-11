@@ -146,7 +146,7 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	Shadowmap::Shadowmap(graphic::Device& device, std::uint32_t size, vk::Format format)
+	Shadowmap::Shadowmap(graphic::Device& device, std::int32_t size, vk::Format format)
 	  : texture(device,
 	            {size, size},
 	            1,
@@ -170,8 +170,7 @@ namespace mirrage::renderer {
 	  , _entities(entities)
 	  , _shadowmap_format(get_shadowmap_format(renderer.device()))
 	  , _depth(renderer.device(),
-	           {gsl::narrow<std::uint32_t>(renderer.settings().shadowmap_resolution),
-	            gsl::narrow<std::uint32_t>(renderer.settings().shadowmap_resolution)},
+	           {renderer.settings().shadowmap_resolution, renderer.settings().shadowmap_resolution},
 	           1,
 	           get_depth_format(renderer.device()),
 	           vk::ImageUsageFlagBits::eDepthStencilAttachment,
@@ -261,9 +260,9 @@ namespace mirrage::renderer {
 			(void) _;
 
 			if(light.shadowmap_id() == -1) {
-				for(auto i = 0; i < gsl::narrow<int>(_shadowmaps.size()); i++) {
+				for(auto i = 0u; i < _shadowmaps.size(); i++) {
 					if(!_shadowmaps[i].owner) {
-						light.shadowmap_id(i);
+						light.shadowmap_id(int(i));
 						_shadowmaps[i].owner = light.owner_handle();
 						break;
 					}
@@ -273,7 +272,7 @@ namespace mirrage::renderer {
 					continue;
 				}
 			} else if(!_renderer.settings().dynamic_shadows) {
-				auto& shadowmap = _shadowmaps.at(light.shadowmap_id());
+				auto& shadowmap = _shadowmaps.at(gsl::narrow<std::size_t>(light.shadowmap_id()));
 
 				auto pos_diff = glm::length2(transform.position - shadowmap.light_source_position);
 				auto orientation_diff =
@@ -284,8 +283,8 @@ namespace mirrage::renderer {
 				}
 			}
 
-			auto& shadowmap                    = _shadowmaps.at(light.shadowmap_id());
-			shadowmap.light_source_position    = transform.position;
+			auto& shadowmap                 = _shadowmaps.at(gsl::narrow<std::size_t>(light.shadowmap_id()));
+			shadowmap.light_source_position = transform.position;
 			shadowmap.light_source_orientation = transform.orientation;
 			shadowmap.caster_count             = _entities.list<Model_comp>().size();
 

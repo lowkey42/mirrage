@@ -214,7 +214,7 @@ namespace mirrage {
 		if(preset_id <= 0)
 			return;
 
-		const Preset& p = presets[preset_id - 1];
+		const Preset& p = presets[std::size_t(preset_id - 1)];
 
 		_camera.get<Transform_comp>().process(
 		        [&](auto& transform) { transform.position = p.camera_position; });
@@ -235,7 +235,7 @@ namespace mirrage {
 		_update_sun_position();
 	}
 
-	void Test_screen::_on_enter(util::maybe<Screen&> prev)
+	void Test_screen::_on_enter(util::maybe<Screen&>)
 	{
 		_meta_system.shrink_to_fit();
 
@@ -243,7 +243,7 @@ namespace mirrage {
 		_mailbox.enable();
 	}
 
-	void Test_screen::_on_leave(util::maybe<Screen&> next)
+	void Test_screen::_on_leave(util::maybe<Screen&>)
 	{
 		_mailbox.disable();
 		_engine.input().capture_mouse(false);
@@ -372,13 +372,13 @@ namespace mirrage {
 				nk_layout_row_dynamic(ctx, 14, 1);
 
 				auto elevation = nk_propertyf(ctx, "Elevation", 0.f, _sun_elevation, 1.f, 0.05f, 0.001f);
-				if(elevation != _sun_elevation) {
+				if(std::abs(elevation - _sun_elevation) > 0.000001f) {
 					_sun_elevation = elevation;
 					_set_preset(0);
 				}
 
 				auto azimuth = nk_propertyf(ctx, "Azimuth", -2.f, _sun_azimuth, 2.f, 0.05f, 0.001f);
-				if(azimuth != _sun_azimuth) {
+				if(std::abs(azimuth - _sun_azimuth) > 0.000001f) {
 					_sun_azimuth = azimuth;
 					_set_preset(0);
 				}
@@ -394,7 +394,7 @@ namespace mirrage {
 					        auto new_temp = nk_propertyf(
 					                ctx, "Color", 500.f, _sun_color_temperature, 20000.f, 500.f, 50.f);
 
-					        if(new_temp != _sun_color_temperature) {
+					        if(std::abs(new_temp - _sun_color_temperature) > 0.000001f) {
 						        light.temperature(_sun_color_temperature = new_temp);
 						        _set_preset(0);
 					        }
@@ -503,14 +503,18 @@ namespace mirrage {
 	}
 
 	namespace {
-		auto to_fixed_str(double num, int digits)
+		template <typename T>
+		auto to_fixed_str(T num, int digits)
 		{
 			auto ss = std::stringstream{};
 			ss << std::fixed << std::setprecision(digits) << num;
 			return ss.str();
 		}
 
-		auto pad_left(const std::string& str, int padding) { return std::string(padding, ' ') + str; }
+		auto pad_left(const std::string& str, int padding)
+		{
+			return std::string(std::size_t(padding), ' ') + str;
+		}
 
 		template <std::size_t N, typename Container, typename Comp>
 		auto top_n(const Container& container, Comp&& less)
@@ -642,9 +646,8 @@ namespace mirrage {
 				nk_label(ctx, "Luminance", NK_TEXT_CENTERED);
 				auto log_lum_range = std::log(_meta_system.renderer().gbuffer().max_luminance)
 				                     - std::log(_meta_system.renderer().gbuffer().min_luminance);
-				auto log_lum =
-				        static_cast<double>(_last_selected_histogram) / (histogram.size() - 1) * log_lum_range
-				        + std::log(_meta_system.renderer().gbuffer().min_luminance);
+				auto log_lum = float(_last_selected_histogram) / float(histogram.size() - 1) * log_lum_range
+				               + std::log(_meta_system.renderer().gbuffer().min_luminance);
 				auto lum = std::exp(log_lum);
 				nk_label(ctx, to_fixed_str(lum, 5).c_str(), NK_TEXT_CENTERED);
 

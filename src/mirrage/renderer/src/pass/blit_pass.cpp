@@ -87,7 +87,7 @@ namespace mirrage::renderer {
 	}
 
 
-	void Blit_pass::update(util::Time dt) {}
+	void Blit_pass::update(util::Time) {}
 
 	void Blit_pass::draw(Frame_data& frame)
 	{

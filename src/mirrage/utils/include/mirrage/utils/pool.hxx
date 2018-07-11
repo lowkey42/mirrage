@@ -149,7 +149,7 @@ namespace mirrage::util {
 			auto chunk = index / chunk_len;
 
 			if(chunk < static_cast<IndexType>(_chunks.size())) {
-				return _chunks[chunk].get() + (index % chunk_len);
+				return _chunks[std::size_t(chunk)].get() + (index % chunk_len);
 			} else {
 				return _chunks.emplace_back(std::make_unique<storage_t[]>(chunk_len)).get();
 			}
@@ -245,14 +245,15 @@ namespace mirrage::util {
 		MIRRAGE_INVARIANT(i < _used_elements,
 		                  "Pool-Index out of bounds " + to_string(i) + ">=" + to_string(_used_elements));
 
-		return reinterpret_cast<const unsigned char*>(_chunks[i / chunk_len].get() + (i % chunk_len));
+		return reinterpret_cast<const unsigned char*>(_chunks[std::size_t(i / chunk_len)].get()
+		                                              + (i % chunk_len));
 	}
 
 	MIRRAGE_POOL_HEADER
 	T* MIRRAGE_POOL::_chunk(IndexType chunk_idx) noexcept
 	{
 		if(chunk_idx * chunk_len < _used_elements)
-			return reinterpret_cast<T*>(_chunks.at(chunk_idx).get());
+			return reinterpret_cast<T*>(_chunks.at(std::size_t(chunk_idx)).get());
 		else
 			return nullptr;
 	}
@@ -277,7 +278,7 @@ namespace mirrage::util {
 			auto step = util::min(count, chunk_len - c_src % chunk_len, chunk_len - c_dst % chunk_len);
 			if constexpr(std::is_trivially_copyable_v<T>) {
 				// yay, we can memmove
-				std::memmove(_get_raw(c_dst), _get_raw(c_src), step);
+				std::memmove(_get_raw(c_dst), _get_raw(c_src), std::size_t(step));
 			} else {
 				// nay, have to check if valid and call move-assignment / placement-new
 				if(src < dst) {
@@ -438,7 +439,7 @@ namespace mirrage::util {
 	auto pool_iterator<Pool>::operator+=(difference_type n) -> pool_iterator&
 	{
 		// compute physical_index, skipping empty slots
-		auto target_physical_idx = physical_index() + n;
+		auto target_physical_idx = index_type(physical_index() + n);
 
 		while(_next_free != _pool->_freelist.end() && *_next_free <= target_physical_idx) {
 			target_physical_idx++;
@@ -446,7 +447,7 @@ namespace mirrage::util {
 		}
 
 		// compute chunk and pointers based on new physical index
-		_logical_index += n;
+		_logical_index      = index_type(_logical_index + n);
 		_physical_index     = target_physical_idx;
 		_chunk_index        = target_physical_idx / Pool::chunk_len;
 		_element_iter_begin = _pool->_chunk(_chunk_index);

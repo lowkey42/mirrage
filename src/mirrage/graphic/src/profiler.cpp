@@ -34,11 +34,11 @@ namespace mirrage::graphic {
 
 		_time_ms_index = (_time_ms_index + 1) % history_size;
 
-		_time_avg_ms += new_time / history_size - _time_ms[_time_ms_index] / history_size;
+		_time_avg_ms += new_time / history_size - _time_ms[std::size_t(_time_ms_index)] / history_size;
 
-		_time_ms[_time_ms_index] = new_time;
-		_time_min_ms             = std::min(_time_min_ms, new_time);
-		_time_max_ms             = std::max(_time_max_ms, new_time);
+		_time_ms[std::size_t(_time_ms_index)] = new_time;
+		_time_min_ms                          = std::min(_time_min_ms, new_time);
+		_time_max_ms                          = std::max(_time_max_ms, new_time);
 	}
 
 	void Profiler_result::reset() noexcept
@@ -81,9 +81,9 @@ namespace mirrage::graphic {
 	{
 	}
 
-	Profiler::Profiler(Device& device, std::size_t max_elements)
+	Profiler::Profiler(Device& device, std::uint32_t max_elements)
 	  : _device(*device.vk_device())
-	  , _ns_per_tick(device.physical_device_properties().limits.timestampPeriod)
+	  , _ns_per_tick(static_cast<double>(device.physical_device_properties().limits.timestampPeriod))
 	  , _query_ids(max_elements)
 	  , _last_results("All", _generate_query_id(), _generate_query_id())
 	  , _query_pools(device.max_frames_in_flight(),

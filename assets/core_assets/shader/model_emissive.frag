@@ -5,8 +5,6 @@
 #include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 
-layout(early_fragment_tests) in;
-
 layout(location = 0) in vec3 world_pos;
 layout(location = 1) in vec3 view_pos;
 layout(location = 2) in vec3 normal;
@@ -29,6 +27,9 @@ layout(push_constant) uniform Per_model_uniforms {
 
 void main() {
 	vec4 albedo = texture(albedo_sampler, tex_coords);
+
+	if(albedo.a < 0.1)
+		discard;
 
 	depth_out     = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
 	albedo_mat_id = vec4(albedo.rgb, 1.0);

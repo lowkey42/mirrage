@@ -36,7 +36,7 @@ namespace mirrage::ecs {
 			return;
 
 		if(static_cast<Entity_id>(_table.size()) < owner) {
-			auto capacity = static_cast<std::size_t>(std::max(owner, 64));
+			auto capacity = std::max<std::size_t>(owner, 64u);
 			_table.resize(capacity * 2, -1);
 		}
 

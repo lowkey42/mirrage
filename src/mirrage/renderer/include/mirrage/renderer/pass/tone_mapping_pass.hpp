@@ -32,7 +32,7 @@ namespace mirrage::renderer {
 		int                                 _ready_result = -1;
 		int                                 _next_result  = 0;
 		std::vector<float>                  _last_result_data;
-		std::uint32_t                       _last_max_histogram_size = 0;
+		int                                 _last_max_histogram_size = 0;
 
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
@@ -55,10 +55,10 @@ namespace mirrage::renderer {
 		graphic::DescriptorSet _apply_desc_set;
 
 		void _clear_result_buffer(vk::CommandBuffer);
-		auto _generate_foveal_image(vk::CommandBuffer) -> std::uint32_t;
-		void _dispatch_build_histogram(vk::DescriptorSet, vk::CommandBuffer, std::uint32_t mip_level);
-		void _dispatch_adjust_histogram(vk::DescriptorSet, vk::CommandBuffer, std::uint32_t mip_level);
-		void _apply_tone_ampping(vk::DescriptorSet, vk::CommandBuffer, std::uint32_t mip_level);
+		auto _generate_foveal_image(vk::CommandBuffer) -> int;
+		void _dispatch_build_histogram(vk::DescriptorSet, vk::CommandBuffer, int mip_level);
+		void _dispatch_adjust_histogram(vk::DescriptorSet, vk::CommandBuffer, int mip_level);
+		void _apply_tone_ampping(vk::DescriptorSet, vk::CommandBuffer, int mip_level);
 	};
 
 	class Tone_mapping_pass_factory : public Render_pass_factory {

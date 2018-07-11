@@ -46,7 +46,7 @@ namespace mirrage::systems {
 
 		auto frame_length(int frame) const noexcept { return _frame_lengths[frame % _frame_lengths.size()]; }
 
-		auto frames() const noexcept { return _frame_lengths.size(); }
+		auto frames() const noexcept { return std::int32_t(_frame_lengths.size()); }
 
 		// F = void(Str_id, vector<vec3>, vector<quat>, vector<Rgba>)
 		template <typename F>

@@ -137,9 +137,9 @@ namespace mirrage::graphic {
 	                                             vk::UniquePipelineLayout&       layout)
 	{
 
-		pipeline_layout.setLayoutCount         = descriptor_set_layouts.size();
+		pipeline_layout.setLayoutCount         = gsl::narrow<std::uint32_t>(descriptor_set_layouts.size());
 		pipeline_layout.pSetLayouts            = descriptor_set_layouts.data();
-		pipeline_layout.pushConstantRangeCount = push_constants.size();
+		pipeline_layout.pushConstantRangeCount = gsl::narrow<std::uint32_t>(push_constants.size());
 		pipeline_layout.pPushConstantRanges    = push_constants.data();
 		layout                                 = device.createPipelineLayoutUnique(pipeline_layout);
 
@@ -170,14 +170,14 @@ namespace mirrage::graphic {
 			                                s.constants.empty() ? nullptr : &s.constants_info);
 		}
 
-		vertex_input.vertexBindingDescriptionCount   = vertex_bindings.size();
+		vertex_input.vertexBindingDescriptionCount   = gsl::narrow<std::uint32_t>(vertex_bindings.size());
 		vertex_input.pVertexBindingDescriptions      = vertex_bindings.data();
-		vertex_input.vertexAttributeDescriptionCount = vertex_attributes.size();
+		vertex_input.vertexAttributeDescriptionCount = gsl::narrow<std::uint32_t>(vertex_attributes.size());
 		vertex_input.pVertexAttributeDescriptions    = vertex_attributes.data();
 
 		cinfo.subpass             = subpass_id;
 		cinfo.layout              = *layout;
-		cinfo.stageCount          = stage_create_infos.size();
+		cinfo.stageCount          = gsl::narrow<std::uint32_t>(stage_create_infos.size());
 		cinfo.pStages             = stage_create_infos.data();
 		cinfo.pVertexInputState   = &vertex_input;
 		cinfo.pInputAssemblyState = &input_assembly;
@@ -187,7 +187,7 @@ namespace mirrage::graphic {
 		cinfo.pDynamicState       = &default_dynamic_state;
 
 		color_blending.process([&](auto& s) {
-			s.attachmentCount      = color_blend_attachments.size();
+			s.attachmentCount      = gsl::narrow<std::uint32_t>(color_blend_attachments.size());
 			s.pAttachments         = color_blend_attachments.data();
 			cinfo.pColorBlendState = &s;
 		});
@@ -325,9 +325,9 @@ namespace mirrage::graphic {
 	auto Subpass_builder::build_description() -> vk::SubpassDescription
 	{
 		auto desc                 = vk::SubpassDescription{};
-		desc.colorAttachmentCount = _color_attachments.size();
+		desc.colorAttachmentCount = gsl::narrow<std::uint32_t>(_color_attachments.size());
 		desc.pColorAttachments    = _color_attachments.data();
-		desc.inputAttachmentCount = _input_attachments.size();
+		desc.inputAttachmentCount = gsl::narrow<std::uint32_t>(_input_attachments.size());
 		desc.pInputAttachments    = _input_attachments.data();
 		// TODO: preserve attachments
 		_depth_stencil_attachment.process([&](auto& a) { desc.pDepthStencilAttachment = &a; });
@@ -353,22 +353,23 @@ namespace mirrage::graphic {
 	auto Render_pass_builder::add_subpass(Pipeline_description& pipeline) -> Subpass_builder&
 	{
 		if(pipeline.index >= 0) { // already added => use prev as base
-			_pipelines.at(pipeline.index).used_as_base = true;
+			_pipelines.at(gsl::narrow<std::size_t>(pipeline.index)).used_as_base = true;
 		}
 
 		_pipelines.emplace_back(pipeline);
 		auto& new_pipeline        = _pipelines.back();
-		new_pipeline.index        = _pipelines.size() - 1;
+		new_pipeline.index        = gsl::narrow<std::int32_t>(_pipelines.size() - 1);
 		new_pipeline.base_index   = pipeline.index;
 		new_pipeline.used_as_base = false;
-		new_pipeline.subpass_id   = _subpasses.size();
+		new_pipeline.subpass_id   = gsl::narrow<std::uint32_t>(_subpasses.size());
 
 		if(pipeline.index < 0) {
 			pipeline.index = new_pipeline.index;
 		}
 
+		// doesn't use make_unique, because the constructor is private and we are its friend
 		_subpasses.emplace_back(std::unique_ptr<Subpass_builder>(
-		        new Subpass_builder(_subpasses.size(), *this, new_pipeline.index)));
+		        new Subpass_builder(_subpasses.size(), *this, std::size_t(new_pipeline.index))));
 
 		return *_subpasses.back();
 	}
@@ -459,8 +460,8 @@ namespace mirrage::graphic {
 		auto clear_values      = std::vector<vk::ClearValue>();
 
 
-		attachment_images.reserve(attachments.size());
-		clear_values.reserve(attachments.size());
+		attachment_images.reserve(gsl::narrow<std::size_t>(attachments.size()));
+		clear_values.reserve(gsl::narrow<std::size_t>(attachments.size()));
 		for(auto& a : attachments) {
 			attachment_images.emplace_back(a.image_view);
 			clear_values.emplace_back(a.clear_value);
@@ -484,8 +485,10 @@ namespace mirrage::graphic {
 		                                      gsl::narrow_cast<std::uint32_t>(layers)};
 
 		return {_device.createFramebufferUnique(info),
-		        vk::Viewport(0, 0, width, height, 0.f, 1.f),
-		        vk::Rect2D{vk::Offset2D(0, 0), vk::Extent2D(width, height)},
+		        vk::Viewport(0, 0, float(width), float(height), 0.f, 1.f),
+		        vk::Rect2D{
+		                vk::Offset2D(0, 0),
+		                vk::Extent2D(gsl::narrow<std::uint32_t>(width), gsl::narrow<std::uint32_t>(height))},
 		        std::move(clear_values)};
 	}
 
@@ -546,7 +549,7 @@ namespace mirrage::graphic {
 		cmb.pushConstants(*_pipeline_layouts[_bound_pipeline],
 		                  info.stageFlags,
 		                  info.offset,
-		                  vk::ArrayProxy<const char>(data.size(), data.data()));
+		                  vk::ArrayProxy<const char>(gsl::narrow<std::uint32_t>(data.size()), data.data()));
 	}
 
 	void Render_pass::bind_descriptor_sets(std::uint32_t first_set, gsl::span<const vk::DescriptorSet> sets)
@@ -570,7 +573,7 @@ namespace mirrage::graphic {
 		_bound_pipeline         = 0;
 
 		vk::RenderPassBeginInfo rp_info = {*_render_pass, *fb._fb, fb._scissor};
-		rp_info.setClearValueCount(fb._clear_values.size());
+		rp_info.setClearValueCount(gsl::narrow<std::uint32_t>(fb._clear_values.size()));
 		rp_info.setPClearValues(fb._clear_values.data());
 
 		cb.beginRenderPass(&rp_info, vk::SubpassContents::eInline);

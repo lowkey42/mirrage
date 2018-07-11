@@ -73,7 +73,7 @@ namespace mirrage::graphic {
 		void vertex(int binding, bool per_instance_data, Member&&... members)
 		{
 			if(binding < 0)
-				binding = vertex_bindings.size();
+				binding = gsl::narrow<int>(vertex_bindings.size());
 
 			vertex_bindings.emplace_back(binding,
 			                             sizeof(T),

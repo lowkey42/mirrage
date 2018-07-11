@@ -12,7 +12,7 @@ namespace mirrage::graphic {
 	DescriptorSet::DescriptorSet(Descriptor_pool*            pool,
 	                             Descriptor_pool_chunk_index chunk_index,
 	                             vk::DescriptorSet           set,
-	                             std::uint32_t               reserved_bindings)
+	                             std::int32_t                reserved_bindings)
 	  : _pool(pool), _chunk(chunk_index), _set(set), _reserved_bindings(reserved_bindings)
 	{
 	}
@@ -48,7 +48,7 @@ namespace mirrage::graphic {
 	}
 
 
-	auto Descriptor_pool::create_descriptor(vk::DescriptorSetLayout layout, std::uint32_t bindings)
+	auto Descriptor_pool::create_descriptor(vk::DescriptorSetLayout layout, std::int32_t bindings)
 	        -> DescriptorSet
 	{
 		MIRRAGE_INVARIANT(bindings > 0, "No bindings required, really?!?!");
@@ -93,7 +93,7 @@ namespace mirrage::graphic {
 	}
 
 	Descriptor_pool::Descriptor_pool(vk::Device                                device,
-	                                 std::uint32_t                             chunk_size,
+	                                 std::int32_t                              chunk_size,
 	                                 std::initializer_list<vk::DescriptorType> types)
 	  : _device(device), _chunk_size(chunk_size)
 	{
@@ -109,7 +109,7 @@ namespace mirrage::graphic {
 	{
 		auto pool = _device.createDescriptorPoolUnique(
 		        vk::DescriptorPoolCreateInfo{vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-		                                     _chunk_size,
+		                                     gsl::narrow<std::uint32_t>(_chunk_size),
 		                                     gsl::narrow<std::uint32_t>(_pool_sizes.size()),
 		                                     _pool_sizes.data()});
 
@@ -120,7 +120,7 @@ namespace mirrage::graphic {
 
 	void Descriptor_pool::_free_descriptor_set(vk::DescriptorSet&          set,
 	                                           Descriptor_pool_chunk_index chunk,
-	                                           std::uint32_t               reserved_bindings)
+	                                           std::int32_t                reserved_bindings)
 	{
 		auto lock = std::scoped_lock{_mutex};
 
@@ -161,12 +161,12 @@ namespace mirrage::graphic {
 
 	Image_descriptor_set_layout::Image_descriptor_set_layout(graphic::Device&     device,
 	                                                         vk::Sampler          sampler,
-	                                                         std::uint32_t        image_number,
+	                                                         std::int32_t         image_number,
 	                                                         vk::ShaderStageFlags stages)
 	  : _device(device)
 	  , _sampler(sampler)
 	  , _image_number(image_number)
-	  , _layout(create_layout(device, sampler, image_number, stages))
+	  , _layout(create_layout(device, sampler, gsl::narrow<std::uint32_t>(image_number), stages))
 	{
 	}
 
@@ -174,7 +174,7 @@ namespace mirrage::graphic {
 	                                             std::initializer_list<vk::ImageView> images)
 	{
 
-		MIRRAGE_INVARIANT(images.size() <= _image_number,
+		MIRRAGE_INVARIANT(images.size() <= gsl::narrow<std::size_t>(_image_number),
 		                  "Number of images (" << images.size() << ") doesn't match size of descriptor set ("
 		                                       << _image_number << ")");
 

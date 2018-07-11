@@ -221,7 +221,11 @@ namespace mirrage::graphic {
 
             auto mem_req = _device->getBufferMemoryRequirements(*buffer);
             return _memory_allocator
-                    .alloc(mem_req.size, mem_req.alignment, mem_req.memoryTypeBits, host_visible, lifetime)
+                    .alloc(gsl::narrow<std::uint32_t>(mem_req.size),
+                           gsl::narrow<std::uint32_t>(mem_req.alignment),
+                           mem_req.memoryTypeBits,
+                           host_visible,
+                           lifetime)
                     .get_or_throw();
 		}();
 
@@ -253,7 +257,11 @@ namespace mirrage::graphic {
             }
 
             return _memory_allocator
-                    .alloc(mem_req.size, mem_req.alignment, mem_req.memoryTypeBits, host_visible, lifetime)
+                    .alloc(gsl::narrow<std::uint32_t>(mem_req.size),
+                           gsl::narrow<std::uint32_t>(mem_req.alignment),
+                           mem_req.memoryTypeBits,
+                           host_visible,
+                           lifetime)
                     .get_or_throw();
 		}();
 
@@ -264,18 +272,19 @@ namespace mirrage::graphic {
 
 	auto Device::create_image_view(vk::Image            image,
 	                               vk::Format           format,
-	                               std::uint32_t        base_mipmap,
+	                               std::int32_t         base_mipmap,
 	                               std::uint32_t        mipmap_levels,
 	                               vk::ImageAspectFlags aspect,
 	                               vk::ImageViewType    type,
 	                               vk::ComponentMapping mapping) -> vk::UniqueImageView
 	{
-		auto range = vk::ImageSubresourceRange{aspect, base_mipmap, mipmap_levels, 0, 1};
+		auto range = vk::ImageSubresourceRange{
+		        aspect, gsl::narrow<std::uint32_t>(base_mipmap), mipmap_levels, 0, 1};
 		return _device->createImageViewUnique(
 		        vk::ImageViewCreateInfo{vk::ImageViewCreateFlags{}, image, type, format, mapping, range});
 	}
 
-	auto Device::create_sampler(std::uint32_t          mip_levels,
+	auto Device::create_sampler(std::int32_t           mip_levels,
 	                            vk::SamplerAddressMode address_mode,
 	                            vk::BorderColor        border_color,
 	                            vk::Filter             filter,
@@ -339,7 +348,7 @@ namespace mirrage::graphic {
 		        vk::DescriptorSetLayoutCreateInfo{vk::DescriptorSetLayoutCreateFlags{}, 1, &binding});
 	}
 
-	auto Device::create_descriptor_pool(std::uint32_t                             chunk_size,
+	auto Device::create_descriptor_pool(std::int32_t                              chunk_size,
 	                                    std::initializer_list<vk::DescriptorType> types) -> Descriptor_pool
 	{
 		return {*_device, chunk_size, types};

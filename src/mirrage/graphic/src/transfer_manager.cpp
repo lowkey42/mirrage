@@ -34,9 +34,9 @@ namespace mirrage::graphic {
 		return *this;
 	}
 
-	void Dynamic_buffer::update(const Command_buffer& cb, vk::DeviceSize offset, gsl::span<const char> data)
+	void Dynamic_buffer::update(const Command_buffer& cb, std::int32_t offset, gsl::span<const char> data)
 	{
-		MIRRAGE_INVARIANT(_capacity >= gsl::narrow<std::size_t>(data.size() + offset), "Buffer overflow");
+		MIRRAGE_INVARIANT(_capacity >= gsl::narrow<std::int32_t>(data.size() + offset), "Buffer overflow");
 		MIRRAGE_INVARIANT(data.size() % 4 == 0, "buffer size has to be a multiple of 4: " << data.size());
 		MIRRAGE_INVARIANT(offset % 4 == 0, "buffer offset has to be a multiple of 4: " << offset);
 
@@ -45,7 +45,7 @@ namespace mirrage::graphic {
 		                                                  0,
 		                                                  0,
 		                                                  *_buffer,
-		                                                  offset,
+		                                                  gsl::narrow<std::uint32_t>(offset),
 		                                                  gsl::narrow<std::uint32_t>(data.size())};
 		cb.pipelineBarrier(_latest_usage,
 		                   vk::PipelineStageFlagBits::eTransfer,
@@ -54,14 +54,17 @@ namespace mirrage::graphic {
 		                   {buffer_barrier_pre},
 		                   {});
 
-		cb.updateBuffer(*_buffer, offset, data.size(), data.data());
+		cb.updateBuffer(*_buffer,
+		                gsl::narrow<std::uint32_t>(offset),
+		                gsl::narrow<std::uint32_t>(data.size()),
+		                data.data());
 
 		auto buffer_barrier_post = vk::BufferMemoryBarrier{vk::AccessFlagBits::eTransferWrite,
 		                                                   _earliest_usage_access,
 		                                                   0,
 		                                                   0,
 		                                                   *_buffer,
-		                                                   offset,
+		                                                   gsl::narrow<std::uint32_t>(offset),
 		                                                   gsl::narrow<std::uint32_t>(data.size())};
 		cb.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
 		                   _earliest_usage,
@@ -82,15 +85,16 @@ namespace mirrage::graphic {
 		                   {});
 	}
 
-	void Dynamic_buffer::_do_update(const Command_buffer& cb,
-	                                vk::DeviceSize        offset,
-	                                gsl::span<const char> data)
+	void Dynamic_buffer::_do_update(const Command_buffer& cb, std::int32_t offset, gsl::span<const char> data)
 	{
-		MIRRAGE_INVARIANT(_capacity >= gsl::narrow<std::size_t>(data.size() + offset), "Buffer overflow");
+		MIRRAGE_INVARIANT(_capacity >= gsl::narrow<std::int32_t>(data.size() + offset), "Buffer overflow");
 		MIRRAGE_INVARIANT(data.size() % 4 == 0, "buffer size has to be a multiple of 4: " << data.size());
 		MIRRAGE_INVARIANT(offset % 4 == 0, "buffer offset has to be a multiple of 4: " << offset);
 
-		cb.updateBuffer(*_buffer, offset, data.size(), data.data());
+		cb.updateBuffer(*_buffer,
+		                gsl::narrow<std::uint32_t>(offset),
+		                gsl::narrow<std::uint32_t>(data.size()),
+		                data.data());
 	}
 
 	void Dynamic_buffer::_post_update(const Command_buffer& cb)
@@ -132,22 +136,24 @@ namespace mirrage::graphic {
 	                                    std::uint32_t              owner,
 	                                    const Image_dimensions&    dimensions,
 	                                    vk::Format                 format,
-	                                    std::uint32_t              mip_levels,
-	                                    std::uint32_t              size,
+	                                    std::int32_t               mip_levels,
+	                                    std::int32_t               size,
 	                                    std::function<void(char*)> write_data,
 	                                    bool                       dedicated) -> Static_image
 	{
 
-		auto stored_mip_levels = std::max(1u, mip_levels);
+		auto stored_mip_levels = std::max(1, mip_levels);
 		auto actual_mip_levels = mip_levels;
 		if(actual_mip_levels == 0)
-			actual_mip_levels = std::floor(std::log2(std::min(dimensions.width, dimensions.height))) + 1;
+			actual_mip_levels = static_cast<std::int32_t>(
+			        std::floor(std::log2(std::min(dimensions.width, dimensions.height))) + 1);
 
 		// create staging buffer containing data
-		auto staging_buffer =
-		        _device.create_buffer(vk::BufferCreateInfo({}, size, vk::BufferUsageFlagBits::eTransferSrc),
-		                              true,
-		                              Memory_lifetime::temporary);
+		auto staging_buffer = _device.create_buffer(
+		        vk::BufferCreateInfo(
+		                {}, gsl::narrow<std::uint32_t>(size), vk::BufferUsageFlagBits::eTransferSrc),
+		        true,
+		        Memory_lifetime::temporary);
 
 		// fill buffer
 		auto ptr = staging_buffer.memory().mapped_addr().get_or_throw("Staging GPU memory is not mapped!");
@@ -157,7 +163,7 @@ namespace mirrage::graphic {
 
 		// extract sizes of mip levels
 		auto mip_image_sizes = std::vector<std::uint32_t>();
-		mip_image_sizes.reserve(stored_mip_levels);
+		mip_image_sizes.reserve(gsl::narrow<std::size_t>(stored_mip_levels));
 		for(auto i : util::range(stored_mip_levels)) {
 			(void) i;
 
@@ -171,22 +177,24 @@ namespace mirrage::graphic {
 			mip_image_sizes.emplace_back(mip_size);
 		}
 
-		auto real_dimensions = Image_dimensions{std::max(1u, dimensions.width),
-		                                        std::max(1u, dimensions.height),
-		                                        std::max(1u, dimensions.depth),
-		                                        std::max(1u, dimensions.layers)};
+		auto real_dimensions = Image_dimensions{std::max(1, dimensions.width),
+		                                        std::max(1, dimensions.height),
+		                                        std::max(1, dimensions.depth),
+		                                        std::max(1, dimensions.layers)};
 
-		auto image_create_info = vk::ImageCreateInfo{
-		        vk::ImageCreateFlags{},
-		        vk::ImageType::e2D,
-		        format,
-		        vk::Extent3D(real_dimensions.width, real_dimensions.height, real_dimensions.depth),
-		        actual_mip_levels,
-		        real_dimensions.layers,
-		        vk::SampleCountFlagBits::e1,
-		        vk::ImageTiling::eOptimal,
-		        vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
-		                | vk::ImageUsageFlagBits::eTransferSrc};
+		auto image_create_info =
+		        vk::ImageCreateInfo{vk::ImageCreateFlags{},
+		                            vk::ImageType::e2D,
+		                            format,
+		                            vk::Extent3D(gsl::narrow<std::uint32_t>(real_dimensions.width),
+		                                         gsl::narrow<std::uint32_t>(real_dimensions.height),
+		                                         gsl::narrow<std::uint32_t>(real_dimensions.depth)),
+		                            gsl::narrow<std::uint32_t>(actual_mip_levels),
+		                            gsl::narrow<std::uint32_t>(real_dimensions.layers),
+		                            vk::SampleCountFlagBits::e1,
+		                            vk::ImageTiling::eOptimal,
+		                            vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
+		                                    | vk::ImageUsageFlagBits::eTransferSrc};
 
 		auto final_image = _device.create_image(image_create_info, false, Memory_lifetime::normal, dedicated);
 
@@ -212,7 +220,7 @@ namespace mirrage::graphic {
 
 	auto Transfer_manager::upload_buffer(vk::BufferUsageFlags       usage,
 	                                     std::uint32_t              owner,
-	                                     std::uint32_t              size,
+	                                     std::int32_t               size,
 	                                     std::function<void(char*)> write_data,
 	                                     bool                       dedicated) -> Static_buffer
 	{
@@ -234,7 +242,8 @@ namespace mirrage::graphic {
 
 
 		auto final_buffer = _device.create_buffer(
-		        vk::BufferCreateInfo({}, size, usage | vk::BufferUsageFlagBits::eTransferDst),
+		        vk::BufferCreateInfo(
+		                {}, gsl::narrow<std::uint32_t>(size), usage | vk::BufferUsageFlagBits::eTransferDst),
 		        false,
 		        Memory_lifetime::normal,
 		        dedicated);
@@ -249,11 +258,12 @@ namespace mirrage::graphic {
 
 	auto Transfer_manager::_create_staging_buffer(vk::BufferUsageFlags       usage,
 	                                              Memory_lifetime            lifetime,
-	                                              std::uint32_t              size,
+	                                              std::int32_t               size,
 	                                              std::function<void(char*)> write_data) -> Backed_buffer
 	{
 
-		auto staging_buffer = _device.create_buffer(vk::BufferCreateInfo({}, size, usage), true, lifetime);
+		auto staging_buffer = _device.create_buffer(
+		        vk::BufferCreateInfo({}, gsl::narrow<std::uint32_t>(size), usage), true, lifetime);
 
 		// fill buffer
 		auto ptr = staging_buffer.memory().mapped_addr().get_or_throw("Staging GPU memory is not mapped!");
@@ -264,14 +274,15 @@ namespace mirrage::graphic {
 	}
 
 
-	auto Transfer_manager::create_dynamic_buffer(vk::DeviceSize         size,
+	auto Transfer_manager::create_dynamic_buffer(std::int32_t           size,
 	                                             vk::BufferUsageFlags   usage,
 	                                             vk::PipelineStageFlags earliest_usage,
 	                                             vk::AccessFlags        earliest_usage_access,
 	                                             vk::PipelineStageFlags latest_usage,
 	                                             vk::AccessFlags        latest_usage_access) -> Dynamic_buffer
 	{
-		auto create_info = vk::BufferCreateInfo({}, size, usage | vk::BufferUsageFlagBits::eTransferDst);
+		auto create_info = vk::BufferCreateInfo(
+		        {}, gsl::narrow<std::uint32_t>(size), usage | vk::BufferUsageFlagBits::eTransferDst);
 		return {_device.create_buffer(create_info, false),
 		        size,
 		        earliest_usage,
@@ -333,8 +344,11 @@ namespace mirrage::graphic {
 			_transfer_image(command_buffer, t);
 
 			//  queue family release operation
-			auto subresource = vk::ImageSubresourceRange{
-			        vk::ImageAspectFlagBits::eColor, 0, t.mip_count_actual, 0, t.dimensions.layers};
+			auto subresource = vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor,
+			                                             0,
+			                                             gsl::narrow<std::uint32_t>(t.mip_count_actual),
+			                                             0,
+			                                             gsl::narrow<std::uint32_t>(t.dimensions.layers)};
 
 			auto barrier =
 			        vk::ImageMemoryBarrier{vk::AccessFlagBits::eTransferWrite,
@@ -359,8 +373,11 @@ namespace mirrage::graphic {
 			// executed in graphics queue
 			{
 				// queue family aquire operation
-				auto subresource = vk::ImageSubresourceRange{
-				        vk::ImageAspectFlagBits::eColor, 0, t.mip_count_actual, 0, t.dimensions.layers};
+				auto subresource = vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor,
+				                                             0,
+				                                             gsl::narrow<std::uint32_t>(t.mip_count_actual),
+				                                             0,
+				                                             gsl::narrow<std::uint32_t>(t.dimensions.layers)};
 
 				auto barrier = vk::ImageMemoryBarrier{vk::AccessFlagBits::eTransferWrite,
 				                                      vk::AccessFlagBits::eTransferRead
@@ -428,20 +445,22 @@ namespace mirrage::graphic {
 		                        t.mip_count_actual);
 
 		auto regions = std::vector<vk::BufferImageCopy>();
-		regions.reserve(t.mip_count_loaded);
+		regions.reserve(gsl::narrow<std::size_t>(t.mip_count_loaded));
 		auto offset = std::uint32_t(0);
 
 		for(auto i : util::range(t.mip_count_loaded)) {
-			auto size = t.mip_image_sizes[i];
-			offset += sizeof(std::uint32_t); // imageSize
+			auto size = t.mip_image_sizes[std::size_t(i)];
+			offset += std::uint32_t((sizeof(std::uint32_t))); // imageSize
 
 			MIRRAGE_INVARIANT(offset + size <= t.size, "Overflow in _transfer_image");
 
-			auto subresource =
-			        vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor, i, 0, t.dimensions.layers};
-			auto extent = vk::Extent3D{std::max(1u, t.dimensions.width >> i),
-			                           std::max(1u, t.dimensions.height >> i),
-			                           std::max(1u, t.dimensions.depth >> i)};
+			auto subresource = vk::ImageSubresourceLayers{vk::ImageAspectFlagBits::eColor,
+			                                              gsl::narrow<std::uint32_t>(i),
+			                                              0,
+			                                              gsl::narrow<std::uint32_t>(t.dimensions.layers)};
+			auto extent      = vk::Extent3D{gsl::narrow<std::uint32_t>(std::max(1, t.dimensions.width >> i)),
+                                       gsl::narrow<std::uint32_t>(std::max(1, t.dimensions.height >> i)),
+                                       gsl::narrow<std::uint32_t>(std::max(1, t.dimensions.depth >> i))};
 			regions.emplace_back(offset, 0, 0, subresource, vk::Offset3D{}, extent);
 			offset += size;
 		}

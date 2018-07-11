@@ -81,8 +81,8 @@ namespace mirrage::graphic {
 		                        bool               dedicated_alloc_supported);
 		~Device_memory_allocator();
 
-		auto alloc(std::size_t     size,
-		           std::size_t     alignment,
+		auto alloc(std::uint32_t   size,
+		           std::uint32_t   alignment,
 		           std::uint32_t   type_mask,
 		           bool            host_visible,
 		           Memory_lifetime lifetime = Memory_lifetime::normal) -> util::maybe<Device_memory>;

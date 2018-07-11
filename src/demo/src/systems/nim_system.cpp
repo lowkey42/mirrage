@@ -96,8 +96,8 @@ namespace mirrage::systems {
 	{
 		auto frames = std::vector<Frame_data>();
 
-		frames.reserve(seq.frames());
-		for(auto i : util::range(seq.frames())) {
+		frames.reserve(std::size_t(seq.frames()));
+		for(auto i : util::range(std::size_t(seq.frames()))) {
 			auto& frame  = frames.emplace_back();
 			frame.length = seq._frame_lengths.at(i) / second;
 
@@ -178,10 +178,10 @@ namespace mirrage::systems {
 			_current_position = static_cast<float>(std::fmod(_current_position, _playing->frames()));
 		}
 
-		auto reached_end = _current_position >= _end_position && !_loop;
+		auto reached_end = int(_current_position) >= _end_position && !_loop;
 
 		if(reached_end) {
-			_current_position = _end_position;
+			_current_position = float(_end_position);
 		}
 
 		_playing->apply([&](const auto& entity_uid,
@@ -232,7 +232,7 @@ namespace mirrage::systems {
 		_update_lookup_table();
 
 		_playback_speed   = speed;
-		_current_position = begin;
+		_current_position = float(begin);
 		_end_position     = end >= 0 ? end : _playing->frames();
 		_loop             = false;
 	}

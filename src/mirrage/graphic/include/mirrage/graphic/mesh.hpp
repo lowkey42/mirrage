@@ -39,10 +39,15 @@ namespace mirrage::graphic {
 		     gsl::span<const std::uint32_t> indices)
 		  : Mesh(device,
 		         owner_qfamily,
-		         vertices.size_bytes(),
-		         indices.size_bytes(),
-		         [&](char* dest) { (void) std::memcmp(dest, vertices.data(), vertices.size_bytes()); },
-		         [&](char* dest) { (void) std::memcmp(dest, indices.data(), indices.size_bytes()); })
+		         gsl::narrow<std::uint32_t>(vertices.size_bytes()),
+		         gsl::narrow<std::uint32_t>(indices.size_bytes()),
+		         [&](char* dest) {
+			         (void) std::memcmp(
+			                 dest, vertices.data(), gsl::narrow<std::size_t>(vertices.size_bytes()));
+		         },
+		         [&](char* dest) {
+			         (void) std::memcmp(dest, indices.data(), gsl::narrow<std::size_t>(indices.size_bytes()));
+		         })
 		{
 		}
 
@@ -63,6 +68,6 @@ namespace mirrage::graphic {
 	  private:
 		Static_buffer  _buffer;
 		vk::DeviceSize _index_offset;
-		std::size_t    _indices = 0;
+		std::uint32_t  _indices = 0;
 	};
 } // namespace mirrage::graphic

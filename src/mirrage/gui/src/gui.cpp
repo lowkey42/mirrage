@@ -298,7 +298,7 @@ namespace mirrage::gui {
 					// draw stuff
 
 					auto cmd    = static_cast<const nk_draw_command*>(nullptr);
-					int  offset = 0;
+					auto offset = std::uint32_t(0);
 					for(cmd = nk__draw_begin(&ctx, &commands.buffer); cmd;
 					    cmd = nk__draw_next(cmd, &commands.buffer, &ctx)) {
 
@@ -370,7 +370,7 @@ namespace mirrage::gui {
 			auto height = static_cast<float>(window_height);
 
 			if(width / height <= 5 / 3.f) { // special case for weird resolutions
-				target_height *= 1.25f;
+				target_height = int(float(target_height) * 1.25f);
 			}
 
 			if(width < height) { // special case for portrait-mode
@@ -514,14 +514,16 @@ namespace mirrage::gui {
 	}
 
 	auto Gui::centered(int width, int height) -> struct nk_rect {
-		return nk_rect(_impl->screen_size.x / 2.f - width / 2.f,
-		               _impl->screen_size.y / 2.f - height / 2.f,
-		               width,
-		               height);
+		return nk_rect(_impl->screen_size.x / 2.f - float(width) / 2.f,
+		               _impl->screen_size.y / 2.f - float(height) / 2.f,
+		               float(width),
+		               float(height));
 	} auto Gui::centered_left(int width, int height) -> struct nk_rect {
-		return nk_rect(0, _impl->screen_size.y / 2.f - height / 2.f, width, height);
+		return nk_rect(0, _impl->screen_size.y / 2.f - float(height) / 2.f, float(width), float(height));
 	} auto Gui::centered_right(int width, int height) -> struct nk_rect {
-		return nk_rect(
-		        _impl->screen_size.x - width, _impl->screen_size.y / 2.f - height / 2.f, width, height);
+		return nk_rect(_impl->screen_size.x - float(width),
+		               _impl->screen_size.y / 2.f - float(height) / 2.f,
+		               float(width),
+		               float(height));
 	}
 } // namespace mirrage::gui

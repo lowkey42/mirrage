@@ -17,12 +17,12 @@ namespace mirrage::graphic {
 
 	class Streamed_buffer {
 	  public:
-		Streamed_buffer(Device&, std::size_t capacity, vk::BufferUsageFlags usage);
+		Streamed_buffer(Device&, std::int32_t capacity, vk::BufferUsageFlags usage);
 
-		void update(vk::DeviceSize dest_offset, gsl::span<const char> data);
+		void update(std::int32_t dest_offset, gsl::span<const char> data);
 
 		template <class T>
-		void update_objs(vk::DeviceSize dest_offset, gsl::span<T> obj)
+		void update_objs(std::int32_t dest_offset, gsl::span<T> obj)
 		{
 			static_assert(std::is_standard_layout<T>::value, "");
 			update(dest_offset,
@@ -46,9 +46,9 @@ namespace mirrage::graphic {
 			char*         data;
 		};
 
-		std::size_t                 _capacity;
+		std::int32_t                _capacity;
 		std::vector<Buffer_entry>   _buffers;
-		std::size_t                 _current_buffer_idx = 0;
+		std::int32_t                _current_buffer_idx = 0;
 		util::maybe<Backed_buffer&> _read_buffer;
 	};
 } // namespace mirrage::graphic

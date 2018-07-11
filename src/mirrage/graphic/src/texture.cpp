@@ -31,16 +31,17 @@ namespace mirrage::graphic::detail {
 	} // namespace
 
 
-	auto clamp_mip_levels(std::uint32_t width, std::uint32_t height, std::uint32_t mipmaps) -> std::uint32_t
+	auto clamp_mip_levels(std::int32_t width, std::int32_t height, std::int32_t mipmaps) -> std::int32_t
 	{
 		if(mipmaps <= 0)
 			mipmaps = 9999;
 
-		mipmaps = glm::clamp<std::uint32_t>(mipmaps, 1.f, std::floor(std::log2(std::min(width, height))) + 1);
+		mipmaps = glm::clamp<std::int32_t>(
+		        mipmaps, 1.f, static_cast<std::int32_t>(std::floor(std::log2(std::min(width, height)))) + 1);
 		return mipmaps;
 	}
 
-	auto format_from_channels(Device& device, std::uint32_t channels, bool srgb) -> vk::Format
+	auto format_from_channels(Device& device, std::int32_t channels, bool srgb) -> vk::Format
 	{
 		auto format = util::maybe<vk::Format>::nothing();
 
@@ -59,10 +60,16 @@ namespace mirrage::graphic::detail {
 		        "No supported ", srgb ? "srgb" : "", " texture format for ", channels, " channels.");
 	}
 
+
+	Base_texture::Base_texture(Base_texture&& rhs) noexcept
+	  : _image(std::move(rhs._image)), _image_view(std::move(rhs._image_view))
+	{
+	}
+
 	Base_texture::Base_texture(Device&              device,
 	                           Image_type           type,
 	                           Image_dimensions     dim,
-	                           std::uint32_t        mip_levels,
+	                           std::int32_t         mip_levels,
 	                           vk::Format           format,
 	                           vk::ImageUsageFlags  usage,
 	                           vk::ImageAspectFlags aspects,
@@ -70,9 +77,12 @@ namespace mirrage::graphic::detail {
 	  : _image(device.create_image(vk::ImageCreateInfo{vk::ImageCreateFlagBits{},
 	                                                   vk_type(type),
 	                                                   format,
-	                                                   vk::Extent3D{dim.width, dim.height, dim.depth},
-	                                                   clamp_mip_levels(dim.width, dim.height, mip_levels),
-	                                                   dim.layers,
+	                                                   vk::Extent3D{gsl::narrow<std::uint32_t>(dim.width),
+	                                                                gsl::narrow<std::uint32_t>(dim.height),
+	                                                                gsl::narrow<std::uint32_t>(dim.depth)},
+	                                                   gsl::narrow<std::uint32_t>(clamp_mip_levels(
+	                                                           dim.width, dim.height, mip_levels)),
+	                                                   gsl::narrow<std::uint32_t>(dim.layers),
 	                                                   vk::SampleCountFlagBits::e1,
 	                                                   vk::ImageTiling::eOptimal,
 	                                                   usage},
@@ -82,7 +92,8 @@ namespace mirrage::graphic::detail {
 	           clamp_mip_levels(dim.width, dim.height, mip_levels),
 	           false,
 	           dim)
-	  , _image_view(device.create_image_view(_image.image(), format, 0, _image.mip_level_count(), aspects))
+	  , _image_view(device.create_image_view(
+	            _image.image(), format, 0, gsl::narrow<std::uint32_t>(_image.mip_level_count()), aspects))
 	{
 	}
 
@@ -93,35 +104,38 @@ namespace mirrage::graphic::detail {
 	                           vk::Format                    format,
 	                           gsl::span<const std::uint8_t> data,
 	                           std::uint32_t                 owner_qfamily)
-	  : _image(device.transfer().upload_image(vk_type(type),
-	                                          owner_qfamily,
-	                                          dim,
-	                                          format,
-	                                          generate_mipmaps ? 0 : 1,
-	                                          data.size_bytes() + 4,
-	                                          [&](char* dest) {
-		                                          *reinterpret_cast<std::uint32_t*>(dest) = data.size_bytes();
-		                                          dest += 4;
-		                                          std::memcpy(dest, data.data(), data.size_bytes());
-	                                          }))
-	  , _image_view(device.create_image_view(image(), format, 0, _image.mip_level_count()))
+	  : _image(device.transfer().upload_image(
+	            vk_type(type),
+	            owner_qfamily,
+	            dim,
+	            format,
+	            generate_mipmaps ? 0 : 1,
+	            gsl::narrow<std::int32_t>(data.size_bytes() + 4),
+	            [&](char* dest) {
+		            new(dest) std::uint32_t(gsl::narrow<std::uint32_t>(data.size_bytes()));
+		            dest += 4;
+		            std::memcpy(dest, data.data(), gsl::narrow<std::uint32_t>(data.size_bytes()));
+	            }))
+	  , _image_view(device.create_image_view(
+	            image(), format, 0, gsl::narrow<std::uint32_t>(_image.mip_level_count())))
 	{
 	}
 
 	Base_texture::Base_texture(Device& device, Static_image image, vk::Format format)
 	  : _image(std::move(image))
-	  , _image_view(device.create_image_view(this->image(), format, 0, _image.mip_level_count()))
+	  , _image_view(device.create_image_view(
+	            this->image(), format, 0, gsl::narrow<std::uint32_t>(_image.mip_level_count())))
 	{
 	}
 
 	auto build_mip_views(Device&              device,
-	                     std::uint32_t        mip_levels,
+	                     std::int32_t         mip_levels,
 	                     vk::Image            image,
 	                     vk::Format           format,
 	                     vk::ImageAspectFlags aspects) -> std::vector<vk::UniqueImageView>
 	{
 		auto views = std::vector<vk::UniqueImageView>();
-		views.reserve(mip_levels);
+		views.reserve(gsl::narrow<std::size_t>(mip_levels));
 
 		for(auto i : util::range(mip_levels)) {
 			views.emplace_back(device.create_image_view(image, format, i, 1, aspects));
@@ -134,14 +148,17 @@ namespace mirrage::graphic::detail {
 	        -> std::tuple<Static_image, vk::Format, Image_type>
 	{
 		auto header     = parse_header(in, in.aid().str());
-		auto dimensions = Image_dimensions(header.width, header.height, header.depth, header.layers);
+		auto dimensions = Image_dimensions(gsl::narrow<std::int32_t>(header.width),
+		                                   gsl::narrow<std::int32_t>(header.height),
+		                                   gsl::narrow<std::int32_t>(header.depth),
+		                                   gsl::narrow<std::int32_t>(header.layers));
 
 		auto image = device.transfer().upload_image(vk_type(header.type),
 		                                            owner_qfamily,
 		                                            dimensions,
 		                                            header.format,
-		                                            header.mip_levels,
-		                                            header.size,
+		                                            gsl::narrow<std::int32_t>(header.mip_levels),
+		                                            gsl::narrow<std::int32_t>(header.size),
 		                                            [&](char* dest) { in.read_direct(dest, header.size); });
 
 		return {std::move(image), header.format, header.type};

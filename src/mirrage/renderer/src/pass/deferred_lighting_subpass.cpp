@@ -26,7 +26,7 @@ namespace mirrage::renderer {
 			        vk::DescriptorSetLayoutBinding{
 			                0, vk::DescriptorType::eInputAttachment, 1, vk::ShaderStageFlagBits::eFragment});
 
-			for(auto i = std::size_t(0); i < num_input_attachments; i++) {
+			for(auto i = std::uint32_t(0); i < num_input_attachments; i++) {
 				bindings[i].binding = i;
 			}
 
@@ -36,7 +36,7 @@ namespace mirrage::renderer {
 
 	Deferred_lighting_subpass::Deferred_lighting_subpass(Deferred_renderer&   renderer,
 	                                                     ecs::Entity_manager& entities,
-	                                                     graphic::Texture_2D& depth)
+	                                                     graphic::Texture_2D&)
 	  : _ecs(entities)
 	  , _renderer(renderer)
 	  , _gbuffer(renderer.gbuffer())
@@ -96,7 +96,7 @@ namespace mirrage::renderer {
 		        .shader("vert_shader:light_directional"_aid, graphic::Shader_stage::vertex);
 	}
 
-	void Deferred_lighting_subpass::update(util::Time dt) {}
+	void Deferred_lighting_subpass::update(util::Time) {}
 
 	void Deferred_lighting_subpass::draw(Frame_data& frame, graphic::Render_pass& render_pass)
 	{

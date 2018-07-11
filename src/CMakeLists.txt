@@ -31,6 +31,7 @@ endif()
 
 
 add_definitions(-DHPC_HISTOGRAM_DEBUG_VIEW)
+add_definitions(-DGSL_TERMINATE_ON_CONTRACT_VIOLATION)
 
 
 if(MIRRAGE_BUILD_DEMO)

@@ -124,8 +124,8 @@ namespace mirrage::gui {
 
 
 	// widgets
-	extern bool color_picker(nk_context*, util::Rgb& color, int width, float factor = 1.f);
-	extern bool color_picker(nk_context*, util::Rgba& color, int width, float factor = 1.f);
+	extern bool color_picker(nk_context*, util::Rgb& color, float width, float factor = 1.f);
+	extern bool color_picker(nk_context*, util::Rgba& color, float width, float factor = 1.f);
 
 	extern void begin_menu(nk_context*, int& active);
 	extern bool menu_button(nk_context*, const char* text, bool enabled = true);

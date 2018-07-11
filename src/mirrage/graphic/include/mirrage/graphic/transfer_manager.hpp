@@ -45,7 +45,7 @@ namespace mirrage::graphic {
 	class Static_image {
 	  public:
 		Static_image(Backed_image     image,
-		             std::uint32_t    mip_count,
+		             std::int32_t     mip_count,
 		             bool             generate_mips,
 		             Image_dimensions dimensions)
 		  : _image(std::move(image))
@@ -56,7 +56,7 @@ namespace mirrage::graphic {
 		{
 		}
 		Static_image(Backed_image             image,
-		             std::uint32_t            mip_count,
+		             std::int32_t             mip_count,
 		             bool                     generate_mips,
 		             Image_dimensions         dimensions,
 		             async::shared_task<void> transfer_task)
@@ -82,7 +82,7 @@ namespace mirrage::graphic {
 
 	  private:
 		Backed_image             _image;
-		std::uint32_t            _mip_count;
+		std::int32_t             _mip_count;
 		bool                     _generate_mips;
 		Image_dimensions         _dimensions;
 		async::shared_task<void> _transfer_task;
@@ -91,7 +91,7 @@ namespace mirrage::graphic {
 	class Dynamic_buffer {
 	  public:
 		Dynamic_buffer(Backed_buffer          buffer,
-		               std::size_t            capacity,
+		               std::int32_t           capacity,
 		               vk::PipelineStageFlags earliest_usage,
 		               vk::AccessFlags        earliest_usage_access,
 		               vk::PipelineStageFlags latest_usage,
@@ -118,7 +118,7 @@ namespace mirrage::graphic {
 			update(cb, 0, gsl::span<const char>(reinterpret_cast<const char*>(obj.data()), obj.size_bytes()));
 		}
 
-		void update(const Command_buffer& cb, vk::DeviceSize dstOffset, gsl::span<const char> data);
+		void update(const Command_buffer& cb, std::int32_t dstOffset, gsl::span<const char> data);
 
 		/// F = void(void(tuple<vk::DiviceOffset, gsl::span<const char>))
 		template <class F>
@@ -134,14 +134,14 @@ namespace mirrage::graphic {
 
 	  private:
 		Backed_buffer          _buffer;
-		std::size_t            _capacity;
+		std::int32_t           _capacity;
 		vk::PipelineStageFlags _earliest_usage;
 		vk::AccessFlags        _earliest_usage_access;
 		vk::PipelineStageFlags _latest_usage;
 		vk::AccessFlags        _latest_usage_access;
 
 		void _pre_update(const Command_buffer& cb);
-		void _do_update(const Command_buffer& cb, vk::DeviceSize dstOffset, gsl::span<const char> data);
+		void _do_update(const Command_buffer& cb, std::int32_t dstOffset, gsl::span<const char> data);
 		void _post_update(const Command_buffer& cb);
 	};
 
@@ -183,8 +183,8 @@ namespace mirrage::graphic {
 		                  std::uint32_t owner,
 		                  const Image_dimensions&,
 		                  vk::Format,
-		                  std::uint32_t              mip_levels,
-		                  std::uint32_t              size,
+		                  std::int32_t               mip_levels,
+		                  std::int32_t               size,
 		                  std::function<void(char*)> write_data,
 		                  bool                       dedicated = false) -> Static_image;
 
@@ -201,9 +201,9 @@ namespace mirrage::graphic {
 		                   std::initializer_list<gsl::span<const char>> data,
 		                   bool                                         dedicated = false) -> Static_buffer
 		{
-			auto size = std::uint32_t(0);
+			auto size = std::int32_t(0);
 			for(auto&& subdata : data) {
-				size += subdata.size_bytes();
+				size += std::int32_t(subdata.size_bytes());
 			}
 
 			return upload_buffer(usage,
@@ -214,7 +214,9 @@ namespace mirrage::graphic {
 
 				                     for(auto&& subdata : data) {
 					                     auto subdata_size = subdata.size_bytes();
-					                     std::memcpy(dest + offset, subdata.data(), subdata_size);
+					                     std::memcpy(dest + offset,
+					                                 subdata.data(),
+					                                 gsl::narrow<std::size_t>(subdata_size));
 					                     offset += subdata_size;
 				                     }
 			                     },
@@ -223,11 +225,11 @@ namespace mirrage::graphic {
 
 		auto upload_buffer(vk::BufferUsageFlags       usage,
 		                   std::uint32_t              owner,
-		                   std::uint32_t              size,
+		                   std::int32_t               size,
 		                   std::function<void(char*)> write_data,
 		                   bool                       dedicated = false) -> Static_buffer;
 
-		auto create_dynamic_buffer(vk::DeviceSize size,
+		auto create_dynamic_buffer(std::int32_t size,
 		                           vk::BufferUsageFlags,
 		                           vk::PipelineStageFlags earliest_usage,
 		                           vk::AccessFlags        earliest_usage_access,
@@ -260,8 +262,8 @@ namespace mirrage::graphic {
 			vk::Image                  dst;
 			vk::DeviceSize             size;
 			std::uint32_t              owner;
-			std::uint32_t              mip_count_actual;
-			std::uint32_t              mip_count_loaded;
+			std::int32_t               mip_count_actual;
+			std::int32_t               mip_count_loaded;
 			bool                       generate_mips;
 			Image_dimensions           dimensions;
 			std::vector<std::uint32_t> mip_image_sizes; //< analog to imageSize in KTX format
@@ -271,8 +273,8 @@ namespace mirrage::graphic {
 			                   vk::Image                  dst,
 			                   vk::DeviceSize             size,
 			                   std::uint32_t              owner,
-			                   std::uint32_t              mip_count_actual,
-			                   std::uint32_t              mip_count_loaded,
+			                   std::int32_t               mip_count_actual,
+			                   std::int32_t               mip_count_loaded,
 			                   bool                       generate_mips,
 			                   Image_dimensions           dimensions,
 			                   std::vector<std::uint32_t> mip_image_sizes)
@@ -310,7 +312,7 @@ namespace mirrage::graphic {
 
 		auto _create_staging_buffer(vk::BufferUsageFlags,
 		                            Memory_lifetime,
-		                            std::uint32_t              size,
+		                            std::int32_t               size,
 		                            std::function<void(char*)> write_data) -> Backed_buffer;
 		void _transfer_image(vk::CommandBuffer cb, const Transfer_image_req&);
 	};

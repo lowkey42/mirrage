@@ -113,7 +113,7 @@ namespace mirrage::renderer {
 	}
 
 
-	void Gui_pass::update(util::Time dt) {}
+	void Gui_pass::update(util::Time) {}
 
 	void Gui_pass::draw(Frame_data& frame)
 	{
@@ -165,14 +165,14 @@ namespace mirrage::renderer {
 		auto handle = _next_texture_handle++;
 
 		auto dimensions = graphic::Image_dimensions_t<graphic::Image_type::single_2d>{
-		        gsl::narrow<std::uint32_t>(width), gsl::narrow<std::uint32_t>(height)};
+		        gsl::narrow<std::int32_t>(width), gsl::narrow<std::int32_t>(height)};
 
 		auto texture = asset::make_ready_asset(
 		        "tex:$in_memory_gui_texture$"_aid,
 		        graphic::Texture_2D(_renderer.device(),
 		                            dimensions,
 		                            false,
-		                            gsl::narrow<std::uint32_t>(channels),
+		                            gsl::narrow<std::int32_t>(channels),
 		                            true,
 		                            gsl::span<const std::uint8_t>{data, width * height * channels},
 		                            _renderer.queue_family()));
@@ -230,7 +230,7 @@ namespace mirrage::renderer {
 
 		auto index_offset = vertices.size_bytes();
 		_mesh_buffer.update_objs(0, graphic::to_bytes(vertices));
-		_mesh_buffer.update_objs(index_offset, graphic::to_bytes(indices));
+		_mesh_buffer.update_objs(gsl::narrow<std::int32_t>(index_offset), graphic::to_bytes(indices));
 		_mesh_buffer.flush(cb,
 		                   vk::PipelineStageFlagBits::eVertexInput,
 		                   vk::AccessFlagBits::eVertexAttributeRead | vk::AccessFlagBits::eIndexRead);
@@ -242,7 +242,8 @@ namespace mirrage::renderer {
 		_render_pass.push_constant("camera"_strid, view_proj);
 
 		cb.bindVertexBuffers(0, {_mesh_buffer.buffer()}, {0});
-		cb.bindIndexBuffer(_mesh_buffer.buffer(), index_offset, vk::IndexType::eUint16);
+		cb.bindIndexBuffer(
+		        _mesh_buffer.buffer(), gsl::narrow<std::uint32_t>(index_offset), vk::IndexType::eUint16);
 	}
 
 	void Gui_pass::draw_elements(int           texture_handle,
@@ -262,9 +263,11 @@ namespace mirrage::renderer {
 			_bound_texture_handle = texture_handle;
 		}
 
-		cb.setScissor(
-		        0,
-		        {vk::Rect2D{vk::Offset2D(clip_rect.x, clip_rect.y), vk::Extent2D(clip_rect.z, clip_rect.w)}});
+		cb.setScissor(0,
+		              {vk::Rect2D{vk::Offset2D(static_cast<std::int32_t>(clip_rect.x),
+		                                       static_cast<std::int32_t>(clip_rect.y)),
+		                          vk::Extent2D(static_cast<std::uint32_t>(clip_rect.z),
+		                                       static_cast<std::uint32_t>(clip_rect.w))}});
 
 		cb.drawIndexed(count, 1, offset, 0, 0);
 	}
