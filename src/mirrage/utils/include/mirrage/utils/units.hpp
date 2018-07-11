@@ -139,7 +139,7 @@ namespace mirrage::util {
 
 	inline constexpr Angle normalize(Angle a) noexcept
 	{
-		return Angle{((a.value() / (2.f * PI)) - std::round(a.value() / (2.f * PI))) * 2.f * PI};
+		return Angle{((a.value() / (2.f * PI)) - int(a.value() / (2.f * PI))) * 2.f * PI};
 	}
 
 
