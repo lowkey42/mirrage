@@ -2,6 +2,7 @@
 
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/ecs/ecs.hpp>
+#include <mirrage/engine.hpp>
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/render_pass.hpp>
 #include <mirrage/graphic/window.hpp>
@@ -13,13 +14,13 @@ using namespace mirrage::graphic;
 
 namespace mirrage::renderer {
 
-	Deferred_renderer::Deferred_renderer(Deferred_renderer_factory&                  factory,
-	                                     std::vector<std::unique_ptr<Pass_factory>>& passes,
-	                                     ecs::Entity_manager&                        ecs,
-	                                     util::maybe<Meta_system&>                   userdata)
-	  : _factory(&factory)
+	Deferred_renderer::Deferred_renderer(Deferred_renderer_factory&                         factory,
+	                                     std::vector<std::unique_ptr<Render_pass_factory>>& passes,
+	                                     ecs::Entity_manager&                               ecs,
+	                                     Engine&                                            engine)
+	  : _engine(&engine)
+	  , _factory(&factory)
 	  , _entity_manager(&ecs)
-	  , _meta_system(userdata)
 	  , _descriptor_set_pool(device().create_descriptor_pool(128,
 	                                                         {vk::DescriptorType::eUniformBuffer,
 	                                                          vk::DescriptorType::eCombinedImageSampler,
@@ -57,8 +58,8 @@ namespace mirrage::renderer {
 	  , _noise_descriptor_set_layout(device(), *_noise_sampler, 1, vk::ShaderStageFlagBits::eFragment)
 	  , _passes(util::map(passes,
 	                      [&, write_first_pp_buffer = true](auto& factory) mutable {
-		                      return util::trackable<Pass>(
-		                              factory->create_pass(*this, ecs, userdata, write_first_pp_buffer));
+		                      return util::trackable<Render_pass>(
+		                              factory->create_pass(*this, ecs, engine, write_first_pp_buffer));
 	                      }))
 	  , _cameras(&ecs.list<Camera_comp>())
 	{
@@ -94,7 +95,7 @@ namespace mirrage::renderer {
 		auto write_first_pp_buffer = true;
 		for(auto i = std::size_t(0); i < _passes.size(); i++) {
 			_passes[i] = _factory->_pass_factories.at(i)->create_pass(
-			        *this, *_entity_manager, _meta_system, write_first_pp_buffer);
+			        *this, *_entity_manager, *_engine, write_first_pp_buffer);
 		}
 
 		_profiler = graphic::Profiler(device(), 64);
@@ -156,19 +157,16 @@ namespace mirrage::renderer {
 
 		_update_global_uniforms(main_command_buffer, active_camera().get_or_throw());
 
-		auto command_buffer_src = std::function<vk::CommandBuffer()>(
-		        [&]() -> vk::CommandBuffer { return _factory->queue_temporary_command_buffer(); });
-
-		auto swapchain_image_idx = _factory->_aquire_next_image();
+		_frame_data.main_command_buffer = main_command_buffer;
+		_frame_data.global_uniform_set  = *_global_uniform_descriptor_set;
+		_frame_data.swapchain_image     = _factory->_aquire_next_image();
+		_frame_data.geometry_queue.clear();
 
 		// draw subpasses
 		for(auto& pass : _passes) {
 			auto _ = _profiler.push(pass->name());
 
-			pass->draw(main_command_buffer,
-			           command_buffer_src,
-			           *_global_uniform_descriptor_set,
-			           swapchain_image_idx);
+			pass->draw(_frame_data);
 		}
 
 		// reset cached camera state
@@ -177,10 +175,6 @@ namespace mirrage::renderer {
 
 	void Deferred_renderer::shrink_to_fit()
 	{
-		for(auto& pass : _passes) {
-			pass->shrink_to_fit();
-		}
-
 		device().shrink_to_fit();
 		device().print_memory_usage(std::cout);
 	}
@@ -266,14 +260,14 @@ namespace mirrage::renderer {
 		}
 	};
 
-	Deferred_renderer_factory::Deferred_renderer_factory(graphic::Context&                          context,
-	                                                     graphic::Window&                           window,
-	                                                     asset::Asset_manager&                      assets,
-	                                                     std::vector<std::unique_ptr<Pass_factory>> passes)
-	  : _assets(assets)
+	Deferred_renderer_factory::Deferred_renderer_factory(
+	        Engine& engine, graphic::Window& window, std::vector<std::unique_ptr<Render_pass_factory>> passes)
+	  : _engine(engine)
+	  , _assets(engine.assets())
 	  , _pass_factories(std::move(passes))
 	  , _window(window)
-	  , _device(context.instantiate_device(FOE_SELF(_rank_device), FOE_SELF(_init_device), {&_window}, true))
+	  , _device(engine.graphics_context().instantiate_device(
+	            FOE_SELF(_rank_device), FOE_SELF(_init_device), {&_window}, true))
 	  , _swapchain(_device->get_single_swapchain())
 	  , _draw_queue_family(_device->get_queue_family("draw"_strid))
 	  , _compute_queue_family(_device->get_queue_family("compute"_strid))
@@ -311,11 +305,10 @@ namespace mirrage::renderer {
 		_settings = _assets.load<Renderer_settings>("cfg:renderer"_aid);
 	}
 
-	auto Deferred_renderer_factory::create_renderer(ecs::Entity_manager&      ecs,
-	                                                util::maybe<Meta_system&> userdata)
+	auto Deferred_renderer_factory::create_renderer(ecs::Entity_manager& ecs)
 	        -> std::unique_ptr<Deferred_renderer>
 	{
-		return std::make_unique<Deferred_renderer>(*this, _pass_factories, ecs, userdata);
+		return std::make_unique<Deferred_renderer>(*this, _pass_factories, ecs, _engine);
 	}
 
 	void Deferred_renderer_factory::finish_frame()

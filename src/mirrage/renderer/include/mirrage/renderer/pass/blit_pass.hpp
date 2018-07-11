@@ -7,19 +7,12 @@
 
 namespace mirrage::renderer {
 
-	class Blit_pass : public Pass {
+	class Blit_pass : public Render_pass {
 	  public:
-		Blit_pass(Deferred_renderer&,
-		          ecs::Entity_manager&,
-		          util::maybe<Meta_system&>,
-		          graphic::Texture_2D& src);
-
+		Blit_pass(Deferred_renderer&, graphic::Texture_2D& src);
 
 		void update(util::Time dt) override;
-		void draw(vk::CommandBuffer&,
-		          Command_buffer_source&,
-		          vk::DescriptorSet global_uniform_set,
-		          std::size_t       swapchain_image) override;
+		void draw(Frame_data&) override;
 
 		auto name() const noexcept -> const char* override { return "Blit"; }
 
@@ -33,12 +26,10 @@ namespace mirrage::renderer {
 		graphic::Render_pass                 _render_pass;
 	};
 
-	class Blit_pass_factory : public Pass_factory {
+	class Blit_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&,
-		                 ecs::Entity_manager&,
-		                 util::maybe<Meta_system&>,
-		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
+		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool& write_first_pp_buffer)
+		        -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
 		        -> int override;

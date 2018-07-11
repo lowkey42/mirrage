@@ -5,8 +5,6 @@
 #include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 
-layout(early_fragment_tests) in;
-
 layout(location = 0) in vec3 world_pos;
 layout(location = 1) in vec3 view_pos;
 layout(location = 2) in vec3 normal;
@@ -34,6 +32,9 @@ vec3 tangent_space_to_world(vec3 N);
 
 void main() {
 	vec4 albedo = texture(albedo_sampler, tex_coords);
+
+	if(albedo.a < 0.1)
+		discard;
 
 	vec4 mat_data = texture(mat_data_sampler, tex_coords);
 

@@ -18,8 +18,8 @@ namespace mirrage::renderer {
 		void configure_subpass(Deferred_renderer&, graphic::Subpass_builder&);
 
 		void update(util::Time dt);
-		void pre_draw(vk::CommandBuffer&);
-		void draw(vk::CommandBuffer&, graphic::Render_pass&);
+		void pre_draw(Frame_data&);
+		void draw(Frame_data&, graphic::Render_pass&);
 
 	  private:
 		ecs::Entity_manager& _ecs;

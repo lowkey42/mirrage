@@ -4,6 +4,7 @@
 #include <mirrage/renderer/pass/blit_pass.hpp>
 #include <mirrage/renderer/pass/bloom_pass.hpp>
 #include <mirrage/renderer/pass/deferred_pass.hpp>
+#include <mirrage/renderer/pass/frustum_culling_pass.hpp>
 #include <mirrage/renderer/pass/gen_mipmap_pass.hpp>
 #include <mirrage/renderer/pass/gi_pass.hpp>
 #include <mirrage/renderer/pass/gui_pass.hpp>
@@ -25,10 +26,10 @@ namespace mirrage {
 	                         char**             env)
 	  : Engine(org, title, version_major, version_minor, debug, false, argc, argv, env)
 	  , _renderer_factory(std::make_unique<renderer::Deferred_renderer_factory>(
-	            graphics_context(),
+	            *this,
 	            window(),
-	            assets(),
-	            util::make_vector(renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
+	            util::make_vector(renderer::make_pass_factory<renderer::Frustum_culling_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Deferred_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Gen_mipmap_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Ssao_pass_factory>(),

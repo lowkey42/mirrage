@@ -155,9 +155,7 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	Tone_mapping_pass::Tone_mapping_pass(Deferred_renderer& renderer,
-	                                     ecs::Entity_manager&,
-	                                     util::maybe<Meta_system&>,
+	Tone_mapping_pass::Tone_mapping_pass(Deferred_renderer&         renderer,
 	                                     graphic::Render_target_2D& src,
 	                                     graphic::Render_target_2D& target)
 	  : _renderer(renderer)
@@ -289,15 +287,12 @@ namespace mirrage::renderer {
 
 	void Tone_mapping_pass::update(util::Time dt) {}
 
-	void Tone_mapping_pass::draw(vk::CommandBuffer& command_buffer,
-	                             Command_buffer_source&,
-	                             vk::DescriptorSet global_uniform_set,
-	                             std::size_t)
+	void Tone_mapping_pass::draw(Frame_data& frame)
 	{
 		if(_first_frame) {
 			_first_frame = false;
 			// clear all internal storage on first exec
-			graphic::clear_texture(command_buffer,
+			graphic::clear_texture(frame.main_command_buffer,
 			                       _adjustment_buffer,
 			                       {0, 0, 0, 0},
 			                       vk::ImageLayout::eUndefined,
@@ -306,7 +301,7 @@ namespace mirrage::renderer {
 			                       1);
 
 			for(auto& buffer : _result_buffer) {
-				command_buffer.fillBuffer(*buffer, 0, VK_WHOLE_SIZE, 0);
+				frame.main_command_buffer.fillBuffer(*buffer, 0, VK_WHOLE_SIZE, 0);
 			}
 		}
 
@@ -327,15 +322,15 @@ namespace mirrage::renderer {
 			}
 		}
 
-		_clear_result_buffer(command_buffer);
+		_clear_result_buffer(frame.main_command_buffer);
 
-		auto foveal_mip_level = _generate_foveal_image(command_buffer);
-		_dispatch_build_histogram(global_uniform_set, command_buffer, foveal_mip_level);
-		_dispatch_adjust_histogram(global_uniform_set, command_buffer, foveal_mip_level);
-		_apply_tone_ampping(global_uniform_set, command_buffer, foveal_mip_level);
+		auto foveal_mip_level = _generate_foveal_image(frame.main_command_buffer);
+		_dispatch_build_histogram(frame.global_uniform_set, frame.main_command_buffer, foveal_mip_level);
+		_dispatch_adjust_histogram(frame.global_uniform_set, frame.main_command_buffer, foveal_mip_level);
+		_apply_tone_ampping(frame.global_uniform_set, frame.main_command_buffer, foveal_mip_level);
 
 		if(!_renderer.settings().tonemapping) {
-			graphic::blit_texture(command_buffer,
+			graphic::blit_texture(frame.main_command_buffer,
 			                      _src,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -355,7 +350,7 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void Tone_mapping_pass::_clear_result_buffer(vk::CommandBuffer& command_buffer)
+	void Tone_mapping_pass::_clear_result_buffer(vk::CommandBuffer command_buffer)
 	{
 		auto acquire =
 		        vk::BufferMemoryBarrier{vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite,
@@ -391,7 +386,7 @@ namespace mirrage::renderer {
 		                               {release},
 		                               {});
 	}
-	auto Tone_mapping_pass::_generate_foveal_image(vk::CommandBuffer& command_buffer) -> std::uint32_t
+	auto Tone_mapping_pass::_generate_foveal_image(vk::CommandBuffer command_buffer) -> std::uint32_t
 	{
 		auto _ = _renderer.profiler().push("Foveal rescale");
 
@@ -412,9 +407,9 @@ namespace mirrage::renderer {
 		return foveal_mip_level;
 	}
 
-	void Tone_mapping_pass::_dispatch_build_histogram(vk::DescriptorSet  global_uniform_set,
-	                                                  vk::CommandBuffer& command_buffer,
-	                                                  std::uint32_t      mip_level)
+	void Tone_mapping_pass::_dispatch_build_histogram(vk::DescriptorSet global_uniform_set,
+	                                                  vk::CommandBuffer command_buffer,
+	                                                  std::uint32_t     mip_level)
 	{
 		auto _ = _renderer.profiler().push("Build Histogram");
 
@@ -458,9 +453,9 @@ namespace mirrage::renderer {
 		        1);
 	}
 
-	void Tone_mapping_pass::_dispatch_adjust_histogram(vk::DescriptorSet  global_uniform_set,
-	                                                   vk::CommandBuffer& command_buffer,
-	                                                   std::uint32_t      mip_level)
+	void Tone_mapping_pass::_dispatch_adjust_histogram(vk::DescriptorSet global_uniform_set,
+	                                                   vk::CommandBuffer command_buffer,
+	                                                   std::uint32_t     mip_level)
 	{
 		auto _ = _renderer.profiler().push("Adjust Histogram");
 
@@ -527,9 +522,9 @@ namespace mirrage::renderer {
 		command_buffer.dispatch(1, 1, 1);
 	}
 
-	void Tone_mapping_pass::_apply_tone_ampping(vk::DescriptorSet  global_uniform_set,
-	                                            vk::CommandBuffer& command_buffer,
-	                                            std::uint32_t      mip_level)
+	void Tone_mapping_pass::_apply_tone_ampping(vk::DescriptorSet global_uniform_set,
+	                                            vk::CommandBuffer command_buffer,
+	                                            std::uint32_t     mip_level)
 	{
 		auto _ = _renderer.profiler().push("Apply");
 
@@ -569,22 +564,22 @@ namespace mirrage::renderer {
 		});
 	}
 
-	auto Tone_mapping_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                            ecs::Entity_manager&      entities,
-	                                            util::maybe<Meta_system&> meta_system,
-	                                            bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Tone_mapping_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                            ecs::Entity_manager&,
+	                                            Engine&,
+	                                            bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
 		auto& color_src  = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 		auto& color_dest = !write_first_pp_buffer ? renderer.gbuffer().colorB : renderer.gbuffer().colorA;
 
 		write_first_pp_buffer = !write_first_pp_buffer;
 
-		return std::make_unique<Tone_mapping_pass>(renderer, entities, meta_system, color_src, color_dest);
+		return std::make_unique<Tone_mapping_pass>(renderer, color_src, color_dest);
 	}
 
 	auto Tone_mapping_pass_factory::rank_device(vk::PhysicalDevice,
-	                                            util::maybe<std::uint32_t> graphics_queue,
-	                                            int                        current_score) -> int
+	                                            util::maybe<std::uint32_t>,
+	                                            int current_score) -> int
 	{
 		return current_score;
 	}

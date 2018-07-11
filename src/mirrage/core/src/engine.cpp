@@ -3,6 +3,7 @@
 #include <mirrage/asset/asset_manager.hpp>
 #include <mirrage/graphic/context.hpp>
 #include <mirrage/graphic/window.hpp>
+#include <mirrage/gui/gui.hpp>
 #include <mirrage/input/input_manager.hpp>
 #include <mirrage/net/net_manager.hpp>
 #include <mirrage/translations.hpp>
@@ -116,6 +117,8 @@ namespace mirrage {
 		_graphics_main_window.process([&](auto& window) {
 			_input_manager->viewport({0, 0, window.width(), window.height()});
 			_input_manager->window(window.window_handle());
+
+			_gui = std::make_unique<gui::Gui>(window.viewport(), *_asset_manager, *_input_manager);
 		});
 
 		if(headless) {
@@ -198,6 +201,9 @@ namespace mirrage {
 		}
 
 		_on_pre_frame(delta_time_smoothed * second);
+
+		if(_gui)
+			_gui->start_frame();
 
 		_screens.on_frame(delta_time_smoothed * second);
 

@@ -46,7 +46,7 @@ namespace mirrage::ecs {
 
 		// user interface; thread-safe
 		auto emplace() noexcept -> Entity_facet;
-		auto emplace(const std::string& blueprint) -> Entity_facet;
+		auto emplace(const std::string& blueprint) -> Entity_facet; // TODO/FIXME: currently NOT thread-safe
 		auto get(Entity_handle entity) -> util::maybe<Entity_facet>;
 		auto get_handle(Entity_id id) const -> Entity_handle { return _handles.get(id); }
 		auto validate(Entity_handle entity) -> bool { return _handles.valid(entity); }

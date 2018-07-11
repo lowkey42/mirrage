@@ -14,6 +14,7 @@ add_library(mirrage_renderer STATIC
 	src/pass/deferred_geometry_subpass.cpp
 	src/pass/deferred_lighting_subpass.cpp
 	src/pass/deferred_pass.cpp
+	src/pass/frustum_culling_pass.cpp
 	src/pass/gen_mipmap_pass.cpp
 	src/pass/gi_pass.cpp
 	src/pass/gui_pass.cpp
@@ -29,6 +30,7 @@ add_library(mirrage_renderer STATIC
 	src/loading_system.cpp
 	src/model_comp.cpp
 	src/model.cpp
+	src/render_pass.cpp
 	
 	${HEADER_FILES}
 )
@@ -44,6 +46,7 @@ target_include_directories(mirrage_renderer PUBLIC
 
 target_link_libraries(mirrage_renderer
 	PUBLIC
+		mirrage::mirrage
 		mirrage::asset
 		mirrage::ecs
 		mirrage::graphic

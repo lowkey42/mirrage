@@ -38,4 +38,13 @@ namespace mirrage::ecs::components {
 		model[3]   = glm::vec4(position, 1.f);
 		return model;
 	}
+	auto Transform_comp::to_mat3() const noexcept -> glm::mat3
+	{
+		// clang-format off
+		return glm::toMat3(orientation) * glm::mat3(
+		            scale.x, 0, 0,
+		            0, scale.y, 0,
+		            0, 0, scale.z);
+		// clang-format on
+	}
 } // namespace mirrage::ecs::components

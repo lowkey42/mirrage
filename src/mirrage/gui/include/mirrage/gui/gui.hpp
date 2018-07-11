@@ -58,7 +58,8 @@ namespace mirrage::gui {
 
 	class Gui_renderer {
 	  public:
-		virtual ~Gui_renderer() = default;
+		Gui_renderer(Gui& gui);
+		virtual ~Gui_renderer();
 
 		void draw_gui();
 
@@ -81,7 +82,7 @@ namespace mirrage::gui {
 		virtual void finalize_draw()                    = 0;
 
 	  private:
-		Gui* _gui = nullptr;
+		Gui* _gui;
 	};
 
 	// TODO: gamepad input: https://gist.github.com/vurtun/519801825b4ccfad6767
@@ -90,17 +91,13 @@ namespace mirrage::gui {
 	//                      https://github.com/vurtun/nuklear/blob/master/example/skinning.c
 	class Gui {
 	  public:
-		Gui(glm::vec4                        viewport,
-		    asset::Asset_manager&            assets,
-		    input::Input_manager&            input,
-		    util::tracking_ptr<Gui_renderer> renderer);
+		Gui(glm::vec4 viewport, asset::Asset_manager& assets, input::Input_manager& input);
 		~Gui();
 
 		void draw();
 		void start_frame();
 
 		auto ctx() -> nk_context*;
-		auto renderer() noexcept -> auto& { return _renderer; }
 
 		void viewport(glm::vec4 new_viewport);
 
@@ -108,16 +105,19 @@ namespace mirrage::gui {
 		auto centered_left(int width, int height) -> struct nk_rect;
 		auto centered_right(int width, int height) -> struct nk_rect;
 
+		auto ready() const noexcept { return bool(_impl); }
+
 
 	  private:
+		friend class Gui_renderer;
 		struct PImpl;
 
-		glm::vec4                        _viewport;
-		asset::Asset_manager&            _assets;
-		input::Input_manager&            _input;
-		util::tracking_ptr<Gui_renderer> _renderer;
-		Gui_renderer*                    _last_renderer;
-		std::unique_ptr<PImpl>           _impl;
+		glm::vec4              _viewport;
+		asset::Asset_manager&  _assets;
+		input::Input_manager&  _input;
+		Gui_renderer*          _renderer      = nullptr;
+		Gui_renderer*          _last_renderer = nullptr;
+		std::unique_ptr<PImpl> _impl;
 
 		void _init();
 	};

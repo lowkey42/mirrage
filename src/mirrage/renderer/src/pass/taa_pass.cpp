@@ -146,16 +146,13 @@ namespace mirrage::renderer {
 
 	void Taa_pass::update(util::Time dt) { _time_acc += dt.value(); }
 
-	void Taa_pass::draw(vk::CommandBuffer& command_buffer,
-	                    Command_buffer_source&,
-	                    vk::DescriptorSet global_uniform_set,
-	                    std::size_t)
+	void Taa_pass::draw(Frame_data& frame)
 	{
 
 		if(_first_frame) {
 			_first_frame = false;
 
-			graphic::blit_texture(command_buffer,
+			graphic::blit_texture(frame.main_command_buffer,
 			                      _read_frame,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -164,16 +161,17 @@ namespace mirrage::renderer {
 			                      vk::ImageLayout::eShaderReadOnlyOptimal);
 		}
 
-		_render_pass.execute(command_buffer, _framebuffer, [&] {
-			auto descriptor_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_descriptor_set};
+		_render_pass.execute(frame.main_command_buffer, _framebuffer, [&] {
+			auto descriptor_sets =
+			        std::array<vk::DescriptorSet, 2>{frame.global_uniform_set, *_descriptor_set};
 			_render_pass.bind_descriptor_sets(0, descriptor_sets);
 
 			_render_pass.push_constant("pcs"_strid, _constants);
 
-			command_buffer.draw(3, 1, 0, 0);
+			frame.main_command_buffer.draw(3, 1, 0, 0);
 		});
 
-		graphic::blit_texture(command_buffer,
+		graphic::blit_texture(frame.main_command_buffer,
 		                      _write_frame,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -227,10 +225,10 @@ namespace mirrage::renderer {
 
 
 
-	auto Taa_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                   ecs::Entity_manager&      entities,
-	                                   util::maybe<Meta_system&> meta_system,
-	                                   bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Taa_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                   ecs::Entity_manager&,
+	                                   Engine&,
+	                                   bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
 		auto& write = write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
@@ -241,9 +239,8 @@ namespace mirrage::renderer {
 		return std::make_unique<Taa_pass>(renderer, write, read);
 	}
 
-	auto Taa_pass_factory::rank_device(vk::PhysicalDevice,
-	                                   util::maybe<std::uint32_t> graphics_queue,
-	                                   int                        current_score) -> int
+	auto Taa_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
+	        -> int
 	{
 		return current_score;
 	}

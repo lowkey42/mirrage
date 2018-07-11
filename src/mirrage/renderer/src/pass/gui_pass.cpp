@@ -1,5 +1,7 @@
 #include <mirrage/renderer/pass/gui_pass.hpp>
 
+#include <mirrage/engine.hpp>
+
 
 namespace mirrage::renderer {
 
@@ -93,8 +95,9 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	Gui_pass::Gui_pass(Deferred_renderer& drenderer, ecs::Entity_manager&, util::maybe<Meta_system&>)
-	  : _renderer(drenderer)
+	Gui_pass::Gui_pass(Deferred_renderer& drenderer, Engine& engine)
+	  : Gui_renderer(engine.gui())
+	  , _renderer(drenderer)
 	  , _sampler(drenderer.device().create_sampler(1,
 	                                               vk::SamplerAddressMode::eClampToEdge,
 	                                               vk::BorderColor::eIntOpaqueBlack,
@@ -112,16 +115,12 @@ namespace mirrage::renderer {
 
 	void Gui_pass::update(util::Time dt) {}
 
-	void Gui_pass::draw(vk::CommandBuffer& command_buffer,
-	                    Command_buffer_source&,
-	                    vk::DescriptorSet,
-	                    std::size_t swapchain_image)
+	void Gui_pass::draw(Frame_data& frame)
 	{
-
 		MIRRAGE_INVARIANT(_current_command_buffer.is_nothing(), "Gui_pass::draw calls cannot be nested!");
 
-		_current_command_buffer = command_buffer;
-		_current_framebuffer    = _framebuffers.at(swapchain_image);
+		_current_command_buffer = frame.main_command_buffer;
+		_current_framebuffer    = _framebuffers.at(frame.swapchain_image);
 		_bound_texture_handle   = -1;
 
 		draw_gui();
@@ -273,17 +272,16 @@ namespace mirrage::renderer {
 	void Gui_pass::finalize_draw() { _render_pass.unsafe_end_renderpass(); }
 
 
-	auto Gui_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                   ecs::Entity_manager&      entities,
-	                                   util::maybe<Meta_system&> meta_system,
-	                                   bool&) -> std::unique_ptr<Pass>
+	auto Gui_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                   ecs::Entity_manager&,
+	                                   Engine& engine,
+	                                   bool&) -> std::unique_ptr<Render_pass>
 	{
-		return std::make_unique<Gui_pass>(renderer, entities, meta_system);
+		return std::make_unique<Gui_pass>(renderer, engine);
 	}
 
-	auto Gui_pass_factory::rank_device(vk::PhysicalDevice,
-	                                   util::maybe<std::uint32_t> graphics_queue,
-	                                   int                        current_score) -> int
+	auto Gui_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
+	        -> int
 	{
 		return current_score;
 	}

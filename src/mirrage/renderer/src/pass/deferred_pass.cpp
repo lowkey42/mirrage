@@ -170,9 +170,8 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	Deferred_pass::Deferred_pass(Deferred_renderer&   renderer,
-	                             ecs::Entity_manager& entities,
-	                             util::maybe<Meta_system&>,
+	Deferred_pass::Deferred_pass(Deferred_renderer&         renderer,
+	                             ecs::Entity_manager&       entities,
 	                             graphic::Render_target_2D& color_target,
 	                             graphic::Render_target_2D& color_target_diff)
 	  : _renderer(renderer)
@@ -201,14 +200,11 @@ namespace mirrage::renderer {
 		_gpass.update(dt);
 		_lpass.update(dt);
 	}
-	void Deferred_pass::draw(vk::CommandBuffer& command_buffer,
-	                         Command_buffer_source&,
-	                         vk::DescriptorSet global_uniform_set,
-	                         std::size_t)
+	void Deferred_pass::draw(Frame_data& frame)
 	{
 
 		if(!_first_frame) {
-			graphic::blit_texture(command_buffer,
+			graphic::blit_texture(frame.main_command_buffer,
 			                      _renderer.gbuffer().depth,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -217,22 +213,22 @@ namespace mirrage::renderer {
 			                      vk::ImageLayout::eShaderReadOnlyOptimal);
 		}
 
-		_gpass.pre_draw(command_buffer);
+		_gpass.pre_draw(frame);
 
-		_render_pass.execute(command_buffer, _gbuffer_framebuffer, [&] {
-			_render_pass.bind_descriptor_sets(0, {&global_uniform_set, 1});
+		_render_pass.execute(frame.main_command_buffer, _gbuffer_framebuffer, [&] {
+			_render_pass.bind_descriptor_sets(0, {&frame.global_uniform_set, 1});
 
-			_gpass.draw(command_buffer, _render_pass);
+			_gpass.draw(frame, _render_pass);
 
 			_render_pass.next_subpass(true);
 
-			_lpass.draw(command_buffer, _render_pass);
+			_lpass.draw(frame, _render_pass);
 		});
 
 		if(_first_frame) {
 			_first_frame = false;
 
-			graphic::blit_texture(command_buffer,
+			graphic::blit_texture(frame.main_command_buffer,
 			                      _renderer.gbuffer().depth,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -242,21 +238,17 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void Deferred_pass::shrink_to_fit() {}
-
-
-	auto Deferred_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                        ecs::Entity_manager&      entities,
-	                                        util::maybe<Meta_system&> meta_system,
-	                                        bool& use_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Deferred_pass_factory::create_pass(Deferred_renderer&   renderer,
+	                                        ecs::Entity_manager& entities,
+	                                        Engine&,
+	                                        bool& use_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
 		auto& color_target = use_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		auto& color_target_diff = use_first_pp_buffer ? renderer.gbuffer().colorB : renderer.gbuffer().colorA;
 
 		use_first_pp_buffer = !use_first_pp_buffer;
-		return std::make_unique<Deferred_pass>(
-		        renderer, entities, meta_system, color_target, color_target_diff);
+		return std::make_unique<Deferred_pass>(renderer, entities, color_target, color_target_diff);
 	}
 
 	auto Deferred_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)

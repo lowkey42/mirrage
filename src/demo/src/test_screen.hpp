@@ -40,7 +40,7 @@ namespace mirrage {
 
 		Meta_system _meta_system;
 
-		gui::Gui _gui;
+		gui::Gui& _gui;
 
 		ecs::Entity_facet _camera;
 		ecs::Entity_facet _sun;

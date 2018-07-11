@@ -3,6 +3,7 @@
 #include <mirrage/renderer/camera_comp.hpp>
 #include <mirrage/renderer/gbuffer.hpp>
 #include <mirrage/renderer/model.hpp>
+#include <mirrage/renderer/render_pass.hpp>
 
 #include <mirrage/graphic/context.hpp>
 #include <mirrage/graphic/device.hpp>
@@ -10,6 +11,8 @@
 
 #include <mirrage/utils/math.hpp>
 
+#include <glm/gtx/quaternion.hpp>
+#include <glm/vec3.hpp>
 #include <vulkan/vulkan.hpp>
 
 
@@ -17,7 +20,7 @@ namespace mirrage {
 	namespace ecs {
 		class Entity_manager;
 	}
-	class Meta_system;
+	class Engine;
 } // namespace mirrage
 
 namespace mirrage::renderer {
@@ -71,65 +74,23 @@ namespace mirrage::renderer {
 		glm::vec4 proj_info;
 	};
 
-	using Command_buffer_source = std::function<vk::CommandBuffer()>;
-
-	class Pass {
-	  public:
-		virtual ~Pass() = default;
-
-		virtual void update(util::Time dt)             = 0;
-		virtual void draw(vk::CommandBuffer&,
-		                  Command_buffer_source&,
-		                  vk::DescriptorSet global_uniform_set,
-		                  std::size_t       swapchain_image) = 0;
-
-		virtual void shrink_to_fit() {}
-		virtual void process_camera(Camera_state&) {} //< allows passes to modify the current camera
-
-		virtual auto name() const noexcept -> const char* = 0;
-	};
-
-	class Pass_factory {
-	  public:
-		virtual ~Pass_factory() = default;
-
-		virtual auto create_pass(Deferred_renderer&,
-		                         ecs::Entity_manager&,
-		                         util::maybe<Meta_system&>,
-		                         bool& write_first_pp_buffer) -> std::unique_ptr<Pass> = 0;
-
-		virtual auto rank_device(vk::PhysicalDevice,
-		                         util::maybe<std::uint32_t> graphics_queue,
-		                         int                        current_score) -> int
-		{
-			return current_score;
-		}
-
-		virtual void configure_device(vk::PhysicalDevice,
-		                              util::maybe<std::uint32_t> graphics_queue,
-		                              graphic::Device_create_info&)
-		{
-		}
-	};
 
 	template <class T, class... Args>
 	auto make_pass_factory(Args&&... args)
 	{
-		return std::unique_ptr<Pass_factory>(new T(std::forward<Args>(args)...));
+		return std::unique_ptr<Render_pass_factory>(new T(std::forward<Args>(args)...));
 	}
 
 
 	// shared among all Deferred_renderers in all screens
 	class Deferred_renderer_factory {
 	  public:
-		Deferred_renderer_factory(graphic::Context&,
-		                          graphic::Window&      window,
-		                          asset::Asset_manager& assets,
-		                          std::vector<std::unique_ptr<Pass_factory>>);
+		Deferred_renderer_factory(Engine&          engine,
+		                          graphic::Window& window,
+		                          std::vector<std::unique_ptr<Render_pass_factory>>);
 		~Deferred_renderer_factory();
 
-		auto create_renderer(ecs::Entity_manager&, util::maybe<Meta_system&>)
-		        -> std::unique_ptr<Deferred_renderer>;
+		auto create_renderer(ecs::Entity_manager&) -> std::unique_ptr<Deferred_renderer>;
 
 		void queue_commands(vk::CommandBuffer);
 		auto queue_temporary_command_buffer() -> vk::CommandBuffer;
@@ -150,9 +111,10 @@ namespace mirrage::renderer {
 	  private:
 		friend class Deferred_renderer;
 		struct Asset_loaders;
-		using Pass_factories = std::vector<std::unique_ptr<Pass_factory>>;
+		using Pass_factories = std::vector<std::unique_ptr<Render_pass_factory>>;
 		using Settings_ptr   = asset::Ptr<Renderer_settings>;
 
+		Engine&                         _engine;
 		asset::Asset_manager&           _assets;
 		Settings_ptr                    _settings;
 		Pass_factories                  _pass_factories;
@@ -183,12 +145,13 @@ namespace mirrage::renderer {
 		auto _aquire_next_image() -> std::size_t;
 	};
 
+
 	class Deferred_renderer {
 	  public:
 		Deferred_renderer(Deferred_renderer_factory&,
-		                  std::vector<std::unique_ptr<Pass_factory>>&,
+		                  std::vector<std::unique_ptr<Render_pass_factory>>&,
 		                  ecs::Entity_manager&,
-		                  util::maybe<Meta_system&>);
+		                  Engine&);
 		Deferred_renderer(const Deferred_renderer&) = delete;
 		auto operator=(const Deferred_renderer&) -> Deferred_renderer& = delete;
 		~Deferred_renderer();
@@ -247,9 +210,9 @@ namespace mirrage::renderer {
 	  private:
 		friend class Deferred_renderer_factory;
 
+		Engine*                    _engine;
 		Deferred_renderer_factory* _factory;
 		ecs::Entity_manager*       _entity_manager;
-		util::maybe<Meta_system&>  _meta_system;
 		graphic::Descriptor_pool   _descriptor_set_pool;
 
 		std::unique_ptr<GBuffer> _gbuffer;
@@ -268,10 +231,11 @@ namespace mirrage::renderer {
 		graphic::Image_descriptor_set_layout _noise_descriptor_set_layout;
 		graphic::DescriptorSet               _noise_descriptor_set;
 
-		std::vector<util::trackable<Pass>> _passes;
+		std::vector<util::trackable<Render_pass>> _passes;
 
 		Camera_comp::Pool*        _cameras;
 		util::maybe<Camera_state> _active_camera;
+		Frame_data                _frame_data;
 
 		void _write_global_uniform_descriptor_set();
 		void _update_global_uniforms(vk::CommandBuffer, const Camera_state& camera);

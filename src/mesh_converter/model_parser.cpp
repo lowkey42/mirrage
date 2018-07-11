@@ -11,6 +11,7 @@
 #include <assimp/scene.h>       // Output data structure
 #include <assimp/Importer.hpp>  // C++ importer interface
 
+#include <glm/gtx/norm.hpp>
 #include <gsl/gsl>
 
 #include <fstream>
@@ -70,6 +71,35 @@ namespace mirrage {
 
 			out.write(reinterpret_cast<const char*>(value.data()), value.size() * sizeof(T));
 		}
+
+		struct Bounding_sphere_calculator {
+			bool      first_point = true;
+			glm::vec3 min_vertex_pos;
+			glm::vec3 max_vertex_pos;
+
+			glm::vec3 center;
+			float     radius_2 = 0.0f;
+
+			void add_point(glm::vec3 p)
+			{
+				if(first_point) {
+					first_point    = false;
+					min_vertex_pos = p;
+					max_vertex_pos = p;
+					return;
+				}
+
+				min_vertex_pos.x = std::min(min_vertex_pos.x, p.x);
+				min_vertex_pos.y = std::min(min_vertex_pos.y, p.y);
+				min_vertex_pos.z = std::min(min_vertex_pos.z, p.z);
+
+				max_vertex_pos.x = std::max(max_vertex_pos.x, p.x);
+				max_vertex_pos.y = std::max(max_vertex_pos.y, p.y);
+				max_vertex_pos.z = std::max(max_vertex_pos.z, p.z);
+			}
+			void start_process() { center = min_vertex_pos + (max_vertex_pos - min_vertex_pos) / 2.f; }
+			void process_point(glm::vec3 p) { radius_2 = std::max(radius_2, glm::distance2(p, center)); }
+		};
 	} // namespace
 
 
@@ -124,6 +154,8 @@ namespace mirrage {
 			vertex_count += mesh->mNumVertices;
 		}
 
+		auto rigged = false; // TODO
+
 		// load meshes
 		auto indices    = std::vector<std::uint32_t>();
 		auto vertices   = std::vector<renderer::Model_vertex>();
@@ -167,9 +199,30 @@ namespace mirrage {
 		                  "Unable to open output file \"" << model_out_filename << "\"!");
 
 		auto header          = renderer::Model_file_header();
-		header.vertex_count  = gsl::narrow<std::uint32_t>(vertices.size() * sizeof(renderer::Model_vertex));
-		header.index_count   = gsl::narrow<std::uint32_t>(indices.size() * sizeof(std::uint32_t));
+		header.vertex_size   = gsl::narrow<std::uint32_t>(vertices.size() * sizeof(renderer::Model_vertex));
+		header.index_size    = gsl::narrow<std::uint32_t>(indices.size() * sizeof(std::uint32_t));
 		header.submesh_count = gsl::narrow<std::uint32_t>(sub_meshes.size());
+		header.flags         = rigged ? 1 : 0;
+
+		// calculate bounding sphere
+		auto bounding_sphere = Bounding_sphere_calculator{};
+		for(auto& v : vertices) {
+			bounding_sphere.add_point(v.position);
+		}
+
+		bounding_sphere.start_process();
+		for(auto& v : vertices) {
+			bounding_sphere.process_point(v.position);
+		}
+
+		header.bounding_sphere_radius   = std::sqrt(bounding_sphere.radius_2);
+		header.bounding_sphere_offset_x = bounding_sphere.center.x;
+		header.bounding_sphere_offset_y = bounding_sphere.center.y;
+		header.bounding_sphere_offset_z = bounding_sphere.center.z;
+
+		LOG(plog::debug) << "Bounds: " << header.bounding_sphere_radius << " at "
+		                 << header.bounding_sphere_offset_x << "/" << header.bounding_sphere_offset_y << "/"
+		                 << header.bounding_sphere_offset_z;
 
 		// write header
 		write(model_out_file, header);
@@ -178,6 +231,28 @@ namespace mirrage {
 		for(auto& sub_mesh : sub_meshes) {
 			write(model_out_file, sub_mesh.index_offset);
 			write(model_out_file, sub_mesh.index_count);
+
+			// calculate bounding sphere
+			auto bounding_sphere = Bounding_sphere_calculator{};
+			for(auto i = 0u; i < sub_mesh.index_count; i++) {
+				auto idx = indices.at(i + sub_mesh.index_offset);
+				bounding_sphere.add_point(vertices.at(idx).position);
+			}
+
+			bounding_sphere.start_process();
+			for(auto i = 0u; i < sub_mesh.index_count; i++) {
+				auto idx = indices.at(i + sub_mesh.index_offset);
+				bounding_sphere.process_point(vertices.at(idx).position);
+			}
+
+			write(model_out_file, std::sqrt(bounding_sphere.radius_2));
+			write(model_out_file, bounding_sphere.center.x);
+			write(model_out_file, bounding_sphere.center.y);
+			write(model_out_file, bounding_sphere.center.z);
+
+			LOG(plog::debug) << "Sub-Bounds: " << std::sqrt(bounding_sphere.radius_2) << " at "
+			                 << bounding_sphere.center.x << "/" << bounding_sphere.center.y << "/"
+			                 << bounding_sphere.center.z;
 
 			auto material_id_length = gsl::narrow<std::uint32_t>(sub_mesh.material_id.size());
 			write(model_out_file, material_id_length);

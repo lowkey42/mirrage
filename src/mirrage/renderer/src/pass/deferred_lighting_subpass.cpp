@@ -98,7 +98,7 @@ namespace mirrage::renderer {
 
 	void Deferred_lighting_subpass::update(util::Time dt) {}
 
-	void Deferred_lighting_subpass::draw(vk::CommandBuffer& command_buffer, graphic::Render_pass& render_pass)
+	void Deferred_lighting_subpass::draw(Frame_data& frame, graphic::Render_pass& render_pass)
 	{
 		auto _ = _renderer.profiler().push("Lighting");
 
@@ -127,7 +127,7 @@ namespace mirrage::renderer {
 
 			render_pass.push_constant("dpc"_strid, dpc);
 
-			command_buffer.draw(3, 1, 0, 0);
+			frame.main_command_buffer.draw(3, 1, 0, 0);
 		}
 	}
 } // namespace mirrage::renderer

@@ -157,10 +157,7 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	Bloom_pass::Bloom_pass(Deferred_renderer& renderer,
-	                       ecs::Entity_manager&,
-	                       util::maybe<Meta_system&>,
-	                       graphic::Render_target_2D& src)
+	Bloom_pass::Bloom_pass(Deferred_renderer& renderer, graphic::Render_target_2D& src)
 	  : _renderer(renderer)
 	  , _src(src)
 	  , _sampler(renderer.device().create_sampler(12,
@@ -218,15 +215,12 @@ namespace mirrage::renderer {
 
 	void Bloom_pass::update(util::Time dt) {}
 
-	void Bloom_pass::draw(vk::CommandBuffer& command_buffer,
-	                      Command_buffer_source&,
-	                      vk::DescriptorSet global_uniform_set,
-	                      std::size_t)
+	void Bloom_pass::draw(Frame_data& frame)
 	{
 		if(_first_frame) {
 			_first_frame = false;
 
-			graphic::clear_texture(command_buffer,
+			graphic::clear_texture(frame.main_command_buffer,
 			                       _bloom_buffer,
 			                       util::Rgba{0, 0, 0, 0},
 			                       vk::ImageLayout::eUndefined,
@@ -244,7 +238,7 @@ namespace mirrage::renderer {
 		auto pcs = Push_constants{};
 
 		// generate mip chain
-		graphic::generate_mipmaps(command_buffer,
+		graphic::generate_mipmaps(frame.main_command_buffer,
 		                          _src.image(),
 		                          vk::ImageLayout::eShaderReadOnlyOptimal,
 		                          vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -259,16 +253,16 @@ namespace mirrage::renderer {
 			pcs.parameters.x = i - 1;
 
 			// blur horizontal
-			_blur_renderpass.execute(command_buffer, _blur_framebuffer_horizontal.at(i - 1), [&] {
+			_blur_renderpass.execute(frame.main_command_buffer, _blur_framebuffer_horizontal.at(i - 1), [&] {
 				_blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
 
 				_blur_renderpass.push_constant("pcs"_strid, pcs);
 
-				command_buffer.draw(3, 1, 0, 0);
+				frame.main_command_buffer.draw(3, 1, 0, 0);
 			});
 
 			// blur vertical
-			_blur_renderpass.execute(command_buffer, _blur_framebuffer_vertical.at(i - 1), [&] {
+			_blur_renderpass.execute(frame.main_command_buffer, _blur_framebuffer_vertical.at(i - 1), [&] {
 				if(i < start) {
 					_blur_renderpass.set_stage("blur_v_last"_strid);
 					_blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_vertical_final.at(i));
@@ -279,32 +273,32 @@ namespace mirrage::renderer {
 
 				_blur_renderpass.push_constant("pcs"_strid, pcs);
 
-				command_buffer.draw(3, 1, 0, 0);
+				frame.main_command_buffer.draw(3, 1, 0, 0);
 			});
 		}
 
 		// apply
-		_apply_renderpass.execute(command_buffer, _apply_framebuffer, [&] {
+		_apply_renderpass.execute(frame.main_command_buffer, _apply_framebuffer, [&] {
 			auto descriptor_sets =
-			        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_apply_descriptor_set};
+			        std::array<vk::DescriptorSet, 2>{frame.global_uniform_set, *_apply_descriptor_set};
 			_apply_renderpass.bind_descriptor_sets(0, descriptor_sets);
 
 			pcs.parameters.x = start_mip_level - 1;
 			_apply_renderpass.push_constant("pcs"_strid, pcs);
 
-			command_buffer.draw(3, 1, 0, 0);
+			frame.main_command_buffer.draw(3, 1, 0, 0);
 		});
 	}
 
 
-	auto Bloom_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                     ecs::Entity_manager&      entities,
-	                                     util::maybe<Meta_system&> meta_system,
-	                                     bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Bloom_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                     ecs::Entity_manager&,
+	                                     Engine&,
+	                                     bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
 		auto& src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
-		return std::make_unique<Bloom_pass>(renderer, entities, meta_system, src);
+		return std::make_unique<Bloom_pass>(renderer, src);
 	}
 
 	auto Bloom_pass_factory::rank_device(vk::PhysicalDevice,

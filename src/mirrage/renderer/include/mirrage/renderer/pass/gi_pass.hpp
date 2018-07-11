@@ -7,16 +7,13 @@
 
 namespace mirrage::renderer {
 
-	class Gi_pass : public Pass {
+	class Gi_pass : public Render_pass {
 	  public:
 		Gi_pass(Deferred_renderer&, graphic::Render_target_2D& in_out, graphic::Render_target_2D& diffuse_in);
 
 
 		void update(util::Time dt) override;
-		void draw(vk::CommandBuffer&,
-		          Command_buffer_source&,
-		          vk::DescriptorSet global_uniform_set,
-		          std::size_t       swapchain_image) override;
+		void draw(Frame_data&) override;
 
 		auto name() const noexcept -> const char* override { return "SSGI"; }
 
@@ -101,37 +98,34 @@ namespace mirrage::renderer {
 
 
 		// calculates the texture with the preintegrated BRDF
-		void _integrate_brdf(vk::CommandBuffer& command_buffer);
+		void _integrate_brdf(vk::CommandBuffer command_buffer);
 
 		// blends _gi_diffuse_history into _color_diffuse_in to simulate multiple bounces
-		void _reproject_history(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
+		void _reproject_history(vk::CommandBuffer command_buffer, vk::DescriptorSet globals);
 
 		// generates mipmaps for _color_diffuse_in
-		void _generate_first_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
-		void _generate_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
+		void _generate_first_mipmaps(vk::CommandBuffer command_buffer, vk::DescriptorSet globals);
+		void _generate_mipmaps(vk::CommandBuffer command_buffer, vk::DescriptorSet globals);
 
 		// calculates GI samples and stores them into the levels of _gi_diffuse and _gi_specular
-		void _generate_gi_samples(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals);
+		void _generate_gi_samples(vk::CommandBuffer command_buffer, vk::DescriptorSet globals);
 
 		// blurs the specular samples
-		void _blur_spec_gi(vk::CommandBuffer& command_buffer);
+		void _blur_spec_gi(vk::CommandBuffer command_buffer);
 
 		// blends the _gi_diffuse and _gi_specular into _color_in_out
-		void _draw_gi(vk::CommandBuffer& command_buffer);
+		void _draw_gi(vk::CommandBuffer command_buffer);
 	};
 
-	class Gi_pass_factory : public Pass_factory {
+	class Gi_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&,
-		                 ecs::Entity_manager&,
-		                 util::maybe<Meta_system&>,
-		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
+		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		        -> std::unique_ptr<Render_pass> override;
 
-		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
-		        -> int override;
+		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;
 
 		void configure_device(vk::PhysicalDevice,
-		                      util::maybe<std::uint32_t> graphics_queue,
+		                      util::maybe<std::uint32_t>,
 		                      graphic::Device_create_info&) override;
 	};
 } // namespace mirrage::renderer

@@ -220,16 +220,13 @@ namespace mirrage::renderer {
 	}
 
 
-	void Ssao_pass::update(util::Time dt) {}
+	void Ssao_pass::update(util::Time) {}
 
-	void Ssao_pass::draw(vk::CommandBuffer& command_buffer,
-	                     Command_buffer_source&,
-	                     vk::DescriptorSet global_uniform_set,
-	                     std::size_t)
+	void Ssao_pass::draw(Frame_data& frame)
 	{
 
 		if(!_renderer.settings().ssao) {
-			graphic::clear_texture(command_buffer,
+			graphic::clear_texture(frame.main_command_buffer,
 			                       _ao_result_buffer,
 			                       util::Rgba{1, 1, 1, 1},
 			                       vk::ImageLayout::eUndefined,
@@ -240,7 +237,8 @@ namespace mirrage::renderer {
 		}
 
 
-		auto descriptor_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_ssao_descriptor_set};
+		auto descriptor_sets =
+		        std::array<vk::DescriptorSet, 2>{frame.global_uniform_set, *_ssao_descriptor_set};
 
 		Push_constants pcs;
 		pcs.options.x = util::max(1, _renderer.gbuffer().mip_levels - ao_mip_level - 1);
@@ -252,42 +250,39 @@ namespace mirrage::renderer {
 		pcs.options.z = ao_mip_level;
 
 		// sample ao
-		_ssao_render_pass.execute(command_buffer, _ao_result_framebuffer, [&] {
+		_ssao_render_pass.execute(frame.main_command_buffer, _ao_result_framebuffer, [&] {
 			_ssao_render_pass.bind_descriptor_sets(0, descriptor_sets);
 			_ssao_render_pass.push_constant("pcs"_strid, pcs);
 
-			command_buffer.draw(3, 1, 0, 0);
+			frame.main_command_buffer.draw(3, 1, 0, 0);
 		});
 
 		for(int i = 0; i < 4; i++) {
 			// blur horizontal
-			_blur_render_pass.execute(command_buffer, _blur_framebuffer, [&] {
+			_blur_render_pass.execute(frame.main_command_buffer, _blur_framebuffer, [&] {
 				_blur_render_pass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
 				_blur_render_pass.set_stage("blur_h"_strid);
-				command_buffer.draw(3, 1, 0, 0);
+				frame.main_command_buffer.draw(3, 1, 0, 0);
 			});
 			// blur vertical
-			_blur_render_pass.execute(command_buffer, _ao_result_blur_framebuffer, [&] {
+			_blur_render_pass.execute(frame.main_command_buffer, _ao_result_blur_framebuffer, [&] {
 				_blur_render_pass.bind_descriptor_set(1, *_blur_descriptor_set_vertical);
 				_blur_render_pass.set_stage("blur_v"_strid);
 
-				command_buffer.draw(3, 1, 0, 0);
+				frame.main_command_buffer.draw(3, 1, 0, 0);
 			});
 		}
 	}
 
 
-	auto Ssao_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                    ecs::Entity_manager&      entities,
-	                                    util::maybe<Meta_system&> meta_system,
-	                                    bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Ssao_pass_factory::create_pass(Deferred_renderer& renderer, ecs::Entity_manager&, Engine&, bool&)
+	        -> std::unique_ptr<Render_pass>
 	{
 		return std::make_unique<Ssao_pass>(renderer);
 	}
 
-	auto Ssao_pass_factory::rank_device(vk::PhysicalDevice,
-	                                    util::maybe<std::uint32_t> graphics_queue,
-	                                    int                        current_score) -> int
+	auto Ssao_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
+	        -> int
 	{
 		return current_score;
 	}

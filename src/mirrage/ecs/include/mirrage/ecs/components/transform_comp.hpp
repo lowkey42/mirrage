@@ -24,6 +24,7 @@ namespace mirrage::ecs::components {
 		void rotate_local(float yaw, float pitch);
 
 		auto to_mat4() const noexcept -> glm::mat4;
+		auto to_mat3() const noexcept -> glm::mat3;
 
 		glm::vec3 position{0, 0, 0};
 		glm::quat orientation{1, 0, 0, 0};

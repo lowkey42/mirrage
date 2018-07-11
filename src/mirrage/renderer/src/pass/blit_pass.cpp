@@ -72,10 +72,7 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	Blit_pass::Blit_pass(Deferred_renderer& renderer,
-	                     ecs::Entity_manager&,
-	                     util::maybe<Meta_system&>,
-	                     graphic::Texture_2D& src)
+	Blit_pass::Blit_pass(Deferred_renderer& renderer, graphic::Texture_2D& src)
 	  : _renderer(renderer)
 	  , _src(src)
 	  , _sampler(renderer.device().create_sampler(1,
@@ -92,15 +89,12 @@ namespace mirrage::renderer {
 
 	void Blit_pass::update(util::Time dt) {}
 
-	void Blit_pass::draw(vk::CommandBuffer& command_buffer,
-	                     Command_buffer_source&,
-	                     vk::DescriptorSet global_uniform_set,
-	                     std::size_t       swapchain_image)
+	void Blit_pass::draw(Frame_data& frame)
 	{
 
-		_render_pass.execute(command_buffer, _framebuffers.at(swapchain_image), [&] {
+		_render_pass.execute(frame.main_command_buffer, _framebuffers.at(frame.swapchain_image), [&] {
 			auto descriptor_sets = std::array<vk::DescriptorSet, 3>{
-			        global_uniform_set, _renderer.noise_descriptor_set(), *_descriptor_set};
+			        frame.global_uniform_set, _renderer.noise_descriptor_set(), *_descriptor_set};
 
 			_render_pass.bind_descriptor_sets(0, descriptor_sets);
 
@@ -109,24 +103,23 @@ namespace mirrage::renderer {
 
 			_render_pass.push_constant("settings"_strid, settings);
 
-			command_buffer.draw(3, 1, 0, 0);
+			frame.main_command_buffer.draw(3, 1, 0, 0);
 		});
 	}
 
 
-	auto Blit_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                    ecs::Entity_manager&      entities,
-	                                    util::maybe<Meta_system&> meta_system,
-	                                    bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Blit_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                    ecs::Entity_manager&,
+	                                    Engine&,
+	                                    bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
 		auto& color_src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
-		return std::make_unique<Blit_pass>(renderer, entities, meta_system, color_src);
+		return std::make_unique<Blit_pass>(renderer, color_src);
 	}
 
-	auto Blit_pass_factory::rank_device(vk::PhysicalDevice,
-	                                    util::maybe<std::uint32_t> graphics_queue,
-	                                    int                        current_score) -> int
+	auto Blit_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
+	        -> int
 	{
 		return current_score;
 	}

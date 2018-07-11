@@ -436,32 +436,29 @@ namespace mirrage::gui {
 		}
 	};
 
-	Gui::Gui(glm::vec4                        viewport,
-	         asset::Asset_manager&            assets,
-	         input::Input_manager&            input,
-	         util::tracking_ptr<Gui_renderer> renderer)
-	  : _viewport(viewport)
-	  , _assets(assets)
-	  , _input(input)
-	  , _renderer(renderer)
-	  , _last_renderer(_renderer.get())
-	{
 
-		_init();
-	}
-	Gui::~Gui()
+	Gui_renderer::Gui_renderer(Gui& gui) : _gui(&gui)
 	{
-		if(_renderer) {
-			_renderer->_gui = nullptr;
-		}
+		MIRRAGE_INVARIANT(gui._renderer == nullptr, "GUI already has a renderer!");
+		gui._renderer = this;
 	}
+	Gui_renderer::~Gui_renderer()
+	{
+		MIRRAGE_INVARIANT(_gui->_renderer == this, "GUI already has a different renderer!");
+		_gui->_renderer = nullptr;
+	}
+
+	Gui::Gui(glm::vec4 viewport, asset::Asset_manager& assets, input::Input_manager& input)
+	  : _viewport(viewport), _assets(assets), _input(input)
+	{
+	}
+	Gui::~Gui() { MIRRAGE_INVARIANT(_renderer == nullptr, "GUI still has a renderer registered (leak?)"); }
 
 	void Gui::_init()
 	{
-		_last_renderer = _renderer.get();
+		_last_renderer = _renderer;
 		if(_last_renderer) {
-			_impl                = std::make_unique<PImpl>(_viewport, _assets, _input, *_last_renderer);
-			_last_renderer->_gui = this;
+			_impl = std::make_unique<PImpl>(_viewport, _assets, _input, *_last_renderer);
 		} else {
 			LOG(plog::warning) << "Gui initialized without a valid renderer. Nothing will be drawn!";
 		}
@@ -482,11 +479,11 @@ namespace mirrage::gui {
 
 	void Gui::draw()
 	{
-		if(_renderer.modified(_last_renderer)) {
+		if(_renderer != _last_renderer) {
 			_init();
 		}
 
-		if(!_impl) {
+		if(!ready()) {
 			LOG(plog::info) << "no impl";
 			return;
 		}
@@ -495,15 +492,23 @@ namespace mirrage::gui {
 
 		_impl->renderer.draw(_impl->ctx.ctx, _impl->viewport, _impl->screen_size, _impl->ui_matrix);
 	}
-	void Gui::start_frame() { nk_clear(&_impl->ctx.ctx); }
-
-	auto Gui::ctx() -> nk_context*
+	void Gui::start_frame()
 	{
-		if(_renderer.modified(_last_renderer)) {
+		if(_renderer != _last_renderer) {
 			_init();
 		}
 
-		MIRRAGE_INVARIANT(_impl, "Not initialized when nk_context was requested!");
+		if(_renderer)
+			nk_clear(&_impl->ctx.ctx);
+	}
+
+	auto Gui::ctx() -> nk_context*
+	{
+		if(_renderer != _last_renderer) {
+			_init();
+		}
+
+		MIRRAGE_INVARIANT(ready(), "Not initialized when nk_context was requested!");
 
 		return &_impl->ctx.ctx;
 	}

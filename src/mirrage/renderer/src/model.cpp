@@ -73,8 +73,18 @@ namespace mirrage::renderer {
 	}
 
 
-	Model::Model(graphic::Mesh mesh, std::vector<Sub_mesh> sub_meshes, util::maybe<asset::AID> aid)
-	  : _mesh(std::move(mesh)), _sub_meshes(std::move(sub_meshes)), _aid(aid)
+	Model::Model(graphic::Mesh           mesh,
+	             std::vector<Sub_mesh>   sub_meshes,
+	             float                   bounding_sphere_radius,
+	             glm::vec3               bounding_sphere_offset,
+	             bool                    rigged,
+	             util::maybe<asset::AID> aid)
+	  : _mesh(std::move(mesh))
+	  , _sub_meshes(std::move(sub_meshes))
+	  , _aid(aid)
+	  , _bounding_sphere_radius(bounding_sphere_radius)
+	  , _bounding_sphere_offset(bounding_sphere_offset)
+	  , _rigged(rigged)
 	{
 	}
 
@@ -84,11 +94,11 @@ namespace mirrage::renderer {
 	}
 
 	auto Model::bind_sub_mesh(graphic::Render_pass& pass, std::size_t index) const
-	        -> std::pair<std::size_t, std::size_t>
+	        -> std::tuple<std::uint32_t, std::uint32_t, const Material*>
 	{
 		auto& sm = _sub_meshes.at(index);
 		sm.material->bind(pass);
-		return std::make_pair(sm.index_offset, sm.index_count);
+		return std::make_tuple(sm.index_offset, sm.index_count, &*sm.material);
 	}
 
 } // namespace mirrage::renderer
@@ -179,6 +189,10 @@ namespace mirrage::asset {
 			auto& sub_mesh = sub_meshes.back();
 			read(in, sub_mesh.index_offset);
 			read(in, sub_mesh.index_count);
+			read(in, sub_mesh.bounding_sphere_radius);
+			read(in, sub_mesh.bounding_sphere_offset.x);
+			read(in, sub_mesh.bounding_sphere_offset.y);
+			read(in, sub_mesh.bounding_sphere_offset.z);
 
 			auto material_id_length = std::uint32_t(0);
 			read(in, material_id_length);
@@ -191,13 +205,14 @@ namespace mirrage::asset {
 			material_load_tasks.emplace_back(sub_mesh.material.internal_task());
 		}
 
+		// FIXME/TODO: shouldn't read_direct use the number of bytes instead of the count???
 		// transfer mesh data to gpu
 		auto mesh = graphic::Mesh(_device,
 		                          _owner_qfamily,
-		                          header.vertex_count,
-		                          header.index_count,
-		                          [&](char* dest) { in.read_direct(dest, header.vertex_count); },
-		                          [&](char* dest) { in.read_direct(dest, header.index_count); });
+		                          header.vertex_size,
+		                          header.index_size,
+		                          [&](char* dest) { in.read_direct(dest, header.vertex_size); },
+		                          [&](char* dest) { in.read_direct(dest, header.index_size); });
 
 		auto footer = std::uint32_t(0);
 		read(in, footer);
@@ -211,8 +226,17 @@ namespace mirrage::asset {
 		auto all_loaded = async::when_all(all_materials_loaded, mesh.internal_buffer().transfer_task());
 		using Task_type = decltype(all_loaded)::result_type;
 
-		return all_loaded.then([model = renderer::Model(std::move(mesh), std::move(sub_meshes), in.aid())](
-		                               const Task_type&) mutable { return std::move(model); });
+		auto rigged                 = (header.flags & 1) != 0;
+		auto bounding_sphere_offset = glm::vec3(header.bounding_sphere_offset_x,
+		                                        header.bounding_sphere_offset_y,
+		                                        header.bounding_sphere_offset_z);
+		return all_loaded.then(
+		        [model = renderer::Model(std::move(mesh),
+		                                 std::move(sub_meshes),
+		                                 header.bounding_sphere_radius,
+		                                 bounding_sphere_offset,
+		                                 rigged,
+		                                 in.aid())](const Task_type&) mutable { return std::move(model); });
 	}
 
 } // namespace mirrage::asset

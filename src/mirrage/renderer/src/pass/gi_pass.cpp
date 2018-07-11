@@ -896,10 +896,7 @@ namespace mirrage::renderer {
 
 	void Gi_pass::update(util::Time) {}
 
-	void Gi_pass::draw(vk::CommandBuffer& command_buffer,
-	                   Command_buffer_source&,
-	                   vk::DescriptorSet global_uniform_set,
-	                   std::size_t)
+	void Gi_pass::draw(Frame_data& frame)
 	{
 
 		if(!_renderer.settings().gi) {
@@ -919,17 +916,17 @@ namespace mirrage::renderer {
 		if(skip_reprojection) {
 			LOG(plog::debug) << "Teleport detected";
 
-			graphic::clear_texture(command_buffer,
+			graphic::clear_texture(frame.main_command_buffer,
 			                       _gi_diffuse_history,
 			                       util::Rgba{0, 0, 0, 0},
 			                       vk::ImageLayout::eUndefined,
 			                       vk::ImageLayout::eShaderReadOnlyOptimal);
-			graphic::clear_texture(command_buffer,
+			graphic::clear_texture(frame.main_command_buffer,
 			                       _gi_diffuse_result,
 			                       util::Rgba{0, 0, 0, 0},
 			                       vk::ImageLayout::eUndefined,
 			                       vk::ImageLayout::eShaderReadOnlyOptimal);
-			graphic::clear_texture(command_buffer,
+			graphic::clear_texture(frame.main_command_buffer,
 			                       _gi_diffuse_samples,
 			                       util::Rgba{0, 0, 0, 0},
 			                       vk::ImageLayout::eUndefined,
@@ -937,7 +934,7 @@ namespace mirrage::renderer {
 
 
 			for(auto rt : {&_gi_specular, &_gi_specular_history, &_history_weight, &_history_weight_prev}) {
-				graphic::clear_texture(command_buffer,
+				graphic::clear_texture(frame.main_command_buffer,
 				                       *rt,
 				                       util::Rgba{0, 0, 0, 0},
 				                       vk::ImageLayout::eUndefined,
@@ -953,23 +950,23 @@ namespace mirrage::renderer {
 		if(_first_frame) {
 			_first_frame = false;
 
-			_integrate_brdf(command_buffer);
+			_integrate_brdf(frame.main_command_buffer);
 		}
 
 
-		_generate_first_mipmaps(command_buffer, global_uniform_set);
+		_generate_first_mipmaps(frame.main_command_buffer, frame.global_uniform_set);
 
 		if(!skip_reprojection) {
-			_reproject_history(command_buffer, global_uniform_set);
+			_reproject_history(frame.main_command_buffer, frame.global_uniform_set);
 		}
 
-		_generate_mipmaps(command_buffer, global_uniform_set);
-		_generate_gi_samples(command_buffer, global_uniform_set);
-		_draw_gi(command_buffer);
+		_generate_mipmaps(frame.main_command_buffer, frame.global_uniform_set);
+		_generate_gi_samples(frame.main_command_buffer, frame.global_uniform_set);
+		_draw_gi(frame.main_command_buffer);
 
 
 		// copy results into history_buffer (TODO: re-evaluate)
-		graphic::blit_texture(command_buffer,
+		graphic::blit_texture(frame.main_command_buffer,
 		                      _history_weight,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -978,13 +975,13 @@ namespace mirrage::renderer {
 		                      vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
 
-	void Gi_pass::_integrate_brdf(vk::CommandBuffer& command_buffer)
+	void Gi_pass::_integrate_brdf(vk::CommandBuffer command_buffer)
 	{
 		_brdf_integration_renderpass.execute(
 		        command_buffer, _brdf_integration_framebuffer, [&] { command_buffer.draw(3, 1, 0, 0); });
 	}
 
-	void Gi_pass::_reproject_history(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals)
+	void Gi_pass::_reproject_history(vk::CommandBuffer command_buffer, vk::DescriptorSet globals)
 	{
 		auto _ = _renderer.profiler().push("Reproject");
 
@@ -1033,7 +1030,7 @@ namespace mirrage::renderer {
 		_prev_proj = _renderer.global_uniforms().proj_mat;
 	}
 
-	void Gi_pass::_generate_first_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet)
+	void Gi_pass::_generate_first_mipmaps(vk::CommandBuffer command_buffer, vk::DescriptorSet)
 	{
 		if(_min_mip_level > 0) {
 			auto _ = _renderer.profiler().push("Gen. Mipmaps A");
@@ -1047,7 +1044,7 @@ namespace mirrage::renderer {
 			                          _min_mip_level + 1);
 		}
 	}
-	void Gi_pass::_generate_mipmaps(vk::CommandBuffer& command_buffer, vk::DescriptorSet)
+	void Gi_pass::_generate_mipmaps(vk::CommandBuffer command_buffer, vk::DescriptorSet)
 	{
 		auto _ = _renderer.profiler().push("Gen. Mipmaps B");
 
@@ -1081,7 +1078,7 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	void Gi_pass::_generate_gi_samples(vk::CommandBuffer& command_buffer, vk::DescriptorSet globals)
+	void Gi_pass::_generate_gi_samples(vk::CommandBuffer command_buffer, vk::DescriptorSet globals)
 	{
 		auto base_mip = static_cast<int>(_min_mip_level);
 		auto begin    = static_cast<int>(_diffuse_mip_level);
@@ -1216,7 +1213,7 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void Gi_pass::_blur_spec_gi(vk::CommandBuffer& command_buffer)
+	void Gi_pass::_blur_spec_gi(vk::CommandBuffer command_buffer)
 	{
 		// blur horizontal
 		_blur_render_pass.execute(command_buffer, _blur_horizonal_framebuffer, [&] {
@@ -1233,7 +1230,7 @@ namespace mirrage::renderer {
 		});
 	}
 
-	void Gi_pass::_draw_gi(vk::CommandBuffer& command_buffer)
+	void Gi_pass::_draw_gi(vk::CommandBuffer command_buffer)
 	{
 		auto _ = _renderer.profiler().push("Combine");
 
@@ -1254,10 +1251,10 @@ namespace mirrage::renderer {
 
 
 
-	auto Gi_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                  ecs::Entity_manager&      entities,
-	                                  util::maybe<Meta_system&> meta_system,
-	                                  bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Gi_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                  ecs::Entity_manager&,
+	                                  Engine&,
+	                                  bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
 		auto& in_out = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
@@ -1268,9 +1265,8 @@ namespace mirrage::renderer {
 		return std::make_unique<Gi_pass>(renderer, in_out, in_diff);
 	}
 
-	auto Gi_pass_factory::rank_device(vk::PhysicalDevice,
-	                                  util::maybe<std::uint32_t> graphics_queue,
-	                                  int                        current_score) -> int
+	auto Gi_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
+	        -> int
 	{
 		return current_score;
 	}

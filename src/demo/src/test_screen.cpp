@@ -64,10 +64,7 @@ namespace mirrage {
 	  : Screen(engine)
 	  , _mailbox(engine.bus())
 	  , _meta_system(static_cast<Game_engine&>(engine))
-	  , _gui(engine.window().viewport(),
-	         engine.assets(),
-	         engine.input(),
-	         _meta_system.renderer().find_pass<gui::Gui_renderer>())
+	  , _gui(engine.gui())
 	  , _performance_log(util::nothing)
 	  , _window_width(engine.window().width())
 	  , _window_height(engine.window().height())
@@ -320,8 +317,6 @@ namespace mirrage {
 
 	void Test_screen::_draw()
 	{
-		_gui.start_frame();
-
 		if(_show_ui) {
 			_draw_settings_window();
 			_draw_histogram_window();

@@ -165,9 +165,7 @@ namespace mirrage::renderer {
 	{
 	}
 
-	Shadowmapping_pass::Shadowmapping_pass(Deferred_renderer&   renderer,
-	                                       ecs::Entity_manager& entities,
-	                                       util::maybe<Meta_system&>)
+	Shadowmapping_pass::Shadowmapping_pass(Deferred_renderer& renderer, ecs::Entity_manager& entities)
 	  : _renderer(renderer)
 	  , _entities(entities)
 	  , _shadowmap_format(get_shadowmap_format(renderer.device()))
@@ -245,10 +243,7 @@ namespace mirrage::renderer {
 
 	void Shadowmapping_pass::update(util::Time) {}
 
-	void Shadowmapping_pass::draw(vk::CommandBuffer& command_buffer,
-	                              Command_buffer_source&,
-	                              vk::DescriptorSet global_uniform_set,
-	                              std::size_t)
+	void Shadowmapping_pass::draw(Frame_data& frame)
 	{
 
 		// free shadowmaps of deleted lights
@@ -297,8 +292,8 @@ namespace mirrage::renderer {
 			pcs.light_view_proj = light.calc_shadowmap_view_proj(transform);
 
 			auto& target_fb = shadowmap.framebuffer;
-			_render_pass.execute(command_buffer, target_fb, [&] {
-				_render_pass.bind_descriptor_sets(0, {&global_uniform_set, 1});
+			_render_pass.execute(frame.main_command_buffer, target_fb, [&] {
+				_render_pass.bind_descriptor_sets(0, {&frame.global_uniform_set, 1});
 
 				for(auto&& [transform, model, caster] :
 				    _entities.list<Transform_comp, Model_comp, Shadowcaster_comp>()) {
@@ -306,26 +301,27 @@ namespace mirrage::renderer {
 					pcs.model = transform.to_mat4();
 					_render_pass.push_constant("pcs"_strid, pcs);
 
-					model.model()->bind(command_buffer, _render_pass, 0, [&](auto&, auto offset, auto count) {
-						command_buffer.drawIndexed(count, 1, offset, 0, 0);
-					});
+					auto foreach_model = [&](auto&, auto offset, auto count) {
+						frame.main_command_buffer.drawIndexed(count, 1, offset, 0, 0);
+					};
+					model.model()->bind(frame.main_command_buffer, _render_pass, 0, foreach_model);
 				}
 			});
 		}
 	}
 
 
-	auto Shadowmapping_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                             ecs::Entity_manager&      entities,
-	                                             util::maybe<Meta_system&> meta_system,
-	                                             bool&) -> std::unique_ptr<Pass>
+	auto Shadowmapping_pass_factory::create_pass(Deferred_renderer&   renderer,
+	                                             ecs::Entity_manager& entities,
+	                                             Engine&,
+	                                             bool&) -> std::unique_ptr<Render_pass>
 	{
-		return std::make_unique<Shadowmapping_pass>(renderer, entities, meta_system);
+		return std::make_unique<Shadowmapping_pass>(renderer, entities);
 	}
 
 	auto Shadowmapping_pass_factory::rank_device(vk::PhysicalDevice,
-	                                             util::maybe<std::uint32_t> graphics_queue,
-	                                             int                        current_score) -> int
+	                                             util::maybe<std::uint32_t>,
+	                                             int current_score) -> int
 	{
 		return current_score;
 	}

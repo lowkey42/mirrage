@@ -39,13 +39,13 @@ namespace mirrage::util {
 
 	// min
 	template <typename FirstT>
-	constexpr auto min(FirstT&& first)
+	constexpr auto min(FirstT&& first) -> FirstT&&
 	{
-		return first;
+		return static_cast<FirstT&&>(first);
 	}
 
 	template <typename FirstT, typename SecondT>
-	constexpr auto min(FirstT&& first, SecondT&& second)
+	constexpr auto min(FirstT&& first, SecondT&& second) -> details::min_max_result_t<FirstT, SecondT>
 	{
 		using result_t = details::min_max_result_t<FirstT, SecondT>;
 
@@ -65,13 +65,13 @@ namespace mirrage::util {
 
 	// max
 	template <typename FirstT>
-	constexpr auto max(FirstT&& first)
+	constexpr auto max(FirstT&& first) -> FirstT&&
 	{
-		return first;
+		return static_cast<FirstT&&>(first);
 	}
 
 	template <typename FirstT, typename SecondT>
-	constexpr auto max(FirstT&& first, SecondT&& second)
+	constexpr auto max(FirstT&& first, SecondT&& second) -> details::min_max_result_t<FirstT, SecondT>
 	{
 		using result_t = details::min_max_result_t<FirstT, SecondT>;
 

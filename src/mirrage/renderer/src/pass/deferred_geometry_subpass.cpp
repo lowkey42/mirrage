@@ -37,31 +37,83 @@ namespace mirrage::renderer {
 		pass.stage("emissive"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
+
+		pass.stage("alpha_test"_strid)
+		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 	}
 
 	void Deferred_geometry_subpass::update(util::Time) {}
-	void Deferred_geometry_subpass::pre_draw(vk::CommandBuffer&) {}
+	void Deferred_geometry_subpass::pre_draw(Frame_data&) {}
 
-	void Deferred_geometry_subpass::draw(vk::CommandBuffer& command_buffer, graphic::Render_pass& render_pass)
+	void Deferred_geometry_subpass::draw(Frame_data& frame, graphic::Render_pass& render_pass)
 	{
 		auto _ = _renderer.profiler().push("Geometry");
 
-		Deferred_push_constants dpc{};
+		//auto eye = _renderer.active_camera().get_or_throw().eye_position;
 
+		auto end = std::partition(frame.geometry_queue.begin(), frame.geometry_queue.end(), [](auto& geo) {
+			return (geo.culling_mask & 1u) != 0;
+		});
+		auto geo_range = util::range(frame.geometry_queue.begin(), end);
+
+		std::sort(geo_range.begin(), geo_range.end(), [&](auto& lhs, auto& rhs) {
+			auto lhs_mat = &*lhs.model->sub_meshes()[lhs.sub_mesh].material;
+			auto rhs_mat = &*rhs.model->sub_meshes()[rhs.sub_mesh].material;
+
+			return std::make_tuple(lhs_mat->material_id(), lhs_mat, lhs.model)
+			       < std::make_tuple(rhs_mat->material_id(), rhs_mat, rhs.model);
+		});
+
+		// TODO: sort by depth, too
+		/*
+		std::sort(geo_range.begin(), geo_range.end(), [&](auto& lhs, auto& rhs) {
+			return glm::distance2(eye, lhs.position) < glm::distance2(eye, rhs.position);
+		});
+		*/
+
+
+		Deferred_push_constants dpc{};
+		dpc.light_data.x = _renderer.settings().debug_disect;
+
+		for(auto& geo : geo_range) {
+			dpc.model    = glm::toMat4(geo.orientation) * glm::scale(glm::mat4(1.f), geo.scale);
+			dpc.model[3] = glm::vec4(geo.position, 1.f);
+
+			geo.model->bind_mesh(frame.main_command_buffer, 0);
+			auto [offset, count, material] = geo.model->bind_sub_mesh(render_pass, geo.sub_mesh);
+
+			if(_renderer.settings().debug_disect
+			   && (!material->material_id() || material->material_id() == "default"_strid)) {
+				render_pass.set_stage("alpha_test"_strid);
+
+			} else if(!material->material_id()) {
+				render_pass.set_stage("default"_strid);
+			} else {
+				render_pass.set_stage(material->material_id());
+			}
+
+			render_pass.push_constant("dpc"_strid, dpc);
+			frame.main_command_buffer.drawIndexed(count, 1, offset, 0, 0);
+		}
+		/*
 		for(auto& [model, transform] : _ecs.list<Model_comp, Transform_comp>()) {
 			dpc.model        = transform.to_mat4();
 			dpc.light_data.x = _renderer.settings().debug_disect;
 			render_pass.push_constant("dpc"_strid, dpc);
 
-			model.model()->bind(command_buffer, render_pass, 0, [&](auto& material, auto offset, auto count) {
+
+			auto foreach_model = [&](auto& material, auto offset, auto count) {
 				if(!material->material_id()) {
 					render_pass.set_stage("default"_strid);
 				} else {
 					render_pass.set_stage(material->material_id());
 				}
 
-				command_buffer.drawIndexed(count, 1, offset, 0, 0);
-			});
+				frame.main_command_buffer.drawIndexed(count, 1, offset, 0, 0);
+			};
+			model.model()->bind(frame.main_command_buffer, render_pass, 0, foreach_model);
 		}
+		*/
 	}
 } // namespace mirrage::renderer
