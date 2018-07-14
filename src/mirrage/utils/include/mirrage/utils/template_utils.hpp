@@ -727,26 +727,26 @@ namespace mirrage::util {
 		Registration(Registration&& rhs) noexcept : _children(std::move(rhs._children))
 		{
 			for(auto& c : _children) {
-				Registered<ChildT, CCTP>::asRegistered(c)->_parent = this;
+				c->_parent = this;
 			}
 		}
 		Registration(const Registration& rhs) = delete;
 		~Registration()
 		{
 			for(auto& c : _children) {
-				Registered<ChildT, CCTP>::asRegistered(c)->_parent = nullptr;
+				c->_parent = nullptr;
 			}
 		}
 
 		Registration& operator=(Registration&& rhs) noexcept
 		{
 			for(auto& c : _children) {
-				Registered<ChildT, CCTP>::asRegistered(c)->_parent = nullptr;
+				c->_parent = nullptr;
 			}
 
 			_children = std::move(rhs._children);
 			for(auto& c : _children) {
-				Registered<ChildT, CCTP>::asRegistered(c)->_parent = this;
+				c->_parent = this;
 			}
 
 			return *this;
@@ -754,58 +754,66 @@ namespace mirrage::util {
 		Registration& operator=(const Registration& rhs) = delete;
 
 	  protected:
-		auto children() noexcept -> auto& { return _children; }
+		template <typename F>
+		void foreach_child(F&& f)
+		{
+			for(auto c : _children) {
+				f(*static_cast<ChildT*>(c));
+			}
+		}
 
 	  private:
 		friend class Registered<ChildT, CCTP>;
 
-		std::vector<ChildT*> _children;
+		std::vector<Registered<ChildT, CCTP>*> _children;
 
-		static Registration* asRegistration(CCTP* self) { return static_cast<Registration*>(self); }
+		static Registration* asRegistration(CCTP* self)
+		{
+			static_assert(std::is_base_of_v<Registration, CCTP>,
+			              "The first template argument of Registration needs to be CRTP.");
+			return static_cast<Registration*>(self);
+		}
 	};
 
 	template <class CCTP, class ParentT>
 	class Registered {
 	  public:
 		Registered() noexcept : _parent(nullptr) {}
-		Registered(ParentT& p) noexcept : _parent(&p)
-		{
-			_registration()->_children.push_back(static_cast<CCTP*>(this));
-		}
+		Registered(ParentT& p) noexcept : _parent(&p) { _registration()->_children.push_back(this); }
 		Registered(Registered&& rhs) noexcept : _parent(rhs._parent)
 		{
 			rhs._parent = nullptr;
 
 			if(_parent) {
-				util::erase_fast(_registration()->_children, static_cast<CCTP*>(&rhs));
-				_registration()->_children.push_back(static_cast<CCTP*>(this));
+				util::erase_fast(_registration()->_children, &rhs);
+				_registration()->_children.push_back(this);
 			}
 		}
 		Registered(const Registered& rhs) noexcept : _parent(rhs._parent)
 		{
 			if(_parent) {
-				_registration()->_children.push_back(static_cast<CCTP*>(this));
+				_registration()->_children.push_back(this);
 			}
 		}
 		~Registered()
 		{
 			if(_parent) {
 				// safe unless the casted this ptr is dereferenced
-				util::erase_fast(_registration()->_children, static_cast<CCTP*>(this));
+				util::erase_fast(_registration()->_children, this);
 			}
 		}
 
 		Registered& operator=(Registered&& rhs) noexcept
 		{
 			if(_parent) {
-				util::erase_fast(_registration()->_children, static_cast<CCTP*>(this));
+				util::erase_fast(_registration()->_children, this);
 			}
 
 			_parent     = rhs._parent;
 			rhs._parent = nullptr;
 			if(_parent) {
-				util::erase_fast(_registration()->_children, static_cast<CCTP*>(&rhs));
-				_registration()->_children.push_back(static_cast<CCTP*>(this));
+				util::erase_fast(_registration()->_children, &rhs);
+				_registration()->_children.push_back(this);
 			}
 
 			return *this;
@@ -813,12 +821,12 @@ namespace mirrage::util {
 		Registered& operator=(const Registered& rhs) noexcept
 		{
 			if(_parent) {
-				util::erase_fast(_registration()->_children, static_cast<CCTP*>(this));
+				util::erase_fast(_registration()->_children, this);
 			}
 
 			_parent = rhs._parent;
 			if(_parent) {
-				_registration()->_children.push_back(static_cast<CCTP*>(this));
+				_registration()->_children.push_back(this);
 			}
 
 			return *this;
@@ -836,8 +844,6 @@ namespace mirrage::util {
 		ParentT* _parent;
 
 		auto _registration() { return Registration<ParentT, CCTP>::asRegistration(_parent); }
-
-		static Registered* asRegistered(CCTP* self) { return static_cast<Registered*>(self); }
 	};
 } // namespace mirrage::util
 

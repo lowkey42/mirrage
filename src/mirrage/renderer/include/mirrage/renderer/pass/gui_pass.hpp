@@ -12,7 +12,7 @@
 
 namespace mirrage::renderer {
 
-	class Gui_pass : public Render_pass, public gui::Gui_renderer {
+	class Gui_pass : public Render_pass, public gui::Gui_renderer_interface {
 	  public:
 		Gui_pass(Deferred_renderer&, Engine&);
 

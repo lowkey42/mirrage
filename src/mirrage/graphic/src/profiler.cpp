@@ -169,6 +169,10 @@ namespace mirrage::graphic {
 		}
 
 		_current_command_buffer = util::nothing;
+
+		if(_active) {
+			_device.waitIdle();
+		}
 	}
 
 	void Profiler::_update_result(Profiler_result& result, const std::vector<std::uint32_t>& data)

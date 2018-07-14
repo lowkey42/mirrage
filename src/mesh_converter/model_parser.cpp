@@ -117,7 +117,9 @@ namespace mirrage {
 		        aiProcess_JoinIdenticalVertices | aiProcess_GenSmoothNormals | aiProcess_Triangulate
 		                | aiProcess_PreTransformVertices | aiProcess_ImproveCacheLocality
 		                | aiProcess_RemoveRedundantMaterials | aiProcess_OptimizeMeshes
-		                | aiProcess_ValidateDataStructure | aiProcess_FlipUVs | aiProcess_FixInfacingNormals);
+		                | aiProcess_ValidateDataStructure | aiProcess_FindDegenerates
+		                | aiProcess_FindInvalidData | aiProcess_FlipUVs | aiProcess_FixInfacingNormals
+		                | aiProcess_LimitBoneWeights | aiProcess_OptimizeGraph | aiProcess_GenUVCoords);
 
 		MIRRAGE_INVARIANT(scene, "Unable to load model '" << path << "': " << importer.GetErrorString());
 

@@ -76,25 +76,42 @@ namespace mirrage::renderer {
 		Deferred_push_constants dpc{};
 		dpc.light_data.x = _renderer.settings().debug_disect;
 
+		auto last_mat_id   = ""_strid;
+		auto last_material = static_cast<const Material*>(nullptr);
+		auto last_model    = static_cast<const Model*>(nullptr);
+
 		for(auto& geo : geo_range) {
-			dpc.model    = glm::toMat4(geo.orientation) * glm::scale(glm::mat4(1.f), geo.scale);
-			dpc.model[3] = glm::vec4(geo.position, 1.f);
+			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
+			auto  mat_id   = sub_mesh.material->material_id();
 
-			geo.model->bind_mesh(frame.main_command_buffer, 0);
-			auto [offset, count, material] = geo.model->bind_sub_mesh(render_pass, geo.sub_mesh);
+			if(sub_mesh.material->material_id() != last_mat_id) {
+				last_mat_id = sub_mesh.material->material_id();
 
-			if(_renderer.settings().debug_disect
-			   && (!material->material_id() || material->material_id() == "default"_strid)) {
-				render_pass.set_stage("alpha_test"_strid);
+				if(_renderer.settings().debug_disect && (!mat_id || mat_id == "default"_strid)) {
+					render_pass.set_stage("alpha_test"_strid);
 
-			} else if(!material->material_id()) {
-				render_pass.set_stage("default"_strid);
-			} else {
-				render_pass.set_stage(material->material_id());
+				} else if(!mat_id) {
+					render_pass.set_stage("default"_strid);
+				} else {
+					render_pass.set_stage(mat_id);
+				}
 			}
 
+			if(&*sub_mesh.material != last_material) {
+				last_material = &*sub_mesh.material;
+				last_material->bind(render_pass);
+			}
+
+			if(geo.model != last_model) {
+				last_model = geo.model;
+				geo.model->bind_mesh(frame.main_command_buffer, 0);
+			}
+
+			dpc.model    = glm::toMat4(geo.orientation) * glm::scale(glm::mat4(1.f), geo.scale);
+			dpc.model[3] = glm::vec4(geo.position, 1.f);
 			render_pass.push_constant("dpc"_strid, dpc);
-			frame.main_command_buffer.drawIndexed(count, 1, offset, 0, 0);
+
+			frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
 		}
 	}
 } // namespace mirrage::renderer

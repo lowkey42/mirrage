@@ -56,10 +56,10 @@ namespace mirrage::gui {
 		nk_byte   color[4];
 	};
 
-	class Gui_renderer {
+	class Gui_renderer_interface {
 	  public:
-		Gui_renderer(Gui& gui);
-		virtual ~Gui_renderer();
+		Gui_renderer_interface()          = default;
+		virtual ~Gui_renderer_interface() = default;
 
 		void draw_gui();
 
@@ -82,6 +82,9 @@ namespace mirrage::gui {
 		virtual void finalize_draw()                    = 0;
 
 	  private:
+		template <class>
+		friend class Gui_renderer_instance;
+
 		Gui* _gui;
 	};
 
@@ -107,19 +110,38 @@ namespace mirrage::gui {
 
 		auto ready() const noexcept { return bool(_impl); }
 
-
 	  private:
-		friend class Gui_renderer;
+		template <class>
+		friend class Gui_renderer_instance;
+
 		struct PImpl;
 
-		glm::vec4              _viewport;
-		asset::Asset_manager&  _assets;
-		input::Input_manager&  _input;
-		Gui_renderer*          _renderer      = nullptr;
-		Gui_renderer*          _last_renderer = nullptr;
-		std::unique_ptr<PImpl> _impl;
+		glm::vec4               _viewport;
+		asset::Asset_manager&   _assets;
+		input::Input_manager&   _input;
+		Gui_renderer_interface* _renderer = nullptr;
+		std::unique_ptr<PImpl>  _impl;
 
-		void _init();
+		void _reset_renderer(Gui_renderer_interface*);
+	};
+
+	template <class Base>
+	class Gui_renderer_instance : public Base {
+		static_assert(std::is_base_of_v<Gui_renderer_interface, Base>,
+		              "A gui renderer need to derive from mirrage::gui::Gui_renderer_interface!");
+
+	  public:
+		template <class... Args>
+		Gui_renderer_instance(Gui& gui, Args&&... args) : Base(std::forward<Args>(args)...)
+		{
+			this->_gui = &gui;
+			gui._reset_renderer(this);
+		}
+		~Gui_renderer_instance()
+		{
+			this->_gui->_reset_renderer(nullptr);
+			this->_gui = nullptr;
+		}
 	};
 
 

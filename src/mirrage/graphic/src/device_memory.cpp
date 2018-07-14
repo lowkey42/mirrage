@@ -28,8 +28,10 @@ namespace mirrage::graphic {
 			Buddy_block_alloc& operator=(Buddy_block_alloc&&) = delete;
 			~Buddy_block_alloc()
 			{
-				MIRRAGE_INVARIANT(_allocation_count == 0,
-				                  "Unfree memory: " << _allocation_count << " allocations left!");
+				if(_allocation_count > 0) {
+					LOG(plog::error) << "Still " << _allocation_count
+					                 << " unfreed GPU memory allocations left.";
+				}
 			}
 
 			auto alloc(std::uint32_t size, std::uint32_t alignment) -> util::maybe<Device_memory>;

@@ -96,8 +96,7 @@ namespace mirrage::renderer {
 
 
 	Gui_pass::Gui_pass(Deferred_renderer& drenderer, Engine& engine)
-	  : Gui_renderer(engine.gui())
-	  , _renderer(drenderer)
+	  : _renderer(drenderer)
 	  , _sampler(drenderer.device().create_sampler(1,
 	                                               vk::SamplerAddressMode::eClampToEdge,
 	                                               vk::BorderColor::eIntOpaqueBlack,
@@ -280,7 +279,7 @@ namespace mirrage::renderer {
 	                                   Engine& engine,
 	                                   bool&) -> std::unique_ptr<Render_pass>
 	{
-		return std::make_unique<Gui_pass>(renderer, engine);
+		return std::make_unique<gui::Gui_renderer_instance<Gui_pass>>(engine.gui(), renderer, engine);
 	}
 
 	auto Gui_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)

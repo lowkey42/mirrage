@@ -171,9 +171,7 @@ namespace mirrage::graphic {
 		sdl_error_check();
 
 		// report changed size to renderer => change viewport
-		for(auto& listener : util::Registration<Window, Window_modification_handler>::children()) {
-			listener->on_window_modified(*this);
-		}
+		foreach_child([&](auto& listener) { listener.on_window_modified(*this); });
 
 		return true;
 	}
