@@ -9,6 +9,7 @@ file(GLOB_RECURSE HEADER_FILES
 )
 
 add_library(mirrage_renderer STATIC
+	src/pass/animation_pass.cpp
 	src/pass/blit_pass.cpp 
 	src/pass/bloom_pass.cpp
 	src/pass/deferred_geometry_subpass.cpp
@@ -23,6 +24,8 @@ add_library(mirrage_renderer STATIC
 	src/pass/taa_pass.cpp
 	src/pass/tone_mapping_pass.cpp
 	
+	src/animation.cpp
+	src/animation_comp.cpp
 	src/camera_comp.cpp
 	src/deferred_renderer.cpp
 	src/gbuffer.cpp

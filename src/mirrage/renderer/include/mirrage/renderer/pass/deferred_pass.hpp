@@ -3,8 +3,9 @@
 #include <mirrage/renderer/pass/deferred_geometry_subpass.hpp>
 #include <mirrage/renderer/pass/deferred_lighting_subpass.hpp>
 
-#include <mirrage/graphic/render_pass.hpp>
 #include <mirrage/renderer/deferred_renderer.hpp>
+
+#include <mirrage/graphic/render_pass.hpp>
 
 
 namespace mirrage::renderer {

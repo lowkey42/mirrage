@@ -20,7 +20,7 @@ namespace mirrage::util {
 
 		constexpr std::size_t str_id_max_length = 13;
 
-		constexpr auto str_id_hash(const char* str)
+		constexpr auto str_id_hash(const char* str, bool invalid_empty = false)
 		{
 			using namespace std::string_literals;
 
@@ -31,11 +31,19 @@ namespace mirrage::util {
 					id = (id * str_id_step) + 1;
 				else if(str[i] >= 'a' && str[i] <= 'z')
 					id = (id * str_id_step) + static_cast<uint64_t>(str[i] - 'a' + 2);
-				else
-					throw std::invalid_argument("Unexpected character '"s + str[i] + "' in string: " + str);
+				else {
+					if(invalid_empty)
+						return uint64_t(0);
+					else
+						throw std::invalid_argument("Unexpected character '"s + str[i]
+						                            + "' in string: " + str);
+				}
 
 				if(i >= str_id_max_length) {
-					throw std::invalid_argument("String is too long: "s + str);
+					if(invalid_empty)
+						return uint64_t(0);
+					else
+						throw std::invalid_argument("String is too long: "s + str);
 				}
 			}
 
@@ -47,8 +55,14 @@ namespace mirrage::util {
 	  public:
 		using int_type = uint64_t;
 
-		explicit Str_id(const std::string& str) : Str_id(str.c_str()) {}
-		explicit constexpr Str_id(const char* str = "") : _id(detail::str_id_hash(str)) {}
+		explicit Str_id(const std::string& str, bool invalid_empty = false)
+		  : Str_id(str.c_str(), invalid_empty)
+		{
+		}
+		explicit constexpr Str_id(const char* str = "", bool invalid_empty = false)
+		  : _id(detail::str_id_hash(str, invalid_empty))
+		{
+		}
 		explicit constexpr Str_id(int_type id) : _id(id) {}
 
 		auto str() const -> std::string

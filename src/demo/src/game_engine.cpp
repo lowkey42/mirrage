@@ -1,6 +1,7 @@
 #include "game_engine.hpp"
 
 #include <mirrage/renderer/deferred_renderer.hpp>
+#include <mirrage/renderer/pass/animation_pass.hpp>
 #include <mirrage/renderer/pass/blit_pass.hpp>
 #include <mirrage/renderer/pass/bloom_pass.hpp>
 #include <mirrage/renderer/pass/deferred_pass.hpp>
@@ -29,6 +30,7 @@ namespace mirrage {
 	            *this,
 	            window(),
 	            util::make_vector(renderer::make_pass_factory<renderer::Frustum_culling_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Animation_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Deferred_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Gen_mipmap_pass_factory>(),

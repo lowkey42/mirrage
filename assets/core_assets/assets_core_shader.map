@@ -10,6 +10,7 @@ vert_shader:shadow_model = shader/bin/shadow_model.vert.spv
 frag_shader:shadow_model = shader/bin/shadow_model.frag.spv
 
 vert_shader:model = shader/bin/model.vert.spv
+vert_shader:model_animated = shader/bin/model_animated.vert.spv
 frag_shader:model = shader/bin/model.frag.spv
 frag_shader:model_emissive = shader/bin/model_emissive.frag.spv
 frag_shader:model_alphatest = shader/bin/model_alphatest.frag.spv

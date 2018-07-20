@@ -315,11 +315,15 @@ namespace mirrage::graphic {
 			push_constant(id, gsl::span<const char>(reinterpret_cast<const char*>(&t), sizeof(T)));
 		}
 
-		void bind_descriptor_set(std::uint32_t firstSet, vk::DescriptorSet set)
+		void bind_descriptor_set(std::uint32_t                  firstSet,
+		                         vk::DescriptorSet              set,
+		                         gsl::span<const std::uint32_t> dynamic_offsets = {})
 		{
-			bind_descriptor_sets(firstSet, {&set, 1});
+			bind_descriptor_sets(firstSet, {&set, 1}, dynamic_offsets);
 		}
-		void bind_descriptor_sets(std::uint32_t firstSet, gsl::span<const vk::DescriptorSet>);
+		void bind_descriptor_sets(std::uint32_t firstSet,
+		                          gsl::span<const vk::DescriptorSet>,
+		                          gsl::span<const std::uint32_t> dynamic_offsets = {});
 
 		template <typename F>
 		void execute(const Command_buffer& buffer, const Framebuffer& fb, F&& f)
@@ -340,22 +344,23 @@ namespace mirrage::graphic {
 		friend class Render_pass_builder;
 
 		using Push_constant_map = std::unordered_map<util::Str_id, vk::PushConstantRange>;
+		using Stages            = std::vector<std::unordered_map<Stage_id, std::size_t>>;
 
-
-		vk::UniqueRenderPass                      _render_pass;
-		std::vector<vk::UniquePipeline>           _pipelines;
-		std::vector<vk::UniquePipelineLayout>     _pipeline_layouts;
-		std::unordered_map<Stage_id, std::size_t> _stages;
-		std::vector<Push_constant_map>            _push_constants;
+		vk::UniqueRenderPass                  _render_pass;
+		std::vector<vk::UniquePipeline>       _pipelines;
+		std::vector<vk::UniquePipelineLayout> _pipeline_layouts;
+		Stages                                _stages;
+		std::vector<Push_constant_map>        _push_constants;
 
 		std::size_t                        _bound_pipeline = 0;
+		std::size_t                        _subpass_index  = 0;
 		util::maybe<const Command_buffer&> _current_command_buffer;
 
-		Render_pass(vk::UniqueRenderPass                      render_pass,
-		            std::vector<vk::UniquePipeline>           pipelines,
-		            std::vector<vk::UniquePipelineLayout>     pipeline_layouts,
-		            std::unordered_map<Stage_id, std::size_t> stages,
-		            std::vector<Push_constant_map>            push_constants);
+		Render_pass(vk::UniqueRenderPass                  render_pass,
+		            std::vector<vk::UniquePipeline>       pipelines,
+		            std::vector<vk::UniquePipelineLayout> pipeline_layouts,
+		            Stages                                stages,
+		            std::vector<Push_constant_map>        push_constants);
 
 		void _pre(const Command_buffer& buffer, const Framebuffer& fb);
 		void _post();

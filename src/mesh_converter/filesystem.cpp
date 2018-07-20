@@ -4,7 +4,9 @@
 
 #ifdef _WIN32
 #include <direct.h>
+#include <io.h>
 #include <windows.h>
+#define access _access_s
 #else
 #include <sys/stat.h>
 #include <unistd.h>
@@ -23,4 +25,7 @@ namespace mirrage {
 		                  "Couldn't create directory \"" << dir << "\": " << int(errno));
 #endif
 	}
+
+	auto exists(const std::string& name) -> bool { return access(name.c_str(), 0) == 0; }
+
 } // namespace mirrage

@@ -5,10 +5,9 @@
 #include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 
-layout(location = 0) in vec3 world_pos;
-layout(location = 1) in vec3 view_pos;
-layout(location = 2) in vec3 normal;
-layout(location = 3) in vec2 tex_coords;
+layout(location = 0) in vec3 view_pos;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 tex_coords;
 
 
 layout(location = 0) out vec4 depth_out;

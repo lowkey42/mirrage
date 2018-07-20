@@ -23,6 +23,7 @@ namespace mirrage::renderer {
 	  , _entity_manager(&ecs)
 	  , _descriptor_set_pool(device().create_descriptor_pool(128,
 	                                                         {vk::DescriptorType::eUniformBuffer,
+	                                                          vk::DescriptorType::eUniformBufferDynamic,
 	                                                          vk::DescriptorType::eCombinedImageSampler,
 	                                                          vk::DescriptorType::eInputAttachment,
 	                                                          vk::DescriptorType::eStorageBuffer,

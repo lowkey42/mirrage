@@ -4,6 +4,7 @@
 #include "meta_system.hpp"
 #include "systems/nim_system.hpp"
 
+#include <mirrage/renderer/animation_comp.hpp>
 #include <mirrage/renderer/light_comp.hpp>
 #include <mirrage/renderer/model_comp.hpp>
 #include <mirrage/renderer/pass/gui_pass.hpp>
@@ -70,6 +71,23 @@ namespace mirrage {
 	  , _window_height(engine.window().height())
 	  , _window_fullscreen(engine.window().fullscreen() != graphic::Fullscreen::no)
 	{
+
+		auto monk = _meta_system.entities().emplace("monk");
+		monk.get<Transform_comp>().process([](auto& transform) {
+			transform.position    = {-8, 0, -0.5f};
+			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
+		});
+		monk.get<renderer::Animation_comp>().process([](auto& anim) { anim.animation("dance"_strid); });
+
+
+		auto chest = _meta_system.entities().emplace("chest");
+		chest.get<Transform_comp>().process([](auto& transform) {
+			transform.position    = {-6, 0, -0.5f};
+			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
+		});
+		chest.get<renderer::Animation_comp>().process([](auto& anim) { anim.animation("close"_strid); });
+
+
 
 		_camera = _meta_system.entities().emplace("camera");
 

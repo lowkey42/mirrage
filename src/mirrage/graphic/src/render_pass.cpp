@@ -396,16 +396,19 @@ namespace mirrage::graphic {
 	{
 		MIRRAGE_INVARIANT(!_created_render_pass, "Multiple calls to Render_pass_builder::build()");
 
-		auto stages = std::unordered_map<Stage_id, std::size_t>();
+		auto stages = std::vector<std::unordered_map<Stage_id, std::size_t>>();
 
 		// construct _create_info
 		auto subpass_descriptions = std::vector<vk::SubpassDescription>();
 		subpass_descriptions.reserve(_subpasses.size());
 		for(auto& s : _subpasses) {
+			auto& subpass_stages = stages.emplace_back();
+			subpass_stages.reserve(s->_stages.size());
+
 			subpass_descriptions.emplace_back(s->build_description());
 
 			for(auto& stage : s->_stages) {
-				stages.emplace(stage.first, stage.second->pipeline_id());
+				subpass_stages.emplace(stage.first, stage.second->pipeline_id());
 			}
 		}
 
@@ -498,15 +501,15 @@ namespace mirrage::graphic {
 	Render_pass& Render_pass::operator=(Render_pass&&) = default;
 	Render_pass::~Render_pass()                        = default;
 
-	Render_pass::Render_pass(vk::UniqueRenderPass                      render_pass,
-	                         std::vector<vk::UniquePipeline>           pipelines,
-	                         std::vector<vk::UniquePipelineLayout>     pipeline_layouts,
-	                         std::unordered_map<Stage_id, std::size_t> stages,
-	                         std::vector<Push_constant_map>            push_constants)
+	Render_pass::Render_pass(vk::UniqueRenderPass                  render_pass,
+	                         std::vector<vk::UniquePipeline>       pipelines,
+	                         std::vector<vk::UniquePipelineLayout> pipeline_layouts,
+	                         Stages                                stages,
+	                         std::vector<Push_constant_map>        push_constants)
 	  : _render_pass(std::move(render_pass))
 	  , _pipelines(std::move(pipelines))
 	  , _pipeline_layouts(std::move(pipeline_layouts))
-	  , _stages(stages)
+	  , _stages(std::move(stages))
 	  , _push_constants(std::move(push_constants))
 	{
 	}
@@ -517,6 +520,11 @@ namespace mirrage::graphic {
 		auto& cmb =
 		        _current_command_buffer.get_or_throw("next_pass can only be called inside an execute block!");
 
+		_subpass_index++;
+		MIRRAGE_INVARIANT(_subpass_index < _stages.size(),
+		                  "Render_pass::next_subpass() called more often than there are subpasses: "
+		                          << _subpass_index << " vs " << _stages.size());
+
 		cmb.nextSubpass(inline_contents ? vk::SubpassContents::eInline
 		                                : vk::SubpassContents::eSecondaryCommandBuffers);
 	}
@@ -526,8 +534,9 @@ namespace mirrage::graphic {
 		auto& cmb =
 		        _current_command_buffer.get_or_throw("set_stage can only be called inside an execute block!");
 
-		auto pipeline_idx = _stages.find(stage_id);
-		MIRRAGE_INVARIANT(pipeline_idx != _stages.end(), "Unknown render stage '" << stage_id.str() << "'!");
+		auto& stages       = _stages.at(_subpass_index);
+		auto  pipeline_idx = stages.find(stage_id);
+		MIRRAGE_INVARIANT(pipeline_idx != stages.end(), "Unknown render stage '" << stage_id.str() << "'!");
 
 		_bound_pipeline = pipeline_idx->second;
 		cmb.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipelines.at(pipeline_idx->second));
@@ -552,7 +561,9 @@ namespace mirrage::graphic {
 		                  vk::ArrayProxy<const char>(gsl::narrow<std::uint32_t>(data.size()), data.data()));
 	}
 
-	void Render_pass::bind_descriptor_sets(std::uint32_t first_set, gsl::span<const vk::DescriptorSet> sets)
+	void Render_pass::bind_descriptor_sets(std::uint32_t                      first_set,
+	                                       gsl::span<const vk::DescriptorSet> sets,
+	                                       gsl::span<const std::uint32_t>     dynamic_offsets)
 	{
 		auto& cmb = _current_command_buffer.get_or_throw(
 		        "bind_descriptor_sets can only be called inside an execute block!");
@@ -562,8 +573,8 @@ namespace mirrage::graphic {
 		                       first_set,
 		                       gsl::narrow<std::uint32_t>(sets.size()),
 		                       sets.data(),
-		                       0,
-		                       nullptr);
+		                       gsl::narrow<std::uint32_t>(dynamic_offsets.size()),
+		                       dynamic_offsets.empty() ? nullptr : dynamic_offsets.data());
 	}
 
 	void Render_pass::_pre(const Command_buffer& cb, const Framebuffer& fb)
@@ -571,6 +582,7 @@ namespace mirrage::graphic {
 		MIRRAGE_INVARIANT(_current_command_buffer.is_nothing(), "execute blocks can not be nested!");
 		_current_command_buffer = cb;
 		_bound_pipeline         = 0;
+		_subpass_index          = 0;
 
 		vk::RenderPassBeginInfo rp_info = {*_render_pass, *fb._fb, fb._scissor};
 		rp_info.setClearValueCount(gsl::narrow<std::uint32_t>(fb._clear_values.size()));
