@@ -738,6 +738,7 @@ namespace mirrage {
 			                                                   "sad"_strid,
 			                                                   "sleep"_strid,
 			                                                   "walk"_strid}};
+			(void) animations_ids;
 
 			auto curr_animation_id = 0; // TODO: get
 
@@ -747,6 +748,8 @@ namespace mirrage {
 			                                 curr_animation_id,
 			                                 14,
 			                                 nk_vec2(100.f, 200));
+
+			(void) new_animation_id;
 
 			// TODO: set
 
