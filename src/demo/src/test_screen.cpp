@@ -338,6 +338,7 @@ namespace mirrage {
 		if(_show_ui) {
 			_draw_settings_window();
 			_draw_histogram_window();
+			_draw_animation_window();
 
 			if(_show_profiler) {
 				_meta_system.renderer().profiler().enable();
@@ -713,6 +714,51 @@ namespace mirrage {
 #endif
 	}
 
+	void Test_screen::_draw_animation_window()
+	{
+		auto ctx = _gui.ctx();
+		if(nk_begin_titled(ctx,
+		                   "Animation",
+		                   "Animation",
+		                   _gui.centered_right(300, 500),
+		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
+			// TODO
+
+			nk_layout_row_dynamic(ctx, 20, 2);
+
+			nk_label(ctx, "Preset", NK_TEXT_LEFT);
+			auto animations_strs = std::array<const char*, 9>{
+			        {"[None]", "Attack", "Dance", "Die", "Flee", "Idle", "Sad", "Sleep", "Walk"}};
+			auto animations_ids = std::array<util::Str_id, 9>{{""_strid,
+			                                                   "attack"_strid,
+			                                                   "dance"_strid,
+			                                                   "die"_strid,
+			                                                   "flee"_strid,
+			                                                   "idle"_strid,
+			                                                   "sad"_strid,
+			                                                   "sleep"_strid,
+			                                                   "walk"_strid}};
+
+			auto curr_animation_id = 0; // TODO: get
+
+			auto new_animation_id = nk_combo(ctx,
+			                                 animations_strs.data(),
+			                                 animations_strs.size(),
+			                                 curr_animation_id,
+			                                 14,
+			                                 nk_vec2(100.f, 200));
+
+			// TODO: set
+
+			// TODO: rest only if there is an animation playing
+			// TODO: time slider
+			//nk_slide_float()
+
+			// TODO: play/pause/reverse buttons
+		}
+
+		nk_end(ctx);
+	}
 
 	void Test_screen::_update_sun_position()
 	{

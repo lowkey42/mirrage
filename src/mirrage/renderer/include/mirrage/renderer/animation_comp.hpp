@@ -45,6 +45,9 @@ namespace mirrage::renderer {
 
 		auto animation() { return _current_animation; }
 
+		auto time() const { return _time; }
+		void time(float time) { _time = time; }
+
 		// TODO: pause, stop, speed, ...
 
 	  private:
