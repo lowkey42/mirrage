@@ -36,5 +36,8 @@ namespace mirrage::renderer {
 
 		util::iter_range<std::vector<Geometry>::iterator> _geometry_range;
 		util::iter_range<std::vector<Geometry>::iterator> _rigged_geometry_range;
+
+		std::unordered_map<ecs::Entity_handle, std::uint32_t> _animation_uniform_offsets;
+		std::unordered_set<ecs::Entity_handle>                _dead_shared_poses;
 	};
 } // namespace mirrage::renderer

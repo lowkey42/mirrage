@@ -11,14 +11,24 @@
 
 namespace mirrage::renderer {
 
-	class Skeleton_comp : public ecs::Component<Skeleton_comp> {
+	class Pose_comp : public ecs::Component<Pose_comp> {
 	  public:
-		static constexpr const char* name() { return "Skeleton"; }
+		static constexpr const char* name() { return "Pose"; }
 
-		Skeleton_comp() = default;
-		Skeleton_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
+		Pose_comp() = default;
+		Pose_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
 
 		std::vector<glm::mat4> bone_transforms;
+	};
+
+	class Shared_pose_comp : public ecs::Component<Shared_pose_comp> {
+	  public:
+		static constexpr const char* name() { return "Shared_pose"; }
+
+		Shared_pose_comp() = default;
+		Shared_pose_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
+
+		ecs::Entity_handle pose_owner;
 	};
 
 	class Animation_comp : public ecs::Component<Animation_comp> {
@@ -48,7 +58,8 @@ namespace mirrage::renderer {
 
 		std::vector<Animation_key> _animation_keys;
 
-		float _time = 0.f;
+		float _time  = 0.f;
+		bool  _dirty = false;
 	};
 
 } // namespace mirrage::renderer

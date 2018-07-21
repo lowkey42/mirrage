@@ -19,7 +19,7 @@ namespace mirrage::renderer {
 		Deferred_renderer&   _renderer;
 		ecs::Entity_manager& _ecs;
 
-		void _update_animation(Animation_comp& anim, Skeleton_comp&);
+		void _update_animation(Animation_comp& anim, Pose_comp&);
 	};
 
 	class Animation_pass_factory : public Render_pass_factory {

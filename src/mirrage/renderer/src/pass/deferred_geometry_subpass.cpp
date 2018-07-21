@@ -27,7 +27,8 @@ namespace mirrage::renderer {
 	  , _animation_uniforms(r.device(), initial_animation_capacity, vk::BufferUsageFlagBits::eUniformBuffer)
 	{
 		entities.register_component_type<Model_comp>();
-		entities.register_component_type<Skeleton_comp>();
+		entities.register_component_type<Pose_comp>();
+		entities.register_component_type<Shared_pose_comp>();
 
 		auto buffers = _animation_uniforms.buffer_count();
 
@@ -132,19 +133,45 @@ namespace mirrage::renderer {
 		_rigged_geometry_range = util::range(rigged_begin, geo_range.end());
 
 
-		// update upload skeleton pose
+		// upload skeleton pose
+		_animation_uniform_offsets.clear();
+		_dead_shared_poses.clear();
 		auto required_size = std::int32_t(0);
 		auto alignment     = std::int32_t(
                 _renderer.device().physical_device_properties().limits.minUniformBufferOffsetAlignment);
 
+		auto aligned_byte_size = [&](auto bone_count) {
+			auto size = bone_count * std::int32_t(sizeof(glm::mat4));
+			return size < alignment ? alignment : size + (alignment - size % alignment);
+		};
+
 		for(auto& geo : _rigged_geometry_range) {
-			geo.animation_buffer_offset = gsl::narrow<std::uint32_t>(required_size);
+			auto entity = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
+			if(!entity.has<Pose_comp>())
+				continue;
 
-			auto size = geo.model->bone_count() * std::int32_t(sizeof(glm::mat4));
+			auto [_, success] = _animation_uniform_offsets.try_emplace(
+			        geo.entity, gsl::narrow<std::uint32_t>(required_size));
+			(void) _;
 
-			// align
-			size = size < alignment ? alignment : size + (alignment - size % alignment);
-			required_size += size;
+			if(success) {
+				required_size += aligned_byte_size(geo.model->bone_count());
+			}
+		}
+
+		for(auto& geo : _rigged_geometry_range) {
+			auto entity = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
+			entity.get<Shared_pose_comp>().process([&](auto& sp) {
+				auto pose_offset = util::find_maybe(_animation_uniform_offsets, sp.pose_owner);
+				if(pose_offset.is_some()) {
+					_animation_uniform_offsets.emplace(geo.entity, pose_offset.get_or_throw());
+				} else {
+					// TODO: upload default matrices instead
+					_animation_uniform_offsets.emplace(geo.entity, gsl::narrow<std::uint32_t>(required_size));
+					required_size += aligned_byte_size(geo.model->bone_count());
+					_dead_shared_poses.emplace(geo.entity);
+				}
+			});
 		}
 
 		if(_animation_uniforms.resize(required_size)) {
@@ -165,19 +192,19 @@ namespace mirrage::renderer {
 
 		_animation_uniforms.update_objects<glm::mat4>(0, [&](auto uniform_matrices) {
 			for(auto& geo : _rigged_geometry_range) {
-				auto entity   = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
-				auto skeleton = entity.get<Skeleton_comp>();
+				auto entity      = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
+				auto pose        = entity.get<Pose_comp>();
+				auto shared_pose = entity.get<Shared_pose_comp>();
 
-				auto offset       = geo.animation_buffer_offset / std::int32_t(sizeof(glm::mat4));
+				auto offset = _animation_uniform_offsets.at(geo.entity) / std::int32_t(sizeof(glm::mat4));
 				auto geo_matrices = uniform_matrices.subspan(offset, geo.model->bone_count());
 
-				if(skeleton.is_some()
-				   && skeleton.get_or_throw().bone_transforms.size()
-				              == std::size_t(geo.model->bone_count())) {
-					auto& sm = skeleton.get_or_throw().bone_transforms;
+				if(pose.is_some()
+				   && pose.get_or_throw().bone_transforms.size() == std::size_t(geo.model->bone_count())) {
+					auto& sm = pose.get_or_throw().bone_transforms;
 					std::memcpy(geo_matrices.data(), sm.data(), sm.size() * sizeof(glm::mat4));
 
-				} else {
+				} else if(shared_pose.is_nothing() || _dead_shared_poses.count(geo.entity)) {
 					std::fill(geo_matrices.begin(), geo_matrices.end(), glm::mat4(1));
 				}
 			}
@@ -255,7 +282,7 @@ namespace mirrage::renderer {
 			render_pass.bind_descriptor_set(
 			        2,
 			        *_animation_desc_sets.at(std::size_t(_animation_uniforms.read_buffer_index())),
-			        {&geo.animation_buffer_offset, 1u});
+			        {&_animation_uniform_offsets.at(geo.entity), 1u});
 
 			frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
 		}

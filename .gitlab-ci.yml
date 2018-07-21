@@ -26,7 +26,7 @@ build_gcc:
       - build/bin
     expire_in: 1 day
   cache:
-    key: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_SLUG}"
+    key: "${CI_COMMIT_REF_SLUG}"
     paths:
     - build
 
@@ -50,7 +50,7 @@ build_clang:
       - build/bin
     expire_in: 1 week
   cache:
-    key: "${CI_PIPELINE_ID}-${CI_COMMIT_REF_SLUG}"
+    key: "${CI_COMMIT_REF_SLUG}"
     paths:
     - build
 

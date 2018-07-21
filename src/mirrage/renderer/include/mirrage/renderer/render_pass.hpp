@@ -42,8 +42,6 @@ namespace mirrage::renderer {
 		const Model*       model;
 		std::uint32_t      sub_mesh;
 		std::uint32_t      culling_mask;
-		std::uint32_t      animation_buffer_offset;
-		// TODO: animation data
 
 		Geometry() = default;
 		Geometry(ecs::Entity_handle entity,

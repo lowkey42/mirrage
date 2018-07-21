@@ -23,8 +23,6 @@ namespace mirrage::renderer {
 
 		auto is_visible(const Culling_viewer& viewer, glm::vec3 position, float radius)
 		{
-			return true; // FIXME: DEBUG ONLY!!! DON'T COMMIT
-			             /*
 			const auto p = glm::vec4(position, 1.f);
 
 			auto result = true;
@@ -32,7 +30,6 @@ namespace mirrage::renderer {
 				result = result & (glm::dot(plane, p) > -radius);
 
 			return result;
-			*/
 		}
 
 		auto norm_plane(glm::vec4 p) { return p / glm::length(glm::vec3(p.x, p.y, p.z)); }
