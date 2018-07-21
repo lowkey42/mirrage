@@ -32,6 +32,8 @@ namespace mirrage::renderer {
 	*
 	* |        BONE REF NAME         |		util::Str_id (empty if invalid)
 	* * BONE_COUNT
+	*
+	* |   M   |   B   |   F   |  F   |
 	*/
 	class Skeleton {
 	  public:
@@ -67,91 +69,90 @@ namespace mirrage::renderer {
 		std::unordered_map<util::Str_id, std::size_t> _bones_by_name;
 	};
 
-
 	namespace detail {
-		template <class T>
-		struct Timed {
-			T     value;
-			float time;
+		enum class Behaviour { clamp, linear, repeat };
+	}
 
-			Timed() = default;
-			template <class... Args>
-			Timed(float time, Args&&... args) : value(std::forward<Args>(args)...), time(time)
-			{
-			}
-		};
-
-		enum class Behaviour { node_transform, nearest, extrapolate, repeat };
-
-		struct Bone_animation {
-			std::vector<Timed<glm::vec3>> positions;
-			std::vector<Timed<glm::vec3>> scales;
-			std::vector<Timed<glm::quat>> rotations;
-			Behaviour                     pre_behaviour  = Behaviour::node_transform;
-			Behaviour                     post_behaviour = Behaviour::node_transform;
-		};
-
-		struct Animation_data {
-			float                               duration;
-			std::vector<detail::Bone_animation> bones;
-		};
-
-		template <class Reader>
-		auto load(sf2::Deserializer<Reader>& reader, Timed<glm::vec3>& v)
-		{
-			reader.read_virtual(sf2::vmember("time", v.time),
-			                    sf2::vmember("x", v.value.x),
-			                    sf2::vmember("y", v.value.y),
-			                    sf2::vmember("z", v.value.z));
-		}
-		template <class Writer>
-		auto save(sf2::Serializer<Writer>& writer, const Timed<glm::vec3>& v)
-		{
-			writer.write_virtual(sf2::vmember("time", v.time),
-			                     sf2::vmember("x", v.value.x),
-			                     sf2::vmember("y", v.value.y),
-			                     sf2::vmember("z", v.value.z));
-		}
-		template <class Reader>
-		auto load(sf2::Deserializer<Reader>& reader, Timed<glm::quat>& v)
-		{
-			reader.read_virtual(sf2::vmember("time", v.time),
-			                    sf2::vmember("x", v.value.x),
-			                    sf2::vmember("y", v.value.y),
-			                    sf2::vmember("z", v.value.z),
-			                    sf2::vmember("w", v.value.w));
-		}
-		template <class Writer>
-		auto save(sf2::Serializer<Writer>& writer, const Timed<glm::quat>& v)
-		{
-			writer.write_virtual(sf2::vmember("time", v.time),
-			                     sf2::vmember("x", v.value.x),
-			                     sf2::vmember("y", v.value.y),
-			                     sf2::vmember("z", v.value.z),
-			                     sf2::vmember("w", v.value.w));
-		}
-
-		sf2_enumDef(Behaviour, node_transform, nearest, extrapolate, repeat);
-		sf2_structDef(Bone_animation, pre_behaviour, post_behaviour, positions, scales, rotations);
-		sf2_structDef(Animation_data, duration, bones);
-
-	} // namespace detail
 
 	struct Animation_key {
 		std::int32_t position_key    = 0;
-		std::int32_t orientation_key = 0;
 		std::int32_t scale_key       = 0;
+		std::int32_t orientation_key = 0;
 	};
 
+	/*
+	* File format:
+	* |   0   |   1   |   2   |  3   |
+	* |   M   |   A   |   F   |  F   |
+	* |    VERSION    |    RESERVED  |
+	* |            DURATION          |
+	* |           BONE COUNT         |
+	* |           TIME COUNT         |
+	* |         POSITION COUNT       |
+	* |          SCALE COUNT         |
+	* |       ORIENTATION COUNT      |
+	* |            TIMES             |
+	* * TIME COUNT
+	*
+	* |         POSITION X           |
+	* |         POSITION Y           |
+	* |         POSITION Z           |
+	* * POSITION COUNT
+	*
+	* |           SCALE X            |
+	* |           SCALE Y            |
+	* |           SCALE Z            |
+	* * SCALE COUNT
+	*
+	* |        ORIENTATION X         |
+	* |        ORIENTATION Y         |
+	* |        ORIENTATION Z         |
+	* |        ORIENTATION W         |
+	* * ORIENTATION COUNT
+	*
+	* |PRE BEHAVIOUR | POST BEHAVIOUR|
+	* |       POSITION COUNT         |
+	* |  POSITION TIME START INDEX   |
+	* |     POSITION START INDEX     |
+	* |         SCALE COUNT          |
+	* |    SCALE TIME START INDEX    |
+	* |      SCALE START INDEX       |
+	* |      ORIENTATION COUNT       |
+	* | ORIENTATION TIME START INDEX |
+	* |   ORIENTATION START INDEX    |
+	* * BONE COUNT
+	*
+	* |   M   |   A   |   F   |  F   |
+	*/
 	class Animation {
 	  public:
 		Animation(asset::istream&);
 
 		auto bone_transform(Bone_id, float time, Animation_key& key) const -> util::maybe<glm::mat4>;
 
+		auto duration() const { return _duration; }
+
 	  private:
-		std::vector<detail::Bone_animation> _bones;
-		float                               _duration;
+		struct Bone_animation {
+			detail::Behaviour pre_behaviour  = detail::Behaviour::clamp;
+			detail::Behaviour post_behaviour = detail::Behaviour::clamp;
+
+			gsl::span<float>     position_times;
+			gsl::span<glm::vec3> positions;
+			gsl::span<float>     scale_times;
+			gsl::span<glm::vec3> scales;
+			gsl::span<float>     orientation_times;
+			gsl::span<glm::quat> orientations;
+		};
+
+
+		std::vector<float>     _times;
+		std::vector<glm::vec3> _positions;
+		std::vector<glm::vec3> _scales;
+		std::vector<glm::quat> _orientations;
+
+		std::vector<Bone_animation> _bones;
+		float                       _duration;
 	};
 
 } // namespace mirrage::renderer

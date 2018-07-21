@@ -33,6 +33,8 @@ namespace mirrage::renderer {
 		void animation(util::Str_id); ///< play preloaded; for small or frequently used animations
 		void animation(asset::AID);   ///< load + play; for large one-time animations
 
+		auto animation() { return _current_animation; }
+
 		// TODO: pause, stop, speed, ...
 
 	  private:
