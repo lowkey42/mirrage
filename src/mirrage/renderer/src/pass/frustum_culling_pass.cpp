@@ -92,13 +92,18 @@ namespace mirrage::renderer {
 					const auto sub_sphere_radius = sub_radius * scale;
 
 					auto mask = std::uint32_t(0);
-					for(auto i = 0u; i < viewers.size(); i++) {
-						auto bit = std::uint32_t(1) << i;
+					if(!model.model()->rigged()) {
+						for(auto i = 0u; i < viewers.size(); i++) {
+							auto bit = std::uint32_t(1) << i;
 
-						if((main_mask & bit) != 0
-						   && is_visible(viewers[i], sub_sphere_center, sub_sphere_radius)) {
-							mask |= bit;
+							if((main_mask & bit) != 0
+							   && is_visible(viewers[i], sub_sphere_center, sub_sphere_radius)) {
+								mask |= bit;
+							}
 						}
+
+					} else {
+						mask = main_mask;
 					}
 
 					if(mask != 0) {

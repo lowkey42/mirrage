@@ -40,15 +40,30 @@ namespace mirrage::renderer {
 		Animation_comp() = default;
 		Animation_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
 
-		void animation(util::Str_id); ///< play preloaded; for small or frequently used animations
-		void animation(asset::AID);   ///< load + play; for large one-time animations
+		/// play preloaded; for small or frequently used animations
+		void animation(util::Str_id, bool loop = true);
+		/// load + play; for large one-time animations
+		void animation(asset::Ptr<Animation>, bool loop = true);
 
 		auto animation() { return _current_animation; }
+		auto animation_id() const { return _current_animation_id; }
 
 		auto time() const { return _time; }
 		void time(float time) { _time = time; }
 
-		// TODO: pause, stop, speed, ...
+		auto speed() const { return _speed; }
+		void speed(float s);
+
+		auto reversed() const { return _reversed; }
+		void reverse(bool r = true) { _reversed = r; }
+
+		auto paused() const { return _paused; }
+		void pause(bool p = true) { _paused = p; }
+
+		auto looped() const { return _looped; }
+		void loop(bool l = true) { _looped = l; }
+
+		void step_time(util::Time delta_time);
 
 	  private:
 		friend class Animation_pass;
@@ -58,11 +73,16 @@ namespace mirrage::renderer {
 
 		std::unordered_map<util::Str_id, asset::Ptr<Animation>> _preloaded_animations;
 		asset::Ptr<Animation>                                   _current_animation;
+		util::maybe<util::Str_id>                               _current_animation_id;
 
 		std::vector<Animation_key> _animation_keys;
 
-		float _time  = 0.f;
-		bool  _dirty = false;
+		float _time     = 0.f;
+		float _speed    = 1.f;
+		bool  _reversed = false;
+		bool  _paused   = false;
+		bool  _looped   = true;
+		bool  _dirty    = false;
 	};
 
 } // namespace mirrage::renderer

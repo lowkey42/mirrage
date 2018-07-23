@@ -23,10 +23,7 @@ namespace mirrage::renderer {
 	{
 		for(auto& anim : _ecs.list<Animation_comp>()) {
 			// TODO: transitions and stuff
-			if(anim.animation()) {
-				anim._time  = std::fmod(anim._time + time.value(), anim.animation()->duration());
-				anim._dirty = true;
-			}
+			anim.step_time(time);
 		}
 	}
 

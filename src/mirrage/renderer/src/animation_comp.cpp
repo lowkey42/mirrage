@@ -28,17 +28,63 @@ namespace mirrage::renderer {
 		                    sf2::vmember("animations", preload));
 	}
 
-	void Animation_comp::animation(util::Str_id id)
+	void Animation_comp::animation(util::Str_id id, bool loop)
 	{
-		util::find_maybe(_preloaded_animations, id).process([&](auto& new_anim) {
-			if(new_anim != _current_animation) {
-				_current_animation = new_anim;
+		if(auto anim = util::find_maybe(_preloaded_animations, id); anim.is_some()) {
+			_current_animation_id = id;
+			animation(anim.get_or_throw(), loop);
+
+		} else if(_current_animation) {
+			animation(asset::Ptr<Animation>{});
+		}
+	}
+	void Animation_comp::animation(asset::Ptr<Animation> anim, bool loop)
+	{
+		_looped = loop;
+
+		if(anim) {
+			if(anim != _current_animation) {
+				_current_animation = anim;
 				_time              = 0.f;
+				_speed             = 1.f;
+				_reversed          = false;
+				_paused            = false;
+				_animation_keys.clear();
 			}
-		});
+
+		} else if(_current_animation) {
+			_current_animation_id = util::nothing;
+			_current_animation    = {};
+			_time                 = 0.f;
+			_animation_keys.clear();
+		}
 	}
-	void Animation_comp::animation(asset::AID)
+
+	void Animation_comp::speed(float s)
 	{
-		// TODO
+		_speed = std::abs(s);
+		_dirty = true;
 	}
+
+	void Animation_comp::step_time(util::Time delta_time)
+	{
+		if(_paused || !_current_animation)
+			return;
+
+		auto step = delta_time.value() * _speed * (_reversed ? -1.f : 1.f);
+
+		_time += step;
+
+		auto duration = _current_animation->duration();
+		if(_looped) {
+			_time = std::fmod(_time, duration);
+			if(_time < 0.f)
+				_time = duration + _time;
+		} else {
+			_time = glm::clamp(_time, 0.f, duration);
+		}
+
+		_dirty = true;
+	}
+
 } // namespace mirrage::renderer

@@ -72,12 +72,13 @@ namespace mirrage {
 	  , _window_fullscreen(engine.window().fullscreen() != graphic::Fullscreen::no)
 	{
 
-		auto monk = _meta_system.entities().emplace("monk");
-		monk.get<Transform_comp>().process([](auto& transform) {
+		_animation_test = _meta_system.entities().emplace("monk");
+		_animation_test.get<Transform_comp>().process([](auto& transform) {
 			transform.position    = {-8, 0, -0.5f};
 			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
 		});
-		monk.get<renderer::Animation_comp>().process([](auto& anim) { anim.animation("dance"_strid); });
+		_animation_test.get<renderer::Animation_comp>().process(
+		        [](auto& anim) { anim.animation("dance"_strid); });
 
 
 		auto chest = _meta_system.entities().emplace("chest");
@@ -716,17 +717,22 @@ namespace mirrage {
 
 	void Test_screen::_draw_animation_window()
 	{
+		auto anim_mb = _animation_test.get<renderer::Animation_comp>();
+		if(anim_mb.is_nothing())
+			return;
+
+		auto& anim = anim_mb.get_or_throw();
+
 		auto ctx = _gui.ctx();
 		if(nk_begin_titled(ctx,
 		                   "Animation",
 		                   "Animation",
 		                   _gui.centered_right(300, 500),
 		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
-			// TODO
 
-			nk_layout_row_dynamic(ctx, 20, 2);
+			nk_layout_row_dynamic(ctx, 20, 1);
 
-			nk_label(ctx, "Preset", NK_TEXT_LEFT);
+			nk_label(ctx, "Animation", NK_TEXT_LEFT);
 			auto animations_strs = std::array<const char*, 9>{
 			        {"[None]", "Attack", "Dance", "Die", "Flee", "Idle", "Sad", "Sleep", "Walk"}};
 			auto animations_ids = std::array<util::Str_id, 9>{{""_strid,
@@ -740,24 +746,54 @@ namespace mirrage {
 			                                                   "walk"_strid}};
 			(void) animations_ids;
 
-			auto curr_animation_id = 0; // TODO: get
+			auto curr_animation_id = anim.animation_id().get_or(""_strid);
+			auto curr_idx =
+			        std::distance(animations_ids.begin(),
+			                      std::find(animations_ids.begin(), animations_ids.end(), curr_animation_id));
 
-			auto new_animation_id = nk_combo(ctx,
-			                                 animations_strs.data(),
-			                                 animations_strs.size(),
-			                                 curr_animation_id,
-			                                 14,
-			                                 nk_vec2(100.f, 200));
+			auto new_idx = nk_combo(ctx,
+			                        animations_strs.data(),
+			                        animations_strs.size(),
+			                        int(curr_idx),
+			                        14,
+			                        nk_vec2(100.f, 200));
 
-			(void) new_animation_id;
+			if(new_idx != curr_idx) {
+				anim.animation(animations_ids.at(std::size_t(new_idx)));
+			}
 
-			// TODO: set
+			if(auto curr_animation = anim.animation(); curr_animation) {
+				auto duration = curr_animation->duration();
 
-			// TODO: rest only if there is an animation playing
-			// TODO: time slider
-			//nk_slide_float()
+				nk_label(ctx, "Time", NK_TEXT_LEFT);
+				auto new_time = nk_slide_float(ctx, 0.f, anim.time(), duration, 0.01f);
+				if(std::abs(new_time - anim.time()) > 0.00001f)
+					anim.time(new_time);
 
-			// TODO: play/pause/reverse buttons
+				nk_label(ctx,
+				         (util::to_string(new_time) + " / " + util::to_string(duration)).c_str(),
+				         NK_TEXT_LEFT);
+
+				auto speed = anim.speed();
+				nk_property_float(ctx, "Speed", 0.f, &speed, 5.f, 0.01f, 0.2f);
+				anim.speed(speed);
+
+
+				if(anim.paused())
+					anim.pause(!nk_button_label(ctx, "Continue"));
+				else
+					anim.pause(nk_button_label(ctx, "Pause"));
+
+				if(anim.reversed())
+					anim.reverse(!nk_button_label(ctx, "Reverse (->)"));
+				else
+					anim.reverse(nk_button_label(ctx, "Reverse (<-)"));
+
+				if(anim.looped())
+					anim.loop(!nk_button_label(ctx, "Once"));
+				else
+					anim.loop(nk_button_label(ctx, "Repeat"));
+			}
 		}
 
 		nk_end(ctx);
