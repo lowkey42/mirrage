@@ -89,6 +89,12 @@ namespace mirrage {
 		chest.get<renderer::Animation_comp>().process([](auto& anim) { anim.animation("close"_strid); });
 
 
+		auto rotation_test = _meta_system.entities().emplace("rotation_test");
+		rotation_test.get<Transform_comp>().process([](auto& transform) {
+			transform.position = {-4, 0, -0.5f};
+		});
+
+
 
 		_camera = _meta_system.entities().emplace("camera");
 

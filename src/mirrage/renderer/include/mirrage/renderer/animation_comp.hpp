@@ -41,9 +41,9 @@ namespace mirrage::renderer {
 		Animation_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
 
 		/// play preloaded; for small or frequently used animations
-		void animation(util::Str_id, bool loop = true);
+		void animation(util::Str_id, bool loop = true, bool preserve_state = false);
 		/// load + play; for large one-time animations
-		void animation(asset::Ptr<Animation>, bool loop = true);
+		void animation(asset::Ptr<Animation>, bool loop = true, bool preserve_state = false);
 
 		auto animation() { return _current_animation; }
 		auto animation_id() const { return _current_animation_id; }

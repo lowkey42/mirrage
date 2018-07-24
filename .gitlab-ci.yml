@@ -18,9 +18,6 @@ build_gcc:
     - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
     - cmake --build . --target test
-    - wget -N https://github.com/lowkey42/mirrage/releases/download/v0.2/model_data.tar.xz || true
-    - cd bin/bin
-    - tar xf ../../model_data.tar.xz
   artifacts:
     paths:
       - build/bin

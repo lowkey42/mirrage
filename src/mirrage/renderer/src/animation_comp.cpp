@@ -4,10 +4,18 @@ namespace mirrage::renderer {
 
 	void load_component(ecs::Deserializer& state, Animation_comp& a)
 	{
-		auto skeleton = std::string();
-		auto preload  = std::unordered_map<std::string, std::string>();
+		auto skeleton          = std::string();
+		auto preload           = std::unordered_map<std::string, std::string>();
+		auto default_animation = a._current_animation_id.get_or(""_strid).str();
 
-		state.read_virtual(sf2::vmember("skeleton", skeleton), sf2::vmember("animations", preload));
+		state.read_virtual(sf2::vmember("skeleton", skeleton),
+		                   sf2::vmember("animations", preload),
+		                   sf2::vmember("default_animation", default_animation),
+		                   sf2::vmember("time", a._time),
+		                   sf2::vmember("speed", a._speed),
+		                   sf2::vmember("reversed", a._reversed),
+		                   sf2::vmember("paused", a._paused),
+		                   sf2::vmember("default_looped", a._looped));
 
 		a._skeleton_id = skeleton;
 		a._skeleton    = state.assets.load<Skeleton>(skeleton);
@@ -16,6 +24,8 @@ namespace mirrage::renderer {
 		for(auto&& [key, aid] : preload) {
 			a._preloaded_animations.emplace(util::Str_id(key), state.assets.load<Animation>(aid));
 		}
+
+		a.animation(util::Str_id(default_animation), a._looped, true);
 	}
 	void save_component(ecs::Serializer& state, const Animation_comp& a)
 	{
@@ -24,32 +34,42 @@ namespace mirrage::renderer {
 			preload.emplace(key.str(), anim.aid().str());
 		}
 
+		auto default_animation = a._current_animation_id.get_or(""_strid).str();
+
 		state.write_virtual(sf2::vmember("skeleton", a._skeleton_id.str()),
-		                    sf2::vmember("animations", preload));
+		                    sf2::vmember("animations", preload),
+		                    sf2::vmember("default_animation", default_animation),
+		                    sf2::vmember("time", a._time),
+		                    sf2::vmember("speed", a._speed),
+		                    sf2::vmember("reversed", a._reversed),
+		                    sf2::vmember("paused", a._paused),
+		                    sf2::vmember("default_looped", a._looped));
 	}
 
-	void Animation_comp::animation(util::Str_id id, bool loop)
+	void Animation_comp::animation(util::Str_id id, bool loop, bool preserve_state)
 	{
 		if(auto anim = util::find_maybe(_preloaded_animations, id); anim.is_some()) {
 			_current_animation_id = id;
-			animation(anim.get_or_throw(), loop);
+			animation(anim.get_or_throw(), loop, preserve_state);
 
 		} else if(_current_animation) {
-			animation(asset::Ptr<Animation>{});
+			animation(asset::Ptr<Animation>{}, preserve_state);
 		}
 	}
-	void Animation_comp::animation(asset::Ptr<Animation> anim, bool loop)
+	void Animation_comp::animation(asset::Ptr<Animation> anim, bool loop, bool preserve_state)
 	{
 		_looped = loop;
 
 		if(anim) {
 			if(anim != _current_animation) {
 				_current_animation = anim;
-				_time              = 0.f;
-				_speed             = 1.f;
-				_reversed          = false;
-				_paused            = false;
-				_animation_keys.clear();
+				if(!preserve_state) {
+					_time     = 0.f;
+					_speed    = 1.f;
+					_reversed = false;
+					_paused   = false;
+					_animation_keys.clear();
+				}
 			}
 
 		} else if(_current_animation) {
