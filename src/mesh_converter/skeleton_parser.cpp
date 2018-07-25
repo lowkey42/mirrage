@@ -16,18 +16,16 @@
 
 namespace mirrage {
 
-	Bone_data::Bone_data(const aiNode& node,
-	                     glm::mat4     node_transform,
-	                     glm::mat4     local_node_transform,
-	                     int           idx,
-	                     int           parent_idx)
+	Bone_data::Bone_data(const aiNode&            node,
+	                     renderer::Bone_transform local_node_transform,
+	                     int                      idx,
+	                     int                      parent_idx)
 	  : assimp_node(&node)
 	  , assimp_bone(nullptr)
 	  , name(node.mName.C_Str())
 	  , idx(idx)
 	  , parent_name(node.mParent ? node.mParent->mName.C_Str() : "")
 	  , parent_idx(parent_idx)
-	  , node_transform(node_transform)
 	  , local_node_transform(local_node_transform)
 	{
 	}
@@ -40,19 +38,18 @@ namespace mirrage {
 	{
 		auto skeleton = Skeleton_data{};
 		// first pass over the entire scene graph and add each node as a possible bone
-		auto map_node =
-		        [&](const aiNode* node, auto parent_transform, auto parent_idx, auto&& recurse) -> void {
+		auto map_node = [&](const aiNode* node, auto parent_idx, auto&& recurse) -> void {
 			auto idx = skeleton.bones.size();
 			skeleton.bones_by_name.emplace(node->mName.C_Str(), idx);
 
-			auto transform = parent_transform * to_glm(node->mTransformation);
-			skeleton.bones.emplace_back(*node, transform, to_glm(node->mTransformation), idx, parent_idx);
+			skeleton.bones.emplace_back(
+			        *node, renderer::to_bone_transform(to_glm(node->mTransformation)), idx, parent_idx);
 
 			for(auto& c : gsl::span(node->mChildren, node->mNumChildren)) {
-				recurse(c, transform, idx, recurse);
+				recurse(c, idx, recurse);
 			}
 		};
-		map_node(scene.mRootNode, glm::mat4(1), -1, map_node);
+		map_node(scene.mRootNode, -1, map_node);
 
 		// pass over all meshes and add reference to aiBone
 		auto used_bones = std::vector<bool>(skeleton.bones.size(), false);
@@ -72,7 +69,8 @@ namespace mirrage {
 						if(node != skeleton.bones_by_name.end()) {
 							auto& bone_data       = skeleton.bones[std::size_t(node->second)];
 							bone_data.assimp_bone = bone;
-							bone_data.offset      = to_glm(bone->mOffsetMatrix) * inv_transform;
+							bone_data.offset =
+							        renderer::to_bone_transform(to_glm(bone->mOffsetMatrix) * inv_transform);
 
 							// mark bone and all parents as used
 							used_bones[std::size_t(bone_data.idx)] = true;
@@ -119,6 +117,9 @@ namespace mirrage {
 		}
 
 
+		if(skeleton.bones.empty())
+			return skeleton;
+
 		auto skel_out_filename = output + "/models/" + model_name + ".mbf";
 		util::to_lower_inplace(skel_out_filename);
 		auto out_file = std::ofstream(skel_out_filename, std::ostream::binary | std::ostream::trunc);
@@ -132,10 +133,12 @@ namespace mirrage {
 		write(out_file, std::uint16_t(0));
 		write(out_file, std::uint32_t(skeleton.bones.size()));
 
-		for(auto& bone : skeleton.bones) {
-			LOG(plog::debug) << "OFFSET: " << glm::to_string(bone.offset);
+		write(out_file,
+		      renderer::to_bone_transform(
+		              glm::inverse(renderer::from_bone_transform(skeleton.bones[0].local_node_transform))));
+
+		for(auto& bone : skeleton.bones)
 			write(out_file, bone.offset);
-		}
 
 		for(auto& bone : skeleton.bones)
 			write(out_file, bone.local_node_transform);

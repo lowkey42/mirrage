@@ -15,8 +15,8 @@ layout(location = 0) out vec3 out_view_pos;
 layout(location = 1) out vec3 out_normal;
 layout(location = 2) out vec2 out_tex_coords;
 
-layout(set=2, binding = 0) uniform Bone_uniforms {
-	mat4 offset[64];
+layout(set=2, binding = 0, std140) uniform Bone_uniforms {
+	mat3x4 offset[64];
 } bones;
 
 layout(push_constant) uniform Per_model_uniforms {
@@ -32,22 +32,23 @@ out gl_PerVertex {
 
 void main() {
 	float unused_weight = 1.0 - dot(bone_weights, vec4(1.0));
-	vec4 p = bones.offset[bone_ids[0]] * vec4(position, 1.0) * bone_weights[0]
-	       + bones.offset[bone_ids[1]] * vec4(position, 1.0) * bone_weights[1]
-	       + bones.offset[bone_ids[2]] * vec4(position, 1.0) * bone_weights[2]
-	       + bones.offset[bone_ids[3]] * vec4(position, 1.0) * bone_weights[3]
-	       + vec4(position, 1.0) * unused_weight ;
 
-	vec4 n = bones.offset[bone_ids[0]] * vec4(normal, 0.0) * bone_weights[0]
-	       + bones.offset[bone_ids[1]] * vec4(normal, 0.0) * bone_weights[1]
-	       + bones.offset[bone_ids[2]] * vec4(normal, 0.0) * bone_weights[2]
-	       + bones.offset[bone_ids[3]] * vec4(normal, 0.0) * bone_weights[3]
-	       + vec4(normal, 0.0) * unused_weight ;
+	mat3x4 bone = bones.offset[bone_ids[0]] * bone_weights[0]
+	        + bones.offset[bone_ids[1]] * bone_weights[1]
+			+ bones.offset[bone_ids[2]] * bone_weights[2]
+			+ bones.offset[bone_ids[3]] * bone_weights[3]
+			+ mat3x4(1) * unused_weight;
 
-	vec4 view_pos = model_uniforms.model_to_view * p;
+	vec3 p = vec4(position, 1.0) * bone;
+	vec3 n = vec4(normal, 0.0) * bone;
+
+	//p = position;
+	//n = normal;
+
+	vec4 view_pos = model_uniforms.model_to_view * vec4(p, 1.0);
 
 	out_view_pos = view_pos.xyz / view_pos.w;
-	out_normal  = (model_uniforms.model_to_view * n).xyz;
+	out_normal  = (model_uniforms.model_to_view * vec4(n, 0.0)).xyz;
 	out_tex_coords = tex_coords;
 
 	gl_Position = global_uniforms.proj_mat * view_pos;

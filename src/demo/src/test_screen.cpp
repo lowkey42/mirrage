@@ -81,14 +81,6 @@ namespace mirrage {
 		        [](auto& anim) { anim.animation("dance"_strid); });
 
 
-		auto chest = _meta_system.entities().emplace("chest");
-		chest.get<Transform_comp>().process([](auto& transform) {
-			transform.position    = {-6, 0, -0.5f};
-			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
-		});
-		chest.get<renderer::Animation_comp>().process([](auto& anim) { anim.animation("close"_strid); });
-
-
 		auto rotation_test = _meta_system.entities().emplace("rotation_test");
 		rotation_test.get<Transform_comp>().process([](auto& transform) {
 			transform.position = {-4, 0, -0.5f};

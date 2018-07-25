@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtx/quaternion.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/transform.hpp>
 
 
@@ -23,6 +24,58 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
+
+	auto to_bone_transform(const glm::vec3& translation, const glm::quat& orientation, const glm::vec3& scale)
+	        -> Bone_transform
+	{
+		return to_bone_transform(glm::translate(glm::mat4(1), translation) * glm::mat4_cast(orientation)
+		                         * glm::scale(glm::mat4(1.f), scale));
+	}
+	auto to_bone_transform(const glm::mat4& m) -> Bone_transform
+	{
+		MIRRAGE_INVARIANT(
+		        std::abs(m[0][3]) < 0.000001f && std::abs(m[1][3]) < 0.000001f
+		                && std::abs(m[2][3]) < 0.000001f && std::abs(m[3][3] - 1) < 0.000001f,
+		        "Last row of input into to_bone_transform is not well formed: " << glm::to_string(m));
+		auto r = Bone_transform();
+		r[0]   = glm::vec4(m[0][0], m[1][0], m[2][0], m[3][0]);
+		r[1]   = glm::vec4(m[0][1], m[1][1], m[2][1], m[3][1]);
+		r[2]   = glm::vec4(m[0][2], m[1][2], m[2][2], m[3][2]);
+		return r;
+	}
+	auto from_bone_transform(const Bone_transform& transform) -> glm::mat4
+	{
+		auto m = glm::mat4();
+		m[0]   = transform[0];
+		m[1]   = transform[1];
+		m[2]   = transform[2];
+		m[3]   = glm::vec4(0, 0, 0, 1);
+		return glm::transpose(m);
+	}
+
+	auto mul(const Bone_transform& rhs, const Bone_transform& lhs) -> Bone_transform
+	{
+		// Bone_transform is a mat4x4 with the last row cut of and transposed
+		// since (A^T B^T)^T = BA => switch lhs and rhs and multiply
+		const auto src_A0 = lhs[0];
+		const auto src_A1 = lhs[1];
+		const auto src_A2 = lhs[2];
+		const auto src_B0 = rhs[0];
+		const auto src_B1 = rhs[1];
+		const auto src_B2 = rhs[2];
+
+		Bone_transform r;
+		r[0] = src_A0 * src_B0[0] + src_A1 * src_B0[1] + src_A2 * src_B0[2]
+		       + glm::vec4(0, 0, 0, 1) * src_B0[3];
+		r[1] = src_A0 * src_B1[0] + src_A1 * src_B1[1] + src_A2 * src_B1[2]
+		       + glm::vec4(0, 0, 0, 1) * src_B1[3];
+		r[2] = src_A0 * src_B2[0] + src_A1 * src_B2[1] + src_A2 * src_B2[2]
+		       + glm::vec4(0, 0, 0, 1) * src_B2[3];
+
+		return r;
+	}
+
+
 	Skeleton::Skeleton(asset::istream& file)
 	{
 		auto header = std::array<char, 4>();
@@ -37,6 +90,8 @@ namespace mirrage::renderer {
 		read<std::uint16_t>(file);
 
 		auto bone_count = read<std::uint32_t>(file);
+
+		_inv_root_transform = read<Bone_transform>(file);
 
 		_inv_bind_poses.resize(bone_count);
 		_node_offset.resize(bone_count);
@@ -154,9 +209,9 @@ namespace mirrage::renderer {
 					return i;
 				}
 
-				i = static_cast<std::int32_t>(
-				        low + ((value - container[low]) * (high - low)) / (container[high] - container[low]));
-				i = std::min(high, i);
+				auto new_i =
+				        low + ((value - container[low]) * (high - low)) / (container[high] - container[low]);
+				i = static_cast<std::int32_t>(std::min(float(high), new_i));
 
 			} while(high > low);
 
@@ -206,7 +261,7 @@ namespace mirrage::renderer {
 	} // namespace
 
 	auto Animation::bone_transform(Bone_id bone_idx, float time, Animation_key& key) const
-	        -> util::maybe<glm::mat4>
+	        -> util::maybe<Bone_transform>
 	{
 		const auto& bone_data = _bones.at(std::size_t(bone_idx));
 
@@ -233,9 +288,7 @@ namespace mirrage::renderer {
 		auto scale    = interpolate(bone_data.scales, scale_t, key.scale_key);
 		auto rotation = interpolate(bone_data.orientations, orientation_t, key.orientation_key);
 
-
-		return glm::translate(glm::mat4(1), position) * glm::mat4_cast(rotation)
-		       * glm::scale(glm::mat4(1.f), scale);
+		return to_bone_transform(position, rotation, scale);
 	}
 
 

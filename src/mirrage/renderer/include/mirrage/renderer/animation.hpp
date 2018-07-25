@@ -14,6 +14,27 @@ namespace mirrage::renderer {
 
 	using Bone_id = std::int_fast32_t;
 
+	using Bone_transform = glm::mat3x4;
+
+	extern auto to_bone_transform(const glm::vec3& translation,
+	                              const glm::quat& orientation,
+	                              const glm::vec3& scale) -> Bone_transform;
+	extern auto to_bone_transform(const glm::mat4&) -> Bone_transform;
+	extern auto from_bone_transform(const Bone_transform&) -> glm::mat4;
+
+	extern auto mul(const Bone_transform& lhs, const Bone_transform& rhs) -> Bone_transform;
+
+	template <class... BT, typename = std::enable_if<std::conjunction_v<std::is_same<Bone_transform, BT>...>>>
+	auto mul(const Bone_transform& lhs, const Bone_transform& rhs, const BT&... bts) -> Bone_transform
+	{
+		auto r = mul(lhs, rhs);
+		if constexpr(sizeof...(bts) == 0)
+			return r;
+		else
+			return mul(r, bts...);
+	}
+
+
 	/*
 	* File format:
 	* |   0   |   1   |   2   |  3   |
@@ -21,11 +42,14 @@ namespace mirrage::renderer {
 	* |    VERSION    |    RESERVED  |
 	* |          BONE_COUNT          |
 	*
+	* |    INVERSE ROOT TRANSFORM    |
+	* * 12
+	*
 	* |       INVERSE BIND POSE      |		mesh space -> bone space
-	* * 16 * BONE_COUNT
+	* * 12 * BONE_COUNT
 	*
 	* |        NODE TRANSFORM        |		bone space -> mesh space
-	* * 16 * BONE_COUNT
+	* * 12 * BONE_COUNT
 	*
 	* |       BONE PARENT INDEX      |		signed; <0 => none
 	* * BONE_COUNT
@@ -41,15 +65,16 @@ namespace mirrage::renderer {
 
 		auto bone_count() const noexcept { return Bone_id(_inv_bind_poses.size()); }
 
-		auto inv_bind_pose(Bone_id bone) const -> const glm::mat4&
+		auto inv_bind_pose(Bone_id bone) const -> const Bone_transform&
 		{
 			return _inv_bind_poses[std::size_t(bone)];
 		}
 
-		auto node_transform(Bone_id bone) const -> const glm::mat4&
+		auto node_transform(Bone_id bone) const -> const Bone_transform&
 		{
 			return _node_offset[std::size_t(bone)];
 		}
+		auto inverse_root_transform() const -> const Bone_transform& { return _inv_root_transform; }
 
 		auto parent_bone(Bone_id bone) const noexcept -> util::maybe<Bone_id>
 		{
@@ -61,10 +86,11 @@ namespace mirrage::renderer {
 		}
 
 	  private:
-		std::vector<glm::mat4>    _inv_bind_poses;
-		std::vector<glm::mat4>    _node_offset;
-		std::vector<std::int32_t> _parent_ids;
-		std::vector<util::Str_id> _names;
+		std::vector<Bone_transform> _inv_bind_poses;
+		std::vector<Bone_transform> _node_offset;
+		std::vector<std::int32_t>   _parent_ids;
+		std::vector<util::Str_id>   _names;
+		Bone_transform              _inv_root_transform;
 
 		std::unordered_map<util::Str_id, std::size_t> _bones_by_name;
 	};
@@ -128,7 +154,7 @@ namespace mirrage::renderer {
 	  public:
 		Animation(asset::istream&);
 
-		auto bone_transform(Bone_id, float time, Animation_key& key) const -> util::maybe<glm::mat4>;
+		auto bone_transform(Bone_id, float time, Animation_key& key) const -> util::maybe<Bone_transform>;
 
 		auto duration() const { return _duration; }
 

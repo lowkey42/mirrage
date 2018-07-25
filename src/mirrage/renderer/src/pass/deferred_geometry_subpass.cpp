@@ -141,7 +141,7 @@ namespace mirrage::renderer {
                 _renderer.device().physical_device_properties().limits.minUniformBufferOffsetAlignment);
 
 		auto aligned_byte_size = [&](auto bone_count) {
-			auto size = bone_count * std::int32_t(sizeof(glm::mat4));
+			auto size = bone_count * std::int32_t(sizeof(glm::mat3x4));
 			return size < alignment ? alignment : size + (alignment - size % alignment);
 		};
 
@@ -190,25 +190,26 @@ namespace mirrage::renderer {
 			_renderer.device().vk_device()->updateDescriptorSets(1, &anim_desc_writes, 0, nullptr);
 		}
 
-		_animation_uniforms.update_objects<glm::mat4>(0, [&](auto uniform_matrices) {
-			for(auto& geo : _rigged_geometry_range) {
-				auto entity      = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
-				auto pose        = entity.get<Pose_comp>();
-				auto shared_pose = entity.get<Shared_pose_comp>();
+		for(auto& geo : _rigged_geometry_range) {
+			auto entity      = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
+			auto pose        = entity.get<Pose_comp>();
+			auto shared_pose = entity.get<Shared_pose_comp>();
 
-				auto offset = _animation_uniform_offsets.at(geo.entity) / std::int32_t(sizeof(glm::mat4));
-				auto geo_matrices = uniform_matrices.subspan(offset, geo.model->bone_count());
+			auto offset = std::int32_t(_animation_uniform_offsets.at(geo.entity));
+
+			_animation_uniforms.update_objects<glm::mat3x4>(offset, [&](auto uniform_matrices) {
+				auto geo_matrices = uniform_matrices.subspan(0, geo.model->bone_count());
 
 				if(pose.is_some()
 				   && pose.get_or_throw().bone_transforms.size() == std::size_t(geo.model->bone_count())) {
 					auto& sm = pose.get_or_throw().bone_transforms;
-					std::memcpy(geo_matrices.data(), sm.data(), sm.size() * sizeof(glm::mat4));
+					std::memcpy(geo_matrices.data(), sm.data(), sm.size() * sizeof(glm::mat3x4));
 
 				} else if(shared_pose.is_nothing() || _dead_shared_poses.count(geo.entity)) {
-					std::fill(geo_matrices.begin(), geo_matrices.end(), glm::mat4(1));
+					std::fill(geo_matrices.begin(), geo_matrices.end(), glm::mat3x4(1));
 				}
-			}
-		});
+			});
+		}
 		_animation_uniforms.flush(frame.main_command_buffer,
 		                          vk::PipelineStageFlagBits::eVertexShader,
 		                          vk::AccessFlagBits::eUniformRead | vk::AccessFlagBits::eShaderRead);
@@ -279,10 +280,11 @@ namespace mirrage::renderer {
 
 			render_pass.push_constant("dpc"_strid, dpc);
 
+			auto uniform_offset = _animation_uniform_offsets.at(geo.entity);
 			render_pass.bind_descriptor_set(
 			        2,
 			        *_animation_desc_sets.at(std::size_t(_animation_uniforms.read_buffer_index())),
-			        {&_animation_uniform_offsets.at(geo.entity), 1u});
+			        {&uniform_offset, 1u});
 
 			frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
 		}

@@ -4,8 +4,6 @@
 
 #include <mirrage/ecs/component.hpp>
 
-#include <glm/mat4x4.hpp>
-
 #include <vector>
 
 
@@ -18,7 +16,7 @@ namespace mirrage::renderer {
 		Pose_comp() = default;
 		Pose_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
 
-		std::vector<glm::mat4> bone_transforms;
+		std::vector<Bone_transform> bone_transforms;
 	};
 
 	class Shared_pose_comp : public ecs::Component<Shared_pose_comp> {

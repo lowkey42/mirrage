@@ -59,7 +59,7 @@ namespace mirrage::renderer {
 
 		for(auto i : util::range(bone_count)) {
 			auto parent = skeleton_data.parent_bone(i).process(
-			        glm::mat4(1), [&](auto idx) { return result.bone_transforms[std::size_t(idx)]; });
+			        Bone_transform(1.f), [&](auto idx) { return result.bone_transforms[std::size_t(idx)]; });
 
 			auto& key = anim_comp._animation_keys[std::size_t(i)];
 
@@ -67,13 +67,13 @@ namespace mirrage::renderer {
 				return skeleton_data.node_transform(i);
 			});
 
-			result.bone_transforms.emplace_back(parent * local);
+			result.bone_transforms.emplace_back(mul(parent, local));
 		}
 
-		auto inv_root = glm::inverse(skeleton_data.node_transform(0));
 		for(auto i : util::range(bone_count)) {
-			result.bone_transforms[std::size_t(i)] =
-			        inv_root * result.bone_transforms[std::size_t(i)] * skeleton_data.inv_bind_pose(i);
+			result.bone_transforms[std::size_t(i)] = mul(skeleton_data.inverse_root_transform(),
+			                                             result.bone_transforms[std::size_t(i)],
+			                                             skeleton_data.inv_bind_pose(i));
 		}
 	}
 
