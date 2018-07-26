@@ -12,11 +12,23 @@ namespace mirrage::renderer {
 	class Pose_comp : public ecs::Component<Pose_comp> {
 	  public:
 		static constexpr const char* name() { return "Pose"; }
+		friend void                  load_component(ecs::Deserializer& state, Pose_comp&);
+		friend void                  save_component(ecs::Serializer& state, const Pose_comp&);
 
 		Pose_comp() = default;
 		Pose_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
 
-		std::vector<Bone_transform> bone_transforms;
+		auto bone_transforms() const -> gsl::span<const Local_bone_transform> { return _bone_transforms; }
+		auto bone_transforms() -> gsl::span<Local_bone_transform> { return _bone_transforms; }
+
+		auto skeleton() const -> const Skeleton& { return *_skeleton; }
+
+	  private:
+		friend class Animation_pass;
+
+		asset::AID                        _skeleton_id;
+		asset::Ptr<Skeleton>              _skeleton;
+		std::vector<Local_bone_transform> _bone_transforms;
 	};
 
 	class Shared_pose_comp : public ecs::Component<Shared_pose_comp> {

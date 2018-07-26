@@ -2,9 +2,26 @@
 
 namespace mirrage::renderer {
 
+	void load_component(ecs::Deserializer& state, Pose_comp& a)
+	{
+		auto skeleton = a._skeleton_id.str();
+
+		state.read_virtual(sf2::vmember("skeleton", skeleton));
+
+		if(!skeleton.empty()) {
+			a._skeleton_id = skeleton;
+			a._skeleton    = state.assets.load<Skeleton>(skeleton);
+		}
+	}
+	void save_component(ecs::Serializer& state, const Pose_comp& a)
+	{
+		state.write_virtual(sf2::vmember("skeleton", a._skeleton_id.str()));
+	}
+
+
 	void load_component(ecs::Deserializer& state, Animation_comp& a)
 	{
-		auto skeleton          = std::string();
+		auto skeleton          = a._skeleton_id.str();
 		auto preload           = std::unordered_map<std::string, std::string>();
 		auto default_animation = a._current_animation_id.get_or(""_strid).str();
 
@@ -17,8 +34,10 @@ namespace mirrage::renderer {
 		                   sf2::vmember("paused", a._paused),
 		                   sf2::vmember("default_looped", a._looped));
 
-		a._skeleton_id = skeleton;
-		a._skeleton    = state.assets.load<Skeleton>(skeleton);
+		if(!skeleton.empty()) {
+			a._skeleton_id = skeleton;
+			a._skeleton    = state.assets.load<Skeleton>(skeleton);
+		}
 
 		a._preloaded_animations.clear();
 		for(auto&& [key, aid] : preload) {

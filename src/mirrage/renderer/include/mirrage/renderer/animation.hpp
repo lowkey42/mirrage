@@ -14,11 +14,20 @@ namespace mirrage::renderer {
 
 	using Bone_id = std::int_fast32_t;
 
+	struct Local_bone_transform {
+		glm::quat orientation;
+		glm::vec3 translation;
+		glm::vec3 scale;
+	};
+	static_assert(sizeof(Local_bone_transform) == 4 * (4 + 3 + 3), "Local_bone_transform contains padding");
+
 	using Bone_transform = glm::mat3x4;
 
+	extern auto default_bone_transform() -> Bone_transform;
 	extern auto to_bone_transform(const glm::vec3& translation,
 	                              const glm::quat& orientation,
 	                              const glm::vec3& scale) -> Bone_transform;
+	extern auto to_bone_transform(const Local_bone_transform&) -> Bone_transform;
 	extern auto to_bone_transform(const glm::mat4&) -> Bone_transform;
 	extern auto from_bone_transform(const Bone_transform&) -> glm::mat4;
 
@@ -48,8 +57,8 @@ namespace mirrage::renderer {
 	* |       INVERSE BIND POSE      |		mesh space -> bone space
 	* * 12 * BONE_COUNT
 	*
-	* |        NODE TRANSFORM        |		bone space -> mesh space
-	* * 12 * BONE_COUNT
+	* |        NODE TRANSFORM        |		bone space -> mesh space (Local_bone_transform)
+	* * 10 * BONE_COUNT
 	*
 	* |       BONE PARENT INDEX      |		signed; <0 => none
 	* * BONE_COUNT
@@ -70,9 +79,9 @@ namespace mirrage::renderer {
 			return _inv_bind_poses[std::size_t(bone)];
 		}
 
-		auto node_transform(Bone_id bone) const -> const Bone_transform&
+		auto node_transform(Bone_id bone) const -> const Local_bone_transform&
 		{
-			return _node_offset[std::size_t(bone)];
+			return _node_transforms[std::size_t(bone)];
 		}
 		auto inverse_root_transform() const -> const Bone_transform& { return _inv_root_transform; }
 
@@ -85,12 +94,15 @@ namespace mirrage::renderer {
 				return util::nothing;
 		}
 
+		void to_final_transforms(gsl::span<const Local_bone_transform> in,
+		                         gsl::span<Bone_transform>             out) const;
+
 	  private:
-		std::vector<Bone_transform> _inv_bind_poses;
-		std::vector<Bone_transform> _node_offset;
-		std::vector<std::int32_t>   _parent_ids;
-		std::vector<util::Str_id>   _names;
-		Bone_transform              _inv_root_transform;
+		std::vector<Bone_transform>       _inv_bind_poses;
+		std::vector<Local_bone_transform> _node_transforms;
+		std::vector<std::int32_t>         _parent_ids;
+		std::vector<util::Str_id>         _names;
+		Bone_transform                    _inv_root_transform;
 
 		std::unordered_map<util::Str_id, std::size_t> _bones_by_name;
 	};
@@ -154,7 +166,8 @@ namespace mirrage::renderer {
 	  public:
 		Animation(asset::istream&);
 
-		auto bone_transform(Bone_id, float time, Animation_key& key) const -> util::maybe<Bone_transform>;
+		auto bone_transform(Bone_id, float time, Animation_key& key) const
+		        -> util::maybe<Local_bone_transform>;
 
 		auto duration() const { return _duration; }
 

@@ -135,7 +135,7 @@ namespace mirrage::renderer {
 
 		// upload skeleton pose
 		_animation_uniform_offsets.clear();
-		_dead_shared_poses.clear();
+		_animation_uniform_queue.clear();
 		auto required_size = std::int32_t(0);
 		auto alignment     = std::int32_t(
                 _renderer.device().physical_device_properties().limits.minUniformBufferOffsetAlignment);
@@ -146,32 +146,31 @@ namespace mirrage::renderer {
 		};
 
 		for(auto& geo : _rigged_geometry_range) {
+			const auto offset = gsl::narrow<std::uint32_t>(required_size);
+
 			auto entity = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
-			if(!entity.has<Pose_comp>())
-				continue;
 
-			auto [_, success] = _animation_uniform_offsets.try_emplace(
-			        geo.entity, gsl::narrow<std::uint32_t>(required_size));
-			(void) _;
-
-			if(success) {
-				required_size += aligned_byte_size(geo.model->bone_count());
-			}
-		}
-
-		for(auto& geo : _rigged_geometry_range) {
-			auto entity = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
-			entity.get<Shared_pose_comp>().process([&](auto& sp) {
+			auto upload_required = entity.get<Shared_pose_comp>().process(true, [&](auto& sp) {
 				auto pose_offset = util::find_maybe(_animation_uniform_offsets, sp.pose_owner);
-				if(pose_offset.is_some()) {
-					_animation_uniform_offsets.emplace(geo.entity, pose_offset.get_or_throw());
-				} else {
-					// TODO: upload default matrices instead
-					_animation_uniform_offsets.emplace(geo.entity, gsl::narrow<std::uint32_t>(required_size));
-					required_size += aligned_byte_size(geo.model->bone_count());
-					_dead_shared_poses.emplace(geo.entity);
-				}
+				_animation_uniform_offsets.emplace(geo.entity, pose_offset.get_or(offset));
+				if(pose_offset.is_some())
+					return false;
+
+				entity = _ecs.get(sp.pose_owner).get_or_throw("Invalid entity in render queue");
+				return true;
 			});
+
+			if(upload_required) {
+				entity.get<Pose_comp>().process([&](auto& pose) {
+					auto [_, success] = _animation_uniform_offsets.try_emplace(entity.handle(), offset);
+					(void) _;
+
+					if(success) {
+						_animation_uniform_queue.emplace_back(geo.model, pose, required_size);
+						required_size += aligned_byte_size(geo.model->bone_count());
+					}
+				});
+			}
 		}
 
 		if(_animation_uniforms.resize(required_size)) {
@@ -190,22 +189,14 @@ namespace mirrage::renderer {
 			_renderer.device().vk_device()->updateDescriptorSets(1, &anim_desc_writes, 0, nullptr);
 		}
 
-		for(auto& geo : _rigged_geometry_range) {
-			auto entity      = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
-			auto pose        = entity.get<Pose_comp>();
-			auto shared_pose = entity.get<Shared_pose_comp>();
+		for(auto& upload : _animation_uniform_queue) {
+			_animation_uniforms.update_objects<glm::mat3x4>(upload.uniform_offset, [&](auto uniform_matrices) {
+				auto geo_matrices = uniform_matrices.subspan(0, upload.model->bone_count());
 
-			auto offset = std::int32_t(_animation_uniform_offsets.at(geo.entity));
+				if(upload.pose->bone_transforms().size() == upload.model->bone_count()) {
+					upload.pose->skeleton().to_final_transforms(upload.pose->bone_transforms(), geo_matrices);
 
-			_animation_uniforms.update_objects<glm::mat3x4>(offset, [&](auto uniform_matrices) {
-				auto geo_matrices = uniform_matrices.subspan(0, geo.model->bone_count());
-
-				if(pose.is_some()
-				   && pose.get_or_throw().bone_transforms.size() == std::size_t(geo.model->bone_count())) {
-					auto& sm = pose.get_or_throw().bone_transforms;
-					std::memcpy(geo_matrices.data(), sm.data(), sm.size() * sizeof(glm::mat3x4));
-
-				} else if(shared_pose.is_nothing() || _dead_shared_poses.count(geo.entity)) {
+				} else {
 					std::fill(geo_matrices.begin(), geo_matrices.end(), glm::mat3x4(1));
 				}
 			});

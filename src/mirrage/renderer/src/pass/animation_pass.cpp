@@ -29,7 +29,6 @@ namespace mirrage::renderer {
 
 	void Animation_pass::draw(Frame_data& frame)
 	{
-		// FIXME: currently uploads a new skeleton for each sub-mesh!
 		for(auto& geo : frame.geometry_queue) {
 			_ecs.get(geo.entity).process([&](ecs::Entity_facet& entity) {
 				auto anim_mb = entity.get<Animation_comp>();
@@ -37,7 +36,7 @@ namespace mirrage::renderer {
 					return; // not animated
 
 				auto& anim = anim_mb.get_or_throw();
-				if(!anim._skeleton || !anim._current_animation || !anim._dirty)
+				if(!anim._current_animation || !anim._dirty)
 					return; // no animation playing
 
 				entity.get<Pose_comp>().process([&](auto& skeleton) { _update_animation(anim, skeleton); });
@@ -51,29 +50,19 @@ namespace mirrage::renderer {
 		const auto  bone_count    = skeleton_data.bone_count();
 		const auto& animation     = *anim_comp._current_animation;
 
-		result.bone_transforms.reserve(std::size_t(bone_count));
-		result.bone_transforms.clear();
+		result._bone_transforms.clear();
+		result._bone_transforms.reserve(std::size_t(bone_count));
 
 		anim_comp._dirty = false;
 		anim_comp._animation_keys.resize(std::size_t(bone_count), Animation_key{});
 
 		for(auto i : util::range(bone_count)) {
-			auto parent = skeleton_data.parent_bone(i).process(
-			        Bone_transform(1.f), [&](auto idx) { return result.bone_transforms[std::size_t(idx)]; });
-
 			auto& key = anim_comp._animation_keys[std::size_t(i)];
 
-			auto local = animation.bone_transform(i, anim_comp._time, key).get_or([&] {
-				return skeleton_data.node_transform(i);
-			});
-
-			result.bone_transforms.emplace_back(mul(parent, local));
-		}
-
-		for(auto i : util::range(bone_count)) {
-			result.bone_transforms[std::size_t(i)] = mul(skeleton_data.inverse_root_transform(),
-			                                             result.bone_transforms[std::size_t(i)],
-			                                             skeleton_data.inv_bind_pose(i));
+			result._bone_transforms.emplace_back(
+			        animation.bone_transform(i, anim_comp._time, key).get_or([&] {
+				        return skeleton_data.node_transform(i);
+			        }));
 		}
 	}
 

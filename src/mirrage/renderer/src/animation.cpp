@@ -25,11 +25,16 @@ namespace mirrage::renderer {
 	} // namespace
 
 
+	auto default_bone_transform() -> Bone_transform { return Bone_transform(1); }
 	auto to_bone_transform(const glm::vec3& translation, const glm::quat& orientation, const glm::vec3& scale)
 	        -> Bone_transform
 	{
 		return to_bone_transform(glm::translate(glm::mat4(1), translation) * glm::mat4_cast(orientation)
 		                         * glm::scale(glm::mat4(1.f), scale));
+	}
+	auto to_bone_transform(const Local_bone_transform& t) -> Bone_transform
+	{
+		return to_bone_transform(t.translation, t.orientation, t.scale);
 	}
 	auto to_bone_transform(const glm::mat4& m) -> Bone_transform
 	{
@@ -94,12 +99,12 @@ namespace mirrage::renderer {
 		_inv_root_transform = read<Bone_transform>(file);
 
 		_inv_bind_poses.resize(bone_count);
-		_node_offset.resize(bone_count);
+		_node_transforms.resize(bone_count);
 		_parent_ids.resize(bone_count);
 		_names.resize(bone_count);
 
 		read(file, bone_count, _inv_bind_poses);
-		read(file, bone_count, _node_offset);
+		read(file, bone_count, _node_transforms);
 		read(file, bone_count, _parent_ids);
 		read(file, bone_count, _names);
 
@@ -111,6 +116,30 @@ namespace mirrage::renderer {
 		file.read(header.data(), header.size());
 		MIRRAGE_INVARIANT(header[0] == 'M' && header[1] == 'B' && header[2] == 'F' && header[3] == 'F',
 		                  "Mirrage bone file '" << file.aid().str() << "' corrupted (footer).");
+	}
+
+
+	void Skeleton::to_final_transforms(gsl::span<const Local_bone_transform> in,
+	                                   gsl::span<Bone_transform>             out) const
+	{
+		if(in.size() != out.size()) {
+			std::fill(out.begin(), out.end(), default_bone_transform());
+			return;
+		}
+
+		for(auto i : util::range(in.size())) {
+			auto parent = _parent_ids[std::size_t(i)];
+			if(parent >= 0)
+				out[i] = mul(out[parent], to_bone_transform(in[i]));
+			else
+				out[i] = to_bone_transform(in[i]);
+		}
+
+		auto i = gsl::index(0);
+		for(auto& transform : out) {
+			transform = mul(inverse_root_transform(), transform, inv_bind_pose(i));
+			i++;
+		}
 	}
 
 
@@ -261,7 +290,7 @@ namespace mirrage::renderer {
 	} // namespace
 
 	auto Animation::bone_transform(Bone_id bone_idx, float time, Animation_key& key) const
-	        -> util::maybe<Bone_transform>
+	        -> util::maybe<Local_bone_transform>
 	{
 		const auto& bone_data = _bones.at(std::size_t(bone_idx));
 
@@ -288,7 +317,7 @@ namespace mirrage::renderer {
 		auto scale    = interpolate(bone_data.scales, scale_t, key.scale_key);
 		auto rotation = interpolate(bone_data.orientations, orientation_t, key.orientation_key);
 
-		return to_bone_transform(position, rotation, scale);
+		return util::maybe<Local_bone_transform>{rotation, position, scale};
 	}
 
 

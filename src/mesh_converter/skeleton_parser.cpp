@@ -6,6 +6,7 @@
 #include <mirrage/utils/log.hpp>
 
 #include <assimp/scene.h>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <gsl/gsl>
 
@@ -16,10 +17,10 @@
 
 namespace mirrage {
 
-	Bone_data::Bone_data(const aiNode&            node,
-	                     renderer::Bone_transform local_node_transform,
-	                     int                      idx,
-	                     int                      parent_idx)
+	Bone_data::Bone_data(const aiNode&                         node,
+	                     const renderer::Local_bone_transform& local_node_transform,
+	                     int                                   idx,
+	                     int                                   parent_idx)
 	  : assimp_node(&node)
 	  , assimp_bone(nullptr)
 	  , name(node.mName.C_Str())
@@ -42,8 +43,15 @@ namespace mirrage {
 			auto idx = skeleton.bones.size();
 			skeleton.bones_by_name.emplace(node->mName.C_Str(), idx);
 
+			auto scale       = glm::vec3();
+			auto orientation = glm::quat();
+			auto translation = glm::vec3();
+			auto skew        = glm::vec3();
+			auto perspective = glm::vec4();
+			glm::decompose(to_glm(node->mTransformation), scale, orientation, translation, skew, perspective);
+
 			skeleton.bones.emplace_back(
-			        *node, renderer::to_bone_transform(to_glm(node->mTransformation)), idx, parent_idx);
+			        *node, renderer::Local_bone_transform{orientation, translation, scale}, idx, parent_idx);
 
 			for(auto& c : gsl::span(node->mChildren, node->mNumChildren)) {
 				recurse(c, idx, recurse);
@@ -133,9 +141,7 @@ namespace mirrage {
 		write(out_file, std::uint16_t(0));
 		write(out_file, std::uint32_t(skeleton.bones.size()));
 
-		write(out_file,
-		      renderer::to_bone_transform(
-		              glm::inverse(renderer::from_bone_transform(skeleton.bones[0].local_node_transform))));
+		write(out_file, renderer::to_bone_transform(glm::inverse(to_glm(scene.mRootNode->mTransformation))));
 
 		for(auto& bone : skeleton.bones)
 			write(out_file, bone.offset);

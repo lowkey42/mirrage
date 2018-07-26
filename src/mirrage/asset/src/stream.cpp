@@ -159,6 +159,7 @@ namespace mirrage::asset {
 	  : stream(aid, manager, reinterpret_cast<File_handle*>(PHYSFS_openRead(path.c_str())), path)
 	  , std::istream(_fbuf.get())
 	{
+		exceptions(std::istream::badbit);
 	}
 	istream::istream(istream&& o) : stream(std::move(o)), std::istream(_fbuf.get()) {}
 	auto istream::operator=(istream&& s) -> istream&
@@ -208,6 +209,7 @@ namespace mirrage::asset {
 	  : stream(aid, manager, reinterpret_cast<File_handle*>(PHYSFS_openWrite(path.c_str())), path)
 	  , std::ostream(_fbuf.get())
 	{
+		exceptions(std::istream::badbit);
 	}
 	ostream::ostream(ostream&& o) : stream(std::move(o)), std::ostream(_fbuf.get()) {}
 	ostream::~ostream() { _manager._post_write(); }
