@@ -282,7 +282,7 @@ namespace mirrage::util {
 			} else {
 				// nay, have to check if valid and call move-assignment / placement-new
 				if(src < dst) {
-					std::move_backward(&get(c_src), &get(c_src) + step, &get(c_dst));
+					std::move_backward(&get(c_src), &get(c_src) + step, &get(c_dst) + step);
 				} else {
 					std::move(&get(c_src), &get(c_src) + step, &get(c_dst));
 				}

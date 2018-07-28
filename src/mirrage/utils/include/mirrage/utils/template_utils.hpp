@@ -165,8 +165,8 @@ namespace mirrage::util {
 	}
 
 
-	template <typename T>
-	void erase_fast(std::vector<T>& c, const T& v)
+	template <typename T, typename K>
+	void erase_fast(std::vector<T>& c, const K& v)
 	{
 		using std::swap;
 
@@ -176,8 +176,8 @@ namespace mirrage::util {
 			c.pop_back();
 		}
 	}
-	template <typename T>
-	void erase_fast_stable(std::vector<T>& c, const T& v)
+	template <typename T, typename K>
+	void erase_fast_stable(std::vector<T>& c, const K& v)
 	{
 		auto ne = std::remove(c.begin(), c.end(), v);
 
