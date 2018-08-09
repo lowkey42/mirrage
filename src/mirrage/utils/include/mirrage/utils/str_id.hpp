@@ -16,9 +16,9 @@
 namespace mirrage::util {
 
 	namespace detail {
-		constexpr char str_id_step = 28;
+		constexpr char str_id_step = 38;
 
-		constexpr std::size_t str_id_max_length = 13;
+		constexpr std::size_t str_id_max_length = 12;
 
 		constexpr auto str_id_hash(const char* str, bool invalid_empty = false)
 		{
@@ -29,8 +29,10 @@ namespace mirrage::util {
 			for(std::size_t i = 0; str[i] != 0; ++i) {
 				if(str[i] == '_')
 					id = (id * str_id_step) + 1;
+				else if(str[i] >= '0' && str[i] <= '9')
+					id = (id * str_id_step) + static_cast<uint64_t>(str[i] - '0' + 2);
 				else if(str[i] >= 'a' && str[i] <= 'z')
-					id = (id * str_id_step) + static_cast<uint64_t>(str[i] - 'a' + 2);
+					id = (id * str_id_step) + static_cast<uint64_t>(str[i] - 'a' + 2 + 10);
 				else {
 					if(invalid_empty)
 						return uint64_t(0);
@@ -77,8 +79,10 @@ namespace mirrage::util {
 
 				if(c == 1) {
 					r += '_';
+				} else if(c < 11) {
+					r += static_cast<char>('0' + (c - 2));
 				} else {
-					r += static_cast<char>(c + 'a' - 2);
+					r += static_cast<char>('a' + (c - 2 - 10));
 				}
 			}
 
@@ -90,6 +94,18 @@ namespace mirrage::util {
 		constexpr bool operator!=(const Str_id& rhs) const noexcept { return _id != rhs._id; }
 		constexpr bool operator<(const Str_id& rhs) const noexcept { return _id < rhs._id; }
 		constexpr      operator int_type() const noexcept { return _id; }
+
+		// TODO: optimize / make constexpr
+		friend auto operator+(const Str_id& lhs, const Str_id& rhs)
+		{
+			auto lhs_len = 1 + std::size_t(std::log(float(lhs._id)) / std::log(float(detail::str_id_step)));
+			auto rhs_len = 1 + std::size_t(std::log(float(rhs._id)) / std::log(float(detail::str_id_step)));
+			if(lhs_len + rhs_len > detail::str_id_max_length)
+				throw std::invalid_argument("String is too long: " + lhs.str() + rhs.str() + "; len="
+				                            + std::to_string(lhs_len) + "+" + std::to_string(rhs_len));
+
+			return Str_id(lhs._id * int_type(std::pow(detail::str_id_step, rhs_len)) + rhs._id);
+		}
 
 	  private:
 		int_type _id;

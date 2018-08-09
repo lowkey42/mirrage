@@ -23,7 +23,7 @@ namespace mirrage {
 		int                            idx = -1;
 		std::string                    parent_name;
 		int                            parent_idx = -1;
-		renderer::Bone_transform       offset{1};
+		glm::mat3x4                    offset{1};
 		renderer::Local_bone_transform local_node_transform{};
 
 		Bone_data() = default;

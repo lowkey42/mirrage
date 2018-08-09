@@ -334,7 +334,7 @@ namespace mirrage::renderer {
 			pass.stage("upsample"_strid)
 			        .shader("frag_shader:gi_sample_upsample"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_sample_upsample"_aid, graphic::Shader_stage::vertex);
-			pass.stage("upsample_only"_strid)
+			pass.stage("upsample_np"_strid)
 			        .shader("frag_shader:gi_sample_upsample"_aid,
 			                graphic::Shader_stage::fragment,
 			                "main",
@@ -1167,7 +1167,7 @@ namespace mirrage::renderer {
 						if(i + base_mip > begin)
 							_sample_renderpass.set_stage("upsample"_strid);
 						else
-							_sample_renderpass.set_stage("upsample_only"_strid);
+							_sample_renderpass.set_stage("upsample_np"_strid);
 
 						_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[std::size_t(i)]);
 

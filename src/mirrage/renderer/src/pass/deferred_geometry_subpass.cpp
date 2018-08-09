@@ -69,7 +69,7 @@ namespace mirrage::renderer {
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 
-		pass.stage("alpha_test"_strid)
+		pass.stage("alphatest"_strid)
 		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 	}
@@ -105,28 +105,53 @@ namespace mirrage::renderer {
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
 
-		pass.stage("alpha_test"_strid)
+		pass.stage("alphatest"_strid)
 		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
+
+
+		pass.stage("dq_default"_strid)
+		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+
+		pass.stage("dq_emissive"_strid)
+		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+
+		pass.stage("dq_alphatest"_strid)
+		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
 	}
 
 	void Deferred_geometry_subpass::update(util::Time) {}
+
+	namespace {
+		auto animation_substance(util::Str_id substance_id, Skinning_type st)
+		{
+			switch(st) {
+				case Skinning_type::linear_blend_skinning: return substance_id;
+				case Skinning_type::dual_quaternion_skinning: return "dq_"_strid + substance_id;
+			}
+			return substance_id;
+		}
+	} // namespace
 	void Deferred_geometry_subpass::pre_draw(Frame_data& frame)
 	{
+		auto geo_sort = [](auto& lhs, auto& rhs) {
+			auto lhs_mat = &*lhs.model->sub_meshes()[lhs.sub_mesh].material;
+			auto rhs_mat = &*rhs.model->sub_meshes()[rhs.sub_mesh].material;
+
+			return std::make_tuple(lhs.substance_id, lhs_mat, lhs.model)
+			       < std::make_tuple(rhs.substance_id, rhs_mat, rhs.model);
+		};
+
+		// partition draw commands into normal and rigged geometry
 		auto end = std::partition(frame.geometry_queue.begin(), frame.geometry_queue.end(), [](auto& geo) {
 			return (geo.culling_mask & 1u) != 0;
 		});
 		auto geo_range = util::range(frame.geometry_queue.begin(), end);
 
-		std::sort(geo_range.begin(), geo_range.end(), [&](auto& lhs, auto& rhs) {
-			auto lhs_mat = &*lhs.model->sub_meshes()[lhs.sub_mesh].material;
-			auto rhs_mat = &*rhs.model->sub_meshes()[rhs.sub_mesh].material;
-
-			return std::make_tuple(lhs_mat->material_id(), lhs_mat, lhs.model)
-			       < std::make_tuple(rhs_mat->material_id(), rhs_mat, rhs.model);
-		});
-
-		auto rigged_begin = std::stable_partition(
+		auto rigged_begin = std::partition(
 		        geo_range.begin(), geo_range.end(), [](auto& geo) { return !geo.model->rigged(); });
 
 		_geometry_range        = util::range(geo_range.begin(), rigged_begin);
@@ -141,7 +166,7 @@ namespace mirrage::renderer {
                 _renderer.device().physical_device_properties().limits.minUniformBufferOffsetAlignment);
 
 		auto aligned_byte_size = [&](auto bone_count) {
-			auto size = bone_count * std::int32_t(sizeof(glm::mat3x4));
+			auto size = bone_count * std::int32_t(sizeof(Final_bone_transform));
 			return size < alignment ? alignment : size + (alignment - size % alignment);
 		};
 
@@ -153,15 +178,22 @@ namespace mirrage::renderer {
 			auto upload_required = entity.get<Shared_pose_comp>().process(true, [&](auto& sp) {
 				auto pose_offset = util::find_maybe(_animation_uniform_offsets, sp.pose_owner);
 				_animation_uniform_offsets.emplace(geo.entity, pose_offset.get_or(offset));
-				if(pose_offset.is_some())
-					return false;
 
 				entity = _ecs.get(sp.pose_owner).get_or_throw("Invalid entity in render queue");
+				entity.get<Pose_comp>().process([&](auto& pose) {
+					geo.substance_id = animation_substance(geo.substance_id, pose.skeleton().skinning_type());
+				});
+
+				if(pose_offset.is_some())
+					return false; // TODO: update geo.substance_id here, too
+
 				return true;
 			});
 
 			if(upload_required) {
 				entity.get<Pose_comp>().process([&](auto& pose) {
+					geo.substance_id = animation_substance(geo.substance_id, pose.skeleton().skinning_type());
+
 					auto [_, success] = _animation_uniform_offsets.try_emplace(entity.handle(), offset);
 					(void) _;
 
@@ -190,20 +222,19 @@ namespace mirrage::renderer {
 		}
 
 		for(auto& upload : _animation_uniform_queue) {
-			_animation_uniforms.update_objects<glm::mat3x4>(upload.uniform_offset, [&](auto uniform_matrices) {
-				auto geo_matrices = uniform_matrices.subspan(0, upload.model->bone_count());
-
-				if(upload.pose->bone_transforms().size() == upload.model->bone_count()) {
-					upload.pose->skeleton().to_final_transforms(upload.pose->bone_transforms(), geo_matrices);
-
-				} else {
-					std::fill(geo_matrices.begin(), geo_matrices.end(), glm::mat3x4(1));
-				}
+			_animation_uniforms.update_objects<Final_bone_transform>(upload.uniform_offset, [&](auto out) {
+				auto geo_matrices = out.subspan(0, upload.model->bone_count());
+				upload.pose->skeleton().to_final_transforms(upload.pose->bone_transforms(), geo_matrices);
 			});
 		}
 		_animation_uniforms.flush(frame.main_command_buffer,
 		                          vk::PipelineStageFlagBits::eVertexShader,
 		                          vk::AccessFlagBits::eUniformRead | vk::AccessFlagBits::eShaderRead);
+
+
+		// sort geometry for efficient rendering
+		std::sort(_geometry_range.begin(), _geometry_range.end(), geo_sort);
+		std::sort(_rigged_geometry_range.begin(), _rigged_geometry_range.end(), geo_sort);
 	}
 
 	void Deferred_geometry_subpass::draw(Frame_data& frame, graphic::Render_pass& render_pass)
@@ -213,25 +244,16 @@ namespace mirrage::renderer {
 		Deferred_push_constants dpc{};
 		dpc.light_data.x = _renderer.settings().debug_disect;
 
-		auto last_mat_id   = ""_strid;
-		auto last_material = static_cast<const Material*>(nullptr);
-		auto last_model    = static_cast<const Model*>(nullptr);
+		auto last_substance_id = ""_strid;
+		auto last_material     = static_cast<const Material*>(nullptr);
+		auto last_model        = static_cast<const Model*>(nullptr);
 
 		auto prepare_draw = [&](auto& geo) {
 			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
-			auto  mat_id   = sub_mesh.material->material_id();
 
-			if(sub_mesh.material->material_id() != last_mat_id) {
-				last_mat_id = sub_mesh.material->material_id();
-
-				if(_renderer.settings().debug_disect && (!mat_id || mat_id == "default"_strid)) {
-					render_pass.set_stage("alpha_test"_strid);
-
-				} else if(!mat_id) {
-					render_pass.set_stage("default"_strid);
-				} else {
-					render_pass.set_stage(mat_id);
-				}
+			if(geo.substance_id != last_substance_id) {
+				last_substance_id = geo.substance_id;
+				render_pass.set_stage(geo.substance_id);
 			}
 
 			if(&*sub_mesh.material != last_material) {
@@ -261,9 +283,9 @@ namespace mirrage::renderer {
 
 		// draw all animated models in a new subpass
 		render_pass.next_subpass();
-		last_mat_id   = ""_strid;
-		last_material = static_cast<const Material*>(nullptr);
-		last_model    = static_cast<const Model*>(nullptr);
+		last_substance_id = ""_strid;
+		last_material     = static_cast<const Material*>(nullptr);
+		last_model        = static_cast<const Model*>(nullptr);
 
 		for(auto& geo : _rigged_geometry_range) {
 			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);

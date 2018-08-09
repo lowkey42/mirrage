@@ -1,6 +1,8 @@
 #include <mirrage/renderer/animation.hpp>
 
 #include <glm/glm.hpp>
+#include <glm/gtx/dual_quaternion.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/transform.hpp>
@@ -25,62 +27,21 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	auto default_bone_transform() -> Bone_transform { return Bone_transform(1); }
-	auto to_bone_transform(const glm::vec3& translation, const glm::quat& orientation, const glm::vec3& scale)
-	        -> Bone_transform
-	{
-		return to_bone_transform(glm::translate(glm::mat4(1), translation) * glm::mat4_cast(orientation)
-		                         * glm::scale(glm::mat4(1.f), scale));
-	}
-	auto to_bone_transform(const Local_bone_transform& t) -> Bone_transform
-	{
-		return to_bone_transform(t.translation, t.orientation, t.scale);
-	}
-	auto to_bone_transform(const glm::mat4& m) -> Bone_transform
+	auto compress_bone_transform(const glm::mat4& m) -> glm::mat3x4
 	{
 		MIRRAGE_INVARIANT(
 		        std::abs(m[0][3]) < 0.000001f && std::abs(m[1][3]) < 0.000001f
 		                && std::abs(m[2][3]) < 0.000001f && std::abs(m[3][3] - 1) < 0.000001f,
 		        "Last row of input into to_bone_transform is not well formed: " << glm::to_string(m));
-		auto r = Bone_transform();
+		auto r = glm::mat3x4();
 		r[0]   = glm::vec4(m[0][0], m[1][0], m[2][0], m[3][0]);
 		r[1]   = glm::vec4(m[0][1], m[1][1], m[2][1], m[3][1]);
 		r[2]   = glm::vec4(m[0][2], m[1][2], m[2][2], m[3][2]);
 		return r;
 	}
-	auto from_bone_transform(const Bone_transform& transform) -> glm::mat4
-	{
-		auto m = glm::mat4();
-		m[0]   = transform[0];
-		m[1]   = transform[1];
-		m[2]   = transform[2];
-		m[3]   = glm::vec4(0, 0, 0, 1);
-		return glm::transpose(m);
-	}
-
-	auto mul(const Bone_transform& rhs, const Bone_transform& lhs) -> Bone_transform
-	{
-		// Bone_transform is a mat4x4 with the last row cut of and transposed
-		// since (A^T B^T)^T = BA => switch lhs and rhs and multiply
-		const auto src_A0 = lhs[0];
-		const auto src_A1 = lhs[1];
-		const auto src_A2 = lhs[2];
-		const auto src_B0 = rhs[0];
-		const auto src_B1 = rhs[1];
-		const auto src_B2 = rhs[2];
-
-		Bone_transform r;
-		r[0] = src_A0 * src_B0[0] + src_A1 * src_B0[1] + src_A2 * src_B0[2]
-		       + glm::vec4(0, 0, 0, 1) * src_B0[3];
-		r[1] = src_A0 * src_B1[0] + src_A1 * src_B1[1] + src_A2 * src_B1[2]
-		       + glm::vec4(0, 0, 0, 1) * src_B1[3];
-		r[2] = src_A0 * src_B2[0] + src_A1 * src_B2[1] + src_A2 * src_B2[2]
-		       + glm::vec4(0, 0, 0, 1) * src_B2[3];
-
-		return r;
-	}
 
 
+	// SKELETON
 	Skeleton::Skeleton(asset::istream& file)
 	{
 		auto header = std::array<char, 4>();
@@ -91,12 +52,12 @@ namespace mirrage::renderer {
 		auto version = read<std::uint16_t>(file);
 		MIRRAGE_INVARIANT(version == 1, "Unsupported bone file version " << version << ". Expected 1");
 
-		// skip reserved
-		read<std::uint16_t>(file);
+		auto flags     = read<std::uint16_t>(file);
+		_skinning_type = static_cast<Skinning_type>(flags & 0b11);
 
 		auto bone_count = read<std::uint32_t>(file);
 
-		_inv_root_transform = read<Bone_transform>(file);
+		_inv_root_transform = read<Final_bone_transform>(file);
 
 		_inv_bind_poses.resize(bone_count);
 		_node_transforms.resize(bone_count);
@@ -118,31 +79,112 @@ namespace mirrage::renderer {
 		                  "Mirrage bone file '" << file.aid().str() << "' corrupted (footer).");
 	}
 
+	namespace {
+		auto default_final_transform(Skinning_type st)
+		{
+			switch(st) {
+				case Skinning_type::linear_blend_skinning: {
+					auto r = Final_bone_transform();
+					r.lbs  = glm::mat3x4(1);
+					return r;
+				}
+				case Skinning_type::dual_quaternion_skinning: {
+					auto r      = Final_bone_transform();
+					r.dqs.dq    = glm::dual_quat_identity<float, glm::defaultp>();
+					r.dqs.scale = glm::vec4(1, 1, 1, 1);
+					return r;
+				}
+			}
 
-	void Skeleton::to_final_transforms(gsl::span<const Local_bone_transform> in,
-	                                   gsl::span<Bone_transform>             out) const
+			MIRRAGE_FAIL("Unknown Skinning_type: " << int(st));
+		}
+
+		auto to_bone_transform(const Local_bone_transform& t) -> Final_bone_transform
+		{
+			auto r = Final_bone_transform();
+			r.lbs  = compress_bone_transform(glm::translate(glm::mat4(1), t.translation)
+                                            * glm::mat4_cast(t.orientation)
+                                            * glm::scale(glm::mat4(1.f), t.scale));
+			return r;
+		}
+
+		auto mul(const Final_bone_transform& rhs, const Final_bone_transform& lhs) -> Final_bone_transform
+		{
+			// Bone_transform is a mat4x4 with the last row cut of and transposed
+			// since (A^T B^T)^T = BA => switch lhs and rhs and multiply
+			const auto src_A0 = lhs.lbs[0];
+			const auto src_A1 = lhs.lbs[1];
+			const auto src_A2 = lhs.lbs[2];
+			const auto src_B0 = rhs.lbs[0];
+			const auto src_B1 = rhs.lbs[1];
+			const auto src_B2 = rhs.lbs[2];
+
+			Final_bone_transform r;
+			r.lbs[0] = src_A0 * src_B0[0] + src_A1 * src_B0[1] + src_A2 * src_B0[2]
+			           + glm::vec4(0, 0, 0, 1) * src_B0[3];
+			r.lbs[1] = src_A0 * src_B1[0] + src_A1 * src_B1[1] + src_A2 * src_B1[2]
+			           + glm::vec4(0, 0, 0, 1) * src_B1[3];
+			r.lbs[2] = src_A0 * src_B2[0] + src_A1 * src_B2[1] + src_A2 * src_B2[2]
+			           + glm::vec4(0, 0, 0, 1) * src_B2[3];
+
+			return r;
+		}
+
+		void to_dualquat(Final_bone_transform& inout)
+		{
+			// TODO: optimize
+			auto m2 = glm::mat4();
+			m2[0]   = inout.lbs[0];
+			m2[1]   = inout.lbs[1];
+			m2[2]   = inout.lbs[2];
+			m2[3]   = glm::vec4(0, 0, 0, 1);
+
+			glm::vec3 scale;
+			glm::quat orientation;
+			glm::vec3 translation;
+			glm::vec3 skew;
+			glm::vec4 perspective;
+			glm::decompose(glm::transpose(m2), scale, orientation, translation, skew, perspective);
+
+			inout.dqs.dq    = glm::dualquat(orientation, translation);
+			inout.dqs.scale = glm::vec4(scale, 1);
+		}
+	} // namespace
+
+	void Skeleton::to_final_transforms(gsl::span<const Local_bone_transform> in_span,
+	                                   gsl::span<Final_bone_transform>       out_span) const
 	{
-		if(in.size() != out.size()) {
-			std::fill(out.begin(), out.end(), default_bone_transform());
+		if(out_span.empty())
+			return;
+
+		if(in_span.size() != out_span.size()) {
+			std::fill(out_span.begin(), out_span.end(), default_final_transform(_skinning_type));
 			return;
 		}
 
-		for(auto i : util::range(in.size())) {
-			auto parent = _parent_ids[std::size_t(i)];
-			if(parent >= 0)
-				out[i] = mul(out[parent], to_bone_transform(in[i]));
-			else
-				out[i] = to_bone_transform(in[i]);
+		// root
+		out_span[0] = to_bone_transform(in_span[0]);
+
+		for(auto [in, parent_id, out] : util::skip(1, util::join(in_span, _parent_ids, out_span))) {
+			out = mul(out_span[parent_id], to_bone_transform(in));
 		}
 
-		auto i = gsl::index(0);
-		for(auto& transform : out) {
-			transform = mul(inverse_root_transform(), transform, inv_bind_pose(i));
-			i++;
+		for(auto [transform, inv_bind_pose] : util::join(out_span, _inv_bind_poses)) {
+			transform = mul(mul(_inv_root_transform, transform), inv_bind_pose);
+		}
+
+		switch(_skinning_type) {
+			case Skinning_type::linear_blend_skinning: break;
+			case Skinning_type::dual_quaternion_skinning:
+				for(auto& transform : out_span) {
+					to_dualquat(transform);
+				}
+				break;
 		}
 	}
 
 
+	// ANIMATION
 	Animation::Animation(asset::istream& file)
 	{
 		auto header = std::array<char, 4>();

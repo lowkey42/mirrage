@@ -37,17 +37,17 @@ namespace mirrage::renderer {
 		         vk::Sampler,
 		         graphic::Texture_ptr albedo,
 		         graphic::Texture_ptr mat_data,
-		         util::Str_id         material_id);
+		         util::Str_id         substance_id);
 
 		void bind(graphic::Render_pass& pass) const;
 
-		auto material_id() const noexcept { return _material_id; }
+		auto substance_id() const noexcept { return _substance_id; }
 
 	  private:
 		graphic::DescriptorSet _descriptor_set;
 		graphic::Texture_ptr   _albedo;
 		graphic::Texture_ptr   _mat_data;
-		util::Str_id           _material_id;
+		util::Str_id           _substance_id;
 	};
 	using Material_ptr = asset::Ptr<Material>;
 

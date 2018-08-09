@@ -72,18 +72,31 @@ namespace mirrage {
 	  , _window_fullscreen(engine.window().fullscreen() != graphic::Fullscreen::no)
 	{
 
-		_animation_test = _meta_system.entities().emplace("monk");
-		_animation_test.get<Transform_comp>().process([](auto& transform) {
-			transform.position    = {-8, 0, -0.5f};
+		_animation_test_dqs = _meta_system.entities().emplace("monk");
+		_animation_test_dqs.get<Transform_comp>().process([](auto& transform) {
+			transform.position    = {-8, 0, -0.5f - 1.f};
 			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
 		});
-		_animation_test.get<renderer::Animation_comp>().process(
+		_animation_test_dqs.get<renderer::Animation_comp>().process(
+		        [](auto& anim) { anim.animation("dance"_strid); });
+
+		_animation_test_lbs = _meta_system.entities().emplace("monk_lbs");
+		_animation_test_lbs.get<Transform_comp>().process([](auto& transform) {
+			transform.position    = {-8, 0, -0.5f + 1.f};
+			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
+		});
+		_animation_test_lbs.get<renderer::Animation_comp>().process(
 		        [](auto& anim) { anim.animation("dance"_strid); });
 
 
 		auto rotation_test = _meta_system.entities().emplace("rotation_test");
 		rotation_test.get<Transform_comp>().process([](auto& transform) {
-			transform.position = {-4, 0, -0.5f};
+			transform.position = {-4, 0, -0.5f - 1.f};
+		});
+
+		auto rotation_test_lbs = _meta_system.entities().emplace("rotation_test_lbs");
+		rotation_test_lbs.get<Transform_comp>().process([](auto& transform) {
+			transform.position = {-4, 0, -0.5f + 1.f};
 		});
 
 
@@ -183,7 +196,7 @@ namespace mirrage {
 			switch(e.id) {
 				case "quit"_strid: _engine.screens().leave(); break;
 
-				case "capture_mouse"_strid:
+				case "capture_ptr"_strid:
 					_engine.input().capture_mouse(e.begin);
 					_mouse_look = e.begin;
 					_set_preset(0);
@@ -715,11 +728,15 @@ namespace mirrage {
 
 	void Test_screen::_draw_animation_window()
 	{
-		auto anim_mb = _animation_test.get<renderer::Animation_comp>();
+		auto anim_mb = _animation_test_dqs.get<renderer::Animation_comp>();
 		if(anim_mb.is_nothing())
 			return;
 
 		auto& anim = anim_mb.get_or_throw();
+
+		auto anim_lbs_mb = _animation_test_lbs.get<renderer::Animation_comp>();
+		anim_lbs_mb.process([&](auto& anim_lbs) { anim_lbs.time(anim.time()); });
+
 
 		auto ctx = _gui.ctx();
 		if(nk_begin_titled(ctx,
@@ -758,6 +775,8 @@ namespace mirrage {
 
 			if(new_idx != curr_idx) {
 				anim.animation(animations_ids.at(std::size_t(new_idx)));
+				anim_lbs_mb.process(
+				        [&](auto& anim) { anim.animation(animations_ids.at(std::size_t(new_idx))); });
 			}
 
 			if(auto curr_animation = anim.animation(); curr_animation) {
@@ -765,8 +784,9 @@ namespace mirrage {
 
 				nk_label(ctx, "Time", NK_TEXT_LEFT);
 				auto new_time = nk_slide_float(ctx, 0.f, anim.time(), duration, 0.01f);
-				if(std::abs(new_time - anim.time()) > 0.00001f)
+				if(std::abs(new_time - anim.time()) > 0.00001f) {
 					anim.time(new_time);
+				}
 
 				nk_label(ctx,
 				         (util::to_string(new_time) + " / " + util::to_string(duration)).c_str(),

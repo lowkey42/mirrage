@@ -7,7 +7,9 @@
 
 #pragma once
 
+#include <mirrage/utils/func_traits.hpp>
 #include <mirrage/utils/log.hpp>
+#include <mirrage/utils/math.hpp>
 
 #include <algorithm>
 #include <functional>
@@ -560,6 +562,147 @@ namespace mirrage::util {
 
 	template <class T>
 	using cvector_range = iter_range<typename std::vector<T>::const_iterator>;
+
+
+	template <class Range>
+	class skip_range {
+	  public:
+		skip_range() noexcept {}
+		skip_range(std::size_t skip, Range range) noexcept : _skip(skip), _range(std::move(range)) {}
+
+		bool operator==(const skip_range& o) noexcept { return _range == o._range; }
+
+		auto begin() const noexcept
+		{
+			auto i       = _range.begin();
+			auto skipped = std::size_t(0);
+			while(i != _range.end() && skipped++ < _skip)
+				++i;
+			return i;
+		}
+		auto end() const noexcept { return _range.end(); }
+
+		std::size_t size() const noexcept
+		{
+			auto s = _range.size();
+			return s > _skip ? s - _skip : 0;
+		}
+
+	  private:
+		std::size_t _skip;
+		Range       _range;
+	};
+	template <class Range>
+	auto skip(std::size_t skip, Range&& range)
+	{
+		return skip_range<std::remove_reference_t<Range>>(skip, std::forward<Range>(range));
+	}
+
+
+	namespace {
+		struct deref_join {
+			template <class... Iter>
+			[[maybe_unused]] auto operator()(Iter&&... iter) const
+			{
+				return std::tuple<decltype(*iter)...>(*iter...);
+			}
+		};
+
+		template <typename T>
+		class proxy_holder {
+		  public:
+			proxy_holder(const T& value) : value(value) {}
+			T* operator->() { return &value; }
+			T& operator*() { return value; }
+
+		  private:
+			T value;
+		};
+	} // namespace
+
+	template <class... Iter>
+	class join_iterator {
+	  public:
+		join_iterator() = default;
+		template <class... T>
+		join_iterator(std::size_t index, T&&... iters) : _iters(std::forward<T>(iters)...), _index(index)
+		{
+		}
+
+		auto operator==(const join_iterator& rhs) const { return _index == rhs._index; }
+		auto operator!=(const join_iterator& rhs) const { return !(*this == rhs); }
+
+		auto operator*() const { return std::apply(deref_join{}, _iters); }
+		auto operator-> () const { return proxy_holder(**this); }
+
+		auto operator++()
+		{
+			foreach_in_tuple(_iters, [](auto, auto& iter) { ++iter; });
+			++_index;
+		}
+		auto operator++(int)
+		{
+			auto v = *this;
+			++*this;
+			return v;
+		}
+
+	  private:
+		std::tuple<Iter...> _iters;
+		std::size_t         _index;
+	};
+
+	namespace {
+		struct get_join_begin {
+			template <class... Range>
+			[[maybe_unused]] auto operator()(Range&&... ranges) const
+			{
+				return join_iterator<std::remove_reference_t<decltype(ranges.begin())>...>(0,
+				                                                                           ranges.begin()...);
+			}
+		};
+		struct get_join_iterator {
+			template <class... Range>
+			[[maybe_unused]] auto operator()(std::size_t offset, Range&&... ranges) const
+			{
+				return join_iterator<std::remove_reference_t<decltype(ranges.begin())>...>(
+				        offset, (ranges.begin() + offset)...);
+			}
+		};
+	} // namespace
+
+	template <class... Range>
+	class join_range {
+	  public:
+		join_range() noexcept {}
+		template <class... T>
+		join_range(T&&... ranges) noexcept : _ranges(std::forward<T>(ranges)...), _size(min(ranges.size()...))
+		{
+		}
+
+		auto begin() const noexcept { return std::apply(get_join_begin{}, _ranges); }
+		auto begin() noexcept { return std::apply(get_join_begin{}, _ranges); }
+		auto end() const noexcept
+		{
+			return std::apply(get_join_iterator{}, std::tuple_cat(std::make_tuple(_size), _ranges));
+		}
+		auto end() noexcept
+		{
+			return std::apply(get_join_iterator{}, std::tuple_cat(std::make_tuple(_size), _ranges));
+		}
+
+		auto size() const noexcept { return _size; }
+
+	  private:
+		std::tuple<Range...> _ranges;
+		std::size_t          _size;
+	};
+
+	template <class... Range>
+	auto join(Range&&... range)
+	{
+		return join_range<std::remove_reference_t<Range>...>(std::forward<Range>(range)...);
+	}
 
 	template <class T>
 	class numeric_range {

@@ -529,6 +529,26 @@ namespace mirrage::graphic {
 		                                : vk::SubpassContents::eSecondaryCommandBuffers);
 	}
 
+	namespace {
+		auto print_stages(const std::unordered_map<Stage_id, std::size_t>& stages)
+		{
+			auto os = std::stringstream();
+
+			os << '[';
+			auto first = true;
+			for(auto&& [key, value] : stages) {
+				(void) value;
+				if(first)
+					first = false;
+				else
+					os << ", ";
+				os << key;
+			}
+			os << ']';
+			return os.str();
+		}
+	} // namespace
+
 	void Render_pass::set_stage(util::Str_id stage_id)
 	{
 		auto& cmb =
@@ -536,7 +556,9 @@ namespace mirrage::graphic {
 
 		auto& stages       = _stages.at(_subpass_index);
 		auto  pipeline_idx = stages.find(stage_id);
-		MIRRAGE_INVARIANT(pipeline_idx != stages.end(), "Unknown render stage '" << stage_id.str() << "'!");
+		MIRRAGE_INVARIANT(pipeline_idx != stages.end(),
+		                  "Unknown render stage '" << stage_id.str() << "'! Expected one of "
+		                                           << print_stages(stages));
 
 		_bound_pipeline = pipeline_idx->second;
 		cmb.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipelines.at(pipeline_idx->second));

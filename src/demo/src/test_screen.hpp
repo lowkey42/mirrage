@@ -44,7 +44,8 @@ namespace mirrage {
 
 		ecs::Entity_facet _camera;
 		ecs::Entity_facet _sun;
-		ecs::Entity_facet _animation_test;
+		ecs::Entity_facet _animation_test_dqs;
+		ecs::Entity_facet _animation_test_lbs;
 
 		float _sun_elevation         = 0.92f;
 		float _sun_azimuth           = 1.22f;

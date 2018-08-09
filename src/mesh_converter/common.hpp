@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mirrage/renderer/animation.hpp>
+
 #include <assimp/scene.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -36,6 +38,8 @@ namespace mirrage {
 
 		std::string default_output_directory = "output";
 
+		renderer::Skinning_type skinning_type = renderer::Skinning_type::linear_blend_skinning;
+
 		bool print_material_info = false;
 		bool print_animations    = true;
 	};
@@ -44,6 +48,7 @@ namespace mirrage {
 	              material_texture_override,
 	              empty_bones_to_keep,
 	              default_output_directory,
+	              skinning_type,
 	              print_material_info,
 	              print_animations);
 

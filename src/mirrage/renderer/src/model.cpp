@@ -46,7 +46,7 @@ namespace mirrage::renderer {
 	  : _descriptor_set(std::move(descriptor_set))
 	  , _albedo(std::move(albedo))
 	  , _mat_data(std::move(mat_data))
-	  , _material_id(substance_id)
+	  , _substance_id(substance_id ? substance_id : "default"_strid)
 	{
 
 		auto desc_images = std::array<vk::DescriptorImageInfo, material_textures>();

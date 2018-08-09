@@ -77,8 +77,8 @@ namespace mirrage {
 						if(node != skeleton.bones_by_name.end()) {
 							auto& bone_data       = skeleton.bones[std::size_t(node->second)];
 							bone_data.assimp_bone = bone;
-							bone_data.offset =
-							        renderer::to_bone_transform(to_glm(bone->mOffsetMatrix) * inv_transform);
+							bone_data.offset = renderer::compress_bone_transform(to_glm(bone->mOffsetMatrix)
+							                                                     * inv_transform);
 
 							// mark bone and all parents as used
 							used_bones[std::size_t(bone_data.idx)] = true;
@@ -138,10 +138,11 @@ namespace mirrage {
 		out_file.write("MBFF", 4);
 		constexpr auto version = std::uint16_t(1);
 		write(out_file, version);
-		write(out_file, std::uint16_t(0));
+		write(out_file, std::uint16_t(std::uint16_t(cfg.skinning_type) & 0b11));
 		write(out_file, std::uint32_t(skeleton.bones.size()));
 
-		write(out_file, renderer::to_bone_transform(glm::inverse(to_glm(scene.mRootNode->mTransformation))));
+		write(out_file,
+		      renderer::compress_bone_transform(glm::inverse(to_glm(scene.mRootNode->mTransformation))));
 
 		for(auto& bone : skeleton.bones)
 			write(out_file, bone.offset);
