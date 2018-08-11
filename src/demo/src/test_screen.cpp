@@ -89,13 +89,13 @@ namespace mirrage {
 		        [](auto& anim) { anim.animation("dance"_strid); });
 
 
-		auto rotation_test = _meta_system.entities().emplace("rotation_test");
-		rotation_test.get<Transform_comp>().process([](auto& transform) {
+		_animation_test2_dqs = _meta_system.entities().emplace("rotation_test");
+		_animation_test2_dqs.get<Transform_comp>().process([](auto& transform) {
 			transform.position = {-4, 0, -0.5f - 1.f};
 		});
 
-		auto rotation_test_lbs = _meta_system.entities().emplace("rotation_test_lbs");
-		rotation_test_lbs.get<Transform_comp>().process([](auto& transform) {
+		_animation_test2_lbs = _meta_system.entities().emplace("rotation_test_lbs");
+		_animation_test2_lbs.get<Transform_comp>().process([](auto& transform) {
 			transform.position = {-4, 0, -0.5f + 1.f};
 		});
 
@@ -813,6 +813,17 @@ namespace mirrage {
 					anim.loop(nk_button_label(ctx, "Repeat"));
 			}
 		}
+
+		nk_label(ctx, "Rotation Test", NK_TEXT_LEFT);
+		_animation_test2_dqs.get<renderer::Animation_comp>().process([&](auto& anim) {
+			if(anim.paused())
+				anim.pause(!nk_button_label(ctx, "Continue"));
+			else
+				anim.pause(nk_button_label(ctx, "Pause"));
+
+			_animation_test2_lbs.get<renderer::Animation_comp>().process(
+			        [&](auto& anim_lbs) { anim_lbs.time(anim.time()); });
+		});
 
 		nk_end(ctx);
 	}

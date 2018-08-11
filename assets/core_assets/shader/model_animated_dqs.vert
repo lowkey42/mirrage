@@ -47,10 +47,25 @@ void main() {
 	float unused_weight = 1.0 - dot(bone_weights, vec4(1.0));
 	mat3x4 identity_dqs = mat3x4(vec4(1,0,0,0), vec4(0,0,0,0), vec4(1,1,1,1));
 
-	mat3x4 bone = bones.offset[bone_ids[0]] * bone_weights[0]
-	        + bones.offset[bone_ids[1]] * bone_weights[1]
-			+ bones.offset[bone_ids[2]] * bone_weights[2]
-			+ bones.offset[bone_ids[3]] * bone_weights[3]
+	mat3x4[] dq = mat3x4[](
+		bones.offset[bone_ids[0]],
+		bones.offset[bone_ids[1]],
+		bones.offset[bone_ids[2]],
+		bones.offset[bone_ids[3]]
+	);
+
+	// antipodality handling
+	for(uint i=1; i<=3; i++) {
+		if (dot(dq[0][0], dq[i][0]) < 0.0) {
+			dq[i][0] *= -1.0;
+			dq[i][1] *= -1.0;
+		}
+	}
+
+	mat3x4 bone = dq[0] * bone_weights[0]
+	        + dq[1] * bone_weights[1]
+			+ dq[2] * bone_weights[2]
+			+ dq[3] * bone_weights[3]
 	        + identity_dqs * unused_weight;
 	float dq_len = length(bone[0]);
 	bone[0] /= dq_len;
@@ -59,8 +74,6 @@ void main() {
 	vec3 p = transform_position(position, bone);
 	vec3 n = transform_normal  (normal,   bone);
 
-	//vec3 p = position;
-	//vec3 n = normal;
 
 	vec4 view_pos = model_uniforms.model_to_view * vec4(p, 1.0);
 
