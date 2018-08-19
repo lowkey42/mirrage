@@ -827,6 +827,7 @@ namespace mirrage {
 
 
 				anim_lbs_mb.process([&](auto& anim_lbs) {
+					anim_lbs.speed(anim.speed());
 					anim_lbs.pause(anim.paused());
 					anim_lbs.reverse(anim.reversed());
 					anim_lbs.loop(anim.looped());

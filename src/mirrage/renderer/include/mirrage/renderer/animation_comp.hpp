@@ -48,17 +48,17 @@ namespace mirrage::renderer {
 		asset::Ptr<Animation> animation;
 		float                 blend_weight;
 
-		float       time;
-		std::int8_t speed;
-		bool        reversed : 1;
-		bool        paused : 1;
-		bool        looped : 1;
+		float        time;
+		std::uint8_t speed;
+		bool         reversed : 1;
+		bool         paused : 1;
+		bool         looped : 1;
 
 		static constexpr auto pack_speed(float v)
 		{
-			return std::int8_t(std::clamp(v / 10 * 127, -127.f, +127.f));
+			return std::int8_t(std::clamp(v / 10 * 255, 0.f, 255.f));
 		}
-		static constexpr auto unpack_speed(std::int8_t v) { return float(v) * 10 / 127; }
+		static constexpr auto unpack_speed(std::int8_t v) { return float(v) * 10 / 255; }
 
 		Animation_state() : time(0.f), speed(pack_speed(1.f)), reversed(false), paused(false), looped(true) {}
 	};
