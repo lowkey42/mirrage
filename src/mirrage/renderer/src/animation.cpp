@@ -103,7 +103,7 @@ namespace mirrage::renderer {
 		{
 			auto r = Final_bone_transform();
 			r.lbs  = compress_bone_transform(glm::translate(glm::mat4(1), t.translation)
-                                            * glm::mat4_cast(t.orientation)
+                                            * glm::mat4_cast(glm::normalize(t.orientation))
                                             * glm::scale(glm::mat4(1.f), t.scale));
 			return r;
 		}
@@ -246,7 +246,7 @@ namespace mirrage::renderer {
 		using detail::Behaviour;
 
 		template <class T>
-		auto interpolate(gsl::span<T> keyframes, float t, std::int32_t& key) -> T
+		auto interpolate(gsl::span<T> keyframes, float t, std::int16_t key) -> T
 		{
 			auto& a = keyframes[key];
 			auto& b = keyframes[(key + 1) % keyframes.size()];
@@ -265,10 +265,10 @@ namespace mirrage::renderer {
 		/// O(1)         if the given index is already near the solution
 		/// O(log log N) if the data is nearly uniformly distributed
 		/// O(N)         else (worst case)
-		auto binary_search(gsl::span<const float> container, float value, std::int32_t i) -> std::int32_t
+		auto binary_search(gsl::span<const float> container, float value, std::int16_t i) -> std::int16_t
 		{
-			auto high = std::int32_t(container.size() - 2);
-			auto low  = std::int32_t(0);
+			auto high = std::int16_t(container.size() - 2);
+			auto low  = std::int16_t(0);
 			i         = std::min(high, std::max(low, i));
 
 			do {
@@ -282,7 +282,7 @@ namespace mirrage::renderer {
 
 				auto new_i =
 				        low + ((value - container[low]) * (high - low)) / (container[high] - container[low]);
-				i = static_cast<std::int32_t>(std::min(float(high), new_i));
+				i = static_cast<std::int16_t>(std::min(float(high), new_i));
 
 			} while(high > low);
 
@@ -296,7 +296,7 @@ namespace mirrage::renderer {
 		///			depending on pre_behaviour/post_behaviour
 		auto find_keyframe(gsl::span<const float> times,
 		                   float                  time,
-		                   std::int32_t&          index,
+		                   std::int16_t&          index,
 		                   detail::Behaviour      pre_behaviour,
 		                   detail::Behaviour      post_behaviour) -> float
 		{
@@ -317,7 +317,7 @@ namespace mirrage::renderer {
 
 			} else if(time >= end_time && post_behaviour == Behaviour::repeat) {
 				switch(post_behaviour) {
-					case Behaviour::clamp: index = std::int32_t(times.size() - 2); return 1.f;
+					case Behaviour::clamp: index = std::int16_t(times.size() - 2); return 1.f;
 					case Behaviour::linear: break;
 					case Behaviour::repeat: time = start_time + std::fmod(time, end_time - start_time); break;
 				}
@@ -325,7 +325,7 @@ namespace mirrage::renderer {
 
 
 			index = std::clamp(
-			        binary_search(times, time, index), std::int32_t(0), std::int32_t(times.size() - 2));
+			        binary_search(times, time, index), std::int16_t(0), std::int16_t(times.size() - 2));
 			return (time - times[index]) / (times[index + 1] - times[index]);
 		}
 

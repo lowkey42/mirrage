@@ -23,6 +23,28 @@ namespace mirrage::renderer {
 		glm::quat orientation;
 		glm::vec3 translation;
 		glm::vec3 scale;
+
+		friend auto operator*(const Local_bone_transform& lhs, float rhs) -> Local_bone_transform
+		{
+			return {lhs.orientation * rhs, lhs.translation * rhs, lhs.scale * rhs};
+		}
+		friend auto operator*(float lhs, const Local_bone_transform& rhs) -> Local_bone_transform
+		{
+			return {rhs.orientation * lhs, rhs.translation * lhs, rhs.scale * lhs};
+		}
+		friend auto operator+(const Local_bone_transform& lhs, const Local_bone_transform& rhs)
+		        -> Local_bone_transform
+		{
+			return {lhs.orientation + rhs.orientation,
+			        lhs.translation + rhs.translation,
+			        lhs.scale + rhs.scale};
+		}
+		auto operator+=(const Local_bone_transform& rhs)
+		{
+			orientation += rhs.orientation;
+			translation += rhs.translation;
+			scale += rhs.scale;
+		}
 	};
 	static_assert(sizeof(Local_bone_transform) == 4 * (4 + 3 + 3), "Local_bone_transform contains padding");
 
@@ -109,9 +131,9 @@ namespace mirrage::renderer {
 
 
 	struct Animation_key {
-		std::int32_t position_key    = 0;
-		std::int32_t scale_key       = 0;
-		std::int32_t orientation_key = 0;
+		std::int16_t position_key    = 0;
+		std::int16_t scale_key       = 0;
+		std::int16_t orientation_key = 0;
 	};
 
 	/*

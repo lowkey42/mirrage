@@ -1,8 +1,12 @@
 #pragma once
 
+#include <mirrage/renderer/animation.hpp>
 #include <mirrage/renderer/deferred_renderer.hpp>
 
 #include <mirrage/graphic/streamed_buffer.hpp>
+
+#include <tsl/robin_map.h>
+#include <gsl/gsl>
 
 
 namespace mirrage::graphic {

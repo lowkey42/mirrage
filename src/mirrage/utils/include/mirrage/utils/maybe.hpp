@@ -180,7 +180,7 @@ namespace mirrage::util {
 			if(is_some())
 				return f(_data);
 			else
-				return nothing();
+				return {};
 		}
 
 		template <typename Func,
