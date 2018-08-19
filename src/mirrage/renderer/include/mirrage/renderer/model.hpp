@@ -37,17 +37,17 @@ namespace mirrage::renderer {
 		         vk::Sampler,
 		         graphic::Texture_ptr albedo,
 		         graphic::Texture_ptr mat_data,
-		         util::Str_id         material_id);
+		         util::Str_id         substance_id);
 
 		void bind(graphic::Render_pass& pass) const;
 
-		auto material_id() const noexcept { return _material_id; }
+		auto substance_id() const noexcept { return _substance_id; }
 
 	  private:
 		graphic::DescriptorSet _descriptor_set;
 		graphic::Texture_ptr   _albedo;
 		graphic::Texture_ptr   _mat_data;
-		util::Str_id           _material_id;
+		util::Str_id           _substance_id;
 	};
 	using Material_ptr = asset::Ptr<Material>;
 
@@ -73,27 +73,12 @@ namespace mirrage::renderer {
 		glm::vec4  bone_weights;
 
 		Model_rigged_vertex() = default;
-		Model_rigged_vertex(float        px,
-		                    float        py,
-		                    float        pz,
-		                    float        nx,
-		                    float        ny,
-		                    float        nz,
-		                    float        u,
-		                    float        v,
-		                    std::int32_t bone_id1,
-		                    std::int32_t bone_id2,
-		                    std::int32_t bone_id3,
-		                    std::int32_t bone_id4,
-		                    float        bone_weight1,
-		                    float        bone_weight2,
-		                    float        bone_weight3,
-		                    float        bone_weight4)
+		Model_rigged_vertex(float px, float py, float pz, float nx, float ny, float nz, float u, float v)
 		  : position(px, py, pz)
 		  , normal(nx, ny, nz)
 		  , tex_coords(u, v)
-		  , bone_ids(bone_id1, bone_id2, bone_id3, bone_id4)
-		  , bone_weights(bone_weight1, bone_weight2, bone_weight3, bone_weight4)
+		  , bone_ids{0, 0, 0, 0}
+		  , bone_weights{0, 0, 0, 0}
 		{
 		}
 	};
@@ -113,6 +98,7 @@ namespace mirrage::renderer {
 	* |   BOUNDING SPHERE X OFFSET   |
 	* |   BOUNDING SPHERE Y OFFSET   |
 	* |   BOUNDING SPHERE Z OFFSET   |
+	* |          BONE COUNT          |		if rigged
 	*
 	* |          INDEX OFFSET        |
 	* |          INDEX COUNT         |
@@ -196,6 +182,7 @@ namespace mirrage::renderer {
 		      float                   bounding_sphere_radius,
 		      glm::vec3               bounding_sphere_offset,
 		      bool                    rigged,
+		      std::int_fast32_t       bone_count,
 		      util::maybe<asset::AID> aid = util::nothing);
 
 		auto aid() const noexcept -> auto& { return _aid; }
@@ -227,6 +214,7 @@ namespace mirrage::renderer {
 
 		auto sub_meshes() const noexcept -> auto& { return _sub_meshes; }
 		auto rigged() const noexcept { return _rigged; }
+		auto bone_count() const noexcept { return _bone_count; }
 
 	  private:
 		graphic::Mesh           _mesh;
@@ -235,6 +223,7 @@ namespace mirrage::renderer {
 		float                   _bounding_sphere_radius;
 		glm::vec3               _bounding_sphere_offset;
 		bool                    _rigged;
+		std::int_fast32_t       _bone_count;
 	};
 	using Model_ptr = asset::Ptr<Model>;
 

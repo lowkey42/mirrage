@@ -15,6 +15,7 @@ add_library(mirrage_utils STATIC
 	src/pool.cpp
 	src/purgatory.cpp
 	src/reflection.cpp
+	src/small_vector.cpp
 	src/types.cpp
 	${HEADER_FILES}
 )

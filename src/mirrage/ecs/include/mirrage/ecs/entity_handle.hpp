@@ -184,3 +184,13 @@ namespace mirrage::ecs {
 		Freelist                     _free;
 	};
 } // namespace mirrage::ecs
+
+namespace std {
+	template <>
+	struct hash<mirrage::ecs::Entity_handle> {
+		size_t operator()(mirrage::ecs::Entity_handle handle) const noexcept
+		{
+			return static_cast<std::size_t>(handle.pack());
+		}
+	};
+} // namespace std

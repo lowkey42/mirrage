@@ -2,6 +2,7 @@
 
 #include <mirrage/ecs/entity_handle.hpp>
 #include <mirrage/utils/maybe.hpp>
+#include <mirrage/utils/str_id.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <glm/gtx/quaternion.hpp>
@@ -40,9 +41,9 @@ namespace mirrage::renderer {
 		glm::quat          orientation{1, 0, 0, 0};
 		glm::vec3          scale{1.f, 1.f, 1.f};
 		const Model*       model;
+		util::Str_id       substance_id;
 		std::uint32_t      sub_mesh;
 		std::uint32_t      culling_mask;
-		// TODO: animation data
 
 		Geometry() = default;
 		Geometry(ecs::Entity_handle entity,
@@ -50,6 +51,7 @@ namespace mirrage::renderer {
 		         glm::quat          orientation,
 		         glm::vec3          scale,
 		         const Model*       model,
+		         util::Str_id       substance_id,
 		         std::uint32_t      sub_mesh,
 		         std::uint32_t      culling_mask)
 		  : entity(entity)
@@ -57,6 +59,7 @@ namespace mirrage::renderer {
 		  , orientation(orientation)
 		  , scale(scale)
 		  , model(model)
+		  , substance_id(substance_id)
 		  , sub_mesh(sub_mesh)
 		  , culling_mask(culling_mask)
 		{

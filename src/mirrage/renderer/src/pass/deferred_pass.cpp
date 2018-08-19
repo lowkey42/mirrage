@@ -112,6 +112,18 @@ namespace mirrage::renderer {
 			gpass.configure_subpass(renderer, geometry_pass);
 
 
+			auto animated_geometry_pipeline          = pipeline;
+			animated_geometry_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
+			        vk::PipelineDepthStencilStateCreateFlags{}, true, true, vk::CompareOp::eLess};
+			gpass.configure_animation_pipeline(renderer, animated_geometry_pipeline);
+			auto& animated_geometry_pass = builder.add_subpass(animated_geometry_pipeline)
+			                                       .color_attachment(depth_sampleable)
+			                                       .color_attachment(albedo_mat_id)
+			                                       .color_attachment(mat_data)
+			                                       .depth_stencil_attachment(depth);
+			gpass.configure_animation_subpass(renderer, animated_geometry_pass);
+
+
 			auto light_pipeline    = pipeline;
 			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{};
 			lpass.configure_pipeline(renderer, light_pipeline);
@@ -126,21 +138,38 @@ namespace mirrage::renderer {
 			lpass.configure_subpass(renderer, light_pass);
 
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead,
-			        geometry_pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+			builder.add_dependency(util::nothing,
+			                       vk::PipelineStageFlagBits::eBottomOfPipe,
+			                       vk::AccessFlagBits::eMemoryRead,
+			                       geometry_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
 			builder.add_dependency(
 			        geometry_pass,
 			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite
+			                | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			        animated_geometry_pass,
+			        vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                | vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite
+			                | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+
+			builder.add_dependency(
+			        animated_geometry_pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
 			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
 			        light_pass,
-			        vk::PipelineStageFlagBits::eFragmentShader,
-			        vk::AccessFlagBits::eInputAttachmentRead);
+			        vk::PipelineStageFlagBits::eFragmentShader
+			                | vk::PipelineStageFlagBits::eEarlyFragmentTests,
+			        vk::AccessFlagBits::eInputAttachmentRead
+			                | vk::AccessFlagBits::eDepthStencilAttachmentRead);
 
 			builder.add_dependency(
 			        light_pass,

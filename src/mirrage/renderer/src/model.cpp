@@ -46,7 +46,7 @@ namespace mirrage::renderer {
 	  : _descriptor_set(std::move(descriptor_set))
 	  , _albedo(std::move(albedo))
 	  , _mat_data(std::move(mat_data))
-	  , _material_id(substance_id)
+	  , _substance_id(substance_id ? substance_id : "default"_strid)
 	{
 
 		auto desc_images = std::array<vk::DescriptorImageInfo, material_textures>();
@@ -78,6 +78,7 @@ namespace mirrage::renderer {
 	             float                   bounding_sphere_radius,
 	             glm::vec3               bounding_sphere_offset,
 	             bool                    rigged,
+	             std::int_fast32_t       bone_count,
 	             util::maybe<asset::AID> aid)
 	  : _mesh(std::move(mesh))
 	  , _sub_meshes(std::move(sub_meshes))
@@ -85,6 +86,7 @@ namespace mirrage::renderer {
 	  , _bounding_sphere_radius(bounding_sphere_radius)
 	  , _bounding_sphere_offset(bounding_sphere_offset)
 	  , _rigged(rigged)
+	  , _bone_count(bone_count)
 	{
 	}
 
@@ -176,6 +178,13 @@ namespace mirrage::asset {
 			             << in.aid().str() << "\" is not compatible with this version of the application!");
 		}
 
+		auto rigged     = (header.flags & 1) != 0;
+		auto bone_count = std::int32_t(0);
+
+		if(rigged) {
+			read(in, bone_count);
+		}
+
 		// load sub meshes and materials
 		auto sub_meshes = std::vector<renderer::Sub_mesh>();
 		sub_meshes.reserve(header.submesh_count);
@@ -205,7 +214,6 @@ namespace mirrage::asset {
 			material_load_tasks.emplace_back(sub_mesh.material.internal_task());
 		}
 
-		// FIXME/TODO: shouldn't read_direct use the number of bytes instead of the count???
 		// transfer mesh data to gpu
 		auto mesh = graphic::Mesh(_device,
 		                          _owner_qfamily,
@@ -226,7 +234,6 @@ namespace mirrage::asset {
 		auto all_loaded = async::when_all(all_materials_loaded, mesh.internal_buffer().transfer_task());
 		using Task_type = decltype(all_loaded)::result_type;
 
-		auto rigged                 = (header.flags & 1) != 0;
 		auto bounding_sphere_offset = glm::vec3(header.bounding_sphere_offset_x,
 		                                        header.bounding_sphere_offset_y,
 		                                        header.bounding_sphere_offset_z);
@@ -236,6 +243,7 @@ namespace mirrage::asset {
 		                                 header.bounding_sphere_radius,
 		                                 bounding_sphere_offset,
 		                                 rigged,
+		                                 bone_count,
 		                                 in.aid())](const Task_type&) mutable { return std::move(model); });
 	}
 

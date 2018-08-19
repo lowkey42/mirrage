@@ -240,9 +240,9 @@ namespace mirrage::renderer {
 
 		_render_pass.push_constant("camera"_strid, view_proj);
 
-		cb.bindVertexBuffers(0, {_mesh_buffer.buffer()}, {0});
+		cb.bindVertexBuffers(0, {_mesh_buffer.read_buffer()}, {0});
 		cb.bindIndexBuffer(
-		        _mesh_buffer.buffer(), gsl::narrow<std::uint32_t>(index_offset), vk::IndexType::eUint16);
+		        _mesh_buffer.read_buffer(), gsl::narrow<std::uint32_t>(index_offset), vk::IndexType::eUint16);
 	}
 
 	void Gui_pass::draw_elements(int           texture_handle,
