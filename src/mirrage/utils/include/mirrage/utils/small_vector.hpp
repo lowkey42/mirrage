@@ -147,8 +147,8 @@
 #endif
 
 #if __has_builtin(__builtin_expect) || LLVM_GNUC_PREREQ(4, 0, 0)
-#define LLVM_LIKELY(EXPR) __builtin_expect((bool) (EXPR), true)
-#define LLVM_UNLIKELY(EXPR) __builtin_expect((bool) (EXPR), false)
+#define LLVM_LIKELY(EXPR) __builtin_expect(static_cast<bool>(EXPR), true)
+#define LLVM_UNLIKELY(EXPR) __builtin_expect(static_cast<bool>(EXPR), false)
 #else
 #define LLVM_LIKELY(EXPR) (EXPR)
 #define LLVM_UNLIKELY(EXPR) (EXPR)
@@ -491,7 +491,7 @@ namespace llvm {
 
 	  protected:
 		SmallVectorBase(void* FirstEl, size_t Size)
-		  : BeginX(FirstEl), EndX(FirstEl), CapacityX((char*) FirstEl + Size)
+		  : BeginX(FirstEl), EndX(FirstEl), CapacityX(static_cast<char*>(FirstEl) + Size)
 		{
 		}
 
@@ -501,10 +501,13 @@ namespace llvm {
 
 	  public:
 		/// This returns size()*sizeof(T).
-		size_t size_in_bytes() const { return size_t((char*) EndX - (char*) BeginX); }
+		size_t size_in_bytes() const { return size_t(static_cast<char*>(EndX) - static_cast<char*>(BeginX)); }
 
 		/// capacity_in_bytes - This returns capacity()*sizeof(T).
-		size_t capacity_in_bytes() const { return size_t((char*) CapacityX - (char*) BeginX); }
+		size_t capacity_in_bytes() const
+		{
+			return size_t(static_cast<char*>(CapacityX) - static_cast<char*>(BeginX));
+		}
 
 		LLVM_NODISCARD bool empty() const { return BeginX == EndX; }
 	};
@@ -559,17 +562,17 @@ namespace llvm {
 
 		// forward iterator creation methods.
 		LLVM_ATTRIBUTE_ALWAYS_INLINE
-		iterator begin() { return (iterator) this->BeginX; }
+		iterator begin() { return static_cast<iterator>(this->BeginX); }
 		LLVM_ATTRIBUTE_ALWAYS_INLINE
-		const_iterator begin() const { return (const_iterator) this->BeginX; }
+		const_iterator begin() const { return static_cast<const_iterator>(this->BeginX); }
 		LLVM_ATTRIBUTE_ALWAYS_INLINE
-		iterator end() { return (iterator) this->EndX; }
+		iterator end() { return static_cast<iterator>(this->EndX); }
 		LLVM_ATTRIBUTE_ALWAYS_INLINE
-		const_iterator end() const { return (const_iterator) this->EndX; }
+		const_iterator end() const { return static_cast<const_iterator>(this->EndX); }
 
 	  protected:
-		iterator       capacity_ptr() { return (iterator) this->CapacityX; }
-		const_iterator capacity_ptr() const { return (const_iterator) this->CapacityX; }
+		iterator       capacity_ptr() { return static_cast<iterator>(this->CapacityX); }
+		const_iterator capacity_ptr() const { return static_cast<const_iterator>(this->CapacityX); }
 
 	  public:
 		// reverse iterator creation methods.
@@ -667,7 +670,7 @@ namespace llvm {
 		{
 			if(LLVM_UNLIKELY(this->EndX >= this->CapacityX))
 				this->grow();
-			::new((void*) this->end()) T(Elt);
+			::new(static_cast<void*>(this->end())) T(Elt);
 			this->setEnd(this->end() + 1);
 		}
 
@@ -675,7 +678,7 @@ namespace llvm {
 		{
 			if(LLVM_UNLIKELY(this->EndX >= this->CapacityX))
 				this->grow();
-			::new((void*) this->end()) T(::std::move(Elt));
+			::new(static_cast<void*>(this->end())) T(::std::move(Elt));
 			this->setEnd(this->end() + 1);
 		}
 
@@ -966,7 +969,7 @@ namespace llvm {
 				I = this->begin() + EltNo;
 			}
 
-			::new((void*) this->end()) T(::std::move(this->back()));
+			::new(static_cast<void*>(this->end())) T(::std::move(this->back()));
 			// Push everything else over.
 			std::move_backward(I, this->end() - 1, this->end());
 			this->setEnd(this->end() + 1);
@@ -996,7 +999,7 @@ namespace llvm {
 				this->grow();
 				I = this->begin() + EltNo;
 			}
-			::new((void*) this->end()) T(std::move(this->back()));
+			::new(static_cast<void*>(this->end())) T(std::move(this->back()));
 			// Push everything else over.
 			std::move_backward(I, this->end() - 1, this->end());
 			this->setEnd(this->end() + 1);
@@ -1134,7 +1137,7 @@ namespace llvm {
 		{
 			if(LLVM_UNLIKELY(this->EndX >= this->CapacityX))
 				this->grow();
-			::new((void*) this->end()) T(std::forward<ArgTypes>(Args)...);
+			::new(static_cast<void*>(this->end())) T(std::forward<ArgTypes>(Args)...);
 			this->setEnd(this->end() + 1);
 		}
 
@@ -1491,9 +1494,9 @@ namespace llvm {
 				report_bad_alloc_error("Reallocation of SmallVector element failed.");
 		}
 
-		this->EndX      = (char*) NewElts + CurSizeBytes;
+		this->EndX      = static_cast<char*>(NewElts) + CurSizeBytes;
 		this->BeginX    = NewElts;
-		this->CapacityX = (char*) this->BeginX + NewCapacityInBytes;
+		this->CapacityX = static_cast<char*>(this->BeginX) + NewCapacityInBytes;
 	}
 
 	/*
