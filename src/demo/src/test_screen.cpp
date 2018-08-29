@@ -772,8 +772,10 @@ namespace mirrage {
 			}
 
 			anim.animation().process([&](auto& curr_animation) {
-				auto dqs_states = _animation_test_dqs.get<renderer::Animation_comp>().get_or_throw().states();
-				auto lbs_states = _animation_test_lbs.get<renderer::Animation_comp>().get_or_throw().states();
+				auto& dqs_anim   = _animation_test_dqs.get<renderer::Animation_comp>().get_or_throw();
+				auto& dqs_states = dqs_anim.states();
+				auto& lbs_anim   = _animation_test_lbs.get<renderer::Animation_comp>().get_or_throw();
+				auto& lbs_states = lbs_anim.states();
 
 				auto time           = 0.f;
 				auto curr_dqs_state = std::find_if(dqs_states.begin(), dqs_states.end(), [&](auto& s) {
@@ -794,11 +796,14 @@ namespace mirrage {
 				nk_label(ctx, "Time", NK_TEXT_LEFT);
 				auto new_time = nk_slide_float(ctx, 0.f, time, duration, 0.01f);
 				if(std::abs(new_time - time) > 0.00001f) {
+					dqs_anim.mark_dirty();
+					lbs_anim.mark_dirty();
+
 					if(curr_dqs_state != dqs_states.end())
-						curr_dqs_state->time = time;
+						curr_dqs_state->time = new_time;
 
 					if(curr_lbs_state != lbs_states.end())
-						curr_lbs_state->time = time;
+						curr_lbs_state->time = new_time;
 				}
 
 				nk_label(ctx,
@@ -806,7 +811,7 @@ namespace mirrage {
 				         NK_TEXT_LEFT);
 
 				auto speed = anim.speed();
-				nk_property_float(ctx, "Speed", 0.f, &speed, 5.f, 0.01f, 0.2f);
+				nk_property_float(ctx, "Speed", 0.f, &speed, 5.f, 0.01f, 0.001f);
 				anim.speed(speed);
 
 

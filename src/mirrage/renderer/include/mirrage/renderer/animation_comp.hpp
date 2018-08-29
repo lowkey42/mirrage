@@ -79,6 +79,7 @@ namespace mirrage::renderer {
 		auto states() const -> auto& { return _animation_states; }
 
 		void step_time(util::Time delta_time);
+		void mark_dirty() { _dirty = true; }
 
 	  private:
 		friend class Animation_pass;

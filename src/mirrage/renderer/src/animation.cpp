@@ -260,12 +260,13 @@ namespace mirrage::renderer {
 			}
 		}
 
-		/// returns the index of the first element not >= value or the top/bottom if out of range
+		/// returns the index of the last element not >= value or the top/bottom if out of range
 		/// performs an interpolation search starting at a given index
 		/// O(1)         if the given index is already near the solution
 		/// O(log log N) if the data is nearly uniformly distributed
 		/// O(N)         else (worst case)
-		auto binary_search(gsl::span<const float> container, float value, std::int16_t i) -> std::int16_t
+		auto interpolation_search(gsl::span<const float> container, float value, std::int16_t i)
+		        -> std::int16_t
 		{
 			auto high = std::int16_t(container.size() - 2);
 			auto low  = std::int16_t(0);
@@ -324,8 +325,9 @@ namespace mirrage::renderer {
 			}
 
 
-			index = std::clamp(
-			        binary_search(times, time, index), std::int16_t(0), std::int16_t(times.size() - 2));
+			index = std::clamp(interpolation_search(times, time, index),
+			                   std::int16_t(0),
+			                   std::int16_t(times.size() - 2));
 			return (time - times[index]) / (times[index + 1] - times[index]);
 		}
 

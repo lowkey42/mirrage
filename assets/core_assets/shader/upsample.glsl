@@ -39,7 +39,7 @@ float calc_upsampled_weights(sampler2D highres_depth_sampler, sampler2D highres_
 
 	// calculate the maximum depth deviation based on the distance, to reduce bluring
 	//   near the camera where it's most noticable
-	float depth_dev = mix(0.3, 1.5, depth) / global_uniforms.proj_planes.y;
+	float depth_dev = mix(0.01, 0.3, depth) / global_uniforms.proj_planes.y;
 
 	// sample low-res depth and modulate the weights based on their difference to the high-res depth
 	weight_00 *= weight_depth(textureGather(depth_sampler, uv_00, 0) - depth, depth_dev);

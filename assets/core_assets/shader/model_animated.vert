@@ -33,17 +33,17 @@ out gl_PerVertex {
 void main() {
 	float unused_weight = 1.0 - dot(bone_weights, vec4(1.0));
 
-	mat3x4 bone = bones.offset[bone_ids[0]] * bone_weights[0]
-	        + bones.offset[bone_ids[1]] * bone_weights[1]
-			+ bones.offset[bone_ids[2]] * bone_weights[2]
-			+ bones.offset[bone_ids[3]] * bone_weights[3]
-			+ mat3x4(1) * unused_weight;
+	vec3 p = (vec4(position, 1.0) * bones.offset[bone_ids[0]]) * bone_weights[0]
+	       + (vec4(position, 1.0) * bones.offset[bone_ids[1]]) * bone_weights[1]
+	       + (vec4(position, 1.0) * bones.offset[bone_ids[2]]) * bone_weights[2]
+	       + (vec4(position, 1.0) * bones.offset[bone_ids[3]]) * bone_weights[3]
+	       + position * unused_weight;
 
-	vec3 p = vec4(position, 1.0) * bone;
-	vec3 n = vec4(normal, 0.0) * bone;
-
-	//p = position;
-	//n = normal;
+	vec3 n = (vec4(normal, 0.0) * bones.offset[bone_ids[0]]) * bone_weights[0]
+	       + (vec4(normal, 0.0) * bones.offset[bone_ids[1]]) * bone_weights[1]
+	       + (vec4(normal, 0.0) * bones.offset[bone_ids[2]]) * bone_weights[2]
+	       + (vec4(normal, 0.0) * bones.offset[bone_ids[3]]) * bone_weights[3]
+	       + normal * unused_weight;
 
 	vec4 view_pos = model_uniforms.model_to_view * vec4(p, 1.0);
 
