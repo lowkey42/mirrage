@@ -56,9 +56,9 @@ namespace mirrage::renderer {
 
 		static constexpr auto pack_speed(float v)
 		{
-			return std::int8_t(std::clamp(v / 10 * 255, 0.f, 255.f));
+			return std::uint8_t(std::round(std::clamp(v / 10 * 255, 0.f, 255.f)));
 		}
-		static constexpr auto unpack_speed(std::int8_t v) { return float(v) * 10 / 255; }
+		static constexpr auto unpack_speed(std::uint8_t v) { return float(v) * 10 / 255; }
 
 		Animation_state() : time(0.f), speed(pack_speed(1.f)), reversed(false), paused(false), looped(true) {}
 	};

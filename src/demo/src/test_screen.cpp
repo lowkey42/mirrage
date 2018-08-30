@@ -30,6 +30,20 @@
 #include <sstream>
 
 
+
+template <class = void>
+void quick_exit(int) noexcept
+{
+	std::abort();
+}
+void mirrage_quick_exit() noexcept
+{
+	using namespace std;
+	// calls std::quick_exit if it exists or the template-fallback defined above, if not
+	// needs to be at global scope for this workaround to work correctly
+	quick_exit(0);
+}
+
 namespace mirrage {
 	using namespace ecs::components;
 	using namespace util::unit_literals;
@@ -59,11 +73,6 @@ namespace mirrage {
 		                0.f,
 		                5600.f,
 		                false}}};
-		
-		template<class=void>
-		void quick_exit() {
-			std::exit(0);
-		}
 	}
 
 
@@ -127,11 +136,7 @@ namespace mirrage {
 				case "fast_quit"_strid:
 					_meta_system.renderer().device().wait_idle();
 					std::this_thread::sleep_for(std::chrono::milliseconds(250));
-					{
-						using namespace std;
-						// calls std::quick_exit if it exists or the template-fallback defined above, if not
-						quick_exit();
-					}
+					mirrage_quick_exit();
 					break;
 
 				case "create"_strid:
@@ -822,7 +827,7 @@ namespace mirrage {
 				         NK_TEXT_LEFT);
 
 				auto speed = anim.speed();
-				nk_property_float(ctx, "Speed", 0.f, &speed, 5.f, 0.01f, 0.001f);
+				nk_property_float(ctx, "Speed", 0.f, &speed, 5.f, 0.1f, 0.05f);
 				anim.speed(speed);
 
 
