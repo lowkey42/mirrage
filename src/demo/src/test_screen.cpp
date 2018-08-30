@@ -25,6 +25,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <cstdlib>
 #include <iomanip>
 #include <sstream>
 
@@ -58,6 +59,11 @@ namespace mirrage {
 		                0.f,
 		                5600.f,
 		                false}}};
+		
+		template<class=void>
+		void quick_exit() {
+			std::exit(0);
+		}
 	}
 
 
@@ -121,7 +127,12 @@ namespace mirrage {
 				case "fast_quit"_strid:
 					_meta_system.renderer().device().wait_idle();
 					std::this_thread::sleep_for(std::chrono::milliseconds(250));
-					std::quick_exit(0);
+					{
+						using namespace std;
+						// calls std::quick_exit if it exists or the template-fallback defined above, if not
+						quick_exit();
+					}
+					break;
 
 				case "create"_strid:
 					_meta_system.entities().emplace("cube").get<Transform_comp>().process(
