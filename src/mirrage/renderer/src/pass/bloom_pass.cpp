@@ -46,24 +46,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:bloom_apply"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:bloom_apply"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			out_framebuffer = builder.build_framebuffer(
@@ -119,24 +101,6 @@ namespace mirrage::renderer {
 			pass.stage("blur_v_last"_strid)
 			        .shader("frag_shader:bloom_blur"_aid, graphic::Shader_stage::fragment, "main", 0, 0, 1, 1)
 			        .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex, "main", 0, 0);
-
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
 
 			auto render_pass = builder.build();
 

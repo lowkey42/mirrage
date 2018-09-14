@@ -412,6 +412,54 @@ namespace mirrage::graphic {
 			}
 		}
 
+		auto pre_dependency_missing  = true;
+		auto post_dependency_missing = true;
+		for(auto& dep : _dependencies) {
+			if(dep.srcSubpass == VK_SUBPASS_EXTERNAL)
+				pre_dependency_missing = false;
+			if(dep.dstSubpass == VK_SUBPASS_EXTERNAL)
+				post_dependency_missing = false;
+		}
+
+		if(pre_dependency_missing) {
+			add_dependency(
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                | vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eLateFragmentTests
+			                | vk::PipelineStageFlagBits::eTransfer,
+			        vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eMemoryWrite
+			                | vk::AccessFlagBits::eHostWrite
+			                | vk::AccessFlagBits::eDepthStencilAttachmentWrite
+			                | vk::AccessFlagBits::eTransferWrite,
+			        *_subpasses.front(),
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                | vk::PipelineStageFlagBits::eFragmentShader,
+			        vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eColorAttachmentRead
+			                | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                | vk::AccessFlagBits::eDepthStencilAttachmentWrite
+			                | vk::AccessFlagBits::eShaderRead);
+		}
+		if(post_dependency_missing) {
+			add_dependency(*_subpasses.back(),
+			               vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                       | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                       | vk::PipelineStageFlagBits::eLateFragmentTests,
+			               vk::AccessFlagBits::eColorAttachmentWrite
+			                       | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			               util::nothing,
+			               vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                       | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                       | vk::PipelineStageFlagBits::eFragmentShader
+			                       | vk::PipelineStageFlagBits::eTransfer | vk::PipelineStageFlagBits::eHost,
+			               vk::AccessFlagBits::eColorAttachmentWrite
+			                       | vk::AccessFlagBits::eColorAttachmentRead
+			                       | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                       | vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eTransferRead
+			                       | vk::AccessFlagBits::eHostRead | vk::AccessFlagBits::eMemoryRead);
+		}
+
 		auto create_info = vk::RenderPassCreateInfo{vk::RenderPassCreateFlags{},
 		                                            gsl::narrow<std::uint32_t>(_attachments.size()),
 		                                            _attachments.data(),

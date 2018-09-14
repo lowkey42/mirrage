@@ -61,24 +61,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_mipgen"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_mipgen"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead,
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			for(auto i = 1; i < renderer.gbuffer().mip_levels; i++) {

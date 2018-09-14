@@ -50,24 +50,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_integrate_brdf"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_integrate_brdf"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			out_framebuffer =
@@ -160,24 +142,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_reproject"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_reproject"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			auto attachments = std::array<Framebuffer_attachment_desc, 4>{
@@ -230,24 +194,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_reprojection_weights"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_reprojection_weights"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			auto attachment = Framebuffer_attachment_desc{history_weight.view(0), util::Rgba{}};
@@ -295,24 +241,6 @@ namespace mirrage::renderer {
 			pass.stage("reproject"_strid)
 			        .shader("frag_shader:gi_weight_mipgen"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_weight_mipgen"_aid, graphic::Shader_stage::vertex);
-
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
 
 			auto render_pass = builder.build();
 
@@ -362,24 +290,6 @@ namespace mirrage::renderer {
 			pass.stage("reproject"_strid)
 			        .shader("frag_shader:gi_diffuse_reproject"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_diffuse_reproject"_aid, graphic::Shader_stage::vertex);
-
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
 
 			auto render_pass = builder.build();
 
@@ -517,25 +427,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_sample_blend"_aid, graphic::Shader_stage::fragment, "main", 0, 1)
 			        .shader("vert_shader:gi_sample_blend"_aid, graphic::Shader_stage::vertex);
 
-
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			auto end = max_mip_level;
@@ -592,24 +483,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_sample_spec"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_sample_spec"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			out_framebuffer = builder.build_framebuffer({gi_spec_buffer.view(0), util::Rgba{}},
@@ -656,24 +529,6 @@ namespace mirrage::renderer {
 			pass.stage("median"_strid)
 			        .shader("frag_shader:median_filter"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:median_filter"_aid, graphic::Shader_stage::vertex);
-
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
 
 			auto render_pass = builder.build();
 
@@ -728,24 +583,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_spec_blur"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_spec_blur"_aid, graphic::Shader_stage::vertex, "main", 0, 0);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			out_blur_framebuffer = builder.build_framebuffer(
@@ -794,24 +631,6 @@ namespace mirrage::renderer {
 			pass.stage("mipgen"_strid)
 			        .shader("frag_shader:gi_blend"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_blend"_aid, graphic::Shader_stage::vertex);
-
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
 
 			auto render_pass = builder.build();
 

@@ -137,48 +137,34 @@ namespace mirrage::renderer {
 			                .input_attachment(mat_data);
 			lpass.configure_subpass(renderer, light_pass);
 
-
-			builder.add_dependency(util::nothing,
-			                       vk::PipelineStageFlagBits::eBottomOfPipe,
-			                       vk::AccessFlagBits::eMemoryRead,
-			                       geometry_pass,
-			                       vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			builder.add_dependency(geometry_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       animated_geometry_pass,
+			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
 			                       vk::AccessFlagBits::eColorAttachmentRead
 			                               | vk::AccessFlagBits::eColorAttachmentWrite
 			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
 			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
-			builder.add_dependency(
-			        geometry_pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite
-			                | vk::AccessFlagBits::eDepthStencilAttachmentRead
-			                | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
-			        animated_geometry_pass,
-			        vk::PipelineStageFlagBits::eEarlyFragmentTests
-			                | vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite
-			                | vk::AccessFlagBits::eDepthStencilAttachmentRead
-			                | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
-
-			builder.add_dependency(
-			        animated_geometry_pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        light_pass,
-			        vk::PipelineStageFlagBits::eFragmentShader
-			                | vk::PipelineStageFlagBits::eEarlyFragmentTests,
-			        vk::AccessFlagBits::eInputAttachmentRead
-			                | vk::AccessFlagBits::eDepthStencilAttachmentRead);
-
-			builder.add_dependency(
-			        light_pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
+			builder.add_dependency(animated_geometry_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       light_pass,
+			                       vk::PipelineStageFlagBits::eFragmentShader
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests,
+			                       vk::AccessFlagBits::eInputAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite);
 
 			auto render_pass = builder.build();
 

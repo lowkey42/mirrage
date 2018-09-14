@@ -50,24 +50,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:ui"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:ui"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			for(auto& sc_image : renderer.swapchain().get_image_views()) {
