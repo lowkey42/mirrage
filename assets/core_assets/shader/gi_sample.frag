@@ -25,6 +25,7 @@ layout(set=2, binding = 9) uniform sampler2D ao_sampler;
 layout (constant_id = 0) const int LAST_SAMPLE = 0;  // 1 if this is the last MIP level to sample
 layout (constant_id = 1) const float R = 40;         // the radius to fetch samples from
 layout (constant_id = 2) const int SAMPLES = 128;    // the number of samples to fetch
+layout (constant_id = 3) const int VISIBILITY = 0;   // 1 if shadows should be traced
 
 
 // arguments are packet into the matrices to keep the pipeline layouts compatible between GI passes
@@ -186,7 +187,9 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	float r2 = dot(diff, diff);
 
 
-	float visibility = 1;//lod<=1 ? 1.0 : v(lod, shaded_point, P, shaded_uv, src_uv);
+	float visibility = 1.0;
+	if(VISIBILITY==1)
+		visibility = v(lod, shaded_point, P, shaded_uv, src_uv);
 
 	float NdotL_src = clamp(dot(N, dir),              0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)

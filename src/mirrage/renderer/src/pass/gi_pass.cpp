@@ -437,12 +437,22 @@ namespace mirrage::renderer {
 			        color, graphic::all_color_components, graphic::blend_premultiplied_alpha);
 
 			// diffuse sample
-			pass.stage("sample_first"_strid)
+			pass.stage("sample_fi"_strid)
 			        .shader("frag_shader:gi_sample"_aid,
 			                graphic::Shader_stage::fragment,
 			                "main",
 			                2,
 			                first_level_sample_count)
+			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
+
+			pass.stage("sample_fi_v"_strid)
+			        .shader("frag_shader:gi_sample"_aid,
+			                graphic::Shader_stage::fragment,
+			                "main",
+			                2,
+			                first_level_sample_count,
+			                3,
+			                1)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			pass.stage("sample"_strid)
@@ -453,8 +463,18 @@ namespace mirrage::renderer {
 			                sample_count)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
+			pass.stage("sample_v"_strid)
+			        .shader("frag_shader:gi_sample"_aid,
+			                graphic::Shader_stage::fragment,
+			                "main",
+			                2,
+			                sample_count,
+			                3,
+			                1)
+			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
+
 			// circle instead of ring sample-pattern
-			pass.stage("sample_last"_strid)
+			pass.stage("sample_la"_strid)
 			        .shader("frag_shader:gi_sample"_aid,
 			                graphic::Shader_stage::fragment,
 			                "main",
@@ -462,6 +482,17 @@ namespace mirrage::renderer {
 			                1,
 			                2,
 			                sample_count)
+			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
+			pass.stage("sample_la_v"_strid)
+			        .shader("frag_shader:gi_sample"_aid,
+			                graphic::Shader_stage::fragment,
+			                "main",
+			                0,
+			                1,
+			                2,
+			                sample_count,
+			                3,
+			                1)
 			        .shader("vert_shader:gi_sample"_aid, graphic::Shader_stage::vertex);
 
 			// upsample the previous level
@@ -1315,13 +1346,19 @@ namespace mirrage::renderer {
 				_sample_renderpass.execute(command_buffer, fb, [&] {
 					auto sample_count = to_2prod(_renderer.settings().gi_samples);
 
+					auto stage = "sample"_strid;
+
 					if(i == end - 1) {
-						_sample_renderpass.set_stage("sample_first"_strid);
+						stage        = "sample_fi"_strid;
 						sample_count = to_2prod(_renderer.settings().gi_lowres_samples);
-					} else if(i == begin)
-						_sample_renderpass.set_stage("sample_last"_strid);
-					else
-						_sample_renderpass.set_stage("sample"_strid);
+					} else if(i == begin) {
+						stage = "sample_la"_strid;
+					}
+
+					if(_renderer.settings().gi_shadows && i - _min_mip_level > 1)
+						stage = stage + "_v"_strid;
+
+					_sample_renderpass.set_stage(stage);
 
 					if(first_iteration) {
 						_sample_renderpass.bind_descriptor_sets(

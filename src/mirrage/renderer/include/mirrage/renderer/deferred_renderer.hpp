@@ -35,11 +35,11 @@ namespace mirrage::renderer {
 
 		bool gi                        = true;
 		bool gi_highres                = true;
+		bool gi_shadows                = false;
 		int  gi_diffuse_mip_level      = 1;
 		int  gi_min_mip_level          = 0;
 		int  gi_samples                = 32;
 		int  gi_lowres_samples         = 128;
-		bool gi_jitter_samples         = false;
 		int  gi_low_quality_mip_levels = 0;
 
 		bool  tonemapping           = true;
@@ -53,13 +53,11 @@ namespace mirrage::renderer {
 		float background_intensity = 0.f;
 
 		bool dynamic_shadows = false;
-		bool debug_disect    = false;
 		int  debug_gi_layer  = -1;
 	};
 
 #ifdef sf2_structDef
-	sf2_structDef(
-	        Renderer_settings, shadowmap_resolution, shadow_quality, gi, dynamic_shadows, debug_gi_layer);
+	sf2_structDef(Renderer_settings, shadowmap_resolution, shadow_quality, gi, dynamic_shadows);
 #endif
 
 	struct Global_uniforms {

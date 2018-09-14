@@ -147,13 +147,6 @@ namespace mirrage {
 					        });
 
 					break;
-				case "d_disect"_strid: {
-					auto s         = _meta_system.renderer().settings();
-					s.debug_disect = !s.debug_disect;
-					_meta_system.renderer().settings(s, false);
-					_set_preset(0);
-					break;
-				}
 
 				case "print"_strid: {
 					auto cam = _camera.get<Transform_comp>().get_or_throw().position;
@@ -163,9 +156,7 @@ namespace mirrage {
 					                << "  Camera orientation: " << _cam_yaw << "/" << _cam_pitch << "\n"
 					                << "  Sun orientation:    " << _sun_elevation << "/" << _sun_azimuth
 					                << "\n"
-					                << "  Sun color:          " << _sun_color_temperature << "\n"
-					                << "  Disected:           "
-					                << _meta_system.renderer().settings().debug_disect;
+					                << "  Sun color:          " << _sun_color_temperature;
 					break;
 				}
 
@@ -269,10 +260,6 @@ namespace mirrage {
 
 		_sun.get<renderer::Directional_light_comp>().process(
 		        [&](renderer::Directional_light_comp& light) { light.temperature(_sun_color_temperature); });
-
-		auto s         = _meta_system.renderer().settings();
-		s.debug_disect = p.disect_model;
-		_meta_system.renderer().settings(s, false);
 
 		_update_sun_position();
 	}
@@ -489,6 +476,10 @@ namespace mirrage {
 			nk_checkbox_label(ctx, "Indirect Illumination", &bool_nk_wrapper);
 			renderer_settings.gi = bool_nk_wrapper == 1;
 
+			bool_nk_wrapper = renderer_settings.gi_shadows ? 1 : 0;
+			nk_checkbox_label(ctx, "Indirect Shadows", &bool_nk_wrapper);
+			renderer_settings.gi_shadows = bool_nk_wrapper == 1;
+
 			bool_nk_wrapper = renderer_settings.gi_highres ? 1 : 0;
 			nk_checkbox_label(ctx, "High-Resolution GI", &bool_nk_wrapper);
 			renderer_settings.gi_highres = bool_nk_wrapper == 1;
@@ -500,9 +491,6 @@ namespace mirrage {
 			nk_property_int(ctx, "Low-Res Sample Count", 8, &renderer_settings.gi_lowres_samples, 1024, 1, 1);
 
 			nk_property_int(ctx, "Sample Count", 8, &renderer_settings.gi_samples, 1024, 1, 1);
-
-			nk_property_int(
-			        ctx, "Low-Quality MIP-Levels", 0, &renderer_settings.gi_low_quality_mip_levels, 8, 1, 1);
 
 			nk_property_float(
 			        ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.001f, 0.01f);

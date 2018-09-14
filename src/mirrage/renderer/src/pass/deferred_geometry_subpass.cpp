@@ -242,7 +242,6 @@ namespace mirrage::renderer {
 		auto _ = _renderer.profiler().push("Geometry");
 
 		Deferred_push_constants dpc{};
-		dpc.light_data.x = _renderer.settings().debug_disect;
 
 		auto last_substance_id = ""_strid;
 		auto last_material     = static_cast<const Material*>(nullptr);
