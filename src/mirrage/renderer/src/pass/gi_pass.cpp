@@ -83,7 +83,7 @@ namespace mirrage::renderer {
 		                          Render_target_2D&       input,
 		                          Render_target_2D&       diffuse,
 		                          Render_target_2D&       specular,
-		                          Render_target_2D&       history_weight,
+		                          Render_target_2D&       history_success,
 		                          Framebuffer&            out_framebuffer)
 		{
 
@@ -119,7 +119,7 @@ namespace mirrage::renderer {
 			                                  vk::AttachmentStoreOp::eDontCare,
 			                                  vk::ImageLayout::eShaderReadOnlyOptimal,
 			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
-			auto color_weight = builder.add_attachment(
+			auto color_success = builder.add_attachment(
 			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
 			                                  history_weight_format,
 			                                  vk::SampleCountFlagBits::e1,
@@ -152,7 +152,7 @@ namespace mirrage::renderer {
 			                     .color_attachment(color_specular,
 			                                       graphic::all_color_components,
 			                                       graphic::blend_premultiplied_alpha)
-			                     .color_attachment(color_weight,
+			                     .color_attachment(color_success,
 			                                       graphic::all_color_components,
 			                                       graphic::blend_premultiplied_alpha);
 
@@ -184,9 +184,143 @@ namespace mirrage::renderer {
 			        {{input.view(min_mip_level), util::Rgba{}},
 			         {diffuse.view(0), util::Rgba{}},
 			         {specular.view(0), util::Rgba{0, 0, 0, 0}},
-			         {history_weight.view(0), util::Rgba{0, 0, 0, 0}}}};
+			         {history_success.view(0), util::Rgba{0, 0, 0, 0}}}};
 
 			out_framebuffer = builder.build_framebuffer(attachments, diffuse.width(0), diffuse.height(0));
+
+			return render_pass;
+		}
+
+		auto build_reproject_weight_pass(Deferred_renderer&      renderer,
+		                                 vk::DescriptorSetLayout desc_set_layout,
+		                                 vk::Format              history_weight_format,
+		                                 Render_target_2D&       history_weight,
+		                                 Framebuffer&            out_framebuffer)
+		{
+
+			auto builder = renderer.device().create_render_pass_builder();
+
+			auto color_weight = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  history_weight_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+
+			auto pipeline                    = graphic::Pipeline_description{};
+			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
+			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
+
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+			pipeline.add_push_constant("pcs"_strid,
+			                           sizeof(Gi_constants),
+			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+
+			auto& pass = builder.add_subpass(pipeline).color_attachment(
+			        color_weight, graphic::all_color_components, graphic::blend_premultiplied_alpha);
+
+			pass.stage("reproject"_strid)
+			        .shader("frag_shader:gi_reprojection_weights"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:gi_reprojection_weights"_aid, graphic::Shader_stage::vertex);
+
+			builder.add_dependency(
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlags{},
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+
+			builder.add_dependency(
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eBottomOfPipe,
+			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                | vk::AccessFlagBits::eTransferRead);
+
+
+			auto render_pass = builder.build();
+
+			auto attachment = Framebuffer_attachment_desc{history_weight.view(0), util::Rgba{}};
+
+			out_framebuffer =
+			        builder.build_framebuffer(attachment, history_weight.width(0), history_weight.height(0));
+
+			return render_pass;
+		}
+
+		auto build_weight_mipgen_pass(Deferred_renderer&        renderer,
+		                              vk::DescriptorSetLayout   desc_set_layout,
+		                              vk::Format                history_weight_format,
+		                              Render_target_2D&         history_weight,
+		                              std::vector<Framebuffer>& out_framebuffers)
+		{
+
+			auto builder = renderer.device().create_render_pass_builder();
+
+			auto color_weight = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  history_weight_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+
+			auto pipeline                    = graphic::Pipeline_description{};
+			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
+			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
+
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+			pipeline.add_push_constant("pcs"_strid,
+			                           sizeof(Gi_constants),
+			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+
+			auto& pass = builder.add_subpass(pipeline).color_attachment(color_weight);
+
+			pass.stage("reproject"_strid)
+			        .shader("frag_shader:gi_weight_mipgen"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:gi_weight_mipgen"_aid, graphic::Shader_stage::vertex);
+
+			builder.add_dependency(
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlags{},
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+
+			builder.add_dependency(
+			        pass,
+			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
+			        util::nothing,
+			        vk::PipelineStageFlagBits::eBottomOfPipe,
+			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
+			                | vk::AccessFlagBits::eTransferRead);
+
+
+			auto render_pass = builder.build();
+
+			out_framebuffers = util::build_vector(history_weight.mip_levels(), [&](auto i) {
+				return builder.build_framebuffer({history_weight.view(i), util::Rgba{}},
+				                                 history_weight.width(i),
+				                                 history_weight.height(i));
+			});
 
 			return render_pass;
 		}
@@ -673,11 +807,26 @@ namespace mirrage::renderer {
 		auto get_history_weight_format(graphic::Device& device)
 		{
 			auto format = device.get_supported_format(
-			        {vk::Format::eR8G8Unorm, vk::Format::eR8G8B8A8Unorm},
+			        {vk::Format::eR16Sfloat},
 			        vk::FormatFeatureFlagBits::eColorAttachment
+			                | vk::FormatFeatureFlagBits::eColorAttachmentBlend
+			                | vk::FormatFeatureFlagBits::eBlitDst
 			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 
-			MIRRAGE_INVARIANT(format.is_some(), "No Float R8G8 format supported!");
+			MIRRAGE_INVARIANT(format.is_some(), "No Float R16 format supported!");
+
+			return format.get_or_throw();
+		}
+		auto get_history_success_format(graphic::Device& device)
+		{
+			auto format = device.get_supported_format(
+			        {vk::Format::eR16G16Sfloat},
+			        vk::FormatFeatureFlagBits::eColorAttachment
+			                | vk::FormatFeatureFlagBits::eColorAttachmentBlend
+			                | vk::FormatFeatureFlagBits::eBlitDst
+			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
+
+			MIRRAGE_INVARIANT(format.is_some(), "No Float R16 format supported!");
 
 			return format.get_or_throw();
 		}
@@ -771,21 +920,23 @@ namespace mirrage::renderer {
 	                                 | vk::ImageUsageFlagBits::eColorAttachment,
 	                         vk::ImageAspectFlagBits::eColor)
 
+	  , _history_success_format(get_history_success_format(renderer.device()))
 	  , _history_weight_format(get_history_weight_format(renderer.device()))
+	  , _history_success(renderer.device(),
+	                     {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
+	                     1,
+	                     _history_success_format,
+	                     vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+	                             | vk::ImageUsageFlagBits::eTransferDst
+	                             | vk::ImageUsageFlagBits::eTransferSrc,
+	                     vk::ImageAspectFlagBits::eColor)
 	  , _history_weight(renderer.device(),
 	                    {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
-	                    1,
+	                    0,
 	                    _history_weight_format,
 	                    vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
 	                            | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eTransferSrc,
 	                    vk::ImageAspectFlagBits::eColor)
-	  , _history_weight_prev(renderer.device(),
-	                         {in_out.width(_min_mip_level), in_out.height(_min_mip_level)},
-	                         1,
-	                         _history_weight_format,
-	                         vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
-	                                 | vk::ImageUsageFlagBits::eTransferDst,
-	                         vk::ImageAspectFlagBits::eColor)
 
 	  , _integrated_brdf_format(get_brdf_format(renderer.device()))
 	  , _integrated_brdf(renderer.device(),
@@ -799,12 +950,12 @@ namespace mirrage::renderer {
 
 	  , _reproject_renderpass(build_reproject_pass(renderer,
 	                                               *_descriptor_set_layout,
-	                                               _history_weight_format,
+	                                               _history_success_format,
 	                                               _min_mip_level,
 	                                               _color_diffuse_in,
 	                                               _gi_diffuse_history,
 	                                               _gi_specular,
-	                                               _history_weight,
+	                                               _history_success,
 	                                               _reproject_framebuffer))
 	  , _reproject_descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(),
 	                                                                {renderer.gbuffer().depth.view(),
@@ -814,7 +965,28 @@ namespace mirrage::renderer {
 	                                                                 _gi_specular_history.view(),
 	                                                                 renderer.gbuffer().prev_depth.view(),
 	                                                                 _integrated_brdf.view(),
-	                                                                 _history_weight_prev.view()}))
+	                                                                 _history_weight.view(0)}))
+
+	  , _reproject_weight_renderpass(build_reproject_weight_pass(renderer,
+	                                                             *_descriptor_set_layout,
+	                                                             _history_weight_format,
+	                                                             _history_weight,
+	                                                             _reproject_weight_framebuffer))
+	  , _reproject_weight_descriptor_set(
+	            _descriptor_set_layout.create_set(renderer.descriptor_pool(), {_history_success.view()}))
+
+	  , _weight_mipgen_renderpass(build_weight_mipgen_pass(renderer,
+	                                                       *_descriptor_set_layout,
+	                                                       _history_weight_format,
+	                                                       _history_weight,
+	                                                       _weight_mipgen_framebuffers))
+	  , _weight_mipgen_descriptor_sets(util::build_vector(_history_weight.mip_levels(),
+	                                                      [&](auto i) {
+		                                                      return _descriptor_set_layout.create_set(
+		                                                              renderer.descriptor_pool(),
+		                                                              {_history_weight.view(i)});
+	                                                      }))
+
 
 	  , _diffuse_reproject_renderpass(build_diffuse_reproject_pass(
 	            renderer, *_descriptor_set_layout, _gi_diffuse_history, _diffuse_reproject_framebuffers))
@@ -882,7 +1054,7 @@ namespace mirrage::renderer {
 			               _gi_diffuse_result.view(i + 1),
 			               _gi_diffuse_samples.view(i),
 			               _gi_diffuse_history.view(i),
-			               _history_weight.view(),
+			               _history_weight.view(i),
 			               renderer.gbuffer().depth.view(prev_mip),
 			               renderer.gbuffer().mat_data.view(prev_mip),
 			               renderer.gbuffer().ambient_occlusion.get_or(_color_diffuse_in).view()};
@@ -932,7 +1104,7 @@ namespace mirrage::renderer {
 			                       vk::ImageLayout::eShaderReadOnlyOptimal);
 
 
-			for(auto rt : {&_gi_specular, &_gi_specular_history, &_history_weight, &_history_weight_prev}) {
+			for(auto rt : {&_gi_specular, &_gi_specular_history, &_history_weight}) {
 				graphic::clear_texture(frame.main_command_buffer,
 				                       *rt,
 				                       util::Rgba{0, 0, 0, 0},
@@ -962,16 +1134,6 @@ namespace mirrage::renderer {
 		_generate_mipmaps(frame.main_command_buffer, frame.global_uniform_set);
 		_generate_gi_samples(frame.main_command_buffer, frame.global_uniform_set);
 		_draw_gi(frame.main_command_buffer);
-
-
-		// copy results into history_buffer (TODO: re-evaluate)
-		graphic::blit_texture(frame.main_command_buffer,
-		                      _history_weight,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal,
-		                      _history_weight_prev,
-		                      vk::ImageLayout::eUndefined,
-		                      vk::ImageLayout::eShaderReadOnlyOptimal);
 	}
 
 	void Gi_pass::_integrate_brdf(vk::CommandBuffer command_buffer)
@@ -1021,14 +1183,51 @@ namespace mirrage::renderer {
 			command_buffer.draw(3, 1, 0, 0);
 		});
 
+		// update weights
+		_reproject_weight_renderpass.execute(command_buffer, _reproject_weight_framebuffer, [&] {
+			_reproject_weight_renderpass.bind_descriptor_set(1, *_reproject_weight_descriptor_set);
+			command_buffer.draw(3, 1, 0, 0);
+		});
+
 		// reproject MIP 1-N
 		for(auto i = 1; i < _gi_diffuse_history.mip_levels(); i++) {
 			auto& fb = _diffuse_reproject_framebuffers[std::size_t(i)];
 
 			_diffuse_reproject_renderpass.execute(command_buffer, fb, [&] {
+				if(i == 1)
+					_diffuse_reproject_renderpass.bind_descriptor_set(1, *_reproject_descriptor_set);
+
 				pcs.prev_projection[0][3] = float(i);
 				_diffuse_reproject_renderpass.push_constant("pcs"_strid, pcs);
 
+				command_buffer.draw(3, 1, 0, 0);
+			});
+		}
+
+		// generate mipmaps for weights
+		for(auto i : util::range(1, std::size_t(_renderer.gbuffer().mip_levels))) {
+			// barrier against write to previous mipmap level
+			auto subresource = vk::ImageSubresourceRange{
+			        vk::ImageAspectFlagBits::eColor, gsl::narrow<std::uint32_t>(i - 1), 1, 0, 1};
+			auto barrier = vk::ImageMemoryBarrier{vk::AccessFlagBits::eColorAttachmentWrite,
+			                                      vk::AccessFlagBits::eShaderRead,
+			                                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                                      VK_QUEUE_FAMILY_IGNORED,
+			                                      VK_QUEUE_FAMILY_IGNORED,
+			                                      _history_weight.image(),
+			                                      subresource};
+			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                               vk::PipelineStageFlagBits::eFragmentShader,
+			                               vk::DependencyFlags{},
+			                               {},
+			                               {},
+			                               {barrier});
+
+			_weight_mipgen_renderpass.execute(command_buffer, _weight_mipgen_framebuffers.at(i), [&] {
+				_weight_mipgen_renderpass.bind_descriptor_set(1, *_weight_mipgen_descriptor_sets.at(i - 1));
+				pcs.prev_projection[0][3] = float(i) - float(_diffuse_mip_level);
+				_weight_mipgen_renderpass.push_constant("pcs"_strid, pcs);
 				command_buffer.draw(3, 1, 0, 0);
 			});
 		}
@@ -1145,6 +1344,11 @@ namespace mirrage::renderer {
 					                                           float(_color_in_out.height(i)),
 					                                           _renderer.global_uniforms().proj_planes.y);
 
+					auto screen_size = glm::vec2{_color_diffuse_in.width(i), _color_diffuse_in.height(i)};
+					auto ndc_to_uv   = glm::translate(glm::mat4(1.f), glm::vec3(screen_size / 2.f, 0.f))
+					                 * glm::scale(glm::mat4(1.f), glm::vec3(screen_size / 2.f, 1.f));
+					pcs.reprojection = ndc_to_uv * _renderer.global_uniforms().proj_mat;
+
 					_sample_renderpass.push_constant("pcs"_strid, pcs);
 
 					command_buffer.draw(3, 1, 0, 0);
@@ -1177,7 +1381,7 @@ namespace mirrage::renderer {
 
 				// blend history
 				_sample_renderpass.execute(command_buffer, fb_final, [&] {
-					if(i > 0)
+					if(i > 1)
 						_sample_renderpass.set_stage("blend"_strid);
 					else
 						_sample_renderpass.set_stage("blend_last"_strid);

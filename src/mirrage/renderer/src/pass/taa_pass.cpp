@@ -109,8 +109,8 @@ namespace mirrage::renderer {
 			        [](std::size_t i) { return halton_seq(int(i) % 2 == 0 ? 2 : 3, int(i) + 1) - 0.5f; });
 		}
 
-		constexpr auto offsets       = build_halton_2_3<8>();
-		constexpr auto offset_factor = 0.15f;
+		constexpr auto offsets       = build_halton_2_3<32>();
+		constexpr auto offset_factor = 0.25f;
 	} // namespace
 
 
@@ -216,7 +216,7 @@ namespace mirrage::renderer {
 		}
 
 		// transform current view-space point to world-space and back to prev NDC
-		_constants.reprojection = _prev_view_proj * cam.inv_view;
+		_constants.reprojection = glm::inverse(_constants.fov_reprojection) * _prev_view_proj * cam.inv_view;
 		_prev_view_proj         = cam.view_projection;
 
 		cam.projection      = glm::translate(glm::mat4(1.f), glm::vec3(-offset, 0.f)) * cam.projection;

@@ -15,7 +15,7 @@ layout(location = 0) in Vertex_data {
 layout(location = 0) out vec4 out_input;     // input to current run
 layout(location = 1) out vec4 out_diffuse;   // reprojected diffuse GI from last frame
 layout(location = 2) out vec4 out_specular;  // reprojected specular GI from last frame
-layout(location = 3) out vec4 out_weight;    // weight of reprojected GI
+layout(location = 3) out vec4 out_success;   // 0=failed reprojection; 1=success
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
@@ -38,6 +38,7 @@ void main() {
 	const float PI = 3.14159265359;
 
 	float depth = textureLod(depth_sampler, vertex_out.tex_coords, 0.0).r;
+	float depth_dev = fwidth(depth*global_uniforms.proj_planes.y);
 
 	vec3 pos = position_from_ldepth(vertex_out.tex_coords, depth);
 
@@ -69,7 +70,7 @@ void main() {
 	out_input    = vec4(0, 0, 0, 0);
 	out_diffuse  = vec4(0, 0, 0, 1);
 	out_specular = vec4(0, 0, 0, 1);
-	out_weight   = vec4(0, 0, 0, 1);
+	out_success  = vec4(0, 0, 0, 1);
 
 	if(prev_uv.x>=0.0 && prev_uv.x<=1.0 && prev_uv.y>=0.0 && prev_uv.y<=1.0) {
 		// load diff + spec GI
@@ -81,29 +82,16 @@ void main() {
 
 		out_input = vec4(gi, 0.0);
 
-		float proj_prev_depth = abs(prev_pos.z);
 		float prev_depth = textureLod(prev_depth_sampler, prev_uv.xy, 0.0).r;
 
-		vec3 real_prev_pos = vec3((prev_uv.xy * prev_projection_info.xy + prev_projection_info.zw), 1)
-		        * prev_depth * -global_uniforms.proj_planes.y;
-
-		vec3 pos_error = real_prev_pos - prev_pos.xyz;
-		out_weight.r = 0.98 * (1.0-smoothstep(0.05, 0.07, length(pos_error)));
+		float pos_error = prev_depth*-global_uniforms.proj_planes.y - prev_pos.z;
+		float min_depth_error = mix(0.08, 0.6, depth);
+		float max_depth_error = mix(0.12, 0.4, depth);
+		out_success.r = clamp(1.0-step(min_depth_error, abs(pos_error)), 0, 1);
+		out_success.g = texture(prev_weight_sampler, prev_uv.xy).r;
 
 		out_diffuse.rgb  = radiance;
 		out_specular.rgb = specular;
-		out_input *= (1.0 - smoothstep(0.1, 0.4, dot(pos_error,pos_error)));
-
-		vec2 hws_step = 1.0 / textureSize(prev_weight_sampler, 0);
-		float history_sample_count = dot(textureGather(prev_weight_sampler, prev_uv.xy-hws_step, 1), vec4(1));
-		history_sample_count += texture(prev_weight_sampler, prev_uv.xy+hws_step*vec2(1,-1)).g;
-		history_sample_count += texture(prev_weight_sampler, prev_uv.xy+hws_step*vec2(1, 0)).g;
-		history_sample_count += texture(prev_weight_sampler, prev_uv.xy+hws_step*vec2(1, 1)).g;
-		history_sample_count += texture(prev_weight_sampler, prev_uv.xy+hws_step*vec2(-1,1)).g;
-		history_sample_count += texture(prev_weight_sampler, prev_uv.xy+hws_step*vec2( 0,1)).g;
-		history_sample_count = history_sample_count / 9.0;
-
-		float sample_incr = global_uniforms.time.z * 6.0;
-		out_weight.g = out_weight.r * clamp((history_sample_count + sample_incr), 0, 1);
+		out_input *= out_success.r;
 	}
 }

@@ -24,6 +24,8 @@ namespace mirrage::renderer {
 		graphic::Framebuffer      _ao_result_framebuffer;
 		graphic::Framebuffer      _blur_framebuffer;
 		graphic::Framebuffer      _ao_result_blur_framebuffer;
+		graphic::Framebuffer      _median_framebuffer;
+
 
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;

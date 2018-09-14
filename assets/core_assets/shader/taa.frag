@@ -92,38 +92,34 @@ void main() {
 	reprojection_fov[0][3] = 0;
 	reprojection_fov[1][3] = 0;
 
-	vec2 uv = vertex_out.tex_coords;
+	vec2 uv = vertex_out.tex_coords*2-1 - offset;
 
-	vec4 uv_tmp = reprojection_fov * vec4(uv*2-1, 0.5, 1);
-	uv = uv_tmp.xy/uv_tmp.w *0.5+0.5;
+	vec4 uv_tmp = reprojection_fov * vec4(uv, 0.5, 1);
+	uv = (uv_tmp.xy/uv_tmp.w) *0.5+0.5;
 
-	float depth = texture(depth_sampler, uv - offset/2).r;
+	float depth = texture(depth_sampler, uv).r;
 
-	vec3 position = position_from_ldepth(vertex_out.tex_coords - offset/2, depth);
+	vec3 position = position_from_ldepth(uv, depth);
 
 	vec4 prev_uv = constants.reprojection * vec4(position, 1.0);
+	prev_uv.xy /= prev_uv.w;
+	prev_uv.xy = prev_uv.xy*0.5+0.5;
 
-	vec4 prev_depth_uv = reprojection_fov * prev_uv;
-	prev_depth_uv.xy = (prev_depth_uv.xy/prev_depth_uv.w)*0.5+0.5;
 
-	vec4 prev_depth = textureGather(prev_depth_sampler, prev_depth_uv.xy, 0) * global_uniforms.proj_planes.y;
-	float proj_prev_depth = abs(prev_depth_uv.z);
-	vec4 depth_diff = abs(prev_depth-vec4(proj_prev_depth));
-	float depth_mismatch = smoothstep(0.5, 1.0, depth_diff[0])
-	        * smoothstep(0.5, 1.0, depth_diff[1])
-	        * smoothstep(0.5, 1.0, depth_diff[2])
-	        *smoothstep(0.5, 1.0, depth_diff[3]);
+	vec4 prev_uv_depth = reprojection_fov * constants.reprojection * vec4(position, 1.0);
+	prev_uv_depth.xy /= prev_uv_depth.w;
+	prev_uv_depth.xy = prev_uv_depth.xy*0.5+0.5;
+
+	vec4 prev_depth = textureGather(prev_depth_sampler, prev_uv_depth.xy, 0) * global_uniforms.proj_planes.y;
+	vec4 depth_diff = abs(prev_depth-vec4(prev_uv_depth.z));
+	float depth_mismatch = smoothstep(0.1, 0.4,
+	                                  min(depth_diff.x, min(depth_diff.y, min(depth_diff.z,depth_diff.w))));
 
 	ivec2 px_uv = ivec2(vertex_out.tex_coords.xy * textureSize(prev_depth_sampler,0).xy);
-	float depth_mismatch_tmp = depth_mismatch;
-	depth_mismatch -= dFdx(depth_mismatch_tmp) * ((px_uv.x & 1) - 0.5);
-	depth_mismatch -= dFdy(depth_mismatch_tmp) * ((px_uv.y & 1) - 0.5);
+	depth_mismatch -= dFdx(depth_mismatch) * ((px_uv.x & 1) - 0.5);
+	depth_mismatch -= dFdy(depth_mismatch) * ((px_uv.y & 1) - 0.5);
 
 
-	prev_uv.xy = (prev_uv.xy/prev_uv.w)*0.5+0.5;
-
-
-	uv = uv - offset/2;
 	vec3 curr = curr_color_normalized(uv).rgb;
 
 
@@ -170,11 +166,12 @@ void main() {
 	float lum_prev = luminance(prev_clamped);
 
 	float lum_diff = abs(lum_curr - lum_prev) / max(lum_curr, max(lum_prev, 0.2));
-	float weight = 1.0 - lum_diff;
-	float t = mix(0.8, 0.97, weight*weight);
-	t *= 0.5 + (1.0 - depth_mismatch)*0.5;
+	float weight = 1.0 - max(lum_diff, depth_mismatch);
+	float t = mix(0.8, 0.97, clamp(weight*weight, 0, 1));
 
 	out_color = vec4(max(vec3(0), mix(curr, prev_clamped, t)), 1.0);
 
 	out_color.rgb = out_color.rgb / (1 - luminance(out_color.rgb));
+
+	//out_color.rgb = vec3(clamp(weight*weight, 0, 1));
 }

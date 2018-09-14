@@ -47,9 +47,10 @@ namespace mirrage::renderer {
 		graphic::Render_target_2D _gi_specular;
 		graphic::Render_target_2D _gi_specular_history;
 
+		vk::Format                _history_success_format;
 		vk::Format                _history_weight_format;
+		graphic::Render_target_2D _history_success;
 		graphic::Render_target_2D _history_weight;
-		graphic::Render_target_2D _history_weight_prev;
 
 		// preintegration of BRDF. Based on:
 		//     http://blog.selfshadow.com/publications/s2013-shading-course/karis/s2013_pbs_epic_notes_v2.pdf
@@ -63,6 +64,16 @@ namespace mirrage::renderer {
 		graphic::Framebuffer   _reproject_framebuffer;
 		graphic::Render_pass   _reproject_renderpass;
 		graphic::DescriptorSet _reproject_descriptor_set;
+
+		// calculate weight of history samples based on success of reprojection
+		graphic::Framebuffer   _reproject_weight_framebuffer;
+		graphic::Render_pass   _reproject_weight_renderpass;
+		graphic::DescriptorSet _reproject_weight_descriptor_set;
+
+		// generate a mip-chain for the reprojection weights
+		std::vector<graphic::Framebuffer>   _weight_mipgen_framebuffers;
+		graphic::Render_pass                _weight_mipgen_renderpass;
+		std::vector<graphic::DescriptorSet> _weight_mipgen_descriptor_sets;
 
 		// reproject higher diffuse MIP levels (for temporal smoothing of results)
 		std::vector<graphic::Framebuffer> _diffuse_reproject_framebuffers;

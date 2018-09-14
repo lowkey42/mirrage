@@ -257,7 +257,7 @@ namespace mirrage::renderer {
 			frame.main_command_buffer.draw(3, 1, 0, 0);
 		});
 
-		for(int i = 0; i < 4; i++) {
+		for(int i = 0; i < 3; i++) {
 			// blur horizontal
 			_blur_render_pass.execute(frame.main_command_buffer, _blur_framebuffer, [&] {
 				_blur_render_pass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
