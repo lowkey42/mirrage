@@ -3,6 +3,7 @@
 #include <mirrage/ecs/entity_handle.hpp>
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/str_id.hpp>
+#include <mirrage/utils/template_utils.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <glm/gtx/quaternion.hpp>
@@ -10,6 +11,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <functional>
+#include <variant>
 
 
 namespace mirrage {
@@ -18,6 +20,9 @@ namespace mirrage {
 
 namespace mirrage::ecs {
 	class Entity_manager;
+	namespace components {
+		class Transform_comp;
+	}
 } // namespace mirrage::ecs
 
 namespace mirrage::graphic {
@@ -27,6 +32,7 @@ namespace mirrage::graphic {
 namespace mirrage::renderer {
 	class Deferred_renderer;
 	class Model;
+	class Directional_light_comp;
 	struct Camera_state;
 	struct Sub_mesh;
 } // namespace mirrage::renderer
@@ -36,14 +42,15 @@ namespace mirrage::renderer {
 	using Command_buffer_source = std::function<vk::CommandBuffer()>;
 
 	struct Geometry {
-		ecs::Entity_handle entity;
-		glm::vec3          position{0, 0, 0};
-		glm::quat          orientation{1, 0, 0, 0};
-		glm::vec3          scale{1.f, 1.f, 1.f};
-		const Model*       model;
-		util::Str_id       substance_id;
-		std::uint32_t      sub_mesh;
-		std::uint32_t      culling_mask;
+		ecs::Entity_handle         entity;
+		glm::vec3                  position{0, 0, 0};
+		glm::quat                  orientation{1, 0, 0, 0};
+		glm::vec3                  scale{1.f, 1.f, 1.f};
+		const Model*               model;
+		util::Str_id               substance_id;
+		std::uint32_t              sub_mesh;
+		std::uint32_t              culling_mask;
+		util::maybe<std::uint32_t> animation_uniform_offset;
 
 		Geometry() = default;
 		Geometry(ecs::Entity_handle entity,
@@ -66,6 +73,26 @@ namespace mirrage::renderer {
 		}
 	};
 
+	struct Light {
+		using Transform_comp = mirrage::ecs::components::Transform_comp;
+		using Light_comp     = std::variant<Directional_light_comp*>;
+
+		ecs::Entity_handle entity;
+		Transform_comp*    transform;
+		Light_comp         light;
+		std::uint32_t      shadow_culling_mask;
+
+		Light() = default;
+		template <class L>
+		Light(ecs::Entity_handle entity,
+		      Transform_comp&    transform,
+		      L&                 light,
+		      std::uint32_t      shadow_culling_mask)
+		  : entity(entity), transform(&transform), light(&light), shadow_culling_mask(shadow_culling_mask)
+		{
+		}
+	};
+
 	class Frame_data {
 	  public:
 		vk::CommandBuffer main_command_buffer;
@@ -73,6 +100,9 @@ namespace mirrage::renderer {
 		std::size_t       swapchain_image;
 
 		std::vector<Geometry> geometry_queue;
+		std::vector<Light>    light_queue;
+
+		auto partition_geometry(std::uint32_t mask) -> util::vector_range<Geometry>;
 	};
 
 	class Render_pass {

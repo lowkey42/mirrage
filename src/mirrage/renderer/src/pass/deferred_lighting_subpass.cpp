@@ -115,19 +115,24 @@ namespace mirrage::renderer {
 
 		auto inv_view = _renderer.global_uniforms().inv_view_mat;
 
-		for(auto& [light, transform] : _ecs.list<Directional_light_comp, Transform_comp>()) {
-			dpc.model         = light.calc_shadowmap_view_proj(transform) * inv_view;
-			dpc.light_color   = glm::vec4(light.color(), light.intensity());
-			dpc.light_data.r  = light.source_radius() / 1_m;
-			auto dir          = _renderer.global_uniforms().view_mat * glm::vec4(-transform.direction(), 0.f);
-			dpc.light_data.g  = dir.x;
-			dpc.light_data.b  = dir.y;
-			dpc.light_data.a  = dir.z;
-			dpc.light_data2.r = _gbuffer.shadowmaps ? light.shadowmap_id() : -1;
+		for(auto& light : frame.light_queue) {
+			if(auto ll = std::get_if<Directional_light_comp*>(&light.light); ll) {
+				auto& light_data = **ll;
 
-			render_pass.push_constant("dpc"_strid, dpc);
+				dpc.model        = light_data.calc_shadowmap_view_proj(*light.transform) * inv_view;
+				dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity());
+				dpc.light_data.r = light_data.source_radius() / 1_m;
+				auto dir =
+				        _renderer.global_uniforms().view_mat * glm::vec4(-light.transform->direction(), 0.f);
+				dpc.light_data.g  = dir.x;
+				dpc.light_data.b  = dir.y;
+				dpc.light_data.a  = dir.z;
+				dpc.light_data2.r = _gbuffer.shadowmaps ? light_data.shadowmap_id() : -1;
 
-			frame.main_command_buffer.draw(3, 1, 0, 0);
+				render_pass.push_constant("dpc"_strid, dpc);
+
+				frame.main_command_buffer.draw(3, 1, 0, 0);
+			}
 		}
 	}
 } // namespace mirrage::renderer

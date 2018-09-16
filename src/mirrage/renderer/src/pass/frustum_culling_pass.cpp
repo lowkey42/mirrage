@@ -1,5 +1,6 @@
 #include <mirrage/renderer/pass/frustum_culling_pass.hpp>
 
+#include <mirrage/renderer/light_comp.hpp>
 #include <mirrage/renderer/model_comp.hpp>
 
 #include <mirrage/ecs/components/transform_comp.hpp>
@@ -16,9 +17,13 @@ namespace mirrage::renderer {
 		using Frustum_planes = std::array<glm::vec4, 6>;
 		struct Culling_viewer {
 			Frustum_planes planes;
+			bool           shadowmap;
 
 			Culling_viewer() = default;
-			Culling_viewer(Frustum_planes planes) : planes(planes) {}
+			Culling_viewer(Frustum_planes planes, bool shadowmap = false)
+			  : planes(planes), shadowmap(shadowmap)
+			{
+			}
 		};
 
 		auto is_visible(const Culling_viewer& viewer, glm::vec3 position, float radius)
@@ -33,16 +38,15 @@ namespace mirrage::renderer {
 		}
 
 		auto norm_plane(glm::vec4 p) { return p / glm::length(glm::vec3(p.x, p.y, p.z)); }
-		auto extract_planes(const Camera_state& cam) -> Frustum_planes
+		auto extract_planes(const glm::mat4& cam_view_proj) -> Frustum_planes
 		{
-			const auto& m = cam.view_projection;
 			return {
-			        norm_plane(row(m, 3) + row(m, 0)), // left
-			        norm_plane(row(m, 3) - row(m, 0)), // right
-			        norm_plane(row(m, 3) - row(m, 1)), // top
-			        norm_plane(row(m, 3) + row(m, 1)), // bottom
-			        norm_plane(row(m, 3) + row(m, 2)), // near
-			        norm_plane(row(m, 3) - row(m, 2))  // far
+			        norm_plane(row(cam_view_proj, 3) + row(cam_view_proj, 0)), // left
+			        norm_plane(row(cam_view_proj, 3) - row(cam_view_proj, 0)), // right
+			        norm_plane(row(cam_view_proj, 3) - row(cam_view_proj, 1)), // top
+			        norm_plane(row(cam_view_proj, 3) + row(cam_view_proj, 1)), // bottom
+			        norm_plane(row(cam_view_proj, 3) + row(cam_view_proj, 2)), // near
+			        norm_plane(row(cam_view_proj, 3) - row(cam_view_proj, 2))  // far
 			};
 		}
 
@@ -57,12 +61,30 @@ namespace mirrage::renderer {
 
 	void Frustum_culling_pass::draw(Frame_data& frame)
 	{
+		if(_renderer.active_camera().is_nothing())
+			return;
+
 		auto viewers = std::vector<Culling_viewer>();
-		// TODO: shadow_map cameras
+		viewers.emplace_back(extract_planes(_renderer.active_camera().get_or_throw().view_projection));
 
-		_renderer.active_camera().process([&](auto& cam) { viewers.emplace_back(extract_planes(cam)); });
+		for(auto& [entity, light, transform] :
+		    _ecs.list<ecs::Entity_handle, Directional_light_comp, Transform_comp>()) {
+			// directional lights are always treated as visible (for now).
+			// so just check if its "on"
+			if(light.color().length() * light.intensity() > 0.000001f) {
+				auto viewer_mask = light.shadowcaster() ? (std::uint32_t(1) << viewers.size()) : 0;
+				frame.light_queue.emplace_back(entity, transform, light, viewer_mask);
 
-		for(auto& [entity, model, transform] : _ecs.list<ecs::Entity_handle, Model_comp, Transform_comp>()) {
+				if(light.shadowcaster() && light.needs_update()) {
+					viewers.emplace_back(extract_planes(light.calc_shadowmap_view_proj(transform)), true);
+				}
+			}
+		}
+
+		// TODO: same for point lights, ...
+
+
+		for(auto& [entity, model, transform] : _ecs.list<ecs::Entity_facet, Model_comp, Transform_comp>()) {
 			auto entity_pos = transform.position;
 			auto dir_mat    = transform.to_mat3();
 			auto scale      = util::max(transform.scale.x, transform.scale.y, transform.scale.z);
@@ -76,6 +98,9 @@ namespace mirrage::renderer {
 
 			auto main_mask = std::uint32_t(0);
 			for(auto i = 0u; i < viewers.size(); i++) {
+				if(viewers[i].shadowmap && !entity.has<Shadowcaster_comp>())
+					continue;
+
 				if(is_visible(viewers[i], sphere_center, sphere_radius)) {
 					main_mask |= std::uint32_t(1) << i;
 				}
@@ -107,7 +132,7 @@ namespace mirrage::renderer {
 					}
 
 					if(mask != 0) {
-						frame.geometry_queue.emplace_back(entity,
+						frame.geometry_queue.emplace_back(entity.handle(),
 						                                  transform.position,
 						                                  transform.orientation,
 						                                  transform.scale,
@@ -119,8 +144,6 @@ namespace mirrage::renderer {
 				}
 			}
 		}
-
-		// TODO: point/spot light sources
 	}
 
 

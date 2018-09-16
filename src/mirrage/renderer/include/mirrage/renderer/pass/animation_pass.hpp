@@ -3,6 +3,10 @@
 #include <mirrage/renderer/animation_comp.hpp>
 #include <mirrage/renderer/deferred_renderer.hpp>
 
+#include <mirrage/graphic/streamed_buffer.hpp>
+
+#include <tsl/robin_map.h>
+#include <gsl/gsl>
 
 
 namespace mirrage::renderer::detail {
@@ -51,10 +55,31 @@ namespace mirrage::renderer {
 		Deferred_renderer&   _renderer;
 		ecs::Entity_manager& _ecs;
 
+		// data for animation/pose update
 		std::unordered_set<detail::Animation_key_cache_key> _unused_animation_keys;
 		Animation_key_cache                                 _animation_key_cache;
 
+		// data for pose upload
+		struct Animation_upload_queue_entry {
+			const Model*     model;
+			const Pose_comp* pose;
+			std::int32_t     uniform_offset;
+
+			Animation_upload_queue_entry(const Model* model, Pose_comp& pose, std::int32_t uniform_offset)
+			  : model(model), pose(&pose), uniform_offset(uniform_offset)
+			{
+			}
+		};
+
+		graphic::Streamed_buffer            _animation_uniforms;
+		std::vector<graphic::DescriptorSet> _animation_desc_sets;
+
+		tsl::robin_map<ecs::Entity_handle, std::uint32_t> _animation_uniform_offsets;
+		std::vector<Animation_upload_queue_entry>         _animation_uniform_queue;
+
 		void _update_animation(ecs::Entity_handle owner, Animation_comp& anim, Pose_comp&);
+		void _compute_poses(Frame_data&);
+		void _upload_poses(Frame_data&);
 	};
 
 	class Animation_pass_factory : public Render_pass_factory {

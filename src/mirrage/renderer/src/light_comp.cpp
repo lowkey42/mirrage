@@ -20,7 +20,8 @@ namespace mirrage::renderer {
 		                   sf2::vmember("temperature", temperature),
 		                   sf2::vmember("shadow_size", comp._shadow_size),
 		                   sf2::vmember("near_plane", comp._shadow_near_plane),
-		                   sf2::vmember("far_plane", comp._shadow_far_plane));
+		                   sf2::vmember("far_plane", comp._shadow_far_plane),
+		                   sf2::vmember("update_frequency", comp._shadow_update_frequency));
 
 		comp._source_radius = src_radius * 1_m;
 		if(temperature >= 0.f) {
@@ -35,7 +36,8 @@ namespace mirrage::renderer {
 		                    sf2::vmember("color", comp._color),
 		                    sf2::vmember("shadow_size", comp._shadow_size),
 		                    sf2::vmember("near_plane", comp._shadow_near_plane),
-		                    sf2::vmember("far_plane", comp._shadow_far_plane));
+		                    sf2::vmember("far_plane", comp._shadow_far_plane),
+		                    sf2::vmember("update_frequency", comp._shadow_update_frequency));
 	}
 
 	void Directional_light_comp::temperature(float kelvin) { _color = temperature_to_color(kelvin); }

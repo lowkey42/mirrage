@@ -27,6 +27,9 @@ namespace mirrage::renderer {
 
 		util::maybe<graphic::Texture_2D&> ambient_occlusion;
 
+		vk::UniqueDescriptorSetLayout animation_data_layout;
+		vk::DescriptorSet             animation_data; //< might change each frame!
+
 		vk::UniqueDescriptorSetLayout shadowmaps_layout;
 		graphic::DescriptorSet        shadowmaps;
 

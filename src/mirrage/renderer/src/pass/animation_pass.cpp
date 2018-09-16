@@ -12,12 +12,54 @@ using mirrage::ecs::components::Transform_comp;
 
 namespace mirrage::renderer {
 
-	Animation_pass::Animation_pass(Deferred_renderer& renderer, ecs::Entity_manager& entities)
-	  : _renderer(renderer), _ecs(entities)
+	namespace {
+		constexpr auto initial_animation_capacity = 256 * 4 * 4 * 4;
+
+		auto animation_substance(util::Str_id substance_id, Skinning_type st)
+		{
+			switch(st) {
+				case Skinning_type::linear_blend_skinning: return substance_id;
+				case Skinning_type::dual_quaternion_skinning: return "dq_"_strid + substance_id;
+			}
+			return substance_id;
+		}
+	} // namespace
+
+	Animation_pass::Animation_pass(Deferred_renderer& r, ecs::Entity_manager& entities)
+	  : _renderer(r)
+	  , _ecs(entities)
+	  , _animation_uniforms(r.device(), initial_animation_capacity, vk::BufferUsageFlagBits::eUniformBuffer)
 	{
 		_ecs.register_component_type<Pose_comp>();
 		_ecs.register_component_type<Animation_comp>();
 		_ecs.register_component_type<Simple_animation_controller_comp>();
+
+		MIRRAGE_INVARIANT(!r.gbuffer().animation_data_layout,
+		                  "More than one animation implementation active!");
+		r.gbuffer().animation_data_layout =
+		        r.device().create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
+		                0, vk::DescriptorType::eUniformBufferDynamic, 1, vk::ShaderStageFlagBits::eVertex});
+
+
+		auto buffers                 = _animation_uniforms.buffer_count();
+		_animation_desc_sets         = util::build_vector(buffers, [&](auto) {
+            return r.create_descriptor_set(*r.gbuffer().animation_data_layout, 1);
+        });
+		auto anim_desc_buffer_writes = util::build_vector(buffers, [&](auto i) {
+			return vk::DescriptorBufferInfo{_animation_uniforms.buffer(i), 0, initial_animation_capacity};
+		});
+		auto anim_desc_writes        = util::build_vector(buffers, [&](auto i) {
+            return vk::WriteDescriptorSet{*_animation_desc_sets.at(i),
+                                          0,
+                                          0,
+                                          1,
+                                          vk::DescriptorType::eUniformBufferDynamic,
+                                          nullptr,
+                                          &anim_desc_buffer_writes[i]};
+        });
+
+		r.device().vk_device()->updateDescriptorSets(
+		        std::uint32_t(anim_desc_writes.size()), anim_desc_writes.data(), 0, nullptr);
 	}
 
 	void Animation_pass::update(util::Time time)
@@ -82,6 +124,14 @@ namespace mirrage::renderer {
 
 	void Animation_pass::draw(Frame_data& frame)
 	{
+		_compute_poses(frame);
+
+		// TODO: add Animation_listeners to intercept/replace computed poses before drawing
+
+		_upload_poses(frame);
+	}
+	void Animation_pass::_compute_poses(Frame_data& frame)
+	{
 		// mark all cached animations as unused
 		_unused_animation_keys.clear();
 		_unused_animation_keys.reserve(_animation_key_cache.size());
@@ -110,6 +160,90 @@ namespace mirrage::renderer {
 		for(auto&& key : _unused_animation_keys) {
 			_animation_key_cache.erase(key);
 		}
+	}
+	void Animation_pass::_upload_poses(Frame_data& frame)
+	{
+		// upload skeleton pose
+		_animation_uniform_offsets.clear();
+		_animation_uniform_queue.clear();
+		auto required_size = std::int32_t(0);
+		auto alignment     = std::int32_t(
+                _renderer.device().physical_device_properties().limits.minUniformBufferOffsetAlignment);
+
+		auto aligned_byte_size = [&](auto bone_count) {
+			auto size = bone_count * std::int32_t(sizeof(Final_bone_transform));
+			return size < alignment ? alignment : size + (alignment - size % alignment);
+		};
+
+		for(auto& geo : frame.geometry_queue) {
+			if(!geo.model->rigged())
+				break;
+
+			auto offset = gsl::narrow<std::uint32_t>(required_size);
+
+			auto entity = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
+
+			auto upload_required = entity.get<Shared_pose_comp>().process(true, [&](auto& sp) {
+				auto pose_offset = util::find_maybe(_animation_uniform_offsets, sp.pose_owner);
+				offset           = pose_offset.get_or(offset);
+				_animation_uniform_offsets.emplace(geo.entity, pose_offset.get_or(offset));
+
+				entity = _ecs.get(sp.pose_owner).get_or_throw("Invalid entity in render queue");
+				entity.get<Pose_comp>().process([&](auto& pose) {
+					geo.substance_id = animation_substance(geo.substance_id, pose.skeleton().skinning_type());
+				});
+
+				if(pose_offset.is_some())
+					return false;
+
+				return true;
+			});
+
+			if(upload_required) {
+				entity.get<Pose_comp>().process([&](auto& pose) {
+					geo.substance_id = animation_substance(geo.substance_id, pose.skeleton().skinning_type());
+
+					auto [ex, success] = _animation_uniform_offsets.try_emplace(entity.handle(), offset);
+					offset             = ex->second;
+
+					if(success) {
+						_animation_uniform_queue.emplace_back(geo.model, pose, required_size);
+						required_size += aligned_byte_size(geo.model->bone_count());
+					}
+				});
+			}
+
+			geo.animation_uniform_offset = offset;
+		}
+
+		if(_animation_uniforms.resize(required_size)) {
+			// recreate DescriptorSet if the buffer has been recreated
+			auto anim_desc_buffer_write = vk::DescriptorBufferInfo{
+			        _animation_uniforms.write_buffer(), 0, vk::DeviceSize(required_size)};
+			auto anim_desc_writes = vk::WriteDescriptorSet{
+			        *_animation_desc_sets.at(std::size_t(_animation_uniforms.write_buffer_index())),
+			        0,
+			        0,
+			        1,
+			        vk::DescriptorType::eUniformBufferDynamic,
+			        nullptr,
+			        &anim_desc_buffer_write};
+
+			_renderer.device().vk_device()->updateDescriptorSets(1, &anim_desc_writes, 0, nullptr);
+		}
+
+		for(auto& upload : _animation_uniform_queue) {
+			_animation_uniforms.update_objects<Final_bone_transform>(upload.uniform_offset, [&](auto out) {
+				auto geo_matrices = out.subspan(0, upload.model->bone_count());
+				upload.pose->skeleton().to_final_transforms(upload.pose->bone_transforms(), geo_matrices);
+			});
+		}
+		_animation_uniforms.flush(frame.main_command_buffer,
+		                          vk::PipelineStageFlagBits::eVertexShader,
+		                          vk::AccessFlagBits::eUniformRead | vk::AccessFlagBits::eShaderRead);
+
+		_renderer.gbuffer().animation_data =
+		        *_animation_desc_sets.at(std::size_t(_animation_uniforms.read_buffer_index()));
 	}
 
 	void Animation_pass::_update_animation(ecs::Entity_handle owner,

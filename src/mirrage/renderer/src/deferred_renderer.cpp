@@ -162,6 +162,7 @@ namespace mirrage::renderer {
 		_frame_data.global_uniform_set  = *_global_uniform_descriptor_set;
 		_frame_data.swapchain_image     = _factory->_aquire_next_image();
 		_frame_data.geometry_queue.clear();
+		_frame_data.light_queue.clear();
 
 		// draw subpasses
 		for(auto& pass : _passes) {

@@ -67,7 +67,7 @@ namespace mirrage::renderer {
 			                           sizeof(Push_constants),
 			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 
-
+			// normal models
 			auto model_pipeline = pipeline;
 			model_pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 			model_pipeline.vertex<Model_vertex>(0,
@@ -86,6 +86,49 @@ namespace mirrage::renderer {
 			model_pass.stage("model"_strid)
 			        .shader("frag_shader:shadow_model"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:shadow_model"_aid, graphic::Shader_stage::vertex);
+
+			// rigged models
+			auto rigged_model_pipeline = pipeline;
+			rigged_model_pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
+			rigged_model_pipeline.add_descriptor_set_layout(*renderer.gbuffer().animation_data_layout);
+			rigged_model_pipeline.vertex<Model_rigged_vertex>(0,
+			                                                  false,
+			                                                  0,
+			                                                  &Model_rigged_vertex::position,
+			                                                  1,
+			                                                  &Model_rigged_vertex::normal,
+			                                                  2,
+			                                                  &Model_rigged_vertex::tex_coords,
+			                                                  3,
+			                                                  &Model_rigged_vertex::bone_ids,
+			                                                  4,
+			                                                  &Model_rigged_vertex::bone_weights);
+
+			auto& rigged_model_pass = builder.add_subpass(rigged_model_pipeline)
+			                                  .color_attachment(shadowmap)
+			                                  .depth_stencil_attachment(depth);
+
+			rigged_model_pass.stage("model"_strid)
+			        .shader("frag_shader:shadow_model"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:shadow_model_animated"_aid, graphic::Shader_stage::vertex);
+
+			rigged_model_pass.stage("model_dqs"_strid)
+			        .shader("frag_shader:shadow_model"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:shadow_model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+
+			builder.add_dependency(model_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       rigged_model_pass,
+			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
 			auto render_pass = builder.build();
 
@@ -237,57 +280,94 @@ namespace mirrage::renderer {
 		// update shadow maps
 		auto pcs = Push_constants{};
 
-		for(auto& [light, transform, _] :
-		    _entities.list<Directional_light_comp, Transform_comp, Shadowcaster_comp>()) {
-			(void) _;
 
-			if(light.shadowmap_id() == -1) {
-				for(auto i = 0u; i < _shadowmaps.size(); i++) {
-					if(!_shadowmaps[i].owner) {
-						light.shadowmap_id(int(i));
-						_shadowmaps[i].owner = light.owner_handle();
-						break;
+		for(auto& [entity, transform, light_variant, mask] : frame.light_queue) {
+			if(mask == 0)
+				continue;
+
+			if(auto ll = std::get_if<Directional_light_comp*>(&light_variant); ll) {
+				auto& light = **ll;
+
+				if(light.shadowmap_id() == -1) {
+					for(auto i = 0u; i < _shadowmaps.size(); i++) {
+						if(!_shadowmaps[i].owner) {
+							light.shadowmap_id(int(i));
+							_shadowmaps[i].owner = light.owner_handle();
+							break;
+						}
 					}
 				}
 
-				if(light.shadowmap_id() == -1) {
+				if(light.shadowmap_id() == -1 || !light.on_update()) {
 					continue;
 				}
-			} else if(!_renderer.settings().dynamic_shadows) {
+
 				auto& shadowmap = _shadowmaps.at(gsl::narrow<std::size_t>(light.shadowmap_id()));
+				shadowmap.light_source_position    = transform->position;
+				shadowmap.light_source_orientation = transform->orientation;
+				shadowmap.caster_count             = _entities.list<Model_comp>().size();
 
-				auto pos_diff = glm::length2(transform.position - shadowmap.light_source_position);
-				auto orientation_diff =
-				        glm::abs(glm::dot(transform.orientation, shadowmap.light_source_orientation) - 1);
-				if(pos_diff <= 0.0001f && orientation_diff <= 0.001f
-				   && shadowmap.caster_count == _entities.list<Model_comp>().size()) {
-					continue; // skip update
-				}
+				pcs.light_view_proj = light.calc_shadowmap_view_proj(*transform);
+
+				auto& target_fb = shadowmap.framebuffer;
+				_render_pass.execute(frame.main_command_buffer, target_fb, [&, mask = mask] {
+					_render_pass.bind_descriptor_sets(0, {&frame.global_uniform_set, 1});
+
+					auto waiting_for_rigged = true;
+					auto last_material      = static_cast<const Material*>(nullptr);
+					auto last_model         = static_cast<const Model*>(nullptr);
+					auto last_dqs           = false;
+
+					for(auto& geo : frame.partition_geometry(mask)) {
+						if(geo.model->rigged() && waiting_for_rigged) {
+							waiting_for_rigged = false;
+							last_material      = nullptr;
+							last_model         = nullptr;
+							_render_pass.next_subpass();
+							_render_pass.set_stage("model"_strid);
+						}
+
+						// bind mesh and material
+						auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
+						if(&*sub_mesh.material != last_material) {
+							last_material = &*sub_mesh.material;
+							last_material->bind(_render_pass);
+						}
+						if(geo.model != last_model) {
+							last_model = geo.model;
+							geo.model->bind_mesh(frame.main_command_buffer, 0);
+						}
+
+						// bind animation pose
+						if(geo.model->rigged()) {
+							auto uniform_offset = geo.animation_uniform_offset.get_or_throw();
+							_render_pass.bind_descriptor_set(
+							        2, _renderer.gbuffer().animation_data, {&uniform_offset, 1u});
+
+							auto dqs = geo.substance_id == "dq_default"_strid
+							           || geo.substance_id == "dq_emissive"_strid
+							           || geo.substance_id == "dq_alphatest"_strid;
+
+							if(dqs != last_dqs) {
+								last_dqs = dqs;
+								_render_pass.set_stage(dqs ? "model_dqs"_strid : "model"_strid);
+							}
+						}
+
+						// set transformation
+						pcs.model    = glm::toMat4(geo.orientation) * glm::scale(glm::mat4(1.f), geo.scale);
+						pcs.model[3] = glm::vec4(geo.position, 1.f);
+						_render_pass.push_constant("pcs"_strid, pcs);
+
+						// draw
+						frame.main_command_buffer.drawIndexed(
+						        sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+					}
+
+					if(waiting_for_rigged)
+						_render_pass.next_subpass();
+				});
 			}
-
-			auto& shadowmap                 = _shadowmaps.at(gsl::narrow<std::size_t>(light.shadowmap_id()));
-			shadowmap.light_source_position = transform.position;
-			shadowmap.light_source_orientation = transform.orientation;
-			shadowmap.caster_count             = _entities.list<Model_comp>().size();
-
-			pcs.light_view_proj = light.calc_shadowmap_view_proj(transform);
-
-			auto& target_fb = shadowmap.framebuffer;
-			_render_pass.execute(frame.main_command_buffer, target_fb, [&] {
-				_render_pass.bind_descriptor_sets(0, {&frame.global_uniform_set, 1});
-
-				for(auto&& [transform, model, caster] :
-				    _entities.list<Transform_comp, Model_comp, Shadowcaster_comp>()) {
-
-					pcs.model = transform.to_mat4();
-					_render_pass.push_constant("pcs"_strid, pcs);
-
-					auto foreach_model = [&](auto&, auto offset, auto count) {
-						frame.main_command_buffer.drawIndexed(count, 1, offset, 0, 0);
-					};
-					model.model()->bind(frame.main_command_buffer, _render_pass, 0, foreach_model);
-				}
-			});
 		}
 	}
 
