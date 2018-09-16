@@ -21,7 +21,8 @@ namespace mirrage::renderer {
 	struct Material_data {
 		util::Str_id substance_id = "default"_strid;
 		std::string  albedo_aid;
-		std::string  mat_data_aid;
+		std::string  mat_data_aid;  // RG: normal, B:roughness, A:metallic
+		std::string  mat_data2_aid; // R:emissive intensity
 	};
 
 #ifdef sf2_structDef
@@ -37,6 +38,7 @@ namespace mirrage::renderer {
 		         vk::Sampler,
 		         graphic::Texture_ptr albedo,
 		         graphic::Texture_ptr mat_data,
+		         graphic::Texture_ptr mat_data2,
 		         util::Str_id         substance_id);
 
 		void bind(graphic::Render_pass& pass) const;
@@ -47,6 +49,7 @@ namespace mirrage::renderer {
 		graphic::DescriptorSet _descriptor_set;
 		graphic::Texture_ptr   _albedo;
 		graphic::Texture_ptr   _mat_data;
+		graphic::Texture_ptr   _mat_data2;
 		util::Str_id           _substance_id;
 	};
 	using Material_ptr = asset::Ptr<Material>;

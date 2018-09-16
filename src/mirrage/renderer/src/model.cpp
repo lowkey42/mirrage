@@ -11,7 +11,7 @@ using namespace mirrage::graphic;
 namespace mirrage::renderer {
 
 	namespace {
-		constexpr auto material_textures = std::uint32_t(2);
+		constexpr auto material_textures = std::uint32_t(3);
 	} // namespace
 
 	auto create_material_descriptor_set_layout(Device& device, vk::Sampler sampler)
@@ -42,10 +42,12 @@ namespace mirrage::renderer {
 	                   vk::Sampler            sampler,
 	                   graphic::Texture_ptr   albedo,
 	                   graphic::Texture_ptr   mat_data,
+	                   graphic::Texture_ptr   mat_data2,
 	                   util::Str_id           substance_id)
 	  : _descriptor_set(std::move(descriptor_set))
 	  , _albedo(std::move(albedo))
 	  , _mat_data(std::move(mat_data))
+	  , _mat_data2(std::move(mat_data2))
 	  , _substance_id(substance_id ? substance_id : "default"_strid)
 	{
 
@@ -54,6 +56,9 @@ namespace mirrage::renderer {
 		        vk::DescriptorImageInfo{sampler, _albedo->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
 		desc_images[1] =
 		        vk::DescriptorImageInfo{sampler, _mat_data->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
+		desc_images[2] =
+		        vk::DescriptorImageInfo{sampler, _mat_data2->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
+
 
 		auto desc_writes = std::array<vk::WriteDescriptorSet, 1>();
 		desc_writes[0]   = vk::WriteDescriptorSet{*_descriptor_set,
@@ -133,14 +138,17 @@ namespace mirrage::asset {
 		auto desc_set =
 		        _descriptor_set_pool.create_descriptor(_descriptor_set_layout, renderer::material_textures);
 
-		auto albedo   = load_tex(data.albedo_aid);
-		auto mat_data = load_tex(data.mat_data_aid);
+		auto albedo    = load_tex(data.albedo_aid);
+		auto mat_data  = load_tex(data.mat_data_aid);
+		auto mat_data2 = !data.mat_data2_aid.empty() ? load_tex(data.mat_data2_aid) : mat_data;
 
-		auto all_loaded = async::when_all(albedo.internal_task(), mat_data.internal_task());
+		auto all_loaded =
+		        async::when_all(albedo.internal_task(), mat_data.internal_task(), mat_data2.internal_task());
 		using Task_type = decltype(all_loaded)::result_type;
 
 		return all_loaded.then([=, desc_set = std::move(desc_set)](const Task_type&) mutable {
-			return renderer::Material(_device, std::move(desc_set), _sampler, albedo, mat_data, sub_id);
+			return renderer::Material(
+			        _device, std::move(desc_set), _sampler, albedo, mat_data, mat_data2, sub_id);
 		});
 	}
 

@@ -158,6 +158,8 @@ namespace mirrage::graphic {
 			return *this;
 		}
 
+		auto color_mask(std::uint32_t index, vk::ColorComponentFlags) -> Stage_builder&;
+
 		auto add_push_constant(util::Str_id id, std::uint32_t offset, std::uint32_t size, vk::ShaderStageFlags)
 		        -> Stage_builder&;
 

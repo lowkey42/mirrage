@@ -108,6 +108,8 @@ namespace mirrage::renderer {
 			                              .color_attachment(depth_sampleable)
 			                              .color_attachment(albedo_mat_id)
 			                              .color_attachment(mat_data)
+			                              .color_attachment(color)
+			                              .color_attachment(color_diffuse)
 			                              .depth_stencil_attachment(depth);
 			gpass.configure_subpass(renderer, geometry_pass);
 
@@ -120,6 +122,8 @@ namespace mirrage::renderer {
 			                                       .color_attachment(depth_sampleable)
 			                                       .color_attachment(albedo_mat_id)
 			                                       .color_attachment(mat_data)
+			                                       .color_attachment(color)
+			                                       .color_attachment(color_diffuse)
 			                                       .depth_stencil_attachment(depth);
 			gpass.configure_animation_subpass(renderer, animated_geometry_pass);
 

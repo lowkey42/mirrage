@@ -34,15 +34,21 @@ namespace mirrage::renderer {
 	{
 		pass.stage("default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
+		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex)
+		        .color_mask(3, vk::ColorComponentFlags{})
+		        .color_mask(4, vk::ColorComponentFlags{});
 
 		pass.stage("emissive"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
+		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex)
+		        .color_mask(3, graphic::all_color_components)
+		        .color_mask(4, graphic::all_color_components);
 
 		pass.stage("alphatest"_strid)
 		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
+		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex)
+		        .color_mask(3, vk::ColorComponentFlags{})
+		        .color_mask(4, vk::ColorComponentFlags{});
 	}
 
 	void Deferred_geometry_subpass::configure_animation_pipeline(Deferred_renderer&             renderer,
@@ -70,28 +76,40 @@ namespace mirrage::renderer {
 	{
 		pass.stage("default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
+		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex)
+		        .color_mask(3, vk::ColorComponentFlags{})
+		        .color_mask(4, vk::ColorComponentFlags{});
 
 		pass.stage("emissive"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
+		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex)
+		        .color_mask(3, graphic::all_color_components)
+		        .color_mask(4, graphic::all_color_components);
 
 		pass.stage("alphatest"_strid)
 		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
+		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex)
+		        .color_mask(3, vk::ColorComponentFlags{})
+		        .color_mask(4, vk::ColorComponentFlags{});
 
 
 		pass.stage("dq_default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex)
+		        .color_mask(3, vk::ColorComponentFlags{})
+		        .color_mask(4, vk::ColorComponentFlags{});
 
 		pass.stage("dq_emissive"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex)
+		        .color_mask(3, graphic::all_color_components)
+		        .color_mask(4, graphic::all_color_components);
 
 		pass.stage("dq_alphatest"_strid)
 		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex)
+		        .color_mask(3, vk::ColorComponentFlags{})
+		        .color_mask(4, vk::ColorComponentFlags{});
 	}
 
 	void Deferred_geometry_subpass::update(util::Time) {}
@@ -139,6 +157,16 @@ namespace mirrage::renderer {
 			dpc.model    = glm::toMat4(geo.orientation) * glm::scale(glm::mat4(1.f), geo.scale);
 			dpc.model[3] = glm::vec4(geo.position, 1.f);
 			dpc.model    = _renderer.global_uniforms().view_mat * dpc.model;
+
+			if(sub_mesh.material->substance_id() == "emissive"_strid) {
+				auto emissive_color =
+				        _ecs.get(geo.entity)
+				                .get_or_throw()
+				                .template get<Material_property_comp>()
+				                .process(glm::vec3(200, 200, 200), [](auto& m) { return m.emissive_color; });
+
+				dpc.light_data = glm::vec4(emissive_color / 10.f, 1.f);
+			}
 		};
 
 

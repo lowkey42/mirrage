@@ -120,7 +120,7 @@ namespace mirrage::renderer {
 				auto& light_data = **ll;
 
 				dpc.model        = light_data.calc_shadowmap_view_proj(*light.transform) * inv_view;
-				dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity());
+				dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity() / 10.f);
 				dpc.light_data.r = light_data.source_radius() / 1_m;
 				auto dir =
 				        _renderer.global_uniforms().view_mat * glm::vec4(-light.transform->direction(), 0.f);

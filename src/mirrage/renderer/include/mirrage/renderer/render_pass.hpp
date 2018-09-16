@@ -21,7 +21,7 @@ namespace mirrage {
 namespace mirrage::ecs {
 	class Entity_manager;
 	namespace components {
-		class Transform_comp;
+		struct Transform_comp;
 	}
 } // namespace mirrage::ecs
 

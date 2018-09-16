@@ -217,6 +217,12 @@ namespace mirrage::graphic {
 		return *this;
 	}
 
+	auto Stage_builder::color_mask(std::uint32_t index, vk::ColorComponentFlags mask) -> Stage_builder&
+	{
+		pipeline().color_blend_attachments.at(index).setColorWriteMask(mask);
+		return *this;
+	}
+
 	auto Stage_builder::add_push_constant(util::Str_id         id,
 	                                      std::uint32_t        offset,
 	                                      std::uint32_t        size,

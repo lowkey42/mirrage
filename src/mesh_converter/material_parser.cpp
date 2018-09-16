@@ -331,8 +331,16 @@ namespace mirrage {
 		material_file.albedo_aid   = albedo_name;
 
 		switch(substance_id) {
-			case "emissive"_strid: // TODO: anything else required?
-				break;
+			case "emissive"_strid: {
+				auto emission_texture_name = find_texture(name, material, cfg, Texture_type::emission);
+				auto emission = load_texture2d(resolve_path(name, base_dir, emission_texture_name), false);
+				generate_mip_maps(emission,
+				                  [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+
+				material_file.mat_data2_aid = name + "_mat_data2.ktx";
+				store_texture(emission, texture_dir + material_file.mat_data2_aid, false);
+			}
+				[[fallthrough]];
 
 			case "default"_strid:
 			default:
@@ -376,7 +384,6 @@ namespace mirrage {
 
 				material_file.mat_data_aid = name + "_mat_data.ktx";
 				store_texture(normal, texture_dir + material_file.mat_data_aid, false);
-
 				break;
 		}
 

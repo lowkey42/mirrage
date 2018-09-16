@@ -12,6 +12,18 @@ namespace mirrage::renderer {
 	// Client code should only care about the Model_comp class as it represents an actually usable model.
 
 
+	class Material_property_comp : public ecs::Component<Material_property_comp> {
+	  public:
+		static constexpr const char* name() { return "Material_property"; }
+
+		Material_property_comp() = default;
+		Material_property_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
+
+		glm::vec3 emissive_color = glm::vec3(200, 200, 200);
+	};
+	sf2_structDef(Material_property_comp, emissive_color);
+
+
 	class Model_comp : public ecs::Component<Model_comp> {
 	  public:
 		static constexpr const char* name() { return "Model_loaded"; }
