@@ -34,7 +34,7 @@ vec3 calculate_gi(vec2 uv, vec3 radiance, vec3 specular,
 	vec3 diff = albedo * radiance*(1.0 - F0*brdf.x) / PI;
 	vec3 spec = specular.rgb * (F0*brdf.x + brdf.y);
 
-	return max(diff + spec, vec3(0,0,0))*1000.0;
+	return max(diff + spec, vec3(0,0,0));
 }
 
 #endif

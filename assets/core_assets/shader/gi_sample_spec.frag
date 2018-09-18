@@ -129,7 +129,7 @@ void main() {
 
 		float factor_normal = mix(1, 1.0 - smoothstep(0.6, 0.9, abs(dot(N, hit_N))), step(0.0001, hit_mat_data.b));
 
-		vec3 color = sample_color_lod(roughness, hit_uv, dir, coneTheta)/1000.0;
+		vec3 color = sample_color_lod(roughness, hit_uv, dir, coneTheta);
 
 		out_color.rgb = max(color * factor_distance * factor_normal, vec3(0));
 
@@ -147,7 +147,7 @@ void main() {
 	else
 		history_weight = 1.0-1.0/(1+history_weight);
 
-	out_color *= 1.0 - min(history_weight, 0.96);
+	out_color *= 1.0 - min(history_weight, 0.94);
 
 	out_color = max(out_color, vec4(0));
 }

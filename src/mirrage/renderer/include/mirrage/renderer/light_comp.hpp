@@ -47,7 +47,7 @@ namespace mirrage::renderer {
 
 	  private:
 		util::Distance _source_radius;
-		float          _intensity;
+		float          _intensity; // in lux
 		util::Rgb      _color;
 		bool           _shadowcaster            = true;
 		int            _shadowmap_id            = -1;
@@ -56,6 +56,31 @@ namespace mirrage::renderer {
 		float          _shadow_far_plane        = 128;
 		int            _shadow_update_frequency = 1;
 		int            _shadow_last_update      = 999;
+	};
+
+	class Point_light_comp : public ecs::Component<Point_light_comp> {
+	  public:
+		static constexpr const char* name() { return "Point_light"; }
+		friend void                  load_component(ecs::Deserializer& state, Point_light_comp&);
+		friend void                  save_component(ecs::Serializer& state, const Point_light_comp&);
+
+		using Component::Component;
+
+		void temperature(float kelvin);
+		void source_radius(util::Distance v) noexcept { _source_radius = v; }
+		void intensity(float v) noexcept { _intensity = v; }
+		void color(util::Rgb v) noexcept { _color = v; }
+
+		auto source_radius() const noexcept { return _source_radius; }
+		auto intensity() const noexcept { return _intensity; }
+		auto color() const noexcept { return _color; }
+
+		float calc_radius() const;
+
+	  private:
+		util::Distance _source_radius;
+		float          _intensity; // in lumens
+		util::Rgb      _color;
 	};
 
 	extern auto temperature_to_color(float kelvin) -> util::Rgb;

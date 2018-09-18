@@ -26,7 +26,7 @@ namespace mirrage::renderer {
 	};
 
 #ifdef sf2_structDef
-	sf2_structDef(Material_data, substance_id, albedo_aid, mat_data_aid);
+	sf2_structDef(Material_data, substance_id, albedo_aid, mat_data_aid, mat_data2_aid);
 #endif
 
 

@@ -258,13 +258,14 @@ namespace mirrage::graphic {
 				// first stage uses pipeline created with subpass
 				stage.reset(new Stage_builder(_builder, _pipeline_index));
 			} else {
-				_builder._pipelines.emplace_back(
-				        Pipeline_description(_builder._pipelines.at(_pipeline_index))); // copy pipeline
+				auto pipeline_copy       = _builder._pipelines.at(_pipeline_index);
+				pipeline_copy.index      = gsl::narrow<int>(_builder._pipelines.size());
+				pipeline_copy.base_index = gsl::narrow<int>(_pipeline_index);
+				_builder._pipelines.emplace_back(pipeline_copy);
 
 				// inherit previous pipeline
-				auto& subpass_pipeline                = _builder._pipelines.at(_pipeline_index);
-				_builder._pipelines.back().base_index = subpass_pipeline.index;
-				subpass_pipeline.used_as_base         = true;
+				auto& subpass_pipeline        = _builder._pipelines.at(_pipeline_index);
+				subpass_pipeline.used_as_base = true;
 
 				stage.reset(new Stage_builder(_builder, _builder._pipelines.size() - 1));
 			}

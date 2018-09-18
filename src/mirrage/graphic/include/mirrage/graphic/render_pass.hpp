@@ -80,12 +80,16 @@ namespace mirrage::graphic {
 			                             per_instance_data ? vk::VertexInputRate::eInstance
 			                                               : vk::VertexInputRate::eVertex);
 
-			util::apply2(
-			        [&](auto location, auto& member) {
-				        add_vertex_attributes<decltype(util::get_member_type(member))>(
-				                binding, location, util::get_member_offset(member));
-			        },
-			        members...);
+			if constexpr(sizeof...(members) == 0) {
+				add_vertex_attributes<T>(binding, 0, 0);
+			} else {
+				util::apply2(
+				        [&](auto location, auto& member) {
+					        add_vertex_attributes<decltype(util::get_member_type(member))>(
+					                binding, location, util::get_member_offset(member));
+				        },
+				        members...);
+			}
 		}
 
 		void add_push_constant(util::Str_id  id,
@@ -123,6 +127,9 @@ namespace mirrage::graphic {
 		template <class Member>
 		void add_vertex_attributes(int binding, int location, std::size_t offset)
 		{
+			(void) binding;
+			(void) location;
+			(void) offset;
 			static_assert(util::dependent_false<Member>, "Unknown type");
 			MIRRAGE_FAIL("Unknown type passed to add_vertex_attributes(...)");
 		}

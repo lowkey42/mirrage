@@ -109,6 +109,7 @@ namespace mirrage::graphic {
 		auto get_texture_srgb_format() { return _srgb_format; }
 		auto get_texture_srgba_format() { return _srgba_format; }
 
+		auto physical_device() const noexcept { return _gpu; }
 		auto physical_device_properties() const noexcept { return _gpu_properties; }
 
 		auto transfer() -> auto& { return _transfer_manager; }

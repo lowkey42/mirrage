@@ -44,7 +44,7 @@ void main() {
 	result += read(vertex_out.uv_r3, 0.010381362401148057);
 
 	if(COMBINE>0) {
-		result += textureLod(downsampled_color_sampler, vertex_out.uv_center, 0).rgb;
+		result = result/2 + textureLod(downsampled_color_sampler, vertex_out.uv_center, 0).rgb/2;
 	}
 
 	color_out = vec4(result, 1.0);

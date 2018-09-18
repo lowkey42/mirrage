@@ -3,7 +3,7 @@
 	},
 	"Directional_light": {
 		"source_radius": 0.8,
-		"intensity": 5000.0,
+		"intensity": 140000.0,
 		"temperature": 4500,
 		"shadow_size": 24,
 		"near_plane": 1.0,

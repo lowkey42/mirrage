@@ -25,6 +25,7 @@ namespace mirrage::renderer {
 		Deferred_renderer&   _renderer;
 		GBuffer&             _gbuffer;
 
+		graphic::Mesh                 _point_light_mesh;
 		vk::UniqueDescriptorSetLayout _input_attachment_descriptor_set_layout;
 		graphic::DescriptorSet        _input_attachment_descriptor_set;
 	};

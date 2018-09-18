@@ -94,13 +94,12 @@ void main() {
 		float p0 = uintBitsToFloat(prev_histogram[HISTOGRAM_SLOTS+1]);
 		float t  = global_uniforms.time.z;
 		float t0_pigment = 100; // pigment bleaching/regeneration time
-		float t0_neural  = 1.08; // neural adaption time
-		float pigment_regen_speed = 0.01;
+		float t0_neural  = 0.08; // neural adaption time
 
 		float n = total;
 		uint median = 0;
 		if(n>0) {
-			float median_idx = (n+1)/2.0;
+			float median_idx = (n+1)*0.8;
 			float sum = 0;
 			for(uint i=0; i<HISTOGRAM_SLOTS; i++) {
 				sum += local_histogram[i];
@@ -112,15 +111,17 @@ void main() {
 		}
 
 		float La = exp(index_to_log_lum(clamp(int(median), 0, HISTOGRAM_SLOTS-1)));
-		La = clamp(La, 0.001, 15);
+		La = clamp(La, 1, 4e3);
+		//La /= 140.0/5.0;
+		//La = clamp(La, 0.001, 15);
 
 		// correction faktor based on observations in various lighting conditions.
 		//   for some reason the original equation is too dark in bright but correct in dark environments
-		float La_scale = 100.8225 - 99.99274*exp(-0.4800563*La);
-		La /= max(1, La_scale);
+		//float La_scale = 100.8225 - 99.99274*exp(-0.4800563*La);
+		//La /= max(1, La_scale);
 
-		float pLa = 0.0001 / (0.0001 + La);
-		float p = pLa + (p0-pLa) * exp(-t/(t0_pigment*max(pLa,pigment_regen_speed)));
+		float pLa = 1e1 / (1e1 + La);
+		float p = pLa + (p0-pLa) * exp(-t/(t0_pigment*pLa));
 		float L = La + (L0-La)*exp(-t/t0_neural);
 
 		float sigma_b = 1.0 / p;
@@ -140,6 +141,9 @@ void main() {
 							   /(pow(L, 0.8471) + pow(1048.0,0.8471)) +0.01820);
 		*/
 		sigma = sigma_b * sigma_n * sigma_c;
+		sigma = clamp(sigma, 1, 4e3);
+
+		//sigma = La;
 
 		histogram[HISTOGRAM_SLOTS] = floatBitsToUint(L);
 		histogram[HISTOGRAM_SLOTS+1] = floatBitsToUint(p);
@@ -264,11 +268,13 @@ void main() {
 		float curr_lum = exp(index_to_log_lum(i));
 		float factor = exp(DISPLAY_MIN + display_range * float(prefix_sum[i])/sum);
 		factor = (factor - exp(DISPLAY_MIN)) / (exp(DISPLAY_MAX)-exp(DISPLAY_MIN));
-		factor = clamp(factor / curr_lum, 0.001, 1);
+		//factor = clamp(factor / curr_lum, 0.001, 1);
+
+		factor /= curr_lum;
+
 
 		if(!isnan(prev) && !isinf(prev))
 			factor = mix(prev, factor, global_uniforms.time.z/0.5);
-
 		imageStore(adjustment_factor, ivec2(i,0), vec4(factor));
 	}
 }

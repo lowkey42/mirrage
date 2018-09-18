@@ -56,6 +56,37 @@ namespace mirrage::renderer {
 		       * glm::inverse(inv_view);
 	}
 
+	void Point_light_comp::temperature(float kelvin) { _color = temperature_to_color(kelvin); }
+
+	float Point_light_comp::calc_radius() const
+	{
+		constexpr auto cutoff = 0.01f;
+		return util::min(20.f, _source_radius.value() * std::sqrt(_intensity / 10000.f / cutoff));
+	}
+
+	void load_component(ecs::Deserializer& state, Point_light_comp& comp)
+	{
+		auto src_radius  = comp._source_radius / 1_m;
+		auto temperature = -1.f;
+
+		state.read_virtual(sf2::vmember("source_radius", src_radius),
+		                   sf2::vmember("intensity", comp._intensity),
+		                   sf2::vmember("color", comp._color),
+		                   sf2::vmember("temperature", temperature));
+
+		comp._source_radius = src_radius * 1_m;
+		if(temperature >= 0.f) {
+			comp.temperature(temperature);
+		}
+	}
+
+	void save_component(ecs::Serializer& state, const Point_light_comp& comp)
+	{
+		state.write_virtual(sf2::vmember("source_radius", comp._source_radius / 1_m),
+		                    sf2::vmember("intensity", comp._intensity),
+		                    sf2::vmember("color", comp._color));
+	}
+
 	auto temperature_to_color(float kelvin) -> util::Rgb
 	{
 		// rough estimate based on http://www.tannerhelland.com/4435/convert-temperature-rgb-algorithm-code/

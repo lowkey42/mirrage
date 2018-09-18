@@ -53,8 +53,8 @@ void main() {
 			vec2 rel_p = (vec2(x,y)*2 - data_size) / min(data_size.x, data_size.y);
 			float dist2 = dot(rel_p,rel_p);
 			if(dist2 < 1) {
-				vec3 color = imageLoad(input_image, ivec2(x,y)).rgb;
-				float lum = log(tm_luminance(color*10));
+				vec3 color = imageLoad(input_image, ivec2(x,y)).rgb*10000.0;
+				float lum = log(tm_luminance(color));
 				atomicAdd(local_histogram[calc_histogram_index(lum)], 1);
 			}
 		}

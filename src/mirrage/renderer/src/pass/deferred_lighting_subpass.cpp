@@ -16,6 +16,10 @@ namespace mirrage::renderer {
 	namespace {
 		constexpr auto num_input_attachments = 3;
 
+		struct Vertex {
+			glm::vec3 p;
+		};
+
 		auto create_input_attachment_descriptor_set_layout(graphic::Device& device)
 		        -> vk::UniqueDescriptorSetLayout
 		{
@@ -32,6 +36,107 @@ namespace mirrage::renderer {
 
 			return device.create_descriptor_set_layout(bindings);
 		}
+
+		auto create_point_light_mesh(graphic::Device& device, std::uint32_t owner_qfamily)
+		{
+			static auto vertices = std::vector<glm::vec3>();
+
+			const auto t = (1.0f + std::sqrt(5.0f)) / 2.0f;
+
+			glm::vec3 base_vertices[]{{-1, t, 0},
+			                          {1, t, 0},
+			                          {-1, -t, 0},
+			                          {1, -t, 0},
+
+			                          {0, -1, t},
+			                          {0, 1, t},
+			                          {0, -1, -t},
+			                          {0, 1, -t},
+
+			                          {t, 0, -1},
+			                          {t, 0, 1},
+			                          {-t, 0, -1},
+			                          {-t, 0, 1}};
+
+			for(auto& v : base_vertices)
+				v = glm::normalize(v);
+
+			auto add_triange = [&](int a, int b, int c) {
+				vertices.emplace_back(base_vertices[a]);
+				vertices.emplace_back(base_vertices[b]);
+				vertices.emplace_back(base_vertices[c]);
+			};
+
+			// 5 faces around point 0
+			add_triange(0, 11, 5);
+			add_triange(0, 5, 1);
+			add_triange(0, 1, 7);
+			add_triange(0, 7, 10);
+			add_triange(0, 10, 11);
+
+			// 5 adjacent faces
+			add_triange(1, 5, 9);
+			add_triange(5, 11, 4);
+			add_triange(11, 10, 2);
+			add_triange(10, 7, 6);
+			add_triange(7, 1, 8);
+
+			// 5 faces around point 3
+			add_triange(3, 9, 4);
+			add_triange(3, 4, 2);
+			add_triange(3, 2, 6);
+			add_triange(3, 6, 8);
+			add_triange(3, 8, 9);
+
+			// 5 adjacent faces
+			add_triange(4, 9, 5);
+			add_triange(2, 4, 11);
+			add_triange(6, 2, 10);
+			add_triange(8, 6, 7);
+			add_triange(9, 8, 1);
+
+			/*
+			auto middle = [](const glm::vec3& a, const glm::vec3& b) {
+				return glm::normalize((a + b) / 2.f);
+			};
+
+			// refine triangles
+			for(int i = 0; i < 2; i++) {
+				auto vertex_count = vertices.size();
+				auto new_vertices = std::vector<glm::vec3>{};
+				new_vertices.reserve(vertex_count * 4);
+				auto add_tri = [&](auto& a, auto& b, auto& c) {
+					new_vertices.push_back(a);
+					new_vertices.push_back(b);
+					new_vertices.push_back(c);
+				};
+
+				for(uint32_t j = 0; j < vertex_count; j += 3) {
+					auto& v1 = vertices[j];
+					auto& v2 = vertices[j + 1];
+					auto& v3 = vertices[j + 2];
+
+					// split in 4 triangles;
+					auto a = middle(v1, v2);
+					auto b = middle(v2, v3);
+					auto c = middle(v3, v1);
+
+					add_tri(v1, a, c);
+					add_tri(v2, b, a);
+					add_tri(v3, c, b);
+					add_tri(a, b, c);
+				}
+
+				vertices = std::move(new_vertices);
+			}
+*/
+
+			static auto indices =
+			        util::build_vector(vertices.size(), [](auto i) { return static_cast<std::uint32_t>(i); });
+
+			return graphic::Mesh(device, owner_qfamily, vertices, indices);
+		}
+
 	} // namespace
 
 	Deferred_lighting_subpass::Deferred_lighting_subpass(Deferred_renderer&   renderer,
@@ -40,12 +145,14 @@ namespace mirrage::renderer {
 	  : _ecs(entities)
 	  , _renderer(renderer)
 	  , _gbuffer(renderer.gbuffer())
+	  , _point_light_mesh(create_point_light_mesh(renderer.device(), renderer.queue_family()))
 	  , _input_attachment_descriptor_set_layout(
 	            create_input_attachment_descriptor_set_layout(renderer.device()))
 	  , _input_attachment_descriptor_set(renderer.create_descriptor_set(
 	            *_input_attachment_descriptor_set_layout, num_input_attachments))
 	{
 		entities.register_component_type<Directional_light_comp>();
+		entities.register_component_type<Point_light_comp>();
 
 		auto& gbuffer    = renderer.gbuffer();
 		auto  depth_info = vk::DescriptorImageInfo(
@@ -94,6 +201,17 @@ namespace mirrage::renderer {
 		                0,
 		                renderer.settings().shadow_quality)
 		        .shader("vert_shader:light_directional"_aid, graphic::Shader_stage::vertex);
+
+		auto& point_light_pipeline =
+		        pass.stage("light_point"_strid)
+		                .shader("frag_shader:light_point"_aid, graphic::Shader_stage::fragment)
+		                .shader("vert_shader:light_point"_aid, graphic::Shader_stage::vertex)
+		                .pipeline();
+
+		point_light_pipeline.vertex<glm::vec3>(0, false);
+		point_light_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
+		        vk::PipelineDepthStencilStateCreateFlags{}, true, 0, vk::CompareOp::eGreaterOrEqual};
+		point_light_pipeline.rasterization.setCullMode(vk::CullModeFlagBits::eFront);
 	}
 
 	void Deferred_lighting_subpass::update(util::Time) {}
@@ -115,12 +233,13 @@ namespace mirrage::renderer {
 
 		auto inv_view = _renderer.global_uniforms().inv_view_mat;
 
+		// directional light
 		for(auto& light : frame.light_queue) {
 			if(auto ll = std::get_if<Directional_light_comp*>(&light.light); ll) {
 				auto& light_data = **ll;
 
 				dpc.model        = light_data.calc_shadowmap_view_proj(*light.transform) * inv_view;
-				dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity() / 10.f);
+				dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity() / 10000.0f);
 				dpc.light_data.r = light_data.source_radius() / 1_m;
 				auto dir =
 				        _renderer.global_uniforms().view_mat * glm::vec4(-light.transform->direction(), 0.f);
@@ -132,6 +251,48 @@ namespace mirrage::renderer {
 				render_pass.push_constant("dpc"_strid, dpc);
 
 				frame.main_command_buffer.draw(3, 1, 0, 0);
+			}
+		}
+
+		static auto first = true;
+		if(first) {
+			first = false;
+			return;
+		}
+
+		_renderer.device().wait_idle();
+
+		// point light
+		if(_point_light_mesh.ready()) {
+			auto first_point_light = true;
+
+			for(auto& light : frame.light_queue) {
+				if(auto ll = std::get_if<Point_light_comp*>(&light.light); ll) {
+					auto& light_data = **ll;
+
+					if(first_point_light) {
+						first_point_light = false;
+						render_pass.set_stage("light_point"_strid);
+						_point_light_mesh.bind(frame.main_command_buffer, 0);
+					}
+
+					dpc.model = _renderer.global_uniforms().view_proj_mat
+					            * glm::translate(glm::mat4(1), light.transform->position)
+					            * glm::scale(glm::mat4(1.f), glm::vec3(light_data.calc_radius()));
+					dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity() / 10000.0f);
+					dpc.light_data.r = light_data.source_radius() / 1_m;
+					auto pos =
+					        _renderer.global_uniforms().view_mat * glm::vec4(light.transform->position, 1.f);
+					pos /= pos.w;
+					dpc.light_data.g  = pos.x;
+					dpc.light_data.b  = pos.y;
+					dpc.light_data.a  = pos.z;
+					dpc.light_data2.g = _gbuffer.colorA.width();
+					dpc.light_data2.b = _gbuffer.colorA.height();
+					render_pass.push_constant("dpc"_strid, dpc);
+
+					frame.main_command_buffer.drawIndexed(_point_light_mesh.index_count(), 1, 0, 0, 0);
+				}
 			}
 		}
 	}

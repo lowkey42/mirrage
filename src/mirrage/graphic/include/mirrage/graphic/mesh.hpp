@@ -23,31 +23,16 @@ namespace mirrage::graphic {
 
 	class Mesh {
 	  public:
-		template <class V>
-		Mesh(Device&                        device,
-		     std::uint32_t                  owner_qfamily,
-		     gsl::span<const V>             vertices,
-		     gsl::span<const std::uint32_t> indices)
-		  : Mesh(device, owner_qfamily, to_bytes(vertices), indices)
-		{
-			static_assert(std::is_standard_layout<V>::value, "");
-		}
-
-		Mesh(Device&                        device,
-		     std::uint32_t                  owner_qfamily,
-		     gsl::span<const char>          vertices,
-		     gsl::span<const std::uint32_t> indices)
+		template <class VS, class IS>
+		Mesh(Device& device, std::uint32_t owner_qfamily, const VS& vertices, const IS& indices)
 		  : Mesh(device,
 		         owner_qfamily,
-		         gsl::narrow<std::uint32_t>(vertices.size_bytes()),
-		         gsl::narrow<std::uint32_t>(indices.size_bytes()),
+		         gsl::narrow<std::uint32_t>(vertices.size() * sizeof(vertices[0])),
+		         gsl::narrow<std::uint32_t>(indices.size() * sizeof(indices[0])),
 		         [&](char* dest) {
-			         (void) std::memcmp(
-			                 dest, vertices.data(), gsl::narrow<std::size_t>(vertices.size_bytes()));
+			         std::memcpy(dest, vertices.data(), vertices.size() * sizeof(vertices[0]));
 		         },
-		         [&](char* dest) {
-			         (void) std::memcmp(dest, indices.data(), gsl::narrow<std::size_t>(indices.size_bytes()));
-		         })
+		         [&](char* dest) { std::memcpy(dest, indices.data(), indices.size() * sizeof(indices[0])); })
 		{
 		}
 
@@ -64,6 +49,7 @@ namespace mirrage::graphic {
 		auto index_count() const noexcept { return _indices; }
 
 		auto internal_buffer() const noexcept -> auto& { return _buffer; }
+		auto ready() const { return _buffer.transfer_task().ready(); }
 
 	  private:
 		Static_buffer  _buffer;

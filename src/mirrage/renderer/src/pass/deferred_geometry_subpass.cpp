@@ -71,14 +71,20 @@ namespace mirrage::renderer {
 		                              4,
 		                              &Model_rigged_vertex::bone_weights);
 	}
-	void Deferred_geometry_subpass::configure_animation_subpass(Deferred_renderer&,
+	void Deferred_geometry_subpass::configure_animation_subpass(Deferred_renderer&        renderer,
 	                                                            graphic::Subpass_builder& pass)
 	{
+		// TODO: technically UB if !independentBlend, because the shaders never write the attachments
+		//         but seems to work fine on GTX 1060 and would only affect Intel<=Ivy Bridge and Android
+		auto gpu_features = renderer.device().physical_device().getFeatures();
+		auto ignore_mask =
+		        gpu_features.independentBlend ? vk::ColorComponentFlags{} : graphic::all_color_components;
+
 		pass.stage("default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, vk::ColorComponentFlags{})
-		        .color_mask(4, vk::ColorComponentFlags{});
+		        .color_mask(3, ignore_mask)
+		        .color_mask(4, ignore_mask);
 
 		pass.stage("emissive"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
@@ -89,15 +95,15 @@ namespace mirrage::renderer {
 		pass.stage("alphatest"_strid)
 		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, vk::ColorComponentFlags{})
-		        .color_mask(4, vk::ColorComponentFlags{});
+		        .color_mask(3, ignore_mask)
+		        .color_mask(4, ignore_mask);
 
 
 		pass.stage("dq_default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, vk::ColorComponentFlags{})
-		        .color_mask(4, vk::ColorComponentFlags{});
+		        .color_mask(3, ignore_mask)
+		        .color_mask(4, ignore_mask);
 
 		pass.stage("dq_emissive"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
@@ -108,8 +114,8 @@ namespace mirrage::renderer {
 		pass.stage("dq_alphatest"_strid)
 		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, vk::ColorComponentFlags{})
-		        .color_mask(4, vk::ColorComponentFlags{});
+		        .color_mask(3, ignore_mask)
+		        .color_mask(4, ignore_mask);
 	}
 
 	void Deferred_geometry_subpass::update(util::Time) {}
@@ -165,7 +171,7 @@ namespace mirrage::renderer {
 				                .template get<Material_property_comp>()
 				                .process(glm::vec3(200, 200, 200), [](auto& m) { return m.emissive_color; });
 
-				dpc.light_data = glm::vec4(emissive_color / 10.f, 1.f);
+				dpc.light_data = glm::vec4(emissive_color / 10000.0f, 1.f);
 			}
 		};
 

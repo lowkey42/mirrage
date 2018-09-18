@@ -33,6 +33,7 @@ namespace mirrage::renderer {
 	class Deferred_renderer;
 	class Model;
 	class Directional_light_comp;
+	class Point_light_comp;
 	struct Camera_state;
 	struct Sub_mesh;
 } // namespace mirrage::renderer
@@ -75,7 +76,7 @@ namespace mirrage::renderer {
 
 	struct Light {
 		using Transform_comp = mirrage::ecs::components::Transform_comp;
-		using Light_comp     = std::variant<Directional_light_comp*>;
+		using Light_comp     = std::variant<Directional_light_comp*, Point_light_comp*>;
 
 		ecs::Entity_handle entity;
 		Transform_comp*    transform;

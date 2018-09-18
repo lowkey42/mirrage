@@ -211,7 +211,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 
 	} else {
 		// fetch the light emitted by the src pixel, modulate it by the calculated factor and return it
-		vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb/1000.0;
+		vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;
 		return radiance * weight;
 	}
 }

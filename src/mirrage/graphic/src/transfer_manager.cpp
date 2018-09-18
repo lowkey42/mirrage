@@ -268,6 +268,7 @@ namespace mirrage::graphic {
 		// fill buffer
 		auto ptr = staging_buffer.memory().mapped_addr().get_or_throw("Staging GPU memory is not mapped!");
 
+		std::memset(ptr, 42, std::size_t(size));
 		write_data(ptr);
 
 		return staging_buffer;
@@ -306,16 +307,33 @@ namespace mirrage::graphic {
 		command_buffer.begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 
 		for(auto& t : _buffer_transfers) {
+			// barrier against Host-Write (TODO: shouldn't be necessary)
+			auto src_barrier = vk::BufferMemoryBarrier{vk::AccessFlagBits::eHostWrite,
+			                                           vk::AccessFlagBits::eTransferRead,
+			                                           VK_QUEUE_FAMILY_IGNORED,
+			                                           VK_QUEUE_FAMILY_IGNORED,
+			                                           *t.src,
+			                                           0,
+			                                           VK_WHOLE_SIZE};
+			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eHost,
+			                               vk::PipelineStageFlagBits::eTransfer,
+			                               vk::DependencyFlags{},
+			                               {},
+			                               {src_barrier},
+			                               {});
+
 			command_buffer.copyBuffer(*t.src, t.dst, {vk::BufferCopy{0, 0, t.size}});
 
 			//  queue family release operation
-			auto buffer_barrier = vk::BufferMemoryBarrier{vk::AccessFlagBits::eTransferWrite,
-			                                              vk::AccessFlags{},
-			                                              _queue_family,
-			                                              t.owner,
-			                                              t.dst,
-			                                              0,
-			                                              VK_WHOLE_SIZE};
+			auto buffer_barrier = vk::BufferMemoryBarrier{
+			        vk::AccessFlagBits::eTransferWrite,
+			        vk::AccessFlagBits::eUniformRead | vk::AccessFlagBits::eMemoryRead
+			                | vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eVertexAttributeRead,
+			        _queue_family,
+			        t.owner,
+			        t.dst,
+			        0,
+			        VK_WHOLE_SIZE};
 			// dstStageMask should be 0 (based on the spec) but validation layer complains
 			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
 			                               vk::PipelineStageFlagBits::eAllCommands,
@@ -329,7 +347,14 @@ namespace mirrage::graphic {
 			// executed in graphics queue
 			//  queue family aquire operation
 			auto aq_buffer_barrier = vk::BufferMemoryBarrier{
-			        vk::AccessFlags{}, vk::AccessFlags{}, _queue_family, t.owner, t.dst, 0, VK_WHOLE_SIZE};
+			        vk::AccessFlagBits::eTransferWrite,
+			        vk::AccessFlagBits::eUniformRead | vk::AccessFlagBits::eMemoryRead
+			                | vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eVertexAttributeRead,
+			        _queue_family,
+			        t.owner,
+			        t.dst,
+			        0,
+			        VK_WHOLE_SIZE};
 			// srcStageMask should be 0 (based on the spec) but validation layer complains
 			main_queue_commands.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
 			                                    vk::PipelineStageFlagBits::eAllCommands,

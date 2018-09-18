@@ -138,7 +138,8 @@ namespace mirrage::renderer {
 			                        color_diffuse, graphic::all_color_components, graphic::blend_add)
 			                .input_attachment(depth_sampleable)
 			                .input_attachment(albedo_mat_id)
-			                .input_attachment(mat_data);
+			                .input_attachment(mat_data)
+			                .depth_stencil_attachment(depth);
 			lpass.configure_subpass(renderer, light_pass);
 
 			builder.add_dependency(geometry_pass,
@@ -276,9 +277,11 @@ namespace mirrage::renderer {
 		return current_score;
 	}
 
-	void Deferred_pass_factory::configure_device(vk::PhysicalDevice,
+	void Deferred_pass_factory::configure_device(vk::PhysicalDevice pd,
 	                                             util::maybe<std::uint32_t>,
-	                                             graphic::Device_create_info&)
+	                                             graphic::Device_create_info& ci)
 	{
+		// enable independent blend if available for faster geometry pass
+		ci.features.setIndependentBlend(pd.getFeatures().independentBlend);
 	}
 } // namespace mirrage::renderer

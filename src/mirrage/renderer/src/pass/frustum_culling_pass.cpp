@@ -81,7 +81,15 @@ namespace mirrage::renderer {
 			}
 		}
 
-		// TODO: same for point lights, ...
+		for(auto& [entity, light, transform] :
+		    _ecs.list<ecs::Entity_handle, Point_light_comp, Transform_comp>()) {
+
+			if(light.color().length() * light.intensity() > 0.000001f
+			   && is_visible(viewers.front(), transform.position, light.calc_radius())) {
+				auto viewer_mask = 0;
+				frame.light_queue.emplace_back(entity, transform, light, viewer_mask);
+			}
+		}
 
 
 		for(auto& [entity, model, transform] : _ecs.list<ecs::Entity_facet, Model_comp, Transform_comp>()) {

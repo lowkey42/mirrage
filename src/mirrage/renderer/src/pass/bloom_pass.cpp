@@ -196,8 +196,8 @@ namespace mirrage::renderer {
 		if(!_renderer.settings().bloom)
 			return;
 
-		auto blur_mip_levels = util::max(3, _src.mip_levels() - 6);
-		auto start_mip_level = 3;
+		auto blur_mip_levels = 3;
+		auto start_mip_level = std::min(3, _src.mip_levels() - blur_mip_levels);
 
 
 		auto pcs = Push_constants{};
@@ -209,7 +209,7 @@ namespace mirrage::renderer {
 		                          vk::ImageLayout::eShaderReadOnlyOptimal,
 		                          _src.width(),
 		                          _src.height(),
-		                          util::min(_src.mip_levels(), start_mip_level + blur_mip_levels));
+		                          start_mip_level + blur_mip_levels);
 
 		auto start       = std::min(blur_mip_levels + start_mip_level - 1, _blur_buffer.mip_levels() - 1);
 		pcs.parameters.y = float(start - start_mip_level);
