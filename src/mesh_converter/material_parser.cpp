@@ -5,7 +5,7 @@
 #include "material_parser.hpp"
 
 #include <mirrage/renderer/model.hpp>
-#include <mirrage/utils/math.hpp>
+#include <mirrage/utils/min_max.hpp>
 #include <mirrage/utils/str_id.hpp>
 #include <mirrage/utils/template_utils.hpp>
 

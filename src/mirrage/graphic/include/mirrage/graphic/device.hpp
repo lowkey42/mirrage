@@ -11,8 +11,8 @@
 
 #include <mirrage/asset/asset_manager.hpp>
 #include <mirrage/utils/purgatory.hpp>
+#include <mirrage/utils/registration.hpp>
 #include <mirrage/utils/ring_buffer.hpp>
-#include <mirrage/utils/template_utils.hpp>
 
 #include <vulkan/vulkan.hpp>
 

@@ -3,7 +3,7 @@
 #include <mirrage/input/input_mapping.hpp>
 
 #include <mirrage/asset/asset_manager.hpp>
-#include <mirrage/utils/template_utils.hpp>
+#include <mirrage/utils/ranges.hpp>
 
 #include <glm/glm.hpp>
 #include <sf2/sf2.hpp>

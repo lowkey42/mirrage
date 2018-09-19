@@ -6,6 +6,7 @@
 \*****************************************************************************/
 #pragma once
 
+#include <mirrage/utils/container_utils.hpp>
 #include <mirrage/utils/func_traits.hpp>
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/maybe.hpp>

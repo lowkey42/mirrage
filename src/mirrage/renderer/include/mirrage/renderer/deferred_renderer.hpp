@@ -9,7 +9,7 @@
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/profiler.hpp>
 
-#include <mirrage/utils/math.hpp>
+#include <mirrage/utils/min_max.hpp>
 
 #include <glm/gtx/quaternion.hpp>
 #include <glm/vec3.hpp>
@@ -156,16 +156,6 @@ namespace mirrage::renderer {
 
 		void recreate();
 
-		template <class T>
-		auto find_pass() -> util::tracking_ptr<T>
-		{
-			auto pass = std::find_if(
-			        _passes.begin(), _passes.end(), [](auto& p) { return dynamic_cast<T*>(&*p) != nullptr; });
-
-			return pass != _passes.end() ? util::tracking_ptr<T>(pass->create_ptr())
-			                             : util::tracking_ptr<T>{};
-		}
-
 		void update(util::Time dt);
 		void draw();
 
@@ -229,7 +219,7 @@ namespace mirrage::renderer {
 		graphic::Image_descriptor_set_layout _noise_descriptor_set_layout;
 		graphic::DescriptorSet               _noise_descriptor_set;
 
-		std::vector<util::trackable<Render_pass>> _passes;
+		std::vector<std::unique_ptr<Render_pass>> _passes;
 
 		Camera_comp::Pool*        _cameras;
 		util::maybe<Camera_state> _active_camera;

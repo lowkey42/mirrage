@@ -5,7 +5,7 @@
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/ecs/ecs.hpp>
 #include <mirrage/renderer/light_comp.hpp>
-#include <mirrage/utils/math.hpp>
+#include <mirrage/utils/min_max.hpp>
 #include <mirrage/utils/sf2_glm.hpp>
 
 #include <gsl/gsl>

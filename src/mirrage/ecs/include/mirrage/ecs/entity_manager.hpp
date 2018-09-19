@@ -40,7 +40,7 @@ namespace mirrage::ecs {
 	 * The main functionality is thread-safe but the other methods require a lock to prevent
 	 *   concurrent read access during their execution
 	 */
-	class Entity_manager : util::no_copy_move {
+	class Entity_manager {
 	  public:
 		Entity_manager(asset::Asset_manager&, util::any_ptr userdata);
 

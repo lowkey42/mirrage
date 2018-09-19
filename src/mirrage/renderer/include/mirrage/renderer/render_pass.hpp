@@ -2,8 +2,8 @@
 
 #include <mirrage/ecs/entity_handle.hpp>
 #include <mirrage/utils/maybe.hpp>
+#include <mirrage/utils/ranges.hpp>
 #include <mirrage/utils/str_id.hpp>
-#include <mirrage/utils/template_utils.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <glm/gtx/quaternion.hpp>

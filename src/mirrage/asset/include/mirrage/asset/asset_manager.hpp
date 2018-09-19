@@ -11,11 +11,11 @@
 #include <mirrage/asset/error.hpp>
 #include <mirrage/asset/stream.hpp>
 
+#include <mirrage/utils/container_utils.hpp>
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/reflection.hpp>
 #include <mirrage/utils/string_utils.hpp>
-#include <mirrage/utils/template_utils.hpp>
 
 #include <async++.h>
 #include <tsl/robin_map.h>
@@ -132,7 +132,7 @@ namespace mirrage::asset {
 	} // namespace detail
 
 
-	class Asset_manager : util::no_copy_move {
+	class Asset_manager {
 	  public:
 		Asset_manager(const std::string& exe_name, const std::string& org_name, const std::string& app_name);
 		~Asset_manager();

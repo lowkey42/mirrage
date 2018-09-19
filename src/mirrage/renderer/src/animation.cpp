@@ -1,5 +1,7 @@
 #include <mirrage/renderer/animation.hpp>
 
+#include <mirrage/utils/ranges.hpp>
+
 #include <glm/glm.hpp>
 #include <glm/gtx/dual_quaternion.hpp>
 #include <glm/gtx/matrix_decompose.hpp>

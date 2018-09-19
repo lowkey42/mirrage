@@ -9,7 +9,7 @@
 
 #include <mirrage/graphic/settings.hpp>
 
-#include <mirrage/utils/template_utils.hpp>
+#include <mirrage/utils/registration.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <vulkan/vulkan.hpp>

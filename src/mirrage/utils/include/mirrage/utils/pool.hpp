@@ -8,10 +8,10 @@
 #pragma once
 
 #include <mirrage/utils/log.hpp>
-#include <mirrage/utils/math.hpp>
+#include <mirrage/utils/min_max.hpp>
+#include <mirrage/utils/ranges.hpp>
 #include <mirrage/utils/sorted_vector.hpp>
 #include <mirrage/utils/string_utils.hpp>
-#include <mirrage/utils/template_utils.hpp>
 
 #include <doctest.h>
 

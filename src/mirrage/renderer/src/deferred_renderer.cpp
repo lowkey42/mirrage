@@ -59,8 +59,7 @@ namespace mirrage::renderer {
 	  , _noise_descriptor_set_layout(device(), *_noise_sampler, 1, vk::ShaderStageFlagBits::eFragment)
 	  , _passes(util::map(passes,
 	                      [&, write_first_pp_buffer = true](auto& factory) mutable {
-		                      return util::trackable<Render_pass>(
-		                              factory->create_pass(*this, ecs, engine, write_first_pp_buffer));
+		                      return factory->create_pass(*this, ecs, engine, write_first_pp_buffer);
 	                      }))
 	  , _cameras(&ecs.list<Camera_comp>())
 	{

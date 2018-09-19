@@ -1,7 +1,7 @@
 #include <mirrage/renderer/pass/ssao_pass.hpp>
 
 #include <mirrage/graphic/window.hpp>
-#include <mirrage/utils/math.hpp>
+#include <mirrage/utils/min_max.hpp>
 
 #include <glm/gtx/string_cast.hpp>
 

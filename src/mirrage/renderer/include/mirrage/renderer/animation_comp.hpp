@@ -4,6 +4,7 @@
 
 #include <mirrage/ecs/component.hpp>
 #include <mirrage/utils/small_vector.hpp>
+#include <mirrage/utils/units.hpp>
 
 #include <vector>
 

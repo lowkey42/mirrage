@@ -2,6 +2,8 @@
 
 #include <mirrage/graphic/device.hpp>
 
+#include <mirrage/utils/ranges.hpp>
+
 
 namespace mirrage::graphic {
 

@@ -1,6 +1,7 @@
 #include <mirrage/graphic/device_memory.hpp>
 
-#include <mirrage/utils/template_utils.hpp>
+#include <mirrage/utils/container_utils.hpp>
+#include <mirrage/utils/ranges.hpp>
 
 #include <gsl/gsl>
 

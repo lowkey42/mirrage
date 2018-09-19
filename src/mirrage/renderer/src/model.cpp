@@ -4,6 +4,7 @@
 
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/render_pass.hpp>
+#include <mirrage/utils/ranges.hpp>
 
 
 using namespace mirrage::graphic;

@@ -5,8 +5,8 @@
 #include <mirrage/asset/asset_manager.hpp>
 
 #include <mirrage/utils/maybe.hpp>
+#include <mirrage/utils/registration.hpp>
 #include <mirrage/utils/str_id.hpp>
-#include <mirrage/utils/template_utils.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <vulkan/vulkan.hpp>
