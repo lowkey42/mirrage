@@ -4,6 +4,7 @@
 #include <mirrage/renderer/pass/animation_pass.hpp>
 #include <mirrage/renderer/pass/blit_pass.hpp>
 #include <mirrage/renderer/pass/bloom_pass.hpp>
+#include <mirrage/renderer/pass/debug_draw_pass.hpp>
 #include <mirrage/renderer/pass/deferred_pass.hpp>
 #include <mirrage/renderer/pass/frustum_culling_pass.hpp>
 #include <mirrage/renderer/pass/gen_mipmap_pass.hpp>
@@ -39,6 +40,7 @@ namespace mirrage {
 	                              renderer::make_pass_factory<renderer::Taa_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Bloom_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Tone_mapping_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Debug_draw_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Blit_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Gui_pass_factory>())))
 	{

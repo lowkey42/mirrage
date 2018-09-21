@@ -195,18 +195,12 @@ namespace mirrage::renderer {
 	                             graphic::Render_target_2D& color_target,
 	                             graphic::Render_target_2D& color_target_diff)
 	  : _renderer(renderer)
-	  , _depth(renderer.device(),
-	           {color_target.width(), color_target.height()},
-	           1,
-	           renderer.device().get_depth_format(),
-	           vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment,
-	           vk::ImageAspectFlagBits::eDepth)
 	  , _gpass(renderer, entities)
-	  , _lpass(renderer, entities, _depth)
+	  , _lpass(renderer, entities, renderer.gbuffer().depth_buffer)
 	  , _render_pass(build_render_pass(renderer,
 	                                   color_target,
 	                                   color_target_diff,
-	                                   _depth,
+	                                   renderer.gbuffer().depth_buffer,
 	                                   renderer.device().get_depth_format(),
 	                                   _gpass,
 	                                   _lpass,

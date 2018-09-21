@@ -54,6 +54,7 @@ namespace mirrage::renderer {
 
 		bool dynamic_shadows = false;
 		int  debug_gi_layer  = -1;
+		bool debug_geometry  = true;
 	};
 
 #ifdef sf2_structDef
@@ -190,6 +191,14 @@ namespace mirrage::renderer {
 		auto settings() const -> auto& { return _factory->settings(); }
 		void save_settings() { _factory->save_settings(); }
 		void settings(const Renderer_settings& s, bool apply = true) { _factory->settings(s, apply); }
+
+		void debug_draw(const std::vector<Debug_geometry>& lines)
+		{
+			if(_factory->settings().debug_geometry) {
+				auto& queue = _frame_data.debug_geometry_queue;
+				queue.insert(queue.end(), lines.begin(), lines.end());
+			}
+		}
 
 
 		auto profiler() const noexcept -> auto& { return _profiler; }

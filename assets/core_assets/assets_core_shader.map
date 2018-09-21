@@ -3,6 +3,10 @@ shader: = shader/
 vert_shader:blit = shader/bin/fullscreen.vert.spv
 frag_shader:blit = shader/bin/blit.frag.spv
 
+vert_shader:debug_draw = shader/bin/debug_draw.vert.spv
+frag_shader:debug_draw = shader/bin/debug_draw.frag.spv
+
+
 vert_shader:light_directional = shader/bin/fullscreen.vert.spv
 frag_shader:light_directional = shader/bin/light_directional.frag.spv
 

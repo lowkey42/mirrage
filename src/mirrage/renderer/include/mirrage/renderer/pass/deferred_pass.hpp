@@ -36,8 +36,6 @@ namespace mirrage::renderer {
 	  private:
 		Deferred_renderer& _renderer;
 
-		graphic::Render_target_2D _depth;
-
 		Deferred_geometry_subpass _gpass;
 		Deferred_lighting_subpass _lpass;
 

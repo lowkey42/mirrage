@@ -44,7 +44,7 @@ void main() {
 	float att = 1.0 / max(dist*dist, 0.01*0.01);
 
 	float intensity = model_uniforms.light_color.a * calc_att(dist);
-	intensity = max(0.0, intensity-0.005) / (1.0 - 0.01);
+	intensity = max(0.0, intensity-0.01) / (1.0 - 0.01);
 	if(intensity<=0.0) {
 		out_color = vec4(0,0,0,0);
 		out_color_diff = vec4(0,0,0,0);

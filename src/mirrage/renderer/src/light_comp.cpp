@@ -61,7 +61,9 @@ namespace mirrage::renderer {
 	float Point_light_comp::calc_radius() const
 	{
 		constexpr auto cutoff = 0.01f;
-		return util::min(20.f, _source_radius.value() * std::sqrt(_intensity / 10000.f / cutoff));
+
+		auto r = _source_radius.value() * std::sqrt(_intensity / 10000.f / cutoff);
+		return util::min(20.f, r * 1.3f); // factor to compensate for coarse light volumn
 	}
 
 	void load_component(ecs::Deserializer& state, Point_light_comp& comp)

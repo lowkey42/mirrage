@@ -94,14 +94,22 @@ namespace mirrage::renderer {
 		}
 	};
 
+
+	struct Debug_geometry {
+		glm::vec3 start;
+		glm::vec3 end;
+		util::Rgb color;
+	};
+
 	class Frame_data {
 	  public:
 		vk::CommandBuffer main_command_buffer;
 		vk::DescriptorSet global_uniform_set;
 		std::size_t       swapchain_image;
 
-		std::vector<Geometry> geometry_queue;
-		std::vector<Light>    light_queue;
+		std::vector<Geometry>       geometry_queue;
+		std::vector<Light>          light_queue;
+		std::vector<Debug_geometry> debug_geometry_queue;
 
 		auto partition_geometry(std::uint32_t mask) -> util::vector_range<Geometry>;
 	};

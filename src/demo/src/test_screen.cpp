@@ -359,6 +359,9 @@ namespace mirrage {
 			}
 		}
 
+		_meta_system.renderer().debug_draw({renderer::Debug_geometry{{0, 1, 0}, {0, 5, 0}, {1, 0, 0}},
+		                                    renderer::Debug_geometry{{1, 1, 0}, {1, 5, 0}, {0, 0, 1}}});
+
 		_meta_system.draw();
 	}
 	void Test_screen::_draw_settings_window()

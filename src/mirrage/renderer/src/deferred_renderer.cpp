@@ -160,8 +160,6 @@ namespace mirrage::renderer {
 		_frame_data.main_command_buffer = main_command_buffer;
 		_frame_data.global_uniform_set  = *_global_uniform_descriptor_set;
 		_frame_data.swapchain_image     = _factory->_aquire_next_image();
-		_frame_data.geometry_queue.clear();
-		_frame_data.light_queue.clear();
 
 		// draw subpasses
 		for(auto& pass : _passes) {
@@ -169,6 +167,10 @@ namespace mirrage::renderer {
 
 			pass->draw(_frame_data);
 		}
+
+		_frame_data.geometry_queue.clear();
+		_frame_data.light_queue.clear();
+		_frame_data.debug_geometry_queue.clear();
 
 		// reset cached camera state
 		_active_camera = util::nothing;

@@ -58,6 +58,13 @@ namespace mirrage::renderer {
 	               vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc
 	                       | vk::ImageUsageFlagBits::eTransferDst,
 	               vk::ImageAspectFlagBits::eColor)
+	  , depth_buffer(
+	            device,
+	            {width, height},
+	            1,
+	            device.get_depth_format(),
+	            vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment,
+	            vk::ImageAspectFlagBits::eDepth)
 
 	  , albedo_mat_id_format(device.get_texture_rgba_format().get_or_throw("No rgba-format supported"))
 	  , albedo_mat_id(device,
