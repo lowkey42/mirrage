@@ -1,39 +1,39 @@
 [submodule "dependencies/backward-cpp"]
 	path = dependencies/backward-cpp
-	url = http://github.com/bombela/backward-cpp.git
+	url = https://github.com/bombela/backward-cpp.git
 [submodule "dependencies/plog"]
 	path = dependencies/plog
-	url = http://github.com/SergiusTheBest/plog.git
+	url = https://github.com/SergiusTheBest/plog.git
 [submodule "dependencies/assimp"]
 	path = dependencies/assimp
-	url = http://github.com/assimp/assimp.git
+	url = https://github.com/assimp/assimp.git
 [submodule "dependencies/asyncplusplus"]
 	path = dependencies/asyncplusplus
-	url = http://github.com/lowkey42/asyncplusplus.git
+	url = https://github.com/lowkey42/asyncplusplus.git
 [submodule "dependencies/glm"]
 	path = dependencies/glm
-	url = http://github.com/g-truc/glm.git
+	url = https://github.com/g-truc/glm.git
 [submodule "dependencies/GSL"]
 	path = dependencies/GSL
-	url = http://github.com/Microsoft/GSL.git
+	url = https://github.com/Microsoft/GSL.git
 [submodule "dependencies/magic_get"]
 	path = dependencies/magic_get
-	url = http://github.com/apolukhin/magic_get.git
+	url = https://github.com/apolukhin/magic_get.git
 [submodule "dependencies/nuklear"]
 	path = dependencies/nuklear
-	url = http://github.com/vurtun/nuklear.git
+	url = https://github.com/vurtun/nuklear.git
 [submodule "dependencies/physfs"]
 	path = dependencies/physfs
-	url = http://github.com/lowkey42/physfs.git
+	url = https://github.com/lowkey42/physfs.git
 [submodule "dependencies/robin-map"]
 	path = dependencies/robin-map
-	url = http://github.com/Tessil/robin-map.git
+	url = https://github.com/Tessil/robin-map.git
 [submodule "dependencies/sf2"]
 	path = dependencies/sf2
-	url = http://github.com/lowkey42/sf2.git
+	url = https://github.com/lowkey42/sf2.git
 [submodule "dependencies/moodycamel"]
 	path = dependencies/moodycamel
-	url = http://github.com/cameron314/concurrentqueue.git
+	url = https://github.com/cameron314/concurrentqueue.git
 [submodule "dependencies/doctest"]
 	path = dependencies/doctest
-	url = http://github.com/onqtam/doctest.git
+	url = https://github.com/onqtam/doctest.git
