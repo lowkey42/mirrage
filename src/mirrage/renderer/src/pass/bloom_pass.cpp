@@ -264,6 +264,9 @@ namespace mirrage::renderer {
 	                                     Engine&,
 	                                     bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
+		if(!renderer.settings().bloom)
+			return {};
+
 		auto& src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		return std::make_unique<Bloom_pass>(renderer, src);

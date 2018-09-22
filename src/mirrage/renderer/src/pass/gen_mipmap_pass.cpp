@@ -189,6 +189,9 @@ namespace mirrage::renderer {
 	                                          Engine&,
 	                                          bool&) -> std::unique_ptr<Render_pass>
 	{
+		if(!renderer.settings().gi)
+			return {};
+
 		return std::make_unique<Gen_mipmap_pass>(renderer);
 	}
 

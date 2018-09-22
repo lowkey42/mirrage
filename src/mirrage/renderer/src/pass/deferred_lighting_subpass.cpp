@@ -39,32 +39,26 @@ namespace mirrage::renderer {
 
 		auto create_point_light_mesh(graphic::Device& device, std::uint32_t owner_qfamily)
 		{
-			static auto vertices = std::vector<glm::vec3>();
-
 			const auto t = (1.0f + std::sqrt(5.0f)) / 2.0f;
 
-			glm::vec3 base_vertices[]{{-1, t, 0},
-			                          {1, t, 0},
-			                          {-1, -t, 0},
-			                          {1, -t, 0},
-
-			                          {0, -1, t},
-			                          {0, 1, t},
-			                          {0, -1, -t},
-			                          {0, 1, -t},
-
-			                          {t, 0, -1},
-			                          {t, 0, 1},
-			                          {-t, 0, -1},
-			                          {-t, 0, 1}};
-
-			for(auto& v : base_vertices)
-				v = glm::normalize(v);
+			auto vertices = std::vector<glm::vec3>{glm::normalize(glm::vec3{-1, t, 0}),
+			                                       glm::normalize(glm::vec3{1, t, 0}),
+			                                       glm::normalize(glm::vec3{-1, -t, 0}),
+			                                       glm::normalize(glm::vec3{1, -t, 0}),
+			                                       glm::normalize(glm::vec3{0, -1, t}),
+			                                       glm::normalize(glm::vec3{0, 1, t}),
+			                                       glm::normalize(glm::vec3{0, -1, -t}),
+			                                       glm::normalize(glm::vec3{0, 1, -t}),
+			                                       glm::normalize(glm::vec3{t, 0, -1}),
+			                                       glm::normalize(glm::vec3{t, 0, 1}),
+			                                       glm::normalize(glm::vec3{-t, 0, -1}),
+			                                       glm::normalize(glm::vec3{-t, 0, 1})};
+			auto indices  = std::vector<std::uint32_t>();
 
 			auto add_triange = [&](int a, int b, int c) {
-				vertices.emplace_back(base_vertices[a]);
-				vertices.emplace_back(base_vertices[b]);
-				vertices.emplace_back(base_vertices[c]);
+				indices.emplace_back(a);
+				indices.emplace_back(b);
+				indices.emplace_back(c);
 			};
 
 			// 5 faces around point 0
@@ -94,45 +88,6 @@ namespace mirrage::renderer {
 			add_triange(6, 2, 10);
 			add_triange(8, 6, 7);
 			add_triange(9, 8, 1);
-
-			/*
-			auto middle = [](const glm::vec3& a, const glm::vec3& b) {
-				return glm::normalize((a + b) / 2.f);
-			};
-
-			// refine triangles
-			for(int i = 0; i < 2; i++) {
-				auto vertex_count = vertices.size();
-				auto new_vertices = std::vector<glm::vec3>{};
-				new_vertices.reserve(vertex_count * 4);
-				auto add_tri = [&](auto& a, auto& b, auto& c) {
-					new_vertices.push_back(a);
-					new_vertices.push_back(b);
-					new_vertices.push_back(c);
-				};
-
-				for(uint32_t j = 0; j < vertex_count; j += 3) {
-					auto& v1 = vertices[j];
-					auto& v2 = vertices[j + 1];
-					auto& v3 = vertices[j + 2];
-
-					// split in 4 triangles;
-					auto a = middle(v1, v2);
-					auto b = middle(v2, v3);
-					auto c = middle(v3, v1);
-
-					add_tri(v1, a, c);
-					add_tri(v2, b, a);
-					add_tri(v3, c, b);
-					add_tri(a, b, c);
-				}
-
-				vertices = std::move(new_vertices);
-			}
-*/
-
-			static auto indices =
-			        util::build_vector(vertices.size(), [](auto i) { return static_cast<std::uint32_t>(i); });
 
 			return graphic::Mesh(device, owner_qfamily, vertices, indices);
 		}
@@ -186,9 +141,7 @@ namespace mirrage::renderer {
 	                                                   graphic::Pipeline_description& p)
 	{
 		p.add_descriptor_set_layout(*_input_attachment_descriptor_set_layout);
-		if(renderer.gbuffer().shadowmaps_layout) {
-			p.add_descriptor_set_layout(*renderer.gbuffer().shadowmaps_layout);
-		}
+		p.add_descriptor_set_layout(*renderer.gbuffer().shadowmaps_layout);
 	}
 
 	void Deferred_lighting_subpass::configure_subpass(Deferred_renderer&        renderer,
@@ -199,7 +152,9 @@ namespace mirrage::renderer {
 		                graphic::Shader_stage::fragment,
 		                "main",
 		                0,
-		                renderer.settings().shadow_quality)
+		                renderer.settings().shadow_quality,
+		                1,
+		                renderer.gbuffer().shadowmapping_enabled ? 1 : 0)
 		        .shader("vert_shader:light_directional"_aid, graphic::Shader_stage::vertex);
 
 		auto& point_light_pipeline =
@@ -223,11 +178,7 @@ namespace mirrage::renderer {
 		render_pass.set_stage("light_dir"_strid);
 
 		render_pass.bind_descriptor_sets(1, {_input_attachment_descriptor_set.get_ptr(), 1});
-
-		if(_gbuffer.shadowmaps) {
-			auto desc_set = *_gbuffer.shadowmaps;
-			render_pass.bind_descriptor_sets(2, {&desc_set, 1});
-		}
+		render_pass.bind_descriptor_set(2, *_gbuffer.shadowmaps);
 
 		Deferred_push_constants dpc{};
 

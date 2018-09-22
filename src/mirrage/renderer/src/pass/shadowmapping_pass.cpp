@@ -213,30 +213,19 @@ namespace mirrage::renderer {
 	                                                              vk::Filter::eLinear,
 	                                                              vk::SamplerMipmapMode::eNearest,
 	                                                              false))
-	  , _shadowmaps(util::make_vector(
-	            Shadowmap(renderer.device(), renderer.settings().shadowmap_resolution, _shadowmap_format),
-	            Shadowmap(renderer.device(), renderer.settings().shadowmap_resolution, _shadowmap_format)))
+	  , _shadowmaps(util::build_vector(renderer.gbuffer().max_shadowmaps,
+	                                   [&](auto) {
+		                                   return Shadowmap(renderer.device(),
+		                                                    renderer.settings().shadowmap_resolution,
+		                                                    _shadowmap_format);
+	                                   }))
 	  , _render_pass(build_render_pass(
 	            renderer, _depth, get_depth_format(renderer.device()), _shadowmap_format, _shadowmaps))
 	{
 		entities.register_component_type<Directional_light_comp>();
 		entities.register_component_type<Shadowcaster_comp>();
 
-		auto shadowmap_bindings = std::array<vk::DescriptorSetLayoutBinding, 3>();
-		shadowmap_bindings[0]   = vk::DescriptorSetLayoutBinding{0,
-                                                               vk::DescriptorType::eSampledImage,
-                                                               gsl::narrow<std::uint32_t>(_shadowmaps.size()),
-                                                               vk::ShaderStageFlagBits::eFragment};
-		shadowmap_bindings[1]   = vk::DescriptorSetLayoutBinding{
-                1, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment};
-		shadowmap_bindings[2] = vk::DescriptorSetLayoutBinding{
-		        2, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment};
-		MIRRAGE_INVARIANT(!renderer.gbuffer().shadowmaps_layout,
-		                  "More than one shadowmapping implementation active!");
-		renderer.gbuffer().shadowmaps_layout =
-		        renderer.device().create_descriptor_set_layout(shadowmap_bindings);
-		renderer.gbuffer().shadowmaps = renderer.create_descriptor_set(*renderer.gbuffer().shadowmaps_layout,
-		                                                               shadowmap_bindings.size());
+		renderer.gbuffer().shadowmapping_enabled = true;
 
 
 		auto shadowmap_infos = std::vector<vk::DescriptorImageInfo>();
@@ -377,7 +366,10 @@ namespace mirrage::renderer {
 	                                             Engine&,
 	                                             bool&) -> std::unique_ptr<Render_pass>
 	{
-		return std::make_unique<Shadowmapping_pass>(renderer, entities);
+		if(renderer.settings().shadows)
+			return std::make_unique<Shadowmapping_pass>(renderer, entities);
+		else
+			return {};
 	}
 
 	auto Shadowmapping_pass_factory::rank_device(vk::PhysicalDevice,

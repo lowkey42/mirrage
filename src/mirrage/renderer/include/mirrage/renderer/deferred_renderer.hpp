@@ -47,18 +47,35 @@ namespace mirrage::renderer {
 		float min_display_luminance = 2.f;
 		float max_display_luminance = 150.0f;
 
+		bool taa   = true;
 		bool ssao  = true;
 		bool bloom = true;
 
 		float background_intensity = 0.f;
 
-		bool dynamic_shadows = false;
-		int  debug_gi_layer  = -1;
-		bool debug_geometry  = true;
+		bool shadows          = true;
+		bool dynamic_lighting = true;
+		int  debug_gi_layer   = -1;
+		bool debug_geometry   = true;
 	};
 
 #ifdef sf2_structDef
-	sf2_structDef(Renderer_settings, shadowmap_resolution, shadow_quality, gi, dynamic_shadows);
+	sf2_structDef(Renderer_settings,
+	              shadowmap_resolution,
+	              shadow_quality,
+	              gi,
+	              gi_highres,
+	              gi_shadows,
+	              gi_diffuse_mip_level,
+	              gi_low_quality_mip_levels,
+	              min_display_luminance,
+	              max_display_luminance,
+	              taa,
+	              ssao,
+	              bloom,
+	              shadows,
+	              dynamic_lighting,
+	              debug_geometry);
 #endif
 
 	struct Global_uniforms {

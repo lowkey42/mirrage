@@ -31,7 +31,8 @@ namespace mirrage::renderer {
 	                                                          vk::DescriptorType::eStorageImage,
 	                                                          vk::DescriptorType::eSampledImage,
 	                                                          vk::DescriptorType::eSampler}))
-	  , _gbuffer(std::make_unique<GBuffer>(device(), factory._window.width(), factory._window.height()))
+	  , _gbuffer(std::make_unique<GBuffer>(
+	            device(), _descriptor_set_pool, factory._window.width(), factory._window.height()))
 	  , _profiler(device(), 64)
 
 	  , _global_uniform_descriptor_set_layout(
@@ -84,13 +85,15 @@ namespace mirrage::renderer {
 		device().wait_idle();
 
 		for(auto& pass : _passes) {
-			pass.reset();
+			if(pass)
+				pass.reset();
 		}
 
 		_gbuffer.reset();
 
 		// recreate gbuffer and renderpasses
-		_gbuffer = std::make_unique<GBuffer>(device(), _factory->_window.width(), _factory->_window.height());
+		_gbuffer = std::make_unique<GBuffer>(
+		        device(), _descriptor_set_pool, _factory->_window.width(), _factory->_window.height());
 
 		auto write_first_pp_buffer = true;
 		for(auto i = std::size_t(0); i < _passes.size(); i++) {
@@ -127,7 +130,8 @@ namespace mirrage::renderer {
 		_frame_counter = (_frame_counter + 1) % 1000000;
 
 		for(auto& pass : _passes) {
-			pass->update(dt);
+			if(pass)
+				pass->update(dt);
 		}
 	}
 	void Deferred_renderer::draw()
@@ -163,9 +167,10 @@ namespace mirrage::renderer {
 
 		// draw subpasses
 		for(auto& pass : _passes) {
-			auto _ = _profiler.push(pass->name());
-
-			pass->draw(_frame_data);
+			if(pass) {
+				auto _ = _profiler.push(pass->name());
+				pass->draw(_frame_data);
+			}
 		}
 
 		_frame_data.geometry_queue.clear();
@@ -225,7 +230,8 @@ namespace mirrage::renderer {
 			_active_camera = Camera_state(*active, transform, viewport);
 
 			for(auto& p : _passes) {
-				p->process_camera(_active_camera.get_or_throw());
+				if(p)
+					p->process_camera(_active_camera.get_or_throw());
 			}
 
 			return _active_camera.get_or_throw();

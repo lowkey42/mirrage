@@ -7,7 +7,10 @@ namespace mirrage::renderer {
 
 	struct GBuffer {
 	  public:
-		GBuffer(graphic::Device& device, std::int32_t width, std::int32_t height);
+		GBuffer(graphic::Device&          device,
+		        graphic::Descriptor_pool& desc_pool,
+		        std::int32_t              width,
+		        std::int32_t              height);
 
 		std::int32_t mip_levels;
 
@@ -31,6 +34,8 @@ namespace mirrage::renderer {
 		vk::UniqueDescriptorSetLayout animation_data_layout;
 		vk::DescriptorSet             animation_data; //< might change each frame!
 
+		bool                          shadowmapping_enabled = false;
+		std::int32_t                  max_shadowmaps        = 1;
 		vk::UniqueDescriptorSetLayout shadowmaps_layout;
 		graphic::DescriptorSet        shadowmaps;
 

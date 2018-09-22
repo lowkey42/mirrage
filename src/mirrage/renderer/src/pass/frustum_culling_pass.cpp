@@ -72,10 +72,13 @@ namespace mirrage::renderer {
 			// directional lights are always treated as visible (for now).
 			// so just check if its "on"
 			if(light.color().length() * light.intensity() > 0.000001f) {
-				auto viewer_mask = light.shadowcaster() ? (std::uint32_t(1) << viewers.size()) : 0;
+				auto viewer_mask = _renderer.gbuffer().shadowmapping_enabled && light.shadowcaster()
+				                           ? (std::uint32_t(1) << viewers.size())
+				                           : 0;
 				frame.light_queue.emplace_back(entity, transform, light, viewer_mask);
 
-				if(light.shadowcaster() && light.needs_update()) {
+				if(_renderer.gbuffer().shadowmapping_enabled && light.shadowcaster()
+				   && light.needs_update()) {
 					viewers.emplace_back(extract_planes(light.calc_shadowmap_view_proj(transform)), true);
 				}
 			}

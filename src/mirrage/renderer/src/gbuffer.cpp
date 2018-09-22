@@ -40,7 +40,10 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	GBuffer::GBuffer(graphic::Device& device, std::int32_t width, std::int32_t height)
+	GBuffer::GBuffer(graphic::Device&          device,
+	                 graphic::Descriptor_pool& desc_pool,
+	                 std::int32_t              width,
+	                 std::int32_t              height)
 	  : mip_levels(static_cast<std::int32_t>(std::floor(std::log2(std::min(width, height))) - 2))
 	  , depth_format(get_depth_format(device))
 	  , depth(device,
@@ -104,6 +107,18 @@ namespace mirrage::renderer {
 	                   | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
 	                   | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eStorage,
 	           vk::ImageAspectFlagBits::eColor)
+
+	  , shadowmaps_layout(device.create_descriptor_set_layout(std::array<vk::DescriptorSetLayoutBinding, 3>{
+	            vk::DescriptorSetLayoutBinding{0,
+	                                           vk::DescriptorType::eSampledImage,
+	                                           gsl::narrow<std::uint32_t>(max_shadowmaps),
+	                                           vk::ShaderStageFlagBits::eFragment},
+	            vk::DescriptorSetLayoutBinding{
+	                    1, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment},
+	            vk::DescriptorSetLayoutBinding{
+	                    2, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment},
+	    }))
+	  , shadowmaps(desc_pool.create_descriptor(*shadowmaps_layout, 3))
 	{
 	}
 } // namespace mirrage::renderer

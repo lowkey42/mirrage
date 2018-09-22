@@ -221,6 +221,9 @@ namespace mirrage::renderer {
 	                                   Engine&,
 	                                   bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
+		if(!renderer.settings().taa)
+			return {};
+
 		auto& write = write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		auto& read = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;

@@ -25,6 +25,7 @@ layout(set=2, binding = 1) uniform samplerShadow shadowmap_shadow_sampler; // sa
 layout(set=2, binding = 2) uniform sampler shadowmap_depth_sampler; // sampler2D
 
 layout (constant_id = 0) const int SHADOW_QUALITY = 1;
+layout (constant_id = 1) const int SHADOWS = 1;
 
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
@@ -77,6 +78,9 @@ float calc_penumbra(vec3 surface_lightspace, float light_size, float rand,
                     out int num_occluders);
 
 float sample_shadowmap(vec3 view_pos) {
+	if(SHADOWS==0)
+		return 1.0;
+
 	int shadowmap = int(model_uniforms.light_data2.r);
 	if(shadowmap<0)
 		return 1.0;
