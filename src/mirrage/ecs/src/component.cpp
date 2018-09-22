@@ -36,18 +36,18 @@ namespace mirrage::ecs {
 			return;
 
 		if(static_cast<Entity_id>(_table.size()) < owner) {
-			auto capacity = static_cast<std::size_t>(std::max(owner, 64));
+			auto capacity = std::max<std::size_t>(owner, 64u);
 			_table.resize(capacity * 2, -1);
 		}
 
-		_table.at(static_cast<std::size_t>(owner)) = comp;
+		_table.at(static_cast<std::size_t>(owner - 1)) = comp;
 	}
 	void Compact_index_policy::detach(Entity_id owner)
 	{
 		if(owner == invalid_entity_id)
 			return;
 
-		auto idx = static_cast<std::size_t>(owner);
+		auto idx = static_cast<std::size_t>(owner - 1);
 
 		if(idx < _table.size()) {
 			_table[idx] = -1;
@@ -64,7 +64,7 @@ namespace mirrage::ecs {
 		if(owner == invalid_entity_id)
 			return util::nothing;
 
-		auto idx = static_cast<std::size_t>(owner);
+		auto idx = static_cast<std::size_t>(owner - 1);
 
 		if(idx < _table.size()) {
 			auto comp = _table[idx];
@@ -76,4 +76,6 @@ namespace mirrage::ecs {
 		return util::nothing;
 	}
 	void Compact_index_policy::clear() { _table.clear(); }
+
+
 } // namespace mirrage::ecs

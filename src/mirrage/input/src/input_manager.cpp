@@ -3,7 +3,7 @@
 #include <mirrage/input/input_mapping.hpp>
 
 #include <mirrage/asset/asset_manager.hpp>
-#include <mirrage/utils/template_utils.hpp>
+#include <mirrage/utils/ranges.hpp>
 
 #include <glm/glm.hpp>
 #include <sf2/sf2.hpp>
@@ -50,7 +50,7 @@ namespace mirrage::input {
 		float     _button_value[pad_button_count]{};
 		glm::vec2 _stick_state[pad_stick_count]{};
 
-		float _stick_dead_zone = 0.2, _stick_max = 32767;
+		float _stick_dead_zone = 0.2f, _stick_max = 32767.f;
 
 		float      _current_force = 0.f;
 		util::Time _force_reset_timer{0.f};
@@ -129,9 +129,9 @@ namespace mirrage::input {
 		SDL_RecordGesture(-1);
 
 		_mailbox.subscribe<Force_feedback, 4>(8, [&](auto& m) {
-			auto handle = [&](Force_feedback fb) {
+			auto handle = [&] {
 				if(m.src > 0 && m.src - 1 < static_cast<int>(this->_gamepads.size())) {
-					auto& pad = this->_gamepads.at(m.src - 1);
+					auto& pad = this->_gamepads.at(std::size_t(m.src - 1));
 					if(pad)
 						pad->force_feedback(m.force);
 				}
@@ -143,12 +143,12 @@ namespace mirrage::input {
 			};
 
 			if(m.src >= 0)
-				handle(m);
+				handle();
 
 			else {
 				for(auto i = 0u; i < this->_gamepads.size() + 1; i++) {
-					m.src = i;
-					handle(m);
+					m.src = gsl::narrow<Input_source>(i);
+					handle();
 				}
 			}
 		});
@@ -166,7 +166,8 @@ namespace mirrage::input {
 			_mouse_captured = enable;
 
 			if(!enable && _sdl_window) {
-				SDL_WarpMouseInWindow(_sdl_window, _mouse_capture_screen_pos.x, _mouse_capture_screen_pos.y);
+				SDL_WarpMouseInWindow(
+				        _sdl_window, int(_mouse_capture_screen_pos.x), int(_mouse_capture_screen_pos.y));
 			}
 			_mouse_capture_screen_pos = _pointer_screen_pos[0];
 		}
@@ -176,7 +177,7 @@ namespace mirrage::input {
 	{
 		_poll_events();
 
-		for(auto i : util::range(_max_pointers))
+		for(auto i : util::range(std::size_t(_max_pointers)))
 			_pointer_world_pos[i] = _screen_to_world_coords(_pointer_screen_pos[i]);
 
 		for(auto& gp : _gamepads)
@@ -240,7 +241,7 @@ namespace mirrage::input {
 			case SDL_FINGERMOTION:
 			case SDL_FINGERUP:
 			case SDL_FINGERDOWN: {
-				int idx = 0;
+				auto idx = std::size_t(0);
 				for(; idx < _max_pointers; idx++) {
 					if(_pointer_finger_id[idx] == event.tfinger.fingerId)
 						break;
@@ -297,7 +298,7 @@ namespace mirrage::input {
 	}
 	void Input_manager::_on_mouse_motion(const SDL_MouseMotionEvent& motion)
 	{
-		auto idx        = 0;
+		auto idx        = std::size_t(0);
 		auto screen_pos = _mouse_captured ? _pointer_screen_pos.at(idx) + glm::vec2{motion.xrel, motion.yrel}
 		                                  : glm::vec2{motion.x, motion.y};
 		auto world_pos   = _screen_to_world_coords(screen_pos);
@@ -468,7 +469,7 @@ namespace mirrage::input {
 					_button_state[i] = down ? 2 : 3;
 					{
 						auto value = trigger(button);
-						if(std::abs(_button_value[i] - value) > 0.1) {
+						if(std::abs(_button_value[i] - value) > 0.1f) {
 							_mapper.on_pad_button_changed(_src_id, button, value);
 							_button_value[i] = value;
 						}

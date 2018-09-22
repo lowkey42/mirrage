@@ -25,6 +25,7 @@ layout(set=2, binding = 1) uniform samplerShadow shadowmap_shadow_sampler; // sa
 layout(set=2, binding = 2) uniform sampler shadowmap_depth_sampler; // sampler2D
 
 layout (constant_id = 0) const int SHADOW_QUALITY = 1;
+layout (constant_id = 1) const int SHADOWS = 1;
 
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
@@ -49,13 +50,6 @@ void main() {
 	vec3 albedo = albedo_mat_id.rgb;
 	int  material = int(albedo_mat_id.a*255);
 
-	// material 255 (unlit)
-	if(material==255) {
-		out_color = out_color_diff = vec4(albedo*20.0, 1.0);
-		return;
-	}
-
-	// material 0 (default)
 	vec3 N = decode_normal(mat_data.rg);
 	float roughness = mat_data.b;
 	float metallic = mat_data.a;
@@ -77,8 +71,6 @@ void main() {
 		out_color = vec4(brdf(albedo, F0, roughness, N, V, L, radiance, diffuse) * shadow, 1.0);
 		out_color_diff = vec4(diffuse * shadow, 1.0);
 	}
-
-//	out_color.rgb += albedo * vec3(0.92, 0.95, 1) * 0.001;
 }
 
 
@@ -86,6 +78,9 @@ float calc_penumbra(vec3 surface_lightspace, float light_size, float rand,
                     out int num_occluders);
 
 float sample_shadowmap(vec3 view_pos) {
+	if(SHADOWS==0)
+		return 1.0;
+
 	int shadowmap = int(model_uniforms.light_data2.r);
 	if(shadowmap<0)
 		return 1.0;

@@ -23,8 +23,7 @@ namespace mirrage::systems {
 		friend void                  load_component(ecs::Deserializer& state, Nim_comp&);
 		friend void                  save_component(ecs::Serializer& state, const Nim_comp&);
 
-		Nim_comp() = default;
-		Nim_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner) : Component(manager, owner) {}
+		using Component::Component;
 
 		auto uid() const noexcept { return _uid; }
 
@@ -47,7 +46,7 @@ namespace mirrage::systems {
 
 		auto frame_length(int frame) const noexcept { return _frame_lengths[frame % _frame_lengths.size()]; }
 
-		auto frames() const noexcept { return _frame_lengths.size(); }
+		auto frames() const noexcept { return std::int32_t(_frame_lengths.size()); }
 
 		// F = void(Str_id, vector<vec3>, vector<quat>, vector<Rgba>)
 		template <typename F>
@@ -118,7 +117,8 @@ namespace mirrage::systems {
 	  private:
 		using Entity_lookup_table = std::unordered_map<util::Str_id, ecs::Entity_facet>;
 
-		Nim_comp::Pool& _nim_components;
+		ecs::Entity_manager& _ecs;
+		Nim_comp::Pool&      _nim_components;
 
 		Entity_lookup_table _affected_entities;
 

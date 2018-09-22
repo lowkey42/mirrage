@@ -12,6 +12,18 @@ namespace mirrage::renderer {
 	// Client code should only care about the Model_comp class as it represents an actually usable model.
 
 
+	class Material_property_comp : public ecs::Component<Material_property_comp> {
+	  public:
+		static constexpr const char* name() { return "Material_property"; }
+
+		Material_property_comp() = default;
+		Material_property_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
+
+		glm::vec3 emissive_color = glm::vec3(200, 200, 200);
+	};
+	sf2_structDef(Material_property_comp, emissive_color);
+
+
 	class Model_comp : public ecs::Component<Model_comp> {
 	  public:
 		static constexpr const char* name() { return "Model_loaded"; }
@@ -20,8 +32,8 @@ namespace mirrage::renderer {
 		friend void                  save_component(ecs::Serializer& state, const Model_comp&);
 
 		Model_comp() = default;
-		Model_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner, Model_ptr model = {})
-		  : Component(manager, owner), _model(std::move(model))
+		Model_comp(ecs::Entity_handle owner, ecs::Entity_manager& em, Model_ptr model = {})
+		  : Component(owner, em), _model(std::move(model))
 		{
 		}
 
@@ -40,8 +52,8 @@ namespace mirrage::renderer {
 		friend void                  save_component(ecs::Serializer& state, const Model_unloaded_comp&);
 
 		Model_unloaded_comp() = default;
-		Model_unloaded_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner, asset::AID model_aid = {})
-		  : Component(manager, owner), _model_aid(std::move(model_aid))
+		Model_unloaded_comp(ecs::Entity_handle owner, ecs::Entity_manager& em, asset::AID model_aid = {})
+		  : Component(owner, em), _model_aid(std::move(model_aid))
 		{
 		}
 
@@ -59,8 +71,8 @@ namespace mirrage::renderer {
 		friend void                  save_component(ecs::Serializer& state, const Model_loading_comp&);
 
 		Model_loading_comp() = default;
-		Model_loading_comp(ecs::Entity_manager& manager, ecs::Entity_handle owner, Model_ptr model = {})
-		  : Component(manager, owner), _model(std::move(model))
+		Model_loading_comp(ecs::Entity_handle owner, ecs::Entity_manager& em, Model_ptr model = {})
+		  : Component(owner, em), _model(std::move(model))
 		{
 		}
 

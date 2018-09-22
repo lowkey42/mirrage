@@ -129,11 +129,9 @@ void main() {
 
 		float factor_normal = mix(1, 1.0 - smoothstep(0.6, 0.9, abs(dot(N, hit_N))), step(0.0001, hit_mat_data.b));
 
-		vec3 color = sample_color_lod(roughness, hit_uv, dir, coneTheta)/1000.0;
+		vec3 color = sample_color_lod(roughness, hit_uv, dir, coneTheta);
 
 		out_color.rgb = max(color * factor_distance * factor_normal, vec3(0));
-
-//		out_color.rgb /= (1 + luminance_norm(out_color.rgb)/1);
 
 	} else {
 		out_color.rgb = textureLod(diffuse_sampler, vertex_out.tex_coords, pcs.prev_projection[0][3]).rgb / (PI*PI*2);
@@ -142,8 +140,14 @@ void main() {
 	float history_weight = texelFetch(history_weight_sampler,
 	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
 	                                  0).r;
+	if(history_weight<=0)
+		history_weight = 0.0;
+	else if(history_weight>100)
+		history_weight = 1.0;
+	else
+		history_weight = 1.0-1.0/(1+history_weight);
 
-	out_color *= 1.0 - (history_weight*0.96);
+	out_color *= 1.0 - min(history_weight, 0.94);
 
 	out_color = max(out_color, vec4(0));
 }

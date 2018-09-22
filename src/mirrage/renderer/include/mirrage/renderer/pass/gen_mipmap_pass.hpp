@@ -10,16 +10,13 @@ namespace mirrage::renderer {
 	/**
 	 * @brief Generates mipmaps for depth and normal (mat_data) buffer
 	 */
-	class Gen_mipmap_pass : public Pass {
+	class Gen_mipmap_pass : public Render_pass {
 	  public:
 		Gen_mipmap_pass(Deferred_renderer&);
 
 
 		void update(util::Time dt) override;
-		void draw(vk::CommandBuffer&,
-		          Command_buffer_source&,
-		          vk::DescriptorSet global_uniform_set,
-		          std::size_t       swapchain_image) override;
+		void draw(Frame_data&) override;
 
 		auto name() const noexcept -> const char* override { return "Gen. Mipmaps"; }
 
@@ -35,18 +32,15 @@ namespace mirrage::renderer {
 		graphic::Render_pass                _mipmap_gen_renderpass;
 	};
 
-	class Gen_mipmap_pass_factory : public Pass_factory {
+	class Gen_mipmap_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&,
-		                 ecs::Entity_manager&,
-		                 util::maybe<Meta_system&>,
-		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
+		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		        -> std::unique_ptr<Render_pass> override;
 
-		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
-		        -> int override;
+		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;
 
 		void configure_device(vk::PhysicalDevice,
-		                      util::maybe<std::uint32_t> graphics_queue,
+		                      util::maybe<std::uint32_t>,
 		                      graphic::Device_create_info&) override;
 	};
 } // namespace mirrage::renderer

@@ -1,7 +1,12 @@
 #pragma once
 
+#include <mirrage/renderer/animation.hpp>
 #include <mirrage/renderer/deferred_renderer.hpp>
-#include <mirrage/renderer/model_comp.hpp>
+
+#include <mirrage/graphic/streamed_buffer.hpp>
+
+#include <tsl/robin_map.h>
+#include <gsl/gsl>
 
 
 namespace mirrage::graphic {
@@ -10,6 +15,7 @@ namespace mirrage::graphic {
 } // namespace mirrage::graphic
 
 namespace mirrage::renderer {
+	class Pose_comp;
 
 	class Deferred_geometry_subpass {
 	  public:
@@ -18,12 +24,18 @@ namespace mirrage::renderer {
 		void configure_pipeline(Deferred_renderer&, graphic::Pipeline_description&);
 		void configure_subpass(Deferred_renderer&, graphic::Subpass_builder&);
 
+		void configure_animation_pipeline(Deferred_renderer&, graphic::Pipeline_description&);
+		void configure_animation_subpass(Deferred_renderer&, graphic::Subpass_builder&);
+
 		void update(util::Time dt);
-		void pre_draw(vk::CommandBuffer&);
-		void draw(vk::CommandBuffer&, graphic::Render_pass&);
+		void pre_draw(Frame_data&);
+		void draw(Frame_data&, graphic::Render_pass&);
 
 	  private:
-		Deferred_renderer& _renderer;
-		Model_comp::Pool&  _models;
+		ecs::Entity_manager& _ecs;
+		Deferred_renderer&   _renderer;
+
+		util::iter_range<std::vector<Geometry>::iterator> _geometry_range;
+		util::iter_range<std::vector<Geometry>::iterator> _rigged_geometry_range;
 	};
 } // namespace mirrage::renderer

@@ -43,6 +43,11 @@ namespace mirrage::graphic {
 		}
 	} // namespace
 
+	Window_modification_handler::Window_modification_handler(Window& w)
+	  : util::Registered<Window_modification_handler, Window>(w)
+	{
+	}
+
 	Window::Window(
 	        std::string name, std::string title, int display, int width, int height, Fullscreen fullscreen)
 	  : _name(name)
@@ -103,8 +108,9 @@ namespace mirrage::graphic {
 		if(_time_since_last_FPS_output >= 1.0f) {
 			_time_since_last_FPS_output = 0.0f;
 			std::ostringstream osstr;
-			osstr << _title << " (" << (int((1.0f / _delta_time_smoothed) * 10.0f) / 10.0f) << " FPS, ";
-			osstr << (int(_delta_time_smoothed * 10000.0f) / 10.0f) << " ms/frame)";
+			osstr << _title << " (" << (std::round((1.0f / _delta_time_smoothed) * 10.0f) / 10.0f)
+			      << " FPS, ";
+			osstr << (std::round(_delta_time_smoothed * 10000.0f) / 10.0f) << " ms/frame)";
 
 			SDL_SetWindowTitle(_window.get(), osstr.str().c_str());
 		}
@@ -165,9 +171,7 @@ namespace mirrage::graphic {
 		sdl_error_check();
 
 		// report changed size to renderer => change viewport
-		for(auto& listener : util::Registration<Window, Window_modification_handler>::children()) {
-			listener->on_window_modified(*this);
-		}
+		foreach_child([&](auto& listener) { listener.on_window_modified(*this); });
 
 		return true;
 	}

@@ -17,16 +17,11 @@ namespace mirrage::graphic {
 	class Device;
 
 	namespace detail {
-		auto clamp_mip_levels(std::uint32_t width, std::uint32_t height, std::uint32_t mipmaps)
-		        -> std::uint32_t;
+		auto clamp_mip_levels(std::int32_t width, std::int32_t height, std::int32_t mipmaps) -> std::int32_t;
 
 		class Base_texture {
 		  public:
-			Base_texture(Base_texture&& rhs) noexcept
-			  : _image(std::move(rhs._image)), _image_view(std::move(rhs._image_view))
-			{
-			}
-
+			Base_texture(Base_texture&& rhs) noexcept;
 			Base_texture& operator=(Base_texture&& rhs) noexcept
 			{
 				_image      = std::move(rhs._image);
@@ -42,21 +37,15 @@ namespace mirrage::graphic {
 			auto depth() const noexcept { return _image.depth(); }
 			auto layers() const noexcept { return _image.layers(); }
 
-			auto width(std::uint32_t level) const noexcept
-			{
-				return this->width() / (std::uint32_t(1) << level);
-			}
-			auto height(std::uint32_t level) const noexcept
-			{
-				return this->height() / (std::uint32_t(1) << level);
-			}
+			auto width(std::int32_t level) const noexcept { return this->width() / (1 << level); }
+			auto height(std::int32_t level) const noexcept { return this->height() / (1 << level); }
 
 		  protected:
 			// construct as render target
 			Base_texture(Device&,
 			             Image_type type,
 			             Image_dimensions,
-			             std::uint32_t mip_levels,
+			             std::int32_t mip_levels,
 			             vk::Format,
 			             vk::ImageUsageFlags,
 			             vk::ImageAspectFlags,
@@ -81,9 +70,9 @@ namespace mirrage::graphic {
 			vk::UniqueImageView _image_view;
 		};
 
-		extern auto format_from_channels(Device& device, std::uint32_t channels, bool srgb) -> vk::Format;
+		extern auto format_from_channels(Device& device, std::int32_t channels, bool srgb) -> vk::Format;
 		extern auto build_mip_views(Device&              device,
-		                            std::uint32_t        mip_levels,
+		                            std::int32_t         mip_levels,
 		                            vk::Image            image,
 		                            vk::Format           format,
 		                            vk::ImageAspectFlags aspects) -> std::vector<vk::UniqueImageView>;
@@ -108,7 +97,7 @@ namespace mirrage::graphic {
 		Texture(Device&                       device,
 		        Image_dimensions_t<Type>      dim,
 		        bool                          generate_mipmaps,
-		        std::uint32_t                 channels,
+		        std::int32_t                  channels,
 		        bool                          srgb,
 		        gsl::span<const std::uint8_t> data,
 		        std::uint32_t                 owner_qfamily)
@@ -130,7 +119,7 @@ namespace mirrage::graphic {
 	  public:
 		Render_target(Device&                  device,
 		              Image_dimensions_t<Type> dim,
-		              std::uint32_t            mip_levels,
+		              std::int32_t             mip_levels,
 		              vk::Format               format,
 		              vk::ImageUsageFlags      usage,
 		              vk::ImageAspectFlags     aspects)
@@ -154,11 +143,8 @@ namespace mirrage::graphic {
 		using Texture<Type>::height;
 		using Texture<Type>::view;
 
-		auto view(std::uint32_t level) const noexcept { return *_single_mip_level_views.at(level); }
-		auto mip_levels() const noexcept
-		{
-			return gsl::narrow<std::uint32_t>(_single_mip_level_views.size());
-		}
+		auto view(std::int32_t level) const noexcept { return *_single_mip_level_views.at(level); }
+		auto mip_levels() const noexcept { return gsl::narrow<std::int32_t>(_single_mip_level_views.size()); }
 
 	  private:
 		std::vector<vk::UniqueImageView> _single_mip_level_views;

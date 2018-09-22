@@ -4,6 +4,9 @@
 
 #include <mirrage/utils/log.hpp>
 
+#include <gsl/gsl>
+
+
 namespace mirrage::graphic {
 
 	// heavily based on load_ktx from GLI
@@ -57,7 +60,7 @@ namespace mirrage::graphic {
 		our_header.layers     = header.NumberOfArrayElements;
 		our_header.cubemap    = header.NumberOfFaces == 6;
 		our_header.mip_levels = header.NumberOfMipmapLevels;
-		our_header.size       = bytes_left;
+		our_header.size       = gsl::narrow<std::uint32_t>(bytes_left);
 
 		our_header.format = static_cast<vk::Format>(
 		        vkGetFormatFromOpenGLInternalFormat(static_cast<GLenum>(header.GLInternalFormat)));

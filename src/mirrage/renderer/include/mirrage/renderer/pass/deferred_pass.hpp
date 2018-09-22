@@ -3,8 +3,9 @@
 #include <mirrage/renderer/pass/deferred_geometry_subpass.hpp>
 #include <mirrage/renderer/pass/deferred_lighting_subpass.hpp>
 
-#include <mirrage/graphic/render_pass.hpp>
 #include <mirrage/renderer/deferred_renderer.hpp>
+
+#include <mirrage/graphic/render_pass.hpp>
 
 
 namespace mirrage::renderer {
@@ -19,29 +20,21 @@ namespace mirrage::renderer {
 
 	// populates linear-depth, albedo/matId, matData, writes the direct lighting results
 	// to the target color-Buffer and just the diffuse lighting to the other color-Buffer
-	class Deferred_pass : public Pass {
+	class Deferred_pass : public Render_pass {
 	  public:
 		Deferred_pass(Deferred_renderer&,
 		              ecs::Entity_manager&,
-		              util::maybe<Meta_system&>,
 		              graphic::Render_target_2D& color_target,
 		              graphic::Render_target_2D& color_target_diff);
 
 
 		void update(util::Time dt) override;
-		void draw(vk::CommandBuffer&,
-		          Command_buffer_source&,
-		          vk::DescriptorSet global_uniform_set,
-		          std::size_t       swapchain_image) override;
-
-		void shrink_to_fit() override;
+		void draw(Frame_data&) override;
 
 		auto name() const noexcept -> const char* override { return "Deferred"; }
 
 	  private:
 		Deferred_renderer& _renderer;
-
-		graphic::Render_target_2D _depth;
 
 		Deferred_geometry_subpass _gpass;
 		Deferred_lighting_subpass _lpass;
@@ -52,18 +45,15 @@ namespace mirrage::renderer {
 		bool _first_frame = true;
 	};
 
-	class Deferred_pass_factory : public Pass_factory {
+	class Deferred_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&,
-		                 ecs::Entity_manager&,
-		                 util::maybe<Meta_system&>,
-		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
+		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		        -> std::unique_ptr<Render_pass> override;
 
-		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
-		        -> int override;
+		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;
 
 		void configure_device(vk::PhysicalDevice,
-		                      util::maybe<std::uint32_t> graphics_queue,
+		                      util::maybe<std::uint32_t>,
 		                      graphic::Device_create_info&) override;
 	};
 } // namespace mirrage::renderer

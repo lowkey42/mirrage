@@ -41,7 +41,10 @@ namespace mirrage::graphic {
 
 		// read-only interface
 		auto& name() const noexcept { return _name; }
-		auto  time_ms() const noexcept { return _time_ms_index < 0 ? 0 : _time_ms[_time_ms_index]; }
+		auto  time_ms() const noexcept
+		{
+			return _time_ms_index < 0 ? 0 : _time_ms.at(std::size_t(_time_ms_index));
+		}
 		auto  time_avg_ms() const noexcept { return _time_avg_ms; }
 		auto  time_min_ms() const noexcept { return _time_min_ms; }
 		auto  time_max_ms() const noexcept { return _time_max_ms; }
@@ -111,7 +114,7 @@ namespace mirrage::graphic {
 		};
 
 	  public:
-		explicit Profiler(Device&, std::size_t max_elements = 32);
+		explicit Profiler(Device&, std::uint32_t max_elements = 32);
 
 		void enable() noexcept { _active_requested = true; }
 		void disable() noexcept { _active_requested = false; }

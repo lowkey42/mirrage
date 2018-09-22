@@ -12,16 +12,13 @@
 
 namespace mirrage::renderer {
 
-	class Gui_pass : public Pass, public gui::Gui_renderer {
+	class Gui_pass : public Render_pass, public gui::Gui_renderer_interface {
 	  public:
-		Gui_pass(Deferred_renderer&, ecs::Entity_manager&, util::maybe<Meta_system&>);
+		Gui_pass(Deferred_renderer&, Engine&);
 
 
 		void update(util::Time dt) override;
-		void draw(vk::CommandBuffer&,
-		          Command_buffer_source&,
-		          vk::DescriptorSet global_uniform_set,
-		          std::size_t       swapchain_image) override;
+		void draw(Frame_data&) override;
 
 		auto load_texture(int width, int height, int channels, const std::uint8_t* data)
 		        -> std::shared_ptr<struct nk_image> override;
@@ -69,23 +66,20 @@ namespace mirrage::renderer {
 
 		// temporary values used during draw
 		int                                _bound_texture_handle = -1;
-		util::maybe<vk::CommandBuffer&>    _current_command_buffer;
+		util::maybe<vk::CommandBuffer>     _current_command_buffer;
 		util::maybe<graphic::Framebuffer&> _current_framebuffer;
 	};
 
 
-	class Gui_pass_factory : public Pass_factory {
+	class Gui_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&,
-		                 ecs::Entity_manager&,
-		                 util::maybe<Meta_system&>,
-		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
+		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		        -> std::unique_ptr<Render_pass> override;
 
-		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
-		        -> int override;
+		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;
 
 		void configure_device(vk::PhysicalDevice,
-		                      util::maybe<std::uint32_t> graphics_queue,
+		                      util::maybe<std::uint32_t>,
 		                      graphic::Device_create_info&) override;
 	};
 } // namespace mirrage::renderer

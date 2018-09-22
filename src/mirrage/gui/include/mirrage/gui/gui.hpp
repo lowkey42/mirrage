@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
@@ -54,9 +56,10 @@ namespace mirrage::gui {
 		nk_byte   color[4];
 	};
 
-	class Gui_renderer {
+	class Gui_renderer_interface {
 	  public:
-		virtual ~Gui_renderer() = default;
+		Gui_renderer_interface()          = default;
+		virtual ~Gui_renderer_interface() = default;
 
 		void draw_gui();
 
@@ -79,7 +82,10 @@ namespace mirrage::gui {
 		virtual void finalize_draw()                    = 0;
 
 	  private:
-		Gui* _gui = nullptr;
+		template <class>
+		friend class Gui_renderer_instance;
+
+		Gui* _gui;
 	};
 
 	// TODO: gamepad input: https://gist.github.com/vurtun/519801825b4ccfad6767
@@ -88,17 +94,13 @@ namespace mirrage::gui {
 	//                      https://github.com/vurtun/nuklear/blob/master/example/skinning.c
 	class Gui {
 	  public:
-		Gui(glm::vec4                        viewport,
-		    asset::Asset_manager&            assets,
-		    input::Input_manager&            input,
-		    util::tracking_ptr<Gui_renderer> renderer);
+		Gui(glm::vec4 viewport, asset::Asset_manager& assets, input::Input_manager& input);
 		~Gui();
 
 		void draw();
 		void start_frame();
 
 		auto ctx() -> nk_context*;
-		auto renderer() noexcept -> auto& { return _renderer; }
 
 		void viewport(glm::vec4 new_viewport);
 
@@ -106,24 +108,46 @@ namespace mirrage::gui {
 		auto centered_left(int width, int height) -> struct nk_rect;
 		auto centered_right(int width, int height) -> struct nk_rect;
 
+		auto ready() const noexcept { return bool(_impl); }
 
 	  private:
+		template <class>
+		friend class Gui_renderer_instance;
+
 		struct PImpl;
 
-		glm::vec4                        _viewport;
-		asset::Asset_manager&            _assets;
-		input::Input_manager&            _input;
-		util::tracking_ptr<Gui_renderer> _renderer;
-		Gui_renderer*                    _last_renderer;
-		std::unique_ptr<PImpl>           _impl;
+		glm::vec4               _viewport;
+		asset::Asset_manager&   _assets;
+		input::Input_manager&   _input;
+		Gui_renderer_interface* _renderer = nullptr;
+		std::unique_ptr<PImpl>  _impl;
 
-		void _init();
+		void _reset_renderer(Gui_renderer_interface*);
+	};
+
+	template <class Base>
+	class Gui_renderer_instance : public Base {
+		static_assert(std::is_base_of_v<Gui_renderer_interface, Base>,
+		              "A gui renderer need to derive from mirrage::gui::Gui_renderer_interface!");
+
+	  public:
+		template <class... Args>
+		Gui_renderer_instance(Gui& gui, Args&&... args) : Base(std::forward<Args>(args)...)
+		{
+			this->_gui = &gui;
+			gui._reset_renderer(this);
+		}
+		~Gui_renderer_instance()
+		{
+			this->_gui->_reset_renderer(nullptr);
+			this->_gui = nullptr;
+		}
 	};
 
 
 	// widgets
-	extern bool color_picker(nk_context*, util::Rgb& color, int width, float factor = 1.f);
-	extern bool color_picker(nk_context*, util::Rgba& color, int width, float factor = 1.f);
+	extern bool color_picker(nk_context*, util::Rgb& color, float width, float factor = 1.f);
+	extern bool color_picker(nk_context*, util::Rgba& color, float width, float factor = 1.f);
 
 	extern void begin_menu(nk_context*, int& active);
 	extern bool menu_button(nk_context*, const char* text, bool enabled = true);

@@ -1,14 +1,16 @@
 #pragma once
 
-#include <moodycamel/concurrentqueue.hpp>
+#include <concurrentqueue.h>
 
-#ifndef ECS_COMPONENT_INCLUDED
+#ifndef MIRRAGE_ECS_COMPONENT_INCLUDED
 #include "component.hpp"
 #endif
 
 namespace mirrage::ecs {
 
 	class Sparse_index_policy {
+		using Table = tsl::robin_map<Entity_id, Component_index>;
+
 	  public:
 		void attach(Entity_id, Component_index);
 		void detach(Entity_id);
@@ -16,11 +18,151 @@ namespace mirrage::ecs {
 		auto find(Entity_id) const -> util::maybe<Component_index>;
 		void clear();
 
+		auto begin() const { return _table.begin(); }
+		auto end() const { return _table.end(); }
+
+		static constexpr bool sorted_iteration_supported = false;
+
+		using iterator = Table::const_iterator;
+		// sorted_begin()
+		// sorted_end()
+
 	  private:
-		std::unordered_map<Entity_id, Component_index> _table;
+		Table _table;
 	};
+
+	namespace detail {
+		class Compact_index_policy_iterator {
+		  public:
+			using Value_iterator = std::vector<Component_index>::const_iterator;
+
+			using iterator_category = std::input_iterator_tag;
+			using value_type        = std::tuple<Entity_id, Component_index>;
+			using difference_type   = std::int_fast32_t;
+			using reference         = value_type;
+			using pointer           = value_type*;
+
+			Compact_index_policy_iterator() = default;
+			Compact_index_policy_iterator(difference_type index, Value_iterator value)
+			  : _index(index), _value(value)
+			{
+			}
+
+			value_type  operator*() noexcept { return *get(); }
+			value_type* operator->() noexcept { return get(); }
+			value_type* get() noexcept
+			{
+				_last_value = std::tie(_index, *_value);
+				return &_last_value;
+			}
+
+			auto operator+=(difference_type n) -> auto&
+			{
+				_index += n;
+				_value += n;
+				return *this;
+			}
+			auto operator-=(difference_type n) -> auto&
+			{
+				_index -= n;
+				_value -= n;
+				return *this;
+			}
+
+			auto operator[](difference_type i) -> value_type
+			{
+				auto x = *this;
+				x += i;
+				return *x;
+			}
+
+			auto operator++() -> auto&
+			{
+				*this += 1;
+				return *this;
+			}
+			auto operator++(int)
+			{
+				auto self = *this;
+				++(*this);
+				return self;
+			}
+			auto operator--() -> auto&
+			{
+				*this -= 1;
+				return *this;
+			}
+
+			auto operator--(int)
+			{
+				auto self = *this;
+				--(*this);
+				return self;
+			}
+
+			friend auto operator-(const Compact_index_policy_iterator& lhs,
+			                      const Compact_index_policy_iterator& rhs) noexcept
+			{
+				return lhs._index - rhs._index;
+			}
+			friend auto operator+(Compact_index_policy_iterator iter, difference_type offset)
+			{
+				iter += offset;
+				return iter;
+			}
+			friend auto operator+(difference_type offset, Compact_index_policy_iterator iter)
+			{
+				iter += offset;
+				return iter;
+			}
+			friend auto operator-(Compact_index_policy_iterator iter, difference_type offset)
+			{
+				iter -= offset;
+				return iter;
+			}
+
+			friend auto operator<(const Compact_index_policy_iterator& lhs,
+			                      const Compact_index_policy_iterator& rhs) noexcept
+			{
+				return lhs._index < rhs._index;
+			}
+			friend auto operator>(const Compact_index_policy_iterator& lhs,
+			                      const Compact_index_policy_iterator& rhs) noexcept
+			{
+				return lhs._index > rhs._index;
+			}
+			friend auto operator<=(const Compact_index_policy_iterator& lhs,
+			                       const Compact_index_policy_iterator& rhs) noexcept
+			{
+				return lhs._index <= rhs._index;
+			}
+			friend auto operator>=(const Compact_index_policy_iterator& lhs,
+			                       const Compact_index_policy_iterator& rhs) noexcept
+			{
+				return lhs._index >= rhs._index;
+			}
+			friend auto operator==(const Compact_index_policy_iterator& lhs,
+			                       const Compact_index_policy_iterator& rhs) noexcept
+			{
+				return lhs._index == rhs._index;
+			}
+			friend auto operator!=(const Compact_index_policy_iterator& lhs,
+			                       const Compact_index_policy_iterator& rhs) noexcept
+			{
+				return !(lhs == rhs);
+			}
+
+		  private:
+			difference_type _index = 0;
+			Value_iterator  _value;
+			value_type      _last_value;
+		};
+	} // namespace detail
+
 	class Compact_index_policy {
 	  public:
+		using iterator = detail::Compact_index_policy_iterator;
+
 		Compact_index_policy();
 		void attach(Entity_id, Component_index);
 		void detach(Entity_id);
@@ -28,43 +170,75 @@ namespace mirrage::ecs {
 		auto find(Entity_id) const -> util::maybe<Component_index>;
 		void clear();
 
+		static constexpr bool sorted_iteration_supported = true;
+
+		auto sorted_begin() const -> iterator { return {0, _table.begin()}; }
+		auto sorted_end() const -> iterator { return {std::int_fast32_t(_table.size()), _table.end()}; }
+
+		auto begin() const { return sorted_begin(); }
+		auto end() const { return sorted_end(); }
+
 	  private:
 		std::vector<Component_index> _table;
 	};
 
+	template <class Storage_policy>
+	class Pool_based_index_policy {
+	  public:
+		Pool_based_index_policy(Storage_policy& pool) : _pool(&pool) {}
+		void attach(Entity_id, Component_index) {}
+		void detach(Entity_id) {}
+		void shrink_to_fit() {}
+		auto find(Entity_id entity) const -> util::maybe<Component_index> { return _pool->find(entity); }
+		void clear() {}
 
-	template <class T>
-	struct Pool_storage_policy_value_traits {
-		static constexpr bool         supports_empty_values = true;
-		static constexpr int_fast32_t max_free              = 8;
-		using Marker_type                                   = Entity_handle;
-		static constexpr Marker_type free_mark              = invalid_entity;
+		using iterator                                   = typename Storage_policy::iterator;
+		static constexpr bool sorted_iteration_supported = false;
+		// sorted_begin()
+		// sorted_end()
 
-		static constexpr const Marker_type* marker_addr(const T* inst)
-		{
-			return T::component_base_t::marker_addr(inst);
-		}
+		auto begin() { return _pool->begin(); }
+		auto end() { return _pool->end(); }
+
+	  private:
+		Storage_policy* _pool;
 	};
-	template <class T>
-	constexpr bool Pool_storage_policy_value_traits<T>::supports_empty_values;
-	template <class T>
-	constexpr int_fast32_t Pool_storage_policy_value_traits<T>::max_free;
-	template <class T>
-	constexpr typename Pool_storage_policy_value_traits<T>::Marker_type
-	        Pool_storage_policy_value_traits<T>::free_mark;
 
 
-	template <std::size_t Chunk_size, class T>
+	namespace detail {
+		template <class T, typename = void>
+		struct Pool_storage_policy_sort {
+			static constexpr bool sorted = false;
+		};
+		template <class T>
+		struct Pool_storage_policy_sort<T, util::void_t<decltype(T::sort_key), decltype(T::sort_key_index)>> {
+			static constexpr bool sorted                   = true;
+			static constexpr auto sort_key                 = T::sort_key;
+			static constexpr auto sort_key_constructor_idx = T::sort_key_index;
+		};
+
+		template <class T, std::size_t Holes>
+		struct Pool_storage_policy_value_traits : Pool_storage_policy_sort<T> {
+			static constexpr int_fast32_t max_free = Holes;
+		};
+	} // namespace detail
+
+
+
+	template <std::size_t Chunk_size, std::size_t Holes, class T>
 	class Pool_storage_policy {
-		using pool_t = util::pool<T, Chunk_size, Component_index, Pool_storage_policy_value_traits<T>>;
+		using pool_t =
+		        util::pool<T, Chunk_size, detail::Pool_storage_policy_value_traits<T, Holes>, Component_index>;
 
 	  public:
+		static constexpr auto is_sorted = pool_t::sorted;
+
 		using iterator = typename pool_t::iterator;
 
-		template <class... Args>
-		auto emplace(Args&&... args) -> std::tuple<T&, Component_index>
+		template <typename F, class... Args>
+		auto emplace(F&& relocate, Args&&... args) -> std::tuple<T&, Component_index>
 		{
-			return _pool.emplace_back(std::forward<Args>(args)...);
+			return _pool.emplace(relocate, std::forward<Args>(args)...);
 		}
 
 		void replace(Component_index idx, T&& new_element) { _pool.replace(idx, std::move(new_element)); }
@@ -90,11 +264,84 @@ namespace mirrage::ecs {
 		auto size() const -> Component_index { return _pool.size(); }
 		auto empty() const -> bool { return _pool.empty(); }
 
+		template <class Key,
+		          class = std::enable_if_t<std::is_same_v<Key, decltype(std::declval<T>().*T::sort_key)>>>
+		auto find(const Key& key)
+		{
+			return _pool.find(key);
+		}
+
 	  private:
 		pool_t _pool;
 	};
 
 
+	template <class T>
+	class Void_storage_policy {
+	  public:
+		static constexpr auto is_sorted = false;
+
+		/// dummy returned by all calls. Can be mutable because it doesn't contain any state
+		static T dummy_instance;
+
+		using iterator = T*;
+
+		template <typename F, class... Args>
+		auto emplace(F&&, Args&&...) -> std::tuple<T&, Component_index>
+		{
+			_size++;
+			return {dummy_instance, 0};
+		}
+
+		void replace(Component_index, T&&) {}
+
+		template <typename F>
+		void erase(Component_index, F&&)
+		{
+			_size--;
+		}
+
+		void clear() { _size = 0; }
+
+		template <typename F>
+		void shrink_to_fit(F&&)
+		{
+		}
+
+		auto get(Component_index) -> T& { return dummy_instance; }
+
+		auto begin() noexcept -> iterator
+		{
+			static_assert(util::dependent_false<T>(), "Iteration is not supported by Void_storage_policy.");
+			return &dummy_instance;
+		}
+		auto end() noexcept -> iterator
+		{
+			static_assert(util::dependent_false<T>(), "Iteration is not supported by Void_storage_policy.");
+			return &dummy_instance + 1;
+		}
+		auto size() const -> Component_index { return _size; }
+		auto empty() const -> bool { return _size == 0; }
+
+	  private:
+		std::size_t _size = 0;
+	};
+
+	template <class T>
+	T Void_storage_policy<T>::dummy_instance;
+
+
+	namespace detail {
+		template <class Index, class Storage>
+		auto index_constructor_arg(Storage& storage)
+		{
+			if constexpr(std::is_constructible_v<Index, Storage&>) {
+				return Index(storage);
+			} else {
+				return Index();
+			}
+		}
+	} // namespace detail
 
 	template <class T>
 	class Component_container : public Component_container_base {
@@ -103,9 +350,10 @@ namespace mirrage::ecs {
 		friend void save(sf2::JsonSerializer& s, const Entity_handle& e);
 
 	  public:
-		Component_container(Entity_manager& m) : _manager(m)
+		Component_container(Entity_manager& m)
+		  : _storage(), _index(detail::index_constructor_arg<typename T::index_policy>(_storage)), _manager(m)
 		{
-			T::_validate_type_helper();
+			T::_check_type_invariants();
 			_index.clear();
 		}
 
@@ -125,7 +373,11 @@ namespace mirrage::ecs {
 					return _storage.get(comp_idx.get_or_throw());
 				}
 
-				auto comp = _storage.emplace(_manager, owner);
+				auto relocator = [&](auto, auto& comp, auto new_idx) {
+					_index.attach(comp.owner_handle().id(), new_idx);
+				};
+
+				auto comp = _storage.emplace(relocator, owner, _manager);
 				_index.attach(entity_id, std::get<1>(comp));
 				return std::get<0>(comp);
 			}();
@@ -235,7 +487,10 @@ namespace mirrage::ecs {
 							continue;
 						}
 
-						auto comp = _storage.emplace(std::move(std::get<0>(insertions_buffer[i])));
+						auto relocator = [&](auto, auto& comp, auto new_idx) {
+							_index.attach(comp.owner_handle().id(), new_idx);
+						};
+						auto comp = _storage.emplace(relocator, std::move(std::get<0>(insertions_buffer[i])));
 						_index.attach(entity_id, std::get<1>(comp));
 					}
 				} else {
@@ -245,6 +500,9 @@ namespace mirrage::ecs {
 		}
 
 	  public:
+		using iterator       = typename T::storage_policy::iterator;
+		using component_type = T;
+
 		template <typename F, typename... Args>
 		void emplace(F&& init, Entity_handle owner, Args&&... args)
 		{
@@ -252,7 +510,7 @@ namespace mirrage::ecs {
 
 			// construct T inplace inside the pair to avoid additional move
 			auto inst = Insertion(std::piecewise_construct,
-			                      std::forward_as_tuple(_manager, owner, std::forward<Args>(args)...),
+			                      std::forward_as_tuple(owner, _manager, std::forward<Args>(args)...),
 			                      std::forward_as_tuple(owner));
 			std::forward<F>(init)(inst.first);
 			_queued_insertions.enqueue(std::move(inst));
@@ -283,7 +541,26 @@ namespace mirrage::ecs {
 		auto size() const noexcept { return _storage.size(); }
 		auto empty() const noexcept { return _storage.empty(); }
 
-		using iterator = typename T::storage_policy::iterator;
+
+		auto unsafe_find(Entity_id entity_id) -> util::maybe<T&>
+		{
+			return _index.find(entity_id).process(
+			        util::maybe<T&>(), [&](auto comp_idx) { return util::justPtr(&_storage.get(comp_idx)); });
+		}
+
+		static constexpr auto sorted_iteration_supported =
+		        T::storage_policy::is_sorted || T::index_policy::sorted_iteration_supported;
+
+		template <class ComponentContainer>
+		friend auto detail::container_begin(ComponentContainer&)
+		        -> Sorted_component_iterator<typename ComponentContainer::component_type>;
+
+		template <class ComponentContainer>
+		friend auto detail::container_end(ComponentContainer&)
+		        -> Sorted_component_iterator<typename ComponentContainer::component_type>;
+
+		template <class>
+		friend class Sorted_component_iterator;
 
 	  private:
 		using Insertion = std::pair<T, Entity_handle>;
@@ -291,12 +568,201 @@ namespace mirrage::ecs {
 		template <class E>
 		using Queue = moodycamel::ConcurrentQueue<E>;
 
-		typename T::index_policy   _index;
 		typename T::storage_policy _storage;
+		typename T::index_policy   _index;
 
 		Entity_manager&      _manager;
 		Queue<Entity_handle> _queued_deletions;
 		Queue<Insertion>     _queued_insertions;
 		int                  _unoptimized_deletes = 0;
 	};
+
+
+	template <class T>
+	class Sorted_component_iterator {
+	  public:
+		static constexpr auto pool_based = T::storage_policy::is_sorted;
+		using wrapped_iterator           = std::conditional_t<pool_based,
+                                                    typename T::storage_policy::iterator,
+                                                    typename T::index_policy::iterator>;
+
+		using iterator_category = std::input_iterator_tag;
+		using value_type        = std::tuple<Entity_id, T*>;
+		using difference_type   = std::int_fast32_t;
+		using reference         = value_type;
+		using pointer           = value_type*;
+
+		Sorted_component_iterator() : _container(nullptr), _iterator() {}
+		Sorted_component_iterator(typename T::Pool* container, wrapped_iterator iterator)
+		  : _container(container), _iterator(std::move(iterator))
+		{
+		}
+
+		value_type  operator*() noexcept { return *get(); }
+		value_type* operator->() noexcept { return get(); }
+		value_type* get() noexcept
+		{
+			if constexpr(pool_based) {
+				auto& component = *_iterator;
+				_last_value     = value_type{(component.*T::sort_key).id(), &component};
+			} else {
+				auto&& [entity, idx] = *_iterator;
+				_last_value          = value_type{entity, &_container->_storage.get(idx)};
+			}
+
+			return &_last_value;
+		}
+
+		auto operator+=(difference_type n) -> auto&
+		{
+			_iterator += n;
+			return *this;
+		}
+		auto operator-=(difference_type n) -> auto&
+		{
+			_iterator -= n;
+			return *this;
+		}
+
+		auto operator[](difference_type i) -> value_type { return _iterator[i]; }
+
+		auto operator++() -> auto&
+		{
+			++_iterator;
+			return *this;
+		}
+		auto operator++(int)
+		{
+			auto self = *this;
+			++(*this);
+			return self;
+		}
+		auto operator--() -> auto&
+		{
+			--_iterator;
+			return *this;
+		}
+
+		auto operator--(int)
+		{
+			auto self = *this;
+			--(*this);
+			return self;
+		}
+
+		friend auto operator-(const Sorted_component_iterator& lhs,
+		                      const Sorted_component_iterator& rhs) noexcept
+		{
+			return lhs._iterator - rhs._iterator;
+		}
+		friend auto operator+(Sorted_component_iterator iter, difference_type offset)
+		{
+			iter += offset;
+			return iter;
+		}
+		friend auto operator+(difference_type offset, Sorted_component_iterator iter)
+		{
+			iter += offset;
+			return iter;
+		}
+		friend auto operator-(Sorted_component_iterator iter, difference_type offset)
+		{
+			iter -= offset;
+			return iter;
+		}
+
+		friend auto operator<(const Sorted_component_iterator& lhs,
+		                      const Sorted_component_iterator& rhs) noexcept
+		{
+			return lhs._iterator < rhs._iterator;
+		}
+		friend auto operator>(const Sorted_component_iterator& lhs,
+		                      const Sorted_component_iterator& rhs) noexcept
+		{
+			return lhs._iterator > rhs._iterator;
+		}
+		friend auto operator<=(const Sorted_component_iterator& lhs,
+		                       const Sorted_component_iterator& rhs) noexcept
+		{
+			return lhs._iterator <= rhs._iterator;
+		}
+		friend auto operator>=(const Sorted_component_iterator& lhs,
+		                       const Sorted_component_iterator& rhs) noexcept
+		{
+			return lhs._iterator >= rhs._iterator;
+		}
+		friend auto operator==(const Sorted_component_iterator& lhs,
+		                       const Sorted_component_iterator& rhs) noexcept
+		{
+			return lhs._iterator == rhs._iterator;
+		}
+		friend auto operator!=(const Sorted_component_iterator& lhs,
+		                       const Sorted_component_iterator& rhs) noexcept
+		{
+			return !(lhs == rhs);
+		}
+
+	  private:
+		typename T::Pool* _container;
+		wrapped_iterator  _iterator;
+		value_type        _last_value;
+	};
+
+	namespace detail {
+		template <class ComponentContainer>
+		auto container_begin(ComponentContainer& container)
+		        -> Sorted_component_iterator<typename ComponentContainer::component_type>
+		{
+
+			if constexpr(ComponentContainer::component_type::storage_policy::is_sorted) {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._storage.begin());
+
+			} else if constexpr(ComponentContainer::component_type::index_policy::sorted_iteration_supported) {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._index.sorted_begin());
+
+			} else {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._index.begin());
+			}
+		}
+
+		template <class ComponentContainer>
+		auto container_end(ComponentContainer& container)
+		        -> Sorted_component_iterator<typename ComponentContainer::component_type>
+		{
+			if constexpr(ComponentContainer::component_type::storage_policy::is_sorted) {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._storage.end());
+			} else if constexpr(ComponentContainer::component_type::index_policy::sorted_iteration_supported) {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._index.sorted_end());
+			} else {
+				return Sorted_component_iterator<typename ComponentContainer::component_type>(
+				        &container, container._index.end());
+			}
+		}
+	} // namespace detail
+
+	template <class ComponentContainer, typename>
+	auto sorted_begin(ComponentContainer& container)
+	        -> Sorted_component_iterator<typename ComponentContainer::component_type>
+	{
+		static_assert(ComponentContainer::sorted_iteration_supported,
+		              "Sorted iteration is not supported by this component type!");
+
+		return detail::container_begin(container);
+	}
+
+	template <class ComponentContainer, typename>
+	auto sorted_end(ComponentContainer& container)
+	        -> Sorted_component_iterator<typename ComponentContainer::component_type>
+	{
+		static_assert(ComponentContainer::sorted_iteration_supported,
+		              "Sorted iteration is not supported by this component type!");
+
+		return detail::container_end(container);
+	}
+
 } // namespace mirrage::ecs

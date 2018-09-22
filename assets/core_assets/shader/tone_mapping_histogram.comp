@@ -31,7 +31,7 @@ uint calc_histogram_index(float luminance) {
 shared uint local_histogram[HISTOGRAM_SLOTS];
 
 void main() {
-	ivec2 data_size = imageSize(input_image);
+	vec2 data_size = vec2(imageSize(input_image));
 
 	uint group_id = gl_WorkGroupID.x + gl_WorkGroupID.y*gl_NumWorkGroups.x;
 	uint num_groups = gl_NumWorkGroups.x*gl_NumWorkGroups.y;
@@ -50,11 +50,11 @@ void main() {
 	// build local histogram
 	for(uint x=gl_GlobalInvocationID.x; x<data_size.x; x+=stride.x) {
 		for(uint y=gl_GlobalInvocationID.y; y<data_size.y; y+=stride.y) {
-			vec2 rel_p = (vec2(x,y) - vec2(data_size)) / min(data_size.x, data_size.y)*2;
+			vec2 rel_p = (vec2(x,y)*2 - data_size) / min(data_size.x, data_size.y);
 			float dist2 = dot(rel_p,rel_p);
-			if(dist2 < 0.75) {
-				vec3 color = imageLoad(input_image, ivec2(x,y)).rgb;
-				float lum = log(tm_luminance(color*10));
+			if(dist2 < 1) {
+				vec3 color = imageLoad(input_image, ivec2(x,y)).rgb*10000.0;
+				float lum = log(tm_luminance(color));
 				atomicAdd(local_histogram[calc_histogram_index(lum)], 1);
 			}
 		}

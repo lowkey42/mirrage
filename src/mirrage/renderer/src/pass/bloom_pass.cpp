@@ -46,24 +46,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:bloom_apply"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:bloom_apply"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			out_framebuffer = builder.build_framebuffer(
@@ -120,24 +102,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:bloom_blur"_aid, graphic::Shader_stage::fragment, "main", 0, 0, 1, 1)
 			        .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex, "main", 0, 0);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			out_framebuffer_horizontal = util::build_vector(target_horizontal.mip_levels(), [&](auto i) {
@@ -157,10 +121,7 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	Bloom_pass::Bloom_pass(Deferred_renderer& renderer,
-	                       ecs::Entity_manager&,
-	                       util::maybe<Meta_system&>,
-	                       graphic::Render_target_2D& src)
+	Bloom_pass::Bloom_pass(Deferred_renderer& renderer, graphic::Render_target_2D& src)
 	  : _renderer(renderer)
 	  , _src(src)
 	  , _sampler(renderer.device().create_sampler(12,
@@ -210,23 +171,21 @@ namespace mirrage::renderer {
 		});
 
 		_blur_descriptor_set_vertical_final = util::build_vector(_blur_buffer.mip_levels() - 1, [&](auto i) {
-			return _descriptor_set_layout.create_set(renderer.descriptor_pool(),
-			                                         {_blur_buffer.view(), *_downsampled_blur_views.at(i)});
+			return _descriptor_set_layout.create_set(
+			        renderer.descriptor_pool(),
+			        {_blur_buffer.view(), *_downsampled_blur_views.at(std::size_t(i))});
 		});
 	}
 
 
-	void Bloom_pass::update(util::Time dt) {}
+	void Bloom_pass::update(util::Time) {}
 
-	void Bloom_pass::draw(vk::CommandBuffer& command_buffer,
-	                      Command_buffer_source&,
-	                      vk::DescriptorSet global_uniform_set,
-	                      std::size_t)
+	void Bloom_pass::draw(Frame_data& frame)
 	{
 		if(_first_frame) {
 			_first_frame = false;
 
-			graphic::clear_texture(command_buffer,
+			graphic::clear_texture(frame.main_command_buffer,
 			                       _bloom_buffer,
 			                       util::Rgba{0, 0, 0, 0},
 			                       vk::ImageLayout::eUndefined,
@@ -237,79 +196,84 @@ namespace mirrage::renderer {
 		if(!_renderer.settings().bloom)
 			return;
 
-		auto blur_mip_levels = util::max(3, _src.mip_levels() - 6);
-		auto start_mip_level = 3u;
+		auto blur_mip_levels = 3;
+		auto start_mip_level = std::min(3, _src.mip_levels() - blur_mip_levels);
 
 
 		auto pcs = Push_constants{};
 
 		// generate mip chain
-		graphic::generate_mipmaps(command_buffer,
+		graphic::generate_mipmaps(frame.main_command_buffer,
 		                          _src.image(),
 		                          vk::ImageLayout::eShaderReadOnlyOptimal,
 		                          vk::ImageLayout::eShaderReadOnlyOptimal,
 		                          _src.width(),
 		                          _src.height(),
-		                          util::min(_src.mip_levels(), start_mip_level + blur_mip_levels));
+		                          start_mip_level + blur_mip_levels);
 
 		auto start       = std::min(blur_mip_levels + start_mip_level - 1, _blur_buffer.mip_levels() - 1);
-		pcs.parameters.y = start - start_mip_level;
+		pcs.parameters.y = float(start - start_mip_level);
 
 		for(auto i = start; i >= start_mip_level; i--) {
-			pcs.parameters.x = i - 1;
+			pcs.parameters.x = float(i - 1);
 
 			// blur horizontal
-			_blur_renderpass.execute(command_buffer, _blur_framebuffer_horizontal.at(i - 1), [&] {
-				_blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
+			_blur_renderpass.execute(
+			        frame.main_command_buffer, _blur_framebuffer_horizontal.at(std::size_t(i - 1)), [&] {
+				        _blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_horizontal);
 
-				_blur_renderpass.push_constant("pcs"_strid, pcs);
+				        _blur_renderpass.push_constant("pcs"_strid, pcs);
 
-				command_buffer.draw(3, 1, 0, 0);
-			});
+				        frame.main_command_buffer.draw(3, 1, 0, 0);
+			        });
 
 			// blur vertical
-			_blur_renderpass.execute(command_buffer, _blur_framebuffer_vertical.at(i - 1), [&] {
-				if(i < start) {
-					_blur_renderpass.set_stage("blur_v_last"_strid);
-					_blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_vertical_final.at(i));
-				} else {
-					_blur_renderpass.set_stage("blur_v"_strid);
-					_blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_vertical);
-				}
+			_blur_renderpass.execute(
+			        frame.main_command_buffer, _blur_framebuffer_vertical.at(std::size_t(i - 1)), [&] {
+				        if(i < start) {
+					        _blur_renderpass.set_stage("blur_v_last"_strid);
+					        _blur_renderpass.bind_descriptor_set(
+					                1, *_blur_descriptor_set_vertical_final.at(std::size_t(i)));
+				        } else {
+					        _blur_renderpass.set_stage("blur_v"_strid);
+					        _blur_renderpass.bind_descriptor_set(1, *_blur_descriptor_set_vertical);
+				        }
 
-				_blur_renderpass.push_constant("pcs"_strid, pcs);
+				        _blur_renderpass.push_constant("pcs"_strid, pcs);
 
-				command_buffer.draw(3, 1, 0, 0);
-			});
+				        frame.main_command_buffer.draw(3, 1, 0, 0);
+			        });
 		}
 
 		// apply
-		_apply_renderpass.execute(command_buffer, _apply_framebuffer, [&] {
+		_apply_renderpass.execute(frame.main_command_buffer, _apply_framebuffer, [&] {
 			auto descriptor_sets =
-			        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_apply_descriptor_set};
+			        std::array<vk::DescriptorSet, 2>{frame.global_uniform_set, *_apply_descriptor_set};
 			_apply_renderpass.bind_descriptor_sets(0, descriptor_sets);
 
-			pcs.parameters.x = start_mip_level - 1;
+			pcs.parameters.x = float(start_mip_level - 1);
 			_apply_renderpass.push_constant("pcs"_strid, pcs);
 
-			command_buffer.draw(3, 1, 0, 0);
+			frame.main_command_buffer.draw(3, 1, 0, 0);
 		});
 	}
 
 
-	auto Bloom_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                     ecs::Entity_manager&      entities,
-	                                     util::maybe<Meta_system&> meta_system,
-	                                     bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Bloom_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                     ecs::Entity_manager&,
+	                                     Engine&,
+	                                     bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
+		if(!renderer.settings().bloom)
+			return {};
+
 		auto& src = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
-		return std::make_unique<Bloom_pass>(renderer, entities, meta_system, src);
+		return std::make_unique<Bloom_pass>(renderer, src);
 	}
 
-	auto Bloom_pass_factory::rank_device(vk::PhysicalDevice,
-	                                     util::maybe<std::uint32_t> graphics_queue,
-	                                     int                        current_score) -> int
+	auto Bloom_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
+	        -> int
 	{
 		return current_score;
 	}

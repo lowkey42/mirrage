@@ -5,10 +5,11 @@
 #include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 
-layout(location = 0) in vec3 world_pos;
-layout(location = 1) in vec3 view_pos;
-layout(location = 2) in vec3 normal;
-layout(location = 3) in vec2 tex_coords;
+layout(early_fragment_tests) in;
+
+layout(location = 0) in vec3 view_pos;
+layout(location = 1) in vec3 normal;
+layout(location = 2) in vec2 tex_coords;
 
 
 layout(location = 0) out vec4 depth_out;
@@ -33,9 +34,6 @@ vec3 tangent_space_to_world(vec3 N);
 void main() {
 	vec4 albedo = texture(albedo_sampler, tex_coords);
 
-	if(albedo.a < 0.1)
-		discard;
-
 	vec4 mat_data = texture(mat_data_sampler, tex_coords);
 
 	vec3  normal    = tangent_space_to_world(decode_tangent_normal(mat_data.rg));
@@ -48,10 +46,6 @@ void main() {
 	depth_out         = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
 	albedo_mat_id_out = vec4(albedo.rgb, 0.0);
 	mat_data_out      = vec4(encode_normal(normal), roughness, metallic);
-
-	float disect = model_uniforms.options.x;
-	if(disect>0 && world_pos.z>=disect)
-		discard;
 }
 
 vec3 decode_tangent_normal(vec2 tn) {

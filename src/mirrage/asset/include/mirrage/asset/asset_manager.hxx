@@ -4,7 +4,9 @@
 #include "asset_manager.hpp"
 #endif
 
+#ifndef __clang_analyzer__
 #include <async++.h>
+#endif
 
 namespace mirrage::asset {
 

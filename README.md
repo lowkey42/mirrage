@@ -21,8 +21,8 @@ Mirrage (Mirrage Indirect Radiance Renderer And Game Engine) is a Vulkan based d
 ### Dependencies
 Required:
 - CMake >= 3.8
-- SDL2 >= 2.0.7
-- Vulkan + Vulkan-HPP >= 1.1.70
+- SDL2 >= 2.0.8
+- Vulkan + Vulkan-HPP >= 1.1.80
 - GLSLC (if MIRRAGE_COMPILE_SHADERS is ON)
 
 

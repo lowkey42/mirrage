@@ -1,16 +1,19 @@
 #include <mirrage/renderer/pass/shadowmapping_pass.hpp>
 
+#include <mirrage/renderer/light_comp.hpp>
+#include <mirrage/renderer/model_comp.hpp>
+
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/ecs/ecs.hpp>
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/render_pass.hpp>
-#include <mirrage/renderer/model_comp.hpp>
 
 
 namespace mirrage::renderer {
 
 	using namespace graphic;
 	using namespace util::unit_literals;
+	using ecs::components::Transform_comp;
 
 	namespace {
 		struct Push_constants {
@@ -64,7 +67,7 @@ namespace mirrage::renderer {
 			                           sizeof(Push_constants),
 			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
 
-
+			// normal models
 			auto model_pipeline = pipeline;
 			model_pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 			model_pipeline.vertex<Model_vertex>(0,
@@ -84,23 +87,48 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:shadow_model"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:shadow_model"_aid, graphic::Shader_stage::vertex);
 
+			// rigged models
+			auto rigged_model_pipeline = pipeline;
+			rigged_model_pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
+			rigged_model_pipeline.add_descriptor_set_layout(*renderer.gbuffer().animation_data_layout);
+			rigged_model_pipeline.vertex<Model_rigged_vertex>(0,
+			                                                  false,
+			                                                  0,
+			                                                  &Model_rigged_vertex::position,
+			                                                  1,
+			                                                  &Model_rigged_vertex::normal,
+			                                                  2,
+			                                                  &Model_rigged_vertex::tex_coords,
+			                                                  3,
+			                                                  &Model_rigged_vertex::bone_ids,
+			                                                  4,
+			                                                  &Model_rigged_vertex::bone_weights);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        model_pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
+			auto& rigged_model_pass = builder.add_subpass(rigged_model_pipeline)
+			                                  .color_attachment(shadowmap)
+			                                  .depth_stencil_attachment(depth);
 
-			builder.add_dependency(
-			        model_pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
+			rigged_model_pass.stage("model"_strid)
+			        .shader("frag_shader:shadow_model"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:shadow_model_animated"_aid, graphic::Shader_stage::vertex);
+
+			rigged_model_pass.stage("model_dqs"_strid)
+			        .shader("frag_shader:shadow_model"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:shadow_model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+
+			builder.add_dependency(model_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       rigged_model_pass,
+			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
 			auto render_pass = builder.build();
 
@@ -143,7 +171,7 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	Shadowmap::Shadowmap(graphic::Device& device, std::uint32_t size, vk::Format format)
+	Shadowmap::Shadowmap(graphic::Device& device, std::int32_t size, vk::Format format)
 	  : texture(device,
 	            {size, size},
 	            1,
@@ -162,15 +190,12 @@ namespace mirrage::renderer {
 	{
 	}
 
-	Shadowmapping_pass::Shadowmapping_pass(Deferred_renderer&   renderer,
-	                                       ecs::Entity_manager& entities,
-	                                       util::maybe<Meta_system&>)
+	Shadowmapping_pass::Shadowmapping_pass(Deferred_renderer& renderer, ecs::Entity_manager& entities)
 	  : _renderer(renderer)
 	  , _entities(entities)
 	  , _shadowmap_format(get_shadowmap_format(renderer.device()))
 	  , _depth(renderer.device(),
-	           {gsl::narrow<std::uint32_t>(renderer.settings().shadowmap_resolution),
-	            gsl::narrow<std::uint32_t>(renderer.settings().shadowmap_resolution)},
+	           {renderer.settings().shadowmap_resolution, renderer.settings().shadowmap_resolution},
 	           1,
 	           get_depth_format(renderer.device()),
 	           vk::ImageUsageFlagBits::eDepthStencilAttachment,
@@ -188,32 +213,19 @@ namespace mirrage::renderer {
 	                                                              vk::Filter::eLinear,
 	                                                              vk::SamplerMipmapMode::eNearest,
 	                                                              false))
-	  , _lights_directional(entities.list<Directional_light_comp>())
-	  , _shadowcasters(entities.list<Shadowcaster_comp>())
-	  , _shadowmaps(util::make_vector(
-	            Shadowmap(renderer.device(), renderer.settings().shadowmap_resolution, _shadowmap_format),
-	            Shadowmap(renderer.device(), renderer.settings().shadowmap_resolution, _shadowmap_format)))
+	  , _shadowmaps(util::build_vector(renderer.gbuffer().max_shadowmaps,
+	                                   [&](auto) {
+		                                   return Shadowmap(renderer.device(),
+		                                                    renderer.settings().shadowmap_resolution,
+		                                                    _shadowmap_format);
+	                                   }))
 	  , _render_pass(build_render_pass(
 	            renderer, _depth, get_depth_format(renderer.device()), _shadowmap_format, _shadowmaps))
 	{
-
+		entities.register_component_type<Directional_light_comp>();
 		entities.register_component_type<Shadowcaster_comp>();
 
-		auto shadowmap_bindings = std::array<vk::DescriptorSetLayoutBinding, 3>();
-		shadowmap_bindings[0]   = vk::DescriptorSetLayoutBinding{0,
-                                                               vk::DescriptorType::eSampledImage,
-                                                               gsl::narrow<std::uint32_t>(_shadowmaps.size()),
-                                                               vk::ShaderStageFlagBits::eFragment};
-		shadowmap_bindings[1]   = vk::DescriptorSetLayoutBinding{
-                1, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment};
-		shadowmap_bindings[2] = vk::DescriptorSetLayoutBinding{
-		        2, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment};
-		MIRRAGE_INVARIANT(!renderer.gbuffer().shadowmaps_layout,
-		                  "More than one shadowmapping implementation active!");
-		renderer.gbuffer().shadowmaps_layout =
-		        renderer.device().create_descriptor_set_layout(shadowmap_bindings);
-		renderer.gbuffer().shadowmaps = renderer.create_descriptor_set(*renderer.gbuffer().shadowmaps_layout,
-		                                                               shadowmap_bindings.size());
+		renderer.gbuffer().shadowmapping_enabled = true;
 
 
 		auto shadowmap_infos = std::vector<vk::DescriptorImageInfo>();
@@ -242,12 +254,9 @@ namespace mirrage::renderer {
 		        desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
 
-	void Shadowmapping_pass::update(util::Time dt) {}
+	void Shadowmapping_pass::update(util::Time) {}
 
-	void Shadowmapping_pass::draw(vk::CommandBuffer& command_buffer,
-	                              Command_buffer_source&,
-	                              vk::DescriptorSet global_uniform_set,
-	                              std::size_t)
+	void Shadowmapping_pass::draw(Frame_data& frame)
 	{
 
 		// free shadowmaps of deleted lights
@@ -260,77 +269,112 @@ namespace mirrage::renderer {
 		// update shadow maps
 		auto pcs = Push_constants{};
 
-		for(auto& light : _lights_directional) {
-			if(!light.owner().has<Shadowcaster_comp>())
+
+		for(auto& [entity, transform, light_variant, mask] : frame.light_queue) {
+			if(mask == 0)
 				continue;
 
-			auto& light_transform = light.owner().get<ecs::components::Transform_comp>().get_or_throw();
+			if(auto ll = std::get_if<Directional_light_comp*>(&light_variant); ll) {
+				auto& light = **ll;
 
-			if(light.shadowmap_id() == -1) {
-				for(auto i = 0; i < gsl::narrow<int>(_shadowmaps.size()); i++) {
-					if(!_shadowmaps[i].owner) {
-						light.shadowmap_id(i);
-						_shadowmaps[i].owner = light.owner_handle();
-						break;
+				if(light.shadowmap_id() == -1) {
+					for(auto i = 0u; i < _shadowmaps.size(); i++) {
+						if(!_shadowmaps[i].owner) {
+							light.shadowmap_id(int(i));
+							_shadowmaps[i].owner = light.owner_handle();
+							break;
+						}
 					}
 				}
 
-				if(light.shadowmap_id() == -1) {
+				if(light.shadowmap_id() == -1 || !light.on_update()) {
 					continue;
 				}
-			} else if(!_renderer.settings().dynamic_shadows) {
-				auto& shadowmap = _shadowmaps.at(light.shadowmap_id());
 
-				auto pos_diff = glm::length2(light_transform.position() - shadowmap.light_source_position);
-				auto orientation_diff = glm::abs(
-				        glm::dot(light_transform.orientation(), shadowmap.light_source_orientation) - 1);
-				if(pos_diff <= 0.0001f && orientation_diff <= 0.001f
-				   && shadowmap.caster_count == _entities.list<Model_comp>().size()) {
-					continue; // skip update
-				}
-			}
+				auto& shadowmap = _shadowmaps.at(gsl::narrow<std::size_t>(light.shadowmap_id()));
+				shadowmap.light_source_position    = transform->position;
+				shadowmap.light_source_orientation = transform->orientation;
+				shadowmap.caster_count             = _entities.list<Model_comp>().size();
 
-			auto& shadowmap                    = _shadowmaps.at(light.shadowmap_id());
-			shadowmap.light_source_position    = light_transform.position();
-			shadowmap.light_source_orientation = light_transform.orientation();
-			shadowmap.caster_count             = _entities.list<Model_comp>().size();
+				pcs.light_view_proj = light.calc_shadowmap_view_proj(*transform);
 
-			pcs.light_view_proj = light.calc_shadowmap_view_proj();
+				auto& target_fb = shadowmap.framebuffer;
+				_render_pass.execute(frame.main_command_buffer, target_fb, [&, mask = mask] {
+					_render_pass.bind_descriptor_sets(0, {&frame.global_uniform_set, 1});
 
-			auto& target_fb = shadowmap.framebuffer;
-			_render_pass.execute(command_buffer, target_fb, [&] {
-				_render_pass.bind_descriptor_sets(0, {&global_uniform_set, 1});
+					auto waiting_for_rigged = true;
+					auto last_material      = static_cast<const Material*>(nullptr);
+					auto last_model         = static_cast<const Model*>(nullptr);
+					auto last_dqs           = false;
 
-				for(auto& caster : _shadowcasters) {
-					caster.owner().get<Model_comp>().process([&](Model_comp& model) {
-						auto& transform = model.owner().get<ecs::components::Transform_comp>().get_or_throw(
-						        "Required Transform_comp missing");
+					for(auto& geo : frame.partition_geometry(mask)) {
+						if(geo.model->rigged() && waiting_for_rigged) {
+							waiting_for_rigged = false;
+							last_material      = nullptr;
+							last_model         = nullptr;
+							_render_pass.next_subpass();
+							_render_pass.set_stage("model"_strid);
+						}
 
-						pcs.model = transform.to_mat4();
+						// bind mesh and material
+						auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
+						if(&*sub_mesh.material != last_material) {
+							last_material = &*sub_mesh.material;
+							last_material->bind(_render_pass);
+						}
+						if(geo.model != last_model) {
+							last_model = geo.model;
+							geo.model->bind_mesh(frame.main_command_buffer, 0);
+						}
+
+						// bind animation pose
+						if(geo.model->rigged()) {
+							auto uniform_offset = geo.animation_uniform_offset.get_or_throw();
+							_render_pass.bind_descriptor_set(
+							        2, _renderer.gbuffer().animation_data, {&uniform_offset, 1u});
+
+							auto dqs = geo.substance_id == "dq_default"_strid
+							           || geo.substance_id == "dq_emissive"_strid
+							           || geo.substance_id == "dq_alphatest"_strid;
+
+							if(dqs != last_dqs) {
+								last_dqs = dqs;
+								_render_pass.set_stage(dqs ? "model_dqs"_strid : "model"_strid);
+							}
+						}
+
+						// set transformation
+						pcs.model    = glm::toMat4(geo.orientation) * glm::scale(glm::mat4(1.f), geo.scale);
+						pcs.model[3] = glm::vec4(geo.position, 1.f);
 						_render_pass.push_constant("pcs"_strid, pcs);
 
-						model.model()->bind(
-						        command_buffer, _render_pass, 0, [&](auto&, auto offset, auto count) {
-							        command_buffer.drawIndexed(count, 1, offset, 0, 0);
-						        });
-					});
-				}
-			});
+						// draw
+						frame.main_command_buffer.drawIndexed(
+						        sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+					}
+
+					if(waiting_for_rigged)
+						_render_pass.next_subpass();
+				});
+			}
 		}
 	}
 
 
-	auto Shadowmapping_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                             ecs::Entity_manager&      entities,
-	                                             util::maybe<Meta_system&> meta_system,
-	                                             bool&) -> std::unique_ptr<Pass>
+	auto Shadowmapping_pass_factory::create_pass(Deferred_renderer&   renderer,
+	                                             ecs::Entity_manager& entities,
+	                                             Engine&,
+	                                             bool&) -> std::unique_ptr<Render_pass>
 	{
-		return std::make_unique<Shadowmapping_pass>(renderer, entities, meta_system);
+		if(renderer.settings().shadows)
+			return std::make_unique<Shadowmapping_pass>(renderer, entities);
+		else
+			return {};
 	}
 
 	auto Shadowmapping_pass_factory::rank_device(vk::PhysicalDevice,
-	                                             util::maybe<std::uint32_t> graphics_queue,
-	                                             int                        current_score) -> int
+	                                             util::maybe<std::uint32_t>,
+	                                             int current_score) -> int
 	{
 		return current_score;
 	}

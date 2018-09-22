@@ -21,7 +21,6 @@ layout(set=1, binding = 3) uniform sampler2D history_diff_sampler;
 layout(set=1, binding = 4) uniform sampler2D history_spec_sampler;
 layout(set=1, binding = 5) uniform sampler2D prev_depth_sampler;
 layout(set=1, binding = 6) uniform sampler2D brdf_sampler;
-layout(set=1, binding = 7) uniform sampler2D prev_weight_sampler;
 
 layout(push_constant) uniform Push_constants {
 	mat4 reprojection;

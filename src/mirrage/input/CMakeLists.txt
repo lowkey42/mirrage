@@ -33,7 +33,7 @@ target_link_libraries(mirrage_input
 	PUBLIC
 		mirrage::utils
 		gsl
-		glm
+		glm::glm
 		mirrage::asset
 		sdl2::sdl2
 		sf2
@@ -53,3 +53,7 @@ install(EXPORT mirrage_input_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage_input)
+endif()

@@ -5,7 +5,7 @@
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/ecs/ecs.hpp>
 #include <mirrage/renderer/light_comp.hpp>
-#include <mirrage/utils/math.hpp>
+#include <mirrage/utils/min_max.hpp>
 #include <mirrage/utils/sf2_glm.hpp>
 
 #include <gsl/gsl>
@@ -96,8 +96,8 @@ namespace mirrage::systems {
 	{
 		auto frames = std::vector<Frame_data>();
 
-		frames.reserve(seq.frames());
-		for(auto i : util::range(seq.frames())) {
+		frames.reserve(std::size_t(seq.frames()));
+		for(auto i : util::range(std::size_t(seq.frames()))) {
 			auto& frame  = frames.emplace_back();
 			frame.length = seq._frame_lengths.at(i) / second;
 
@@ -114,7 +114,7 @@ namespace mirrage::systems {
 		s.write_virtual(sf2::vmember("frames", frames));
 	}
 
-	Nim_system::Nim_system(ecs::Entity_manager& ecs) : _nim_components(ecs.list<Nim_comp>()) {}
+	Nim_system::Nim_system(ecs::Entity_manager& ecs) : _ecs(ecs), _nim_components(ecs.list<Nim_comp>()) {}
 
 	namespace {
 		template <class T>
@@ -178,10 +178,10 @@ namespace mirrage::systems {
 			_current_position = static_cast<float>(std::fmod(_current_position, _playing->frames()));
 		}
 
-		auto reached_end = _current_position >= _end_position && !_loop;
+		auto reached_end = int(_current_position) >= _end_position && !_loop;
 
 		if(reached_end) {
-			_current_position = _end_position;
+			_current_position = float(_end_position);
 		}
 
 		_playing->apply([&](const auto& entity_uid,
@@ -203,12 +203,12 @@ namespace mirrage::systems {
 
 				auto light_color = catmull_rom(_current_position, colors, _loop);
 
-				auto pos_diff         = glm::distance2(transform.position(), position);
-				auto orientation_diff = glm::abs(glm::dot(transform.orientation(), orientation) - 1);
+				auto pos_diff         = glm::distance2(transform.position, position);
+				auto orientation_diff = glm::abs(glm::dot(transform.orientation, orientation) - 1);
 
 				if(pos_diff > 0.00001f || orientation_diff > 0.0001f) {
-					transform.orientation(orientation);
-					transform.position(position);
+					transform.orientation = orientation;
+					transform.position    = position;
 				}
 
 				entity.get<renderer::Directional_light_comp>().process([&](auto& light) {
@@ -232,7 +232,7 @@ namespace mirrage::systems {
 		_update_lookup_table();
 
 		_playback_speed   = speed;
-		_current_position = begin;
+		_current_position = float(begin);
 		_end_position     = end >= 0 ? end : _playing->frames();
 		_loop             = false;
 	}
@@ -273,7 +273,7 @@ namespace mirrage::systems {
 				                light.color().r, light.color().g, light.color().b, light.intensity());
 			        });
 
-			return std::make_tuple(transform.position(), transform.orientation(), color);
+			return std::make_tuple(transform.position, transform.orientation, color);
 		});
 	}
 
@@ -281,7 +281,7 @@ namespace mirrage::systems {
 	{
 		_affected_entities.clear();
 		for(auto& nim_comp : _nim_components) {
-			_affected_entities.emplace(nim_comp.uid(), nim_comp.owner());
+			_affected_entities.emplace(nim_comp.uid(), nim_comp.owner(_ecs));
 		}
 	}
 } // namespace mirrage::systems

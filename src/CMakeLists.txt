@@ -30,8 +30,9 @@ elseif(MSVC)
 endif()
 
 
-add_definitions(-DHPC_HISTOGRAM_DEBUG_VIEW)
-
+# add_definitions(-DHPC_HISTOGRAM_DEBUG_VIEW)
+add_definitions(-DGSL_TERMINATE_ON_CONTRACT_VIOLATION)
+#add_definitions(-DHPC_HISTOGRAM_DEBUG_VIEW)
 
 if(MIRRAGE_BUILD_DEMO)
 	add_subdirectory(demo)

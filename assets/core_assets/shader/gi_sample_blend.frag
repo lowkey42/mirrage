@@ -45,6 +45,7 @@ layout(push_constant) uniform Push_constants {
 #include "brdf.glsl"
 #include "upsample.glsl"
 #include "raycast.glsl"
+#include "median.glsl"
 
 // calculate luminance of a color (used for normalization)
 float luminance_norm(vec3 c) {
@@ -68,78 +69,81 @@ vec3 clip_aabb(vec3 aabb_min, vec3 aabb_max, vec3 p, vec3 q) {
 		return q;// point inside aabb
 }
 
-// A Fast, Small-Radius GPU Median Filter by Morgan McGuire: http://casual-effects.com/research/McGuire2008Median/index.html
-#define s2(a, b)				temp = a; a = min(a, b); b = max(temp, b);
-#define mn3(a, b, c)			s2(a, b); s2(a, c);
-#define mx3(a, b, c)			s2(b, c); s2(a, c);
-
-#define mnmx3(a, b, c)			mx3(a, b, c); s2(a, b);                                   // 3 exchanges
-#define mnmx4(a, b, c, d)		s2(a, b); s2(c, d); s2(a, c); s2(b, d);                   // 4 exchanges
-#define mnmx5(a, b, c, d, e)	s2(a, b); s2(c, d); mn3(a, c, e); mx3(b, d, e);           // 6 exchanges
-#define mnmx6(a, b, c, d, e, f) s2(a, d); s2(b, e); s2(c, f); mn3(a, b, c); mx3(d, e, f); // 7 exchanges
+float pixel_intensity(vec3 c) {
+	return dot(c,c);
+}
 
 void main() {
-	float current_mip = pcs.prev_projection[0][3];
-	float max_mip     = pcs.prev_projection[1][3];
-	float base_mip    = pcs.prev_projection[3][3];
-
 	// read diffuse color, modulate with modulo if equal to min/max of neighborhood => noise
-	ivec2 uv = ivec2(textureSize(result_sampler, 0).xy * vertex_out.tex_coords);
-	vec3 colors[9];
-	for(int x=-1; x<=1; x++) {
-		for(int y=-1; y<=1; y++) {
-			colors[(x+1)*3+(y+1)] = texelFetch(result_sampler, uv+ivec2(x,y), 0).rgb;
-		}
-	}
+	ivec2 result_sampler_size = textureSize(result_sampler, 0).xy;
+	ivec2 uv = ivec2(result_sampler_size * vertex_out.tex_coords);
+	vec3 colors[9] = vec3[](
+		texelFetchOffset(result_sampler, uv, 0, ivec2(-1,-1)).rgb,
+		texelFetchOffset(result_sampler, uv, 0, ivec2(-1, 0)).rgb,
+		texelFetchOffset(result_sampler, uv, 0, ivec2( 0,-1)).rgb,
+		texelFetchOffset(result_sampler, uv, 0, ivec2( 0, 1)).rgb,
+		texelFetchOffset(result_sampler, uv, 0, ivec2( 0, 0)).rgb,
+		texelFetchOffset(result_sampler, uv, 0, ivec2( 1,-1)).rgb,
+		texelFetchOffset(result_sampler, uv, 0, ivec2(-1, 1)).rgb,
+		texelFetchOffset(result_sampler, uv, 0, ivec2( 1, 0)).rgb,
+		texelFetchOffset(result_sampler, uv, 0, ivec2( 1, 1)).rgb
+	);
 
-	float min_c = dot(colors[0], colors[0]);
+	// clamp texture coordinates
+	float w = result_sampler_size.x;
+	float h = result_sampler_size.y;
+	colors[0] = uv.x>0 && uv.y>0 ? colors[0] : colors[4];
+	colors[1] = uv.x>0           ? colors[1] : colors[4];
+	colors[2] =           uv.y>0 ? colors[2] : colors[4];
+	colors[3] =           uv.y<h ? colors[3] : colors[4];
+	colors[5] = uv.x<w && uv.y>0 ? colors[5] : colors[4];
+	colors[6] = uv.x>0 && uv.y<h ? colors[6] : colors[4];
+	colors[7] = uv.x<w           ? colors[7] : colors[4];
+	colors[8] = uv.x<w && uv.y<h ? colors[8] : colors[4];
+
+
+	float min_c = pixel_intensity(colors[0]);
 	float max_c = min_c;
 
 	for(int i=1; i<9; i++) {
-		float intensity = dot(colors[i], colors[i]);
+		float intensity = pixel_intensity(colors[i]);
 		min_c = min(min_c, intensity);
-		max_c = min(max_c, intensity);
+		max_c = max(max_c, intensity);
 	}
 
 	vec3 org = colors[4];
 	float org_intensity = dot(org, org);
-	if(min_c<org_intensity && max_c>org_intensity)
+	if(max_c>org_intensity)
 		out_color = vec4(org, 1.0);
 	else {
-		// Starting with a subset of size 6, remove the min and max each time
-		vec3 temp;
-		mnmx6(colors[0], colors[1], colors[2], colors[3], colors[4], colors[5]);
-		mnmx5(colors[1], colors[2], colors[3], colors[4], colors[6]);
-		mnmx4(colors[2], colors[3], colors[4], colors[7]);
-		mnmx3(colors[3], colors[4], colors[8]);
-		out_color = vec4(colors[4], 1.0);
+		out_color = vec4(median_vec3(colors), 1.0);
 	}
 
-
 	// modulate diffuse GI by ambient occlusion
-	if(INCLUDE_AO==1 && pcs.projection[3][3]>0.0) {
-		float ao = texture(ao_sampler, vertex_out.tex_coords).r;
-		ao = mix(1.0, ao, pcs.projection[3][3]);
+	if(INCLUDE_AO==1) {
+		float ao = texture(ao_sampler, vertex_out.tex_coords).r * 0.75 + 0.25;
 		out_color.rgb *= ao;
+		for(int i=0; i<9; i++)
+			colors[i] *= ao;
 	}
 
 	// blend with history
-	vec3 c_history = texture(history_result_sampler, vertex_out.tex_coords).rgb;
+	vec3 c_history = texelFetch(history_result_sampler, uv, 0).rgb;
 
 	vec2 texel_size = 1.0 / textureSize(result_sampler, 0);
 
 	vec2 du = vec2(texel_size.x, 0.0);
 	vec2 dv = vec2(0.0, texel_size.y);
 
-	vec3 ctl = texture(result_sampler, vertex_out.tex_coords - dv - du).rgb;
-	vec3 ctc = texture(result_sampler, vertex_out.tex_coords - dv).rgb;
-	vec3 ctr = texture(result_sampler, vertex_out.tex_coords - dv + du).rgb;
-	vec3 cml = texture(result_sampler, vertex_out.tex_coords - du).rgb;
+	vec3 ctl = colors[0];
+	vec3 ctc = colors[1];
+	vec3 ctr = colors[2];
+	vec3 cml = colors[3];
 	vec3 cmc = out_color.rgb;
-	vec3 cmr = texture(result_sampler, vertex_out.tex_coords + du).rgb;
-	vec3 cbl = texture(result_sampler, vertex_out.tex_coords + dv - du).rgb;
-	vec3 cbc = texture(result_sampler, vertex_out.tex_coords + dv).rgb;
-	vec3 cbr = texture(result_sampler, vertex_out.tex_coords + dv + du).rgb;
+	vec3 cmr = colors[5];
+	vec3 cbl = colors[6];
+	vec3 cbc = colors[7];
+	vec3 cbr = colors[8];
 
 	vec3 cmin = min(ctl, min(ctc, min(ctr, min(cml, min(cmc, min(cmr, min(cbl, min(cbc, cbr))))))));
 	vec3 cmax = max(ctl, max(ctc, max(ctr, max(cml, max(cmc, max(cmr, max(cbl, max(cbc, cbr))))))));
@@ -155,10 +159,15 @@ void main() {
 
 	vec3 d = cmax - cmin;
 	cmin -= d * 0.5;
-	cmax += d * 0.5;
 
 	c_history = clip_aabb(cmin.xyz, cmax.xyz, clamp(cavg, cmin, cmax), c_history);
 
-	float weight = texture(history_weight_sampler, vertex_out.tex_coords).g;
-	out_color.rgb = mix(out_color.rgb, c_history, weight*0.9);
+	float weight = texelFetch(history_weight_sampler, uv, 0).r;
+
+	if(weight<=0)
+		weight = 0.0;
+	else
+		weight = 1.0-1.0/(1+weight);
+
+	out_color.rgb = mix(out_color.rgb, c_history, min(weight, 0.94));
 }

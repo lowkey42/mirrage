@@ -4,6 +4,7 @@
 
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/render_pass.hpp>
+#include <mirrage/utils/ranges.hpp>
 
 
 using namespace mirrage::graphic;
@@ -11,7 +12,7 @@ using namespace mirrage::graphic;
 namespace mirrage::renderer {
 
 	namespace {
-		constexpr auto material_textures = std::uint32_t(2);
+		constexpr auto material_textures = std::uint32_t(3);
 	} // namespace
 
 	auto create_material_descriptor_set_layout(Device& device, vk::Sampler sampler)
@@ -42,11 +43,13 @@ namespace mirrage::renderer {
 	                   vk::Sampler            sampler,
 	                   graphic::Texture_ptr   albedo,
 	                   graphic::Texture_ptr   mat_data,
+	                   graphic::Texture_ptr   mat_data2,
 	                   util::Str_id           substance_id)
 	  : _descriptor_set(std::move(descriptor_set))
 	  , _albedo(std::move(albedo))
 	  , _mat_data(std::move(mat_data))
-	  , _material_id(substance_id)
+	  , _mat_data2(std::move(mat_data2))
+	  , _substance_id(substance_id ? substance_id : "default"_strid)
 	{
 
 		auto desc_images = std::array<vk::DescriptorImageInfo, material_textures>();
@@ -54,6 +57,9 @@ namespace mirrage::renderer {
 		        vk::DescriptorImageInfo{sampler, _albedo->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
 		desc_images[1] =
 		        vk::DescriptorImageInfo{sampler, _mat_data->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
+		desc_images[2] =
+		        vk::DescriptorImageInfo{sampler, _mat_data2->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
+
 
 		auto desc_writes = std::array<vk::WriteDescriptorSet, 1>();
 		desc_writes[0]   = vk::WriteDescriptorSet{*_descriptor_set,
@@ -73,8 +79,20 @@ namespace mirrage::renderer {
 	}
 
 
-	Model::Model(graphic::Mesh mesh, std::vector<Sub_mesh> sub_meshes, util::maybe<asset::AID> aid)
-	  : _mesh(std::move(mesh)), _sub_meshes(std::move(sub_meshes)), _aid(aid)
+	Model::Model(graphic::Mesh           mesh,
+	             std::vector<Sub_mesh>   sub_meshes,
+	             float                   bounding_sphere_radius,
+	             glm::vec3               bounding_sphere_offset,
+	             bool                    rigged,
+	             std::int_fast32_t       bone_count,
+	             util::maybe<asset::AID> aid)
+	  : _mesh(std::move(mesh))
+	  , _sub_meshes(std::move(sub_meshes))
+	  , _aid(aid)
+	  , _bounding_sphere_radius(bounding_sphere_radius)
+	  , _bounding_sphere_offset(bounding_sphere_offset)
+	  , _rigged(rigged)
+	  , _bone_count(bone_count)
 	{
 	}
 
@@ -84,11 +102,11 @@ namespace mirrage::renderer {
 	}
 
 	auto Model::bind_sub_mesh(graphic::Render_pass& pass, std::size_t index) const
-	        -> std::pair<std::size_t, std::size_t>
+	        -> std::tuple<std::uint32_t, std::uint32_t, const Material*>
 	{
 		auto& sm = _sub_meshes.at(index);
 		sm.material->bind(pass);
-		return std::make_pair(sm.index_offset, sm.index_count);
+		return std::make_tuple(sm.index_offset, sm.index_count, &*sm.material);
 	}
 
 } // namespace mirrage::renderer
@@ -121,14 +139,17 @@ namespace mirrage::asset {
 		auto desc_set =
 		        _descriptor_set_pool.create_descriptor(_descriptor_set_layout, renderer::material_textures);
 
-		auto albedo   = load_tex(data.albedo_aid);
-		auto mat_data = load_tex(data.mat_data_aid);
+		auto albedo    = load_tex(data.albedo_aid);
+		auto mat_data  = load_tex(data.mat_data_aid);
+		auto mat_data2 = !data.mat_data2_aid.empty() ? load_tex(data.mat_data2_aid) : mat_data;
 
-		auto all_loaded = async::when_all(albedo.internal_task(), mat_data.internal_task());
+		auto all_loaded =
+		        async::when_all(albedo.internal_task(), mat_data.internal_task(), mat_data2.internal_task());
 		using Task_type = decltype(all_loaded)::result_type;
 
 		return all_loaded.then([=, desc_set = std::move(desc_set)](const Task_type&) mutable {
-			return renderer::Material(_device, std::move(desc_set), _sampler, albedo, mat_data, sub_id);
+			return renderer::Material(
+			        _device, std::move(desc_set), _sampler, albedo, mat_data, mat_data2, sub_id);
 		});
 	}
 
@@ -166,6 +187,13 @@ namespace mirrage::asset {
 			             << in.aid().str() << "\" is not compatible with this version of the application!");
 		}
 
+		auto rigged     = (header.flags & 1) != 0;
+		auto bone_count = std::int32_t(0);
+
+		if(rigged) {
+			read(in, bone_count);
+		}
+
 		// load sub meshes and materials
 		auto sub_meshes = std::vector<renderer::Sub_mesh>();
 		sub_meshes.reserve(header.submesh_count);
@@ -179,6 +207,10 @@ namespace mirrage::asset {
 			auto& sub_mesh = sub_meshes.back();
 			read(in, sub_mesh.index_offset);
 			read(in, sub_mesh.index_count);
+			read(in, sub_mesh.bounding_sphere_radius);
+			read(in, sub_mesh.bounding_sphere_offset.x);
+			read(in, sub_mesh.bounding_sphere_offset.y);
+			read(in, sub_mesh.bounding_sphere_offset.z);
 
 			auto material_id_length = std::uint32_t(0);
 			read(in, material_id_length);
@@ -194,10 +226,10 @@ namespace mirrage::asset {
 		// transfer mesh data to gpu
 		auto mesh = graphic::Mesh(_device,
 		                          _owner_qfamily,
-		                          header.vertex_count,
-		                          header.index_count,
-		                          [&](char* dest) { in.read_direct(dest, header.vertex_count); },
-		                          [&](char* dest) { in.read_direct(dest, header.index_count); });
+		                          header.vertex_size,
+		                          header.index_size,
+		                          [&](char* dest) { in.read_direct(dest, header.vertex_size); },
+		                          [&](char* dest) { in.read_direct(dest, header.index_size); });
 
 		auto footer = std::uint32_t(0);
 		read(in, footer);
@@ -211,8 +243,17 @@ namespace mirrage::asset {
 		auto all_loaded = async::when_all(all_materials_loaded, mesh.internal_buffer().transfer_task());
 		using Task_type = decltype(all_loaded)::result_type;
 
-		return all_loaded.then([model = renderer::Model(std::move(mesh), std::move(sub_meshes), in.aid())](
-		                               const Task_type&) mutable { return std::move(model); });
+		auto bounding_sphere_offset = glm::vec3(header.bounding_sphere_offset_x,
+		                                        header.bounding_sphere_offset_y,
+		                                        header.bounding_sphere_offset_z);
+		return all_loaded.then(
+		        [model = renderer::Model(std::move(mesh),
+		                                 std::move(sub_meshes),
+		                                 header.bounding_sphere_radius,
+		                                 bounding_sphere_offset,
+		                                 rigged,
+		                                 bone_count,
+		                                 in.aid())](const Task_type&) mutable { return std::move(model); });
 	}
 
 } // namespace mirrage::asset

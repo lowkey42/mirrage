@@ -40,10 +40,14 @@ namespace mirrage {
 
 		Meta_system _meta_system;
 
-		gui::Gui _gui;
+		gui::Gui& _gui;
 
 		ecs::Entity_facet _camera;
 		ecs::Entity_facet _sun;
+		ecs::Entity_facet _animation_test_dqs;
+		ecs::Entity_facet _animation_test_lbs;
+		ecs::Entity_facet _animation_test2_dqs;
+		ecs::Entity_facet _animation_test2_lbs;
 
 		float _sun_elevation         = 0.92f;
 		float _sun_azimuth           = 1.22f;
@@ -79,5 +83,6 @@ namespace mirrage {
 		void _draw_settings_window();
 		void _draw_profiler_window();
 		void _draw_histogram_window();
+		void _draw_animation_window();
 	};
 } // namespace mirrage

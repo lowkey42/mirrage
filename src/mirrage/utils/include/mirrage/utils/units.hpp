@@ -139,7 +139,7 @@ namespace mirrage::util {
 
 	inline constexpr Angle normalize(Angle a) noexcept
 	{
-		return Angle{((a.value() / (2 * PI)) - static_cast<int32_t>(a.value() / (2 * PI))) * 2 * PI};
+		return Angle{((a.value() / (2.f * PI)) - int(a.value() / (2.f * PI))) * 2.f * PI};
 	}
 
 
@@ -387,7 +387,7 @@ namespace mirrage::util {
 		constexpr Distance operator"" _cm(long double v) { return Distance(static_cast<float>(v / 100)); }
 		constexpr Distance operator"" _cm(unsigned long long v)
 		{
-			return Distance(static_cast<float>(v / 100.f));
+			return Distance(static_cast<float>(v) / 100.f);
 		}
 		constexpr Distance operator"" _m(long double v) { return Distance(static_cast<float>(v)); }
 		constexpr Distance operator"" _m(unsigned long long v) { return Distance(static_cast<float>(v)); }
@@ -398,7 +398,7 @@ namespace mirrage::util {
 		}
 
 		constexpr Time operator"" _ms(long double v) { return Time(static_cast<float>(v / 1000)); }
-		constexpr Time operator"" _ms(unsigned long long v) { return Time(static_cast<float>(v / 1000.f)); }
+		constexpr Time operator"" _ms(unsigned long long v) { return Time(static_cast<float>(v) / 1000.f); }
 		constexpr Time operator"" _s(long double v) { return Time(static_cast<float>(v)); }
 		constexpr Time operator"" _s(unsigned long long v) { return Time(static_cast<float>(v)); }
 		constexpr Time operator"" _min(long double v) { return Time(static_cast<float>(v * 60)); }

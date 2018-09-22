@@ -1,5 +1,7 @@
 #include <mirrage/renderer/pass/deferred_pass.hpp>
 
+#include <mirrage/renderer/light_comp.hpp>
+
 #include <mirrage/graphic/render_pass.hpp>
 
 
@@ -12,7 +14,6 @@ namespace mirrage::renderer {
 		                       graphic::Render_target_2D& color_target,
 		                       graphic::Render_target_2D& color_target_diff,
 		                       graphic::Render_target_2D& depth_buffer,
-		                       vk::Format                 depth_buffer_format,
 		                       Deferred_geometry_subpass& gpass,
 		                       Deferred_lighting_subpass& lpass,
 		                       graphic::Framebuffer&      out_framebuffer)
@@ -22,10 +23,10 @@ namespace mirrage::renderer {
 
 			auto depth = builder.add_attachment(
 			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
-			                                  depth_buffer_format,
+			                                  renderer.device().get_depth_format(),
 			                                  vk::SampleCountFlagBits::e1,
 			                                  vk::AttachmentLoadOp::eClear,
-			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
 			                                  vk::AttachmentLoadOp::eDontCare,
 			                                  vk::AttachmentStoreOp::eDontCare,
 			                                  vk::ImageLayout::eUndefined,
@@ -106,8 +107,24 @@ namespace mirrage::renderer {
 			                              .color_attachment(depth_sampleable)
 			                              .color_attachment(albedo_mat_id)
 			                              .color_attachment(mat_data)
+			                              .color_attachment(color)
+			                              .color_attachment(color_diffuse)
 			                              .depth_stencil_attachment(depth);
 			gpass.configure_subpass(renderer, geometry_pass);
+
+
+			auto animated_geometry_pipeline          = pipeline;
+			animated_geometry_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
+			        vk::PipelineDepthStencilStateCreateFlags{}, true, true, vk::CompareOp::eLess};
+			gpass.configure_animation_pipeline(renderer, animated_geometry_pipeline);
+			auto& animated_geometry_pass = builder.add_subpass(animated_geometry_pipeline)
+			                                       .color_attachment(depth_sampleable)
+			                                       .color_attachment(albedo_mat_id)
+			                                       .color_attachment(mat_data)
+			                                       .color_attachment(color)
+			                                       .color_attachment(color_diffuse)
+			                                       .depth_stencil_attachment(depth);
+			gpass.configure_animation_subpass(renderer, animated_geometry_pass);
 
 
 			auto light_pipeline    = pipeline;
@@ -120,34 +137,38 @@ namespace mirrage::renderer {
 			                        color_diffuse, graphic::all_color_components, graphic::blend_add)
 			                .input_attachment(depth_sampleable)
 			                .input_attachment(albedo_mat_id)
-			                .input_attachment(mat_data);
+			                .input_attachment(mat_data)
+			                .depth_stencil_attachment(depth);
 			lpass.configure_subpass(renderer, light_pass);
 
+			builder.add_dependency(geometry_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       animated_geometry_pass,
+			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead,
-			        geometry_pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        geometry_pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        light_pass,
-			        vk::PipelineStageFlagBits::eFragmentShader,
-			        vk::AccessFlagBits::eInputAttachmentRead);
-
-			builder.add_dependency(
-			        light_pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
+			builder.add_dependency(animated_geometry_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       light_pass,
+			                       vk::PipelineStageFlagBits::eFragmentShader
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests,
+			                       vk::AccessFlagBits::eInputAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite);
 
 			auto render_pass = builder.build();
 
@@ -168,25 +189,17 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	Deferred_pass::Deferred_pass(Deferred_renderer&   renderer,
-	                             ecs::Entity_manager& entities,
-	                             util::maybe<Meta_system&>,
+	Deferred_pass::Deferred_pass(Deferred_renderer&         renderer,
+	                             ecs::Entity_manager&       entities,
 	                             graphic::Render_target_2D& color_target,
 	                             graphic::Render_target_2D& color_target_diff)
 	  : _renderer(renderer)
-	  , _depth(renderer.device(),
-	           {color_target.width(), color_target.height()},
-	           1,
-	           renderer.device().get_depth_format(),
-	           vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment,
-	           vk::ImageAspectFlagBits::eDepth)
 	  , _gpass(renderer, entities)
-	  , _lpass(renderer, entities, _depth)
+	  , _lpass(renderer, entities, renderer.gbuffer().depth_buffer)
 	  , _render_pass(build_render_pass(renderer,
 	                                   color_target,
 	                                   color_target_diff,
-	                                   _depth,
-	                                   renderer.device().get_depth_format(),
+	                                   renderer.gbuffer().depth_buffer,
 	                                   _gpass,
 	                                   _lpass,
 	                                   _gbuffer_framebuffer))
@@ -199,14 +212,11 @@ namespace mirrage::renderer {
 		_gpass.update(dt);
 		_lpass.update(dt);
 	}
-	void Deferred_pass::draw(vk::CommandBuffer& command_buffer,
-	                         Command_buffer_source&,
-	                         vk::DescriptorSet global_uniform_set,
-	                         std::size_t)
+	void Deferred_pass::draw(Frame_data& frame)
 	{
 
 		if(!_first_frame) {
-			graphic::blit_texture(command_buffer,
+			graphic::blit_texture(frame.main_command_buffer,
 			                      _renderer.gbuffer().depth,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -215,22 +225,22 @@ namespace mirrage::renderer {
 			                      vk::ImageLayout::eShaderReadOnlyOptimal);
 		}
 
-		_gpass.pre_draw(command_buffer);
+		_gpass.pre_draw(frame);
 
-		_render_pass.execute(command_buffer, _gbuffer_framebuffer, [&] {
-			_render_pass.bind_descriptor_sets(0, {&global_uniform_set, 1});
+		_render_pass.execute(frame.main_command_buffer, _gbuffer_framebuffer, [&] {
+			_render_pass.bind_descriptor_sets(0, {&frame.global_uniform_set, 1});
 
-			_gpass.draw(command_buffer, _render_pass);
+			_gpass.draw(frame, _render_pass);
 
 			_render_pass.next_subpass(true);
 
-			_lpass.draw(command_buffer, _render_pass);
+			_lpass.draw(frame, _render_pass);
 		});
 
 		if(_first_frame) {
 			_first_frame = false;
 
-			graphic::blit_texture(command_buffer,
+			graphic::blit_texture(frame.main_command_buffer,
 			                      _renderer.gbuffer().depth,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -240,21 +250,17 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void Deferred_pass::shrink_to_fit() {}
-
-
-	auto Deferred_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                        ecs::Entity_manager&      entities,
-	                                        util::maybe<Meta_system&> meta_system,
-	                                        bool& use_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Deferred_pass_factory::create_pass(Deferred_renderer&   renderer,
+	                                        ecs::Entity_manager& entities,
+	                                        Engine&,
+	                                        bool& use_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
 		auto& color_target = use_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		auto& color_target_diff = use_first_pp_buffer ? renderer.gbuffer().colorB : renderer.gbuffer().colorA;
 
 		use_first_pp_buffer = !use_first_pp_buffer;
-		return std::make_unique<Deferred_pass>(
-		        renderer, entities, meta_system, color_target, color_target_diff);
+		return std::make_unique<Deferred_pass>(renderer, entities, color_target, color_target_diff);
 	}
 
 	auto Deferred_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
@@ -263,9 +269,11 @@ namespace mirrage::renderer {
 		return current_score;
 	}
 
-	void Deferred_pass_factory::configure_device(vk::PhysicalDevice,
+	void Deferred_pass_factory::configure_device(vk::PhysicalDevice pd,
 	                                             util::maybe<std::uint32_t>,
-	                                             graphic::Device_create_info&)
+	                                             graphic::Device_create_info& ci)
 	{
+		// enable independent blend if available for faster geometry pass
+		ci.features.setIndependentBlend(pd.getFeatures().independentBlend);
 	}
 } // namespace mirrage::renderer

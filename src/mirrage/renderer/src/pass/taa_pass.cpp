@@ -48,24 +48,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:taa"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:taa"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			out_framebuffer = builder.build_framebuffer(
@@ -106,11 +88,11 @@ namespace mirrage::renderer {
 		constexpr auto build_halton_2_3()
 		{
 			return make_array<Size * 2>(
-			        [](std::size_t i) { return halton_seq(i % 2 == 0 ? 2 : 3, i + 1) - 0.5f; });
+			        [](std::size_t i) { return halton_seq(int(i) % 2 == 0 ? 2 : 3, int(i) + 1) - 0.5f; });
 		}
 
-		constexpr auto offsets       = build_halton_2_3<8>();
-		constexpr auto offset_factor = 0.15f;
+		constexpr auto offsets       = build_halton_2_3<32>();
+		constexpr auto offset_factor = 0.25f;
 	} // namespace
 
 
@@ -146,16 +128,13 @@ namespace mirrage::renderer {
 
 	void Taa_pass::update(util::Time dt) { _time_acc += dt.value(); }
 
-	void Taa_pass::draw(vk::CommandBuffer& command_buffer,
-	                    Command_buffer_source&,
-	                    vk::DescriptorSet global_uniform_set,
-	                    std::size_t)
+	void Taa_pass::draw(Frame_data& frame)
 	{
 
 		if(_first_frame) {
 			_first_frame = false;
 
-			graphic::blit_texture(command_buffer,
+			graphic::blit_texture(frame.main_command_buffer,
 			                      _read_frame,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -164,16 +143,17 @@ namespace mirrage::renderer {
 			                      vk::ImageLayout::eShaderReadOnlyOptimal);
 		}
 
-		_render_pass.execute(command_buffer, _framebuffer, [&] {
-			auto descriptor_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_descriptor_set};
+		_render_pass.execute(frame.main_command_buffer, _framebuffer, [&] {
+			auto descriptor_sets =
+			        std::array<vk::DescriptorSet, 2>{frame.global_uniform_set, *_descriptor_set};
 			_render_pass.bind_descriptor_sets(0, descriptor_sets);
 
 			_render_pass.push_constant("pcs"_strid, _constants);
 
-			command_buffer.draw(3, 1, 0, 0);
+			frame.main_command_buffer.draw(3, 1, 0, 0);
 		});
 
-		graphic::blit_texture(command_buffer,
+		graphic::blit_texture(frame.main_command_buffer,
 		                      _write_frame,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
 		                      vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -183,6 +163,14 @@ namespace mirrage::renderer {
 
 		_offset_idx = (_offset_idx + 2) % (offsets.size());
 	}
+
+	namespace {
+		bool is_zero(float v)
+		{
+			constexpr auto epsilon = 0.0000001f;
+			return v > -epsilon && v < epsilon;
+		}
+	} // namespace
 
 	void Taa_pass::process_camera(Camera_state& cam)
 	{
@@ -199,7 +187,8 @@ namespace mirrage::renderer {
 
 		// move projection by sub pixel offset and update push constants
 		auto offset = _calc_offset(cam);
-		MIRRAGE_INVARIANT(_constants.fov_reprojection[0][3] == 0 && _constants.fov_reprojection[1][3] == 0,
+		MIRRAGE_INVARIANT(is_zero(_constants.fov_reprojection[0][3])
+		                          && is_zero(_constants.fov_reprojection[1][3]),
 		                  "m[0][3]!=0 or m[1][3]!=0");
 		_constants.fov_reprojection[0][3] = offset.x;
 		_constants.fov_reprojection[1][3] = offset.y;
@@ -209,7 +198,7 @@ namespace mirrage::renderer {
 		}
 
 		// transform current view-space point to world-space and back to prev NDC
-		_constants.reprojection = _prev_view_proj * cam.inv_view;
+		_constants.reprojection = glm::inverse(_constants.fov_reprojection) * _prev_view_proj * cam.inv_view;
 		_prev_view_proj         = cam.view_projection;
 
 		cam.projection      = glm::translate(glm::mat4(1.f), glm::vec3(-offset, 0.f)) * cam.projection;
@@ -227,11 +216,14 @@ namespace mirrage::renderer {
 
 
 
-	auto Taa_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                   ecs::Entity_manager&      entities,
-	                                   util::maybe<Meta_system&> meta_system,
-	                                   bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Taa_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                   ecs::Entity_manager&,
+	                                   Engine&,
+	                                   bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
+		if(!renderer.settings().taa)
+			return {};
+
 		auto& write = write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
 
 		auto& read = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
@@ -241,9 +233,8 @@ namespace mirrage::renderer {
 		return std::make_unique<Taa_pass>(renderer, write, read);
 	}
 
-	auto Taa_pass_factory::rank_device(vk::PhysicalDevice,
-	                                   util::maybe<std::uint32_t> graphics_queue,
-	                                   int                        current_score) -> int
+	auto Taa_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
+	        -> int
 	{
 		return current_score;
 	}

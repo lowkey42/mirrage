@@ -9,11 +9,14 @@ file(GLOB_RECURSE HEADER_FILES
 )
 
 add_library(mirrage_renderer STATIC
+	src/pass/animation_pass.cpp
 	src/pass/blit_pass.cpp 
 	src/pass/bloom_pass.cpp
+	src/pass/debug_draw_pass.cpp
 	src/pass/deferred_geometry_subpass.cpp
 	src/pass/deferred_lighting_subpass.cpp
 	src/pass/deferred_pass.cpp
+	src/pass/frustum_culling_pass.cpp
 	src/pass/gen_mipmap_pass.cpp
 	src/pass/gi_pass.cpp
 	src/pass/gui_pass.cpp
@@ -21,8 +24,9 @@ add_library(mirrage_renderer STATIC
 	src/pass/ssao_pass.cpp
 	src/pass/taa_pass.cpp
 	src/pass/tone_mapping_pass.cpp
-	src/pass/voxelization_pass.cpp
 	
+	src/animation.cpp
+	src/animation_comp.cpp
 	src/camera_comp.cpp
 	src/deferred_renderer.cpp
 	src/gbuffer.cpp
@@ -30,6 +34,7 @@ add_library(mirrage_renderer STATIC
 	src/loading_system.cpp
 	src/model_comp.cpp
 	src/model.cpp
+	src/render_pass.cpp
 	
 	${HEADER_FILES}
 )
@@ -45,14 +50,16 @@ target_include_directories(mirrage_renderer PUBLIC
 
 target_link_libraries(mirrage_renderer
 	PUBLIC
+		mirrage::mirrage
 		mirrage::asset
 		mirrage::ecs
 		mirrage::graphic
 		mirrage::gui
 		mirrage::utils
-		glm
+		glm::glm
 		gsl
 		sf2
+		robin-map
 )
 
 
@@ -69,3 +76,7 @@ install(EXPORT mirrage_renderer_targets
 	DESTINATION lib/cmake/mirrage
 )
 
+
+if(COMMAND cotire)
+	cotire(mirrage_renderer)
+endif()

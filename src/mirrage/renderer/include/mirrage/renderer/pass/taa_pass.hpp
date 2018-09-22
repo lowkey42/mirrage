@@ -12,16 +12,13 @@ namespace mirrage::renderer {
 		glm::mat4 fov_reprojection{}; // fov_reprojection[3].xy = offset
 	};
 
-	class Taa_pass : public Pass {
+	class Taa_pass : public Render_pass {
 	  public:
 		Taa_pass(Deferred_renderer&, graphic::Render_target_2D& write, graphic::Texture_2D& read);
 
 
 		void update(util::Time dt) override;
-		void draw(vk::CommandBuffer&,
-		          Command_buffer_source&,
-		          vk::DescriptorSet global_uniform_set,
-		          std::size_t       swapchain_image) override;
+		void draw(Frame_data&) override;
 
 		void process_camera(Camera_state&) override;
 
@@ -48,18 +45,15 @@ namespace mirrage::renderer {
 		auto _calc_offset(const Camera_state&) const -> glm::vec2;
 	};
 
-	class Taa_pass_factory : public Pass_factory {
+	class Taa_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&,
-		                 ecs::Entity_manager&,
-		                 util::maybe<Meta_system&>,
-		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
+		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		        -> std::unique_ptr<Render_pass> override;
 
-		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
-		        -> int override;
+		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;
 
 		void configure_device(vk::PhysicalDevice,
-		                      util::maybe<std::uint32_t> graphics_queue,
+		                      util::maybe<std::uint32_t>,
 		                      graphic::Device_create_info&) override;
 	};
 } // namespace mirrage::renderer

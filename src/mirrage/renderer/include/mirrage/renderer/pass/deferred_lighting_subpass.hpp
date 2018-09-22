@@ -1,7 +1,6 @@
 #pragma once
 
 #include <mirrage/renderer/deferred_renderer.hpp>
-#include <mirrage/renderer/light_comp.hpp>
 
 
 namespace mirrage::graphic {
@@ -19,13 +18,14 @@ namespace mirrage::renderer {
 		void configure_subpass(Deferred_renderer&, graphic::Subpass_builder&);
 
 		void update(util::Time dt);
-		void draw(vk::CommandBuffer&, graphic::Render_pass&);
+		void draw(Frame_data&, graphic::Render_pass&);
 
 	  private:
-		Deferred_renderer&            _renderer;
-		GBuffer&                      _gbuffer;
-		Directional_light_comp::Pool& _lights_directional;
+		ecs::Entity_manager& _ecs;
+		Deferred_renderer&   _renderer;
+		GBuffer&             _gbuffer;
 
+		graphic::Mesh                 _point_light_mesh;
 		vk::UniqueDescriptorSetLayout _input_attachment_descriptor_set_layout;
 		graphic::DescriptorSet        _input_attachment_descriptor_set;
 	};

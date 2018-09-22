@@ -9,7 +9,7 @@
 
 #include <mirrage/graphic/settings.hpp>
 
-#include <mirrage/utils/template_utils.hpp>
+#include <mirrage/utils/registration.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <vulkan/vulkan.hpp>
@@ -32,7 +32,7 @@ namespace mirrage::graphic {
 
 	class Window_modification_handler : public util::Registered<Window_modification_handler, Window> {
 	  public:
-		Window_modification_handler(Window& w) : util::Registered<Window_modification_handler, Window>(w) {}
+		Window_modification_handler(Window& w);
 		Window_modification_handler(const Window_modification_handler&) = default;
 		Window_modification_handler(Window_modification_handler&&)      = default;
 		virtual ~Window_modification_handler()                          = default;

@@ -18,6 +18,11 @@
 
 namespace mirrage::util {
 
+	template <typename T>
+	class maybe;
+
+	struct nothing_t;
+
 	namespace details {
 		struct maybe_else_callable {
 			bool is_nothing;
@@ -29,12 +34,28 @@ namespace mirrage::util {
 					f();
 			}
 		};
+
+		template <typename T, typename... Args>
+		constexpr bool is_first_maybe()
+		{
+			if constexpr(sizeof...(Args) == 0)
+				return true;
+			else {
+				using First_arg = std::remove_cv_t<
+				        std::remove_reference_t<typename std::tuple_element<0, std::tuple<Args...>>::type>>;
+				return std::is_same_v<maybe<T>, First_arg> || std::is_same_v<nothing_t, First_arg>;
+			}
+		}
 	} // namespace details
 
 	template <typename T>
 	class maybe {
 	  public:
 		maybe() noexcept : _valid(false) {}
+		template <class... Args, typename = std::enable_if_t<!details::is_first_maybe<T, Args...>()>>
+		explicit maybe(Args&&... args) noexcept : _valid(true), _data{std::forward<Args>(args)...}
+		{
+		}
 		/*implicit*/ maybe(T&& data) noexcept : _valid(true), _data(std::move(data)) {}
 		/*implicit*/ maybe(const T& data) noexcept : _valid(true), _data(data) {}
 		maybe(const maybe& o) noexcept : _valid(o._valid), _data(o._data) {}
@@ -71,6 +92,17 @@ namespace mirrage::util {
 
 			_valid   = o._valid;
 			o._valid = false;
+			return *this;
+		}
+		template <class... Args>
+		maybe& emplace(Args&&... args)
+		{
+			if(_valid)
+				_data.~T();
+
+			new(&_data) T(std::forward<Args>(args)...);
+			_valid = true;
+
 			return *this;
 		}
 
@@ -148,7 +180,7 @@ namespace mirrage::util {
 			if(is_some())
 				return f(_data);
 			else
-				return nothing();
+				return {};
 		}
 
 		template <typename Func,

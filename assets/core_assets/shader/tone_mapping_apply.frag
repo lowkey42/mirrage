@@ -24,13 +24,12 @@ float calc_histogram_index_fp(float luminance) {
 }
 
 void main() {
-	float min_mesoptic = 0.00031622776f/2;
-	float max_mesoptic = 3.16227766017f/2;
+	float min_mesoptic = 0.00031622776f;
+	float max_mesoptic = 3.16227766017f;
 	vec3  cie_white    = vec3(0.950456,1.,1.08906);
 
 
-	vec3 color = textureLod(color_sampler, vertex_out.tex_coords, 0).rgb;
-	color *= 10;
+	vec3 color = textureLod(color_sampler, vertex_out.tex_coords, 0).rgb*10000.0;
 
 	vec3 cie_color = rgb2cie(color);
 	float lum = cie_color.y;

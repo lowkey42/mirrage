@@ -21,11 +21,12 @@ namespace mirrage::renderer {
 	struct Material_data {
 		util::Str_id substance_id = "default"_strid;
 		std::string  albedo_aid;
-		std::string  mat_data_aid;
+		std::string  mat_data_aid;  // RG: normal, B:roughness, A:metallic
+		std::string  mat_data2_aid; // R:emissive intensity
 	};
 
 #ifdef sf2_structDef
-	sf2_structDef(Material_data, substance_id, albedo_aid, mat_data_aid);
+	sf2_structDef(Material_data, substance_id, albedo_aid, mat_data_aid, mat_data2_aid);
 #endif
 
 
@@ -37,17 +38,19 @@ namespace mirrage::renderer {
 		         vk::Sampler,
 		         graphic::Texture_ptr albedo,
 		         graphic::Texture_ptr mat_data,
-		         util::Str_id         material_id);
+		         graphic::Texture_ptr mat_data2,
+		         util::Str_id         substance_id);
 
 		void bind(graphic::Render_pass& pass) const;
 
-		auto material_id() const noexcept { return _material_id; }
+		auto substance_id() const noexcept { return _substance_id; }
 
 	  private:
 		graphic::DescriptorSet _descriptor_set;
 		graphic::Texture_ptr   _albedo;
 		graphic::Texture_ptr   _mat_data;
-		util::Str_id           _material_id;
+		graphic::Texture_ptr   _mat_data2;
+		util::Str_id           _substance_id;
 	};
 	using Material_ptr = asset::Ptr<Material>;
 
@@ -65,18 +68,47 @@ namespace mirrage::renderer {
 	};
 	static_assert(sizeof(Model_vertex) == 4 * (3 + 3 + 2), "Model_vertex has unexpected alignment!");
 
+	struct Model_rigged_vertex {
+		glm::vec3  position;
+		glm::vec3  normal;
+		glm::vec2  tex_coords;
+		glm::ivec4 bone_ids;
+		glm::vec4  bone_weights;
+
+		Model_rigged_vertex() = default;
+		Model_rigged_vertex(float px, float py, float pz, float nx, float ny, float nz, float u, float v)
+		  : position(px, py, pz)
+		  , normal(nx, ny, nz)
+		  , tex_coords(u, v)
+		  , bone_ids{0, 0, 0, 0}
+		  , bone_weights{0, 0, 0, 0}
+		{
+		}
+	};
+	static_assert(sizeof(Model_rigged_vertex) == 4 * (3 + 3 + 2 + 4 + 4),
+	              "Model_rigged_vertex has unexpected alignment!");
+
 
 	/*
 	* File format:
 	* |   0   |   1   |   2   |  3   |
 	* |   M   |   M   |   F   |  F   |
-	* |            VERSION           |
-	* |          VERTEX COUNT        |
-	* |          INDEX COUNT         |
+	* |    VERSION    |     FLAGS    |		flags: rigged, reserved...
+	* |          VERTEX SIZE         |		size of all vertices in bytes
+	* |           INDEX SIZE         |		size of all indices in bytes
 	* |         SUB MESH COUNT       |
+	* |    BOUNDING SPHERE RADIUS    |
+	* |   BOUNDING SPHERE X OFFSET   |
+	* |   BOUNDING SPHERE Y OFFSET   |
+	* |   BOUNDING SPHERE Z OFFSET   |
+	* |          BONE COUNT          |		if rigged
 	*
 	* |          INDEX OFFSET        |
 	* |          INDEX COUNT         |
+	* |    BOUNDING SPHERE RADIUS    |
+	* |   BOUNDING SPHERE X OFFSET   |
+	* |   BOUNDING SPHERE Y OFFSET   |
+	* |   BOUNDING SPHERE Z OFFSET   |
 	* |       MATERIAL ID LENGTH     |
 	*     MATERIAL ID LENGTH bytes
 	* x SUB MESH COUNT
@@ -89,6 +121,14 @@ namespace mirrage::renderer {
 	* |            NORMAL Z          |
 	* |        TEXTURE COORDS S      |
 	* |        TEXTURE COORDS T      |
+	* |           BONE ID 1          |		if rigged
+	* |           BONE ID 2          |		if rigged
+	* |           BONE ID 3          |		if rigged
+	* |           BONE ID 4          |		if rigged
+	* |         BONE WEIGHT 1        |		if rigged
+	* |         BONE WEIGHT 2        |		if rigged
+	* |         BONE WEIGHT 3        |		if rigged
+	* |         BONE WEIGHT 4        |		if rigged
 	* x VERTEX COUNT
 	*
 	* |          VERTEX INDEX        |
@@ -97,27 +137,43 @@ namespace mirrage::renderer {
 	*/
 	struct Model_file_header {
 		static constexpr std::uint32_t type_tag_value = ('F' << 24) | ('F' << 16) | ('M' << 8) | 'M';
-		static constexpr std::uint32_t version_value  = 1;
+		static constexpr std::uint16_t version_value  = 2;
 
 		// wards against wrong/corrupted files and different endianess
 		std::uint32_t type_tag = type_tag_value;
-		std::uint32_t version  = version_value;
+		std::uint16_t version  = version_value;
+		std::uint16_t flags;
 
-		std::uint32_t vertex_count;
-		std::uint32_t index_count;
+		std::uint32_t vertex_size;
+		std::uint32_t index_size;
 		std::uint32_t submesh_count;
+
+		float bounding_sphere_radius;
+		float bounding_sphere_offset_x;
+		float bounding_sphere_offset_y;
+		float bounding_sphere_offset_z;
 	};
-	static_assert(sizeof(Model_file_header) == 4 * 5, "Model_file_header has unexpected alignment!");
+	static_assert(sizeof(Model_file_header) == 4 * 9, "Model_file_header has unexpected size!");
 
 
 	struct Sub_mesh {
 		Material_ptr  material;
 		std::uint32_t index_offset;
 		std::uint32_t index_count;
+		glm::vec3     bounding_sphere_offset;
+		float         bounding_sphere_radius;
 
 		Sub_mesh() = default;
-		Sub_mesh(Material_ptr m, std::uint32_t o, std::uint32_t c)
-		  : material(std::move(m)), index_offset(o), index_count(c)
+		Sub_mesh(Material_ptr  mat,
+		         std::uint32_t index_offset,
+		         std::uint32_t index_count,
+		         glm::vec3     bounds_offset,
+		         float         bounds_radius)
+		  : material(std::move(mat))
+		  , index_offset(index_offset)
+		  , index_count(index_count)
+		  , bounding_sphere_offset(bounds_offset)
+		  , bounding_sphere_radius(bounds_radius)
 		{
 		}
 	};
@@ -126,6 +182,10 @@ namespace mirrage::renderer {
 	  public:
 		Model(graphic::Mesh           mesh,
 		      std::vector<Sub_mesh>   sub_meshes,
+		      float                   bounding_sphere_radius,
+		      glm::vec3               bounding_sphere_offset,
+		      bool                    rigged,
+		      std::int_fast32_t       bone_count,
 		      util::maybe<asset::AID> aid = util::nothing);
 
 		auto aid() const noexcept -> auto& { return _aid; }
@@ -135,7 +195,7 @@ namespace mirrage::renderer {
 
 		// binds the material of the sub mesh and returns its index range (offset, count)
 		auto bind_sub_mesh(graphic::Render_pass&, std::size_t index) const
-		        -> std::pair<std::size_t, std::size_t>;
+		        -> std::tuple<std::uint32_t, std::uint32_t, const Material*>;
 
 		// binds all sub meshes and calls a callback after binding each
 		template <typename F>
@@ -152,11 +212,21 @@ namespace mirrage::renderer {
 			}
 		}
 
+		auto bounding_sphere_radius() const noexcept { return _bounding_sphere_radius; }
+		auto bounding_sphere_offset() const noexcept { return _bounding_sphere_offset; }
+
+		auto sub_meshes() const noexcept -> auto& { return _sub_meshes; }
+		auto rigged() const noexcept { return _rigged; }
+		auto bone_count() const noexcept { return _bone_count; }
 
 	  private:
 		graphic::Mesh           _mesh;
 		std::vector<Sub_mesh>   _sub_meshes;
 		util::maybe<asset::AID> _aid;
+		float                   _bounding_sphere_radius;
+		glm::vec3               _bounding_sphere_offset;
+		bool                    _rigged;
+		std::int_fast32_t       _bone_count;
 	};
 	using Model_ptr = asset::Ptr<Model>;
 

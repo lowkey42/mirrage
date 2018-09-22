@@ -11,6 +11,7 @@
 #include <glm/gtx/transform.hpp>
 #include <sf2/sf2.hpp>
 
+#include <cstdint>
 #include <string>
 
 
@@ -246,7 +247,7 @@ namespace mirrage::gui {
 
 	namespace detail {
 		struct Nk_renderer {
-			Gui_renderer& renderer;
+			Gui_renderer_interface& renderer;
 
 			Wnk_Buffer           commands;
 			nk_draw_null_texture null_tex;
@@ -254,7 +255,7 @@ namespace mirrage::gui {
 			Wnk_Buffer           ibo;
 
 
-			Nk_renderer(Gui_renderer& renderer) : renderer(renderer) {}
+			Nk_renderer(Gui_renderer_interface& renderer) : renderer(renderer) {}
 
 			void draw(nk_context& ctx, glm::vec4 viewport, glm::vec2 screen_size, const glm::mat4& ui_matrix)
 			{
@@ -297,7 +298,7 @@ namespace mirrage::gui {
 					// draw stuff
 
 					auto cmd    = static_cast<const nk_draw_command*>(nullptr);
-					int  offset = 0;
+					auto offset = std::uint32_t(0);
 					for(cmd = nk__draw_begin(&ctx, &commands.buffer); cmd;
 					    cmd = nk__draw_next(cmd, &commands.buffer, &ctx)) {
 
@@ -369,7 +370,7 @@ namespace mirrage::gui {
 			auto height = static_cast<float>(window_height);
 
 			if(width / height <= 5 / 3.f) { // special case for weird resolutions
-				target_height *= 1.25f;
+				target_height = int(float(target_height) * 1.25f);
 			}
 
 			if(width < height) { // special case for portrait-mode
@@ -401,11 +402,12 @@ namespace mirrage::gui {
 		std::shared_ptr<struct nk_image> atlas_tex;
 		Gui_event_filter                 input_filter;
 
-		PImpl(glm::vec4             viewport,
-		      asset::Asset_manager& assets,
-		      input::Input_manager& input,
-		      Gui_renderer&         renderer)
-		  : renderer(renderer)
+		PImpl(glm::vec4               viewport,
+		      asset::Asset_manager&   assets,
+		      input::Input_manager&   input,
+		      Gui_renderer_interface& renderer)
+		  : ctx()
+		  , renderer(renderer)
 		  , atlas(assets)
 		  , atlas_tex(renderer.load_texture(atlas.width, atlas.height, 4, atlas.data))
 		  , input_filter(input, &ctx.ctx, this->viewport, ui_matrix)
@@ -435,44 +437,38 @@ namespace mirrage::gui {
 		}
 	};
 
-	Gui::Gui(glm::vec4                        viewport,
-	         asset::Asset_manager&            assets,
-	         input::Input_manager&            input,
-	         util::tracking_ptr<Gui_renderer> renderer)
-	  : _viewport(viewport)
-	  , _assets(assets)
-	  , _input(input)
-	  , _renderer(renderer)
-	  , _last_renderer(_renderer.get())
-	{
 
-		_init();
-	}
-	Gui::~Gui()
+	Gui::Gui(glm::vec4 viewport, asset::Asset_manager& assets, input::Input_manager& input)
+	  : _viewport(viewport), _assets(assets), _input(input)
 	{
-		if(_renderer) {
-			_renderer->_gui = nullptr;
-		}
 	}
+	Gui::~Gui() { MIRRAGE_INVARIANT(_renderer == nullptr, "GUI still has a renderer registered (leak?)"); }
 
-	void Gui::_init()
+	void Gui::_reset_renderer(Gui_renderer_interface* renderer)
 	{
-		_last_renderer = _renderer.get();
-		if(_last_renderer) {
-			_impl                = std::make_unique<PImpl>(_viewport, _assets, _input, *_last_renderer);
-			_last_renderer->_gui = this;
+		if(_renderer == renderer)
+			return;
+
+		if(renderer) {
+			MIRRAGE_INVARIANT(_renderer == nullptr,
+			                  "Gui already has a different renderer: " << _renderer << "!=" << renderer);
+			_impl = std::make_unique<PImpl>(_viewport, _assets, _input, *renderer);
 		} else {
-			LOG(plog::warning) << "Gui initialized without a valid renderer. Nothing will be drawn!";
+			_impl.reset();
 		}
+
+		_renderer = renderer;
 	}
 
 	void Gui::viewport(glm::vec4 new_viewport)
 	{
 		_viewport = new_viewport;
-		_impl->change_viewport(new_viewport);
+		if(ready()) {
+			_impl->change_viewport(new_viewport);
+		}
 	}
 
-	void Gui_renderer::draw_gui()
+	void Gui_renderer_interface::draw_gui()
 	{
 		if(_gui) {
 			_gui->draw();
@@ -481,12 +477,8 @@ namespace mirrage::gui {
 
 	void Gui::draw()
 	{
-		if(_renderer.modified(_last_renderer)) {
-			_init();
-		}
-
-		if(!_impl) {
-			LOG(plog::info) << "no impl";
+		if(!ready()) {
+			LOG(plog::error) << "No gui renderer instantiated when Gui::draw was called!";
 			return;
 		}
 
@@ -494,28 +486,30 @@ namespace mirrage::gui {
 
 		_impl->renderer.draw(_impl->ctx.ctx, _impl->viewport, _impl->screen_size, _impl->ui_matrix);
 	}
-	void Gui::start_frame() { nk_clear(&_impl->ctx.ctx); }
+	void Gui::start_frame()
+	{
+		if(_renderer)
+			nk_clear(&_impl->ctx.ctx);
+	}
 
 	auto Gui::ctx() -> nk_context*
 	{
-		if(_renderer.modified(_last_renderer)) {
-			_init();
-		}
-
-		MIRRAGE_INVARIANT(_impl, "Not initialized when nk_context was requested!");
+		MIRRAGE_INVARIANT(ready(), "No gui renderer instantiated when nk_context was requested!");
 
 		return &_impl->ctx.ctx;
 	}
 
 	auto Gui::centered(int width, int height) -> struct nk_rect {
-		return nk_rect(_impl->screen_size.x / 2.f - width / 2.f,
-		               _impl->screen_size.y / 2.f - height / 2.f,
-		               width,
-		               height);
+		return nk_rect(_impl->screen_size.x / 2.f - float(width) / 2.f,
+		               _impl->screen_size.y / 2.f - float(height) / 2.f,
+		               float(width),
+		               float(height));
 	} auto Gui::centered_left(int width, int height) -> struct nk_rect {
-		return nk_rect(0, _impl->screen_size.y / 2.f - height / 2.f, width, height);
+		return nk_rect(0, _impl->screen_size.y / 2.f - float(height) / 2.f, float(width), float(height));
 	} auto Gui::centered_right(int width, int height) -> struct nk_rect {
-		return nk_rect(
-		        _impl->screen_size.x - width, _impl->screen_size.y / 2.f - height / 2.f, width, height);
+		return nk_rect(_impl->screen_size.x - float(width),
+		               _impl->screen_size.y / 2.f - float(height) / 2.f,
+		               float(width),
+		               float(height));
 	}
 } // namespace mirrage::gui

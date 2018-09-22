@@ -25,6 +25,7 @@ layout(set=2, binding = 9) uniform sampler2D ao_sampler;
 layout (constant_id = 0) const int LAST_SAMPLE = 0;  // 1 if this is the last MIP level to sample
 layout (constant_id = 1) const float R = 40;         // the radius to fetch samples from
 layout (constant_id = 2) const int SAMPLES = 128;    // the number of samples to fetch
+layout (constant_id = 3) const int VISIBILITY = 0;   // 1 if shadows should be traced
 
 
 // arguments are packet into the matrices to keep the pipeline layouts compatible between GI passes
@@ -98,7 +99,7 @@ vec3 gi_sample(int lod, int base_mip) {
 	// fetch SAMPLES samples in a spiral pattern and combine their GI contribution
 	vec3 c = vec3(0,0,0);
 
-	float angle =  PDnrand2(vec4(vertex_out.tex_coords, lod, global_uniforms.time.x*10.0)).r * 2*PI;
+	float angle = random(vec4(vertex_out.tex_coords, lod, global_uniforms.time.w)).r * 2*PI;
 
 	float outer_radius = R;
 	float inner_radius = LAST_SAMPLE==0 ? outer_radius / 2.0 - 4.0 : 0.0;
@@ -139,6 +140,37 @@ vec3 gi_sample(int lod, int base_mip) {
 	return c;
 }
 
+float v(int lod, vec3 p1, vec3 p2, vec2 p1_uv, vec2 p2_uv) {
+	vec3 dir = p2-p1;
+	float max_distance = length(dir);
+	float max_steps = max_distance*5;
+	dir /= max_distance;
+	max_distance-=1.0;
+
+	if(max_distance<=0)
+		return 0;
+
+	vec2 depthSize = textureSize(depth_sampler, 0);
+
+	mat4 proj = pcs.projection;
+	proj[3][3] = 0;
+
+	vec3 jitter = PDnrand3(p1_uv);
+
+	vec2 raycast_hit_uv;
+	vec3 raycast_hit_point;
+	if(traceScreenSpaceRay1(p1+dir*0.5, dir, proj, depth_sampler,
+	                        depthSize, 50.0, global_uniforms.proj_planes.x,
+							4, 0.5*jitter.z, max_steps, max_distance, 0,
+	                        raycast_hit_uv, raycast_hit_point)) {
+		vec2 mat = texelFetch(mat_data_sampler, ivec2(raycast_hit_uv), 0).ba;
+		if(dot(mat,mat) > 0.00001)
+			return 0.02;
+	}
+
+	return 1;
+}
+
 // calculate the light transfer between two pixel of the current level
 vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv, float shaded_depth,
                             vec3 shaded_point, vec3 shaded_normal) {
@@ -154,7 +186,10 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	vec3 dir = normalize(diff);
 	float r2 = dot(diff, diff);
 
-	float visibility = 1.0; // v(x, x_i); currently not implemented
+
+	float visibility = 1.0;
+	if(VISIBILITY==1)
+		visibility = v(lod, shaded_point, P, shaded_uv, src_uv);
 
 	float NdotL_src = clamp(dot(N, dir),              0.0, 1.0); // cos(θ')
 	float NdotL_dst = clamp(dot(shaded_normal, -dir), 0.0, 1.0); // cos(θ)
@@ -169,14 +204,14 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	float ds = pcs.prev_projection[2][3] * depth*depth * clamp(cos_alpha / cos_beta, 0.001, 1000.0);
 
 	// multiply all factors, that modulate the light transfer
-	float weight = visibility * NdotL_dst * NdotL_src * ds / (0.001+r2);
+	float weight = visibility * NdotL_dst * NdotL_src * ds / (0.01+r2);
 
-	if(weight<0.001) {
+	if(weight<0.0001) {
 		return vec3(0);
 
 	} else {
 		// fetch the light emitted by the src pixel, modulate it by the calculated factor and return it
-		vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb/1000.0;
+		vec3 radiance = texelFetch(color_sampler, src_uv, 0).rgb;
 		return radiance * weight;
 	}
 }

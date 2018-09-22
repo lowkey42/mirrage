@@ -5,6 +5,8 @@
  *  See LICENSE file for details.                                            *
 \*****************************************************************************/
 
+#define DOCTEST_CONFIG_IMPLEMENT
+
 #include "game_engine.hpp"
 #include "test_screen.hpp"
 
@@ -13,6 +15,7 @@
 #include <mirrage/asset/asset_manager.hpp>
 
 #include <SDL2/SDL.h>
+#include <doctest.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
 #include <plog/Log.h>
 #include <glm/vec2.hpp>
@@ -43,6 +46,13 @@ int main(int argc, char** argv)
 int main(int argc, char** argv, char** env)
 {
 #endif
+	doctest::Context context;
+	context.setOption("no-run", true);
+	context.applyCommandLine(argc, argv);
+	auto res = context.run();
+
+	if(context.shouldExit())
+		return res;
 
 	init_env(argc, argv, env);
 
@@ -53,7 +63,7 @@ int main(int argc, char** argv, char** env)
 
 	shutdown();
 
-	return 0;
+	return res;
 }
 
 namespace {

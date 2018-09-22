@@ -11,8 +11,8 @@
 
 #include <mirrage/asset/asset_manager.hpp>
 #include <mirrage/utils/purgatory.hpp>
+#include <mirrage/utils/registration.hpp>
 #include <mirrage/utils/ring_buffer.hpp>
-#include <mirrage/utils/template_utils.hpp>
 
 #include <vulkan/vulkan.hpp>
 
@@ -61,7 +61,7 @@ namespace mirrage::graphic {
 		                                bool      resetable   = true,
 		                                bool      short_lived = false) -> Command_buffer_pool;
 
-		auto create_descriptor_pool(std::uint32_t chunk_size, std::initializer_list<vk::DescriptorType> types)
+		auto create_descriptor_pool(std::int32_t chunk_size, std::initializer_list<vk::DescriptorType> types)
 		        -> Descriptor_pool;
 
 		auto create_descriptor_set_layout(gsl::span<const vk::DescriptorSetLayoutBinding> bindings)
@@ -80,13 +80,13 @@ namespace mirrage::graphic {
 
 		auto create_image_view(vk::Image,
 		                       vk::Format,
-		                       std::uint32_t base_mipmap,
+		                       std::int32_t  base_mipmap,
 		                       std::uint32_t mipmap_levels,
 		                       vk::ImageAspectFlags = vk::ImageAspectFlagBits::eColor,
 		                       vk::ImageViewType    = vk::ImageViewType::e2D,
 		                       vk::ComponentMapping = {}) -> vk::UniqueImageView;
 
-		auto create_sampler(std::uint32_t max_mip_levels,
+		auto create_sampler(std::int32_t max_mip_levels,
 		                    vk::SamplerAddressMode         = vk::SamplerAddressMode::eRepeat,
 		                    vk::BorderColor                = vk::BorderColor::eIntOpaqueBlack,
 		                    vk::Filter                     = vk::Filter::eLinear,
@@ -109,6 +109,7 @@ namespace mirrage::graphic {
 		auto get_texture_srgb_format() { return _srgb_format; }
 		auto get_texture_srgba_format() { return _srgba_format; }
 
+		auto physical_device() const noexcept { return _gpu; }
 		auto physical_device_properties() const noexcept { return _gpu_properties; }
 
 		auto transfer() -> auto& { return _transfer_manager; }

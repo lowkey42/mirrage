@@ -61,27 +61,9 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:gi_mipgen"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:gi_mipgen"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead,
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
-			for(auto i = 1u; i < renderer.gbuffer().mip_levels; i++) {
+			for(auto i = 1; i < renderer.gbuffer().mip_levels; i++) {
 				auto attachments = std::array<Framebuffer_attachment_desc, 2>{
 				        {{renderer.gbuffer().depth.view(i), util::Rgba{}},
 				         {renderer.gbuffer().mat_data.view(i), util::Rgba{}}}};
@@ -118,10 +100,7 @@ namespace mirrage::renderer {
 
 	void Gen_mipmap_pass::update(util::Time) {}
 
-	void Gen_mipmap_pass::draw(vk::CommandBuffer& command_buffer,
-	                           Command_buffer_source&,
-	                           vk::DescriptorSet global_uniform_set,
-	                           std::size_t)
+	void Gen_mipmap_pass::draw(Frame_data& frame)
 	{
 
 		const auto low_quality_levels = glm::clamp(_renderer.settings().gi_low_quality_mip_levels + 1,
@@ -130,7 +109,7 @@ namespace mirrage::renderer {
 
 		if(low_quality_levels > 1) {
 			// blit the first level
-			graphic::generate_mipmaps(command_buffer,
+			graphic::generate_mipmaps(frame.main_command_buffer,
 			                          _renderer.gbuffer().depth.image(),
 			                          vk::ImageLayout::eShaderReadOnlyOptimal,
 			                          vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -139,7 +118,7 @@ namespace mirrage::renderer {
 			                          low_quality_levels,
 			                          0,
 			                          false);
-			graphic::generate_mipmaps(command_buffer,
+			graphic::generate_mipmaps(frame.main_command_buffer,
 			                          _renderer.gbuffer().mat_data.image(),
 			                          vk::ImageLayout::eShaderReadOnlyOptimal,
 			                          vk::ImageLayout::eShaderReadOnlyOptimal,
@@ -151,8 +130,8 @@ namespace mirrage::renderer {
 		}
 
 		// generate mipmaps for GBuffer
-		for(auto i = low_quality_levels; i < gsl::narrow<int>(_renderer.gbuffer().mip_levels); i++) {
-			auto& fb = _mipmap_gen_framebuffers.at(i - 1);
+		for(auto i = low_quality_levels; i < _renderer.gbuffer().mip_levels; i++) {
+			auto& fb = _mipmap_gen_framebuffers.at(std::size_t(i - 1));
 
 			// barrier against write to previous mipmap level
 			auto subresource = vk::ImageSubresourceRange{
@@ -165,12 +144,12 @@ namespace mirrage::renderer {
 			                                      VK_QUEUE_FAMILY_IGNORED,
 			                                      _renderer.gbuffer().depth.image(),
 			                                      subresource};
-			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			                               vk::PipelineStageFlagBits::eFragmentShader,
-			                               vk::DependencyFlags{},
-			                               {},
-			                               {},
-			                               {barrier});
+			frame.main_command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                                          vk::PipelineStageFlagBits::eFragmentShader,
+			                                          vk::DependencyFlags{},
+			                                          {},
+			                                          {},
+			                                          {barrier});
 
 			auto barrier2 = vk::ImageMemoryBarrier{vk::AccessFlagBits::eColorAttachmentWrite,
 			                                       vk::AccessFlagBits::eShaderRead,
@@ -180,17 +159,17 @@ namespace mirrage::renderer {
 			                                       VK_QUEUE_FAMILY_IGNORED,
 			                                       _renderer.gbuffer().mat_data.image(),
 			                                       subresource};
-			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			                               vk::PipelineStageFlagBits::eFragmentShader,
-			                               vk::DependencyFlags{},
-			                               {},
-			                               {},
-			                               {barrier2});
+			frame.main_command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                                          vk::PipelineStageFlagBits::eFragmentShader,
+			                                          vk::DependencyFlags{},
+			                                          {},
+			                                          {},
+			                                          {barrier2});
 
 
-			_mipmap_gen_renderpass.execute(command_buffer, fb, [&] {
-				auto descriptor_sets =
-				        std::array<vk::DescriptorSet, 2>{global_uniform_set, *_descriptor_sets.at(i - 1)};
+			_mipmap_gen_renderpass.execute(frame.main_command_buffer, fb, [&] {
+				auto descriptor_sets = std::array<vk::DescriptorSet, 2>{
+				        frame.global_uniform_set, *_descriptor_sets.at(std::size_t(i - 1))};
 				_mipmap_gen_renderpass.bind_descriptor_sets(0, descriptor_sets);
 
 				auto pcs        = Push_constants{};
@@ -199,23 +178,26 @@ namespace mirrage::renderer {
 
 				_mipmap_gen_renderpass.push_constant("pcs"_strid, pcs);
 
-				command_buffer.draw(3, 1, 0, 0);
+				frame.main_command_buffer.draw(3, 1, 0, 0);
 			});
 		}
 	}
 
 
-	auto Gen_mipmap_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                          ecs::Entity_manager&      entities,
-	                                          util::maybe<Meta_system&> meta_system,
-	                                          bool& write_first_pp_buffer) -> std::unique_ptr<Pass>
+	auto Gen_mipmap_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                          ecs::Entity_manager&,
+	                                          Engine&,
+	                                          bool&) -> std::unique_ptr<Render_pass>
 	{
+		if(!renderer.settings().gi)
+			return {};
+
 		return std::make_unique<Gen_mipmap_pass>(renderer);
 	}
 
 	auto Gen_mipmap_pass_factory::rank_device(vk::PhysicalDevice,
-	                                          util::maybe<std::uint32_t> graphics_queue,
-	                                          int                        current_score) -> int
+	                                          util::maybe<std::uint32_t>,
+	                                          int current_score) -> int
 	{
 		return current_score;
 	}

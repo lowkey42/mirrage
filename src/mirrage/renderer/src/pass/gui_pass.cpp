@@ -1,5 +1,7 @@
 #include <mirrage/renderer/pass/gui_pass.hpp>
 
+#include <mirrage/engine.hpp>
+
 
 namespace mirrage::renderer {
 
@@ -48,24 +50,6 @@ namespace mirrage::renderer {
 			        .shader("frag_shader:ui"_aid, graphic::Shader_stage::fragment)
 			        .shader("vert_shader:ui"_aid, graphic::Shader_stage::vertex);
 
-			builder.add_dependency(
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlags{},
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite);
-
-			builder.add_dependency(
-			        pass,
-			        vk::PipelineStageFlagBits::eColorAttachmentOutput,
-			        vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite,
-			        util::nothing,
-			        vk::PipelineStageFlagBits::eBottomOfPipe,
-			        vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eShaderRead
-			                | vk::AccessFlagBits::eTransferRead);
-
-
 			auto render_pass = builder.build();
 
 			for(auto& sc_image : renderer.swapchain().get_image_views()) {
@@ -93,7 +77,7 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	Gui_pass::Gui_pass(Deferred_renderer& drenderer, ecs::Entity_manager&, util::maybe<Meta_system&>)
+	Gui_pass::Gui_pass(Deferred_renderer& drenderer, Engine& engine)
 	  : _renderer(drenderer)
 	  , _sampler(drenderer.device().create_sampler(1,
 	                                               vk::SamplerAddressMode::eClampToEdge,
@@ -110,18 +94,14 @@ namespace mirrage::renderer {
 	}
 
 
-	void Gui_pass::update(util::Time dt) {}
+	void Gui_pass::update(util::Time) {}
 
-	void Gui_pass::draw(vk::CommandBuffer& command_buffer,
-	                    Command_buffer_source&,
-	                    vk::DescriptorSet,
-	                    std::size_t swapchain_image)
+	void Gui_pass::draw(Frame_data& frame)
 	{
-
 		MIRRAGE_INVARIANT(_current_command_buffer.is_nothing(), "Gui_pass::draw calls cannot be nested!");
 
-		_current_command_buffer = command_buffer;
-		_current_framebuffer    = _framebuffers.at(swapchain_image);
+		_current_command_buffer = frame.main_command_buffer;
+		_current_framebuffer    = _framebuffers.at(frame.swapchain_image);
 		_bound_texture_handle   = -1;
 
 		draw_gui();
@@ -166,14 +146,14 @@ namespace mirrage::renderer {
 		auto handle = _next_texture_handle++;
 
 		auto dimensions = graphic::Image_dimensions_t<graphic::Image_type::single_2d>{
-		        gsl::narrow<std::uint32_t>(width), gsl::narrow<std::uint32_t>(height)};
+		        gsl::narrow<std::int32_t>(width), gsl::narrow<std::int32_t>(height)};
 
 		auto texture = asset::make_ready_asset(
 		        "tex:$in_memory_gui_texture$"_aid,
 		        graphic::Texture_2D(_renderer.device(),
 		                            dimensions,
 		                            false,
-		                            gsl::narrow<std::uint32_t>(channels),
+		                            gsl::narrow<std::int32_t>(channels),
 		                            true,
 		                            gsl::span<const std::uint8_t>{data, width * height * channels},
 		                            _renderer.queue_family()));
@@ -231,7 +211,7 @@ namespace mirrage::renderer {
 
 		auto index_offset = vertices.size_bytes();
 		_mesh_buffer.update_objs(0, graphic::to_bytes(vertices));
-		_mesh_buffer.update_objs(index_offset, graphic::to_bytes(indices));
+		_mesh_buffer.update_objs(gsl::narrow<std::int32_t>(index_offset), graphic::to_bytes(indices));
 		_mesh_buffer.flush(cb,
 		                   vk::PipelineStageFlagBits::eVertexInput,
 		                   vk::AccessFlagBits::eVertexAttributeRead | vk::AccessFlagBits::eIndexRead);
@@ -242,8 +222,9 @@ namespace mirrage::renderer {
 
 		_render_pass.push_constant("camera"_strid, view_proj);
 
-		cb.bindVertexBuffers(0, {_mesh_buffer.buffer()}, {0});
-		cb.bindIndexBuffer(_mesh_buffer.buffer(), index_offset, vk::IndexType::eUint16);
+		cb.bindVertexBuffers(0, {_mesh_buffer.read_buffer()}, {0});
+		cb.bindIndexBuffer(
+		        _mesh_buffer.read_buffer(), gsl::narrow<std::uint32_t>(index_offset), vk::IndexType::eUint16);
 	}
 
 	void Gui_pass::draw_elements(int           texture_handle,
@@ -263,9 +244,11 @@ namespace mirrage::renderer {
 			_bound_texture_handle = texture_handle;
 		}
 
-		cb.setScissor(
-		        0,
-		        {vk::Rect2D{vk::Offset2D(clip_rect.x, clip_rect.y), vk::Extent2D(clip_rect.z, clip_rect.w)}});
+		cb.setScissor(0,
+		              {vk::Rect2D{vk::Offset2D(static_cast<std::int32_t>(clip_rect.x),
+		                                       static_cast<std::int32_t>(clip_rect.y)),
+		                          vk::Extent2D(static_cast<std::uint32_t>(clip_rect.z),
+		                                       static_cast<std::uint32_t>(clip_rect.w))}});
 
 		cb.drawIndexed(count, 1, offset, 0, 0);
 	}
@@ -273,17 +256,16 @@ namespace mirrage::renderer {
 	void Gui_pass::finalize_draw() { _render_pass.unsafe_end_renderpass(); }
 
 
-	auto Gui_pass_factory::create_pass(Deferred_renderer&        renderer,
-	                                   ecs::Entity_manager&      entities,
-	                                   util::maybe<Meta_system&> meta_system,
-	                                   bool&) -> std::unique_ptr<Pass>
+	auto Gui_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                   ecs::Entity_manager&,
+	                                   Engine& engine,
+	                                   bool&) -> std::unique_ptr<Render_pass>
 	{
-		return std::make_unique<Gui_pass>(renderer, entities, meta_system);
+		return std::make_unique<gui::Gui_renderer_instance<Gui_pass>>(engine.gui(), renderer, engine);
 	}
 
-	auto Gui_pass_factory::rank_device(vk::PhysicalDevice,
-	                                   util::maybe<std::uint32_t> graphics_queue,
-	                                   int                        current_score) -> int
+	auto Gui_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)
+	        -> int
 	{
 		return current_score;
 	}

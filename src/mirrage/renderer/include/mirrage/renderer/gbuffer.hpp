@@ -7,13 +7,17 @@ namespace mirrage::renderer {
 
 	struct GBuffer {
 	  public:
-		GBuffer(graphic::Device& device, std::uint32_t width, std::uint32_t height);
+		GBuffer(graphic::Device&          device,
+		        graphic::Descriptor_pool& desc_pool,
+		        std::int32_t              width,
+		        std::int32_t              height);
 
-		std::uint32_t mip_levels;
+		std::int32_t mip_levels;
 
 		vk::Format                depth_format;
-		graphic::Render_target_2D depth;      // depth-buffer
-		graphic::Render_target_2D prev_depth; // depth-buffer from previouse frame
+		graphic::Render_target_2D depth;        // depth-buffer
+		graphic::Render_target_2D prev_depth;   // depth-buffer from previouse frame
+		graphic::Render_target_2D depth_buffer; // actual depth-buffer for Z-tests
 
 		vk::Format                albedo_mat_id_format;
 		graphic::Render_target_2D albedo_mat_id; // RGB of objects + Material-ID
@@ -27,6 +31,11 @@ namespace mirrage::renderer {
 
 		util::maybe<graphic::Texture_2D&> ambient_occlusion;
 
+		vk::UniqueDescriptorSetLayout animation_data_layout;
+		vk::DescriptorSet             animation_data; //< might change each frame!
+
+		bool                          shadowmapping_enabled = false;
+		std::int32_t                  max_shadowmaps        = 1;
 		vk::UniqueDescriptorSetLayout shadowmaps_layout;
 		graphic::DescriptorSet        shadowmaps;
 

@@ -8,17 +8,26 @@
 #pragma once
 
 #include <mirrage/utils/log.hpp>
+#include <mirrage/utils/min_max.hpp>
+#include <mirrage/utils/ranges.hpp>
+#include <mirrage/utils/sorted_vector.hpp>
 #include <mirrage/utils/string_utils.hpp>
-#include <mirrage/utils/template_utils.hpp>
 
+#include <doctest.h>
+
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <new>
 #include <string>
 #include <vector>
 
 
+namespace mirrage::util::tests {
+	struct accessor;
+}
 namespace mirrage::util {
 
 	template <class POOL>
@@ -26,428 +35,363 @@ namespace mirrage::util {
 
 
 	struct pool_value_traits {
-		static constexpr bool supports_empty_values = false;
-		// static constexpr int_fast32_t max_free = 8;
-		// using Marker_type = Foo;
-		// static constexpr Marker_type free_mark = -1;
-		// static constexpr const Marker_type* marker_addr(const T* inst)
+		static constexpr int_fast32_t max_free = 0;
+
+		static constexpr bool sorted = false;
+		/// The key the elements should be sorted by
+		// static constexpr auto sort_key = T::my_key;
+		/// The position of the key in the constructor argument list
+		// static constexpr auto sort_key_constructor_idx = 42;
 	};
 
+	/// A dynamic semi-contiguous container.
+	/// The elements are stored in contiguous chunks of max. ElementsPerChunk elements.
+	/// Based on ValueTraits the container is optionally sparse and/or sorted.
+	///
+	/// The container allows clients to keep track of its element positions by providing a relocation
+	/// callback on each mutating member function with the signature:
+	///   void(IndexType old, T& value, IndexType new)
+	///
+	/// All iterators and references are invalidated on any mutation.
+	/// The behaviour is undefined if the container is sorted and the sort_key of an inserted value is modified.
 	template <class T,
 	          std::size_t ElementsPerChunk,
-	          class IndexType       = int_fast64_t,
-	          class ValueTraits     = pool_value_traits,
-	          bool use_empty_values = ValueTraits::supports_empty_values>
+	          class ValueTraits = pool_value_traits,
+	          class IndexType   = int_fast64_t>
 	class pool {
-		static_assert(alignof(T) <= alignof(std::max_align_t), "Alignment not supported");
+		using storage_t = std::aligned_storage_t<sizeof(T), alignof(T)>;
+		static_assert(
+		        std::is_nothrow_move_assignable_v<
+		                T> && std::is_nothrow_move_constructible_v<T> && std::is_nothrow_destructible_v<T>,
+		        "The type T has to be no-throw move- and destructable!");
 
 	  public:
-		static constexpr auto element_size = static_cast<IndexType>(sizeof(T));
-		static constexpr auto chunk_len    = static_cast<IndexType>(ElementsPerChunk);
-		static constexpr auto chunk_size   = chunk_len * element_size;
+		static constexpr auto element_size   = static_cast<IndexType>(sizeof(T));
+		static constexpr auto chunk_len      = static_cast<IndexType>(ElementsPerChunk);
+		static constexpr auto sorted         = ValueTraits::sorted;
+		static constexpr auto max_free_slots = ValueTraits::max_free;
 
 		using value_type = T;
-		using iterator   = pool_iterator<pool<T, ElementsPerChunk, IndexType, ValueTraits, use_empty_values>>;
+		using iterator   = pool_iterator<pool<T, ElementsPerChunk, ValueTraits, IndexType>>;
 		using index_t    = IndexType;
 
 		friend iterator;
+		friend struct ::mirrage::util::tests::accessor;
 
 
-		pool() noexcept       = default;
-		pool(pool&&) noexcept = default;
-		pool& operator=(pool&&) noexcept = default;
-		~pool()                          = default;
+		pool() noexcept           = default;
+		pool(pool&& rhs) noexcept = default;
+		~pool() { clear(); }
 
-		iterator begin() noexcept;
-		iterator end() noexcept;
+		pool& operator=(pool&& rhs) noexcept;
 
-		/**
-			 * Deletes all elements. Invalidates all iterators and references.
-			 * O(N)
-			 */
-		void clear() noexcept
-		{
-			for(auto& inst : *this) {
-				inst.~T();
-			}
+		auto begin() noexcept -> iterator;
+		auto end() noexcept -> iterator;
 
-			this->_chunks.clear();
-			this->_used_elements = 0;
-		}
-		/**
-			 * Deletes the last element. Invalidates all iterators and references to the last element.
-			 * O(1)
-			 */
-		void pop_back()
-		{
-			MIRRAGE_INVARIANT(_used_elements > 0, "pop_back on empty pool");
-#ifdef _NDEBUG
-			std::memset(get(_usedElements - 1), 0xdead, element_size);
-#endif
-			get(_used_elements - 1).~T();
-			_used_elements--;
-		}
-		/**
-			 * Deletes a specific element.
-			 * relocation = func(original:IndexType, T& value, new:IndexType)->void
-			 * Invalidates all iterators and references to the specified and the last element.
-			 * O(1)
-			 */
-		void erase(IndexType i)
-		{
-			erase(i, [](auto, auto) {});
-		}
+		/// Deletes all elements. Complexity: O(N)
+		void clear() noexcept;
+
+		/// Searches for an element based on its sort_key.
+		/// find shall only participate in overload resolution if the pool is sorted.
+		/// Complexity: O(log N)
+		template <class Key,
+		          class = std::enable_if_t<
+		                  std::is_same_v<Key, decltype(std::declval<T>().*ValueTraits::sort_key)>>>
+		auto find(const Key& key) -> util::maybe<index_t>;
+
+		/// Deletes an element based on its index.
+		/// The behaviour is undefined if i is not a valid index.
+		/// Complexity: O(1) for spare or unsorted pools and O(N) else
 		template <typename F>
-		void erase(IndexType i, F&& relocation)
-		{
-			MIRRAGE_INVARIANT(i < _used_elements, "erase is out of range: " << i << ">=" << _used_elements);
+		void erase(IndexType i, F&& relocation, bool leave_holes = true);
 
-			if(i < (_used_elements - 1)) {
-				auto& pivot = back();
-				relocation(_used_elements - 1, pivot, i);
-				get(i) = std::move(pivot);
-			}
-
-			pop_back();
-		}
-
-		/**
-			 * Frees all unused memory. May invalidate all iterators and references.
-			 * relocation = func(original:IndexType, T& value, new:IndexType)->void
-			 * O(1)
-			 */
-		void shrink_to_fit()
-		{
-			shrink_to_fit([](auto, auto) {});
-		}
+		/// Tries to compact the elements and free unused memory.
+		/// Complexity: O(N) for sparse pools and O(1) else
 		template <typename F>
-		void shrink_to_fit(F&&)
-		{
-			auto min_chunks = std::ceil(static_cast<float>(_used_elements) / chunk_len);
-			_chunks.resize(static_cast<std::size_t>(min_chunks));
-		}
+		void shrink_to_fit(F&& relocation);
 
-		/**
-			 * Creates a new instance of T inside the pool.
-			 * O(1)
-			 */
-		template <class... Args>
-		auto emplace_back(Args&&... args) -> std::tuple<T&, IndexType>
-		{
-			const auto i = _used_elements++;
+		/// Creates a new element inside the container.
+		/// Complexity: O(N) for sorted pools and O(1) else
+		template <typename F, class... Args>
+		auto emplace(F&& relocation, Args&&... args) -> std::tuple<T&, IndexType>;
 
-			auto addr = [&] {
-				auto chunk = i / chunk_len;
-
-				if(chunk < static_cast<IndexType>(_chunks.size())) {
-					return _chunks[chunk].get() + ((i % chunk_len) * element_size);
-				} else {
-					auto new_chunk = std::make_unique<unsigned char[]>(chunk_size);
-					auto addr      = new_chunk.get();
-					_chunks.push_back(std::move(new_chunk));
-					return addr;
-				}
-			}();
-
-			auto instnace = new(addr) T(std::forward<Args>(args)...);
-			return {*instnace, i};
-		}
-
+		/// Replaces the element at the given index with a new value.
+		/// The behaviour is undefined if i is not a valid index or the pool is sorted and
+		/// the new element has a different sort_key than the old.
+		/// Complexity: O(1)
 		void replace(IndexType i, T&& new_element) { get(i) = std::move(new_element); }
 
-		/**
-			 * @return The number of elements in the pool
-			 */
-		IndexType size() const noexcept { return _used_elements; }
-		bool      empty() const noexcept { return _used_elements == 0; }
 
-		/**
-			 * @return The specified element
-			 */
-		T&       get(IndexType i) { return *reinterpret_cast<T*>(get_raw(i)); }
-		const T& get(IndexType i) const { return *reinterpret_cast<const T*>(get_raw(i)); }
-
-		/**
-			 * @return The last element
-			 */
-		T&       back() { return const_cast<T&>(static_cast<const pool*>(this)->back()); }
-		const T& back() const
-		{
-			MIRRAGE_INVARIANT(_used_elements > 0, "back on empty pool");
-			auto i = _used_elements - 1;
-			return reinterpret_cast<const T&>(_chunks.back()[(i % chunk_len) * element_size]);
-		}
-
-	  protected:
-		using chunk_type = std::unique_ptr<unsigned char[]>;
-		std::vector<chunk_type> _chunks;
-		IndexType               _used_elements = 0;
-
-		// get_raw is required to avoid UB if their is no valid object at the index
-		unsigned char* get_raw(IndexType i)
-		{
-			return const_cast<unsigned char*>(static_cast<const pool*>(this)->get_raw(i));
-		}
-		const unsigned char* get_raw(IndexType i) const
-		{
-			MIRRAGE_INVARIANT(i < _used_elements,
-			                  "Pool-Index out of bounds " + to_string(i) + ">=" + to_string(_used_elements));
-
-			return _chunks[i / chunk_len].get() + (i % chunk_len) * element_size;
-		}
-
-		T* _chunk(IndexType chunk_idx) noexcept
-		{
-			if(chunk_idx * chunk_len < _used_elements)
-				return reinterpret_cast<T*>(_chunks.at(chunk_idx).get());
-			else
-				return nullptr;
-		}
-		T* _chunk_end(T* begin, IndexType chunk_idx) noexcept
-		{
-			if(chunk_idx < _used_elements / chunk_len) {
-				return begin + chunk_len;
-			} else {
-				return begin + (_used_elements % chunk_len);
-			}
-		}
-		static bool _valid(const T*) noexcept { return true; }
-	};
-
-	template <class T, std::size_t ElementsPerChunk, class IndexType, class ValueTraits>
-	class pool<T, ElementsPerChunk, IndexType, ValueTraits, true>
-	  : public pool<T, ElementsPerChunk, IndexType, ValueTraits, false> {
-
-		using base_t = pool<T, ElementsPerChunk, IndexType, ValueTraits, false>;
-
-	  public:
-		using iterator = pool_iterator<pool<T, ElementsPerChunk, IndexType, ValueTraits, true>>;
-
-		friend iterator;
-
-		iterator begin() noexcept;
-		iterator end() noexcept;
-
-		IndexType size() const noexcept { return this->_used_elements - _freelist.size(); }
+		IndexType size() const noexcept { return _used_elements - IndexType(_freelist.size()); }
 		bool      empty() const noexcept { return size() == 0; }
 
-		void clear() noexcept
-		{
-			for(auto& inst : *this) {
-				inst.~T();
-			}
-
-			this->_chunks.clear();
-			this->_used_elements = 0;
-
-			_freelist.clear();
-		}
-
-		auto erase(IndexType i)
-		{
-			erase(i, [](auto, auto) {});
-		}
-		template <typename F>
-		auto erase(IndexType i, F&&)
-		{
-			T&   instance      = this->get(i);
-			auto instance_addr = &instance;
-			MIRRAGE_INVARIANT(_valid(instance_addr), "double free");
-
-			if(i >= (this->_used_elements - 1)) {
-				this->pop_back();
-			} else {
-				instance.~T();
-				set_free(instance_addr);
-
-				_freelist.emplace_back(i);
-			}
-		}
-
-		template <class... Args>
-		auto emplace_back(Args&&... args) -> std::tuple<T&, IndexType>
-		{
-			if(!_freelist.empty()) {
-				auto i = _freelist.back();
-				_freelist.pop_back();
-
-				auto instance_addr = reinterpret_cast<T*>(this->get_raw(i));
-				MIRRAGE_INVARIANT(!_valid(instance_addr), "Freed object is not marked as free");
-				auto instance = (new(instance_addr) T(std::forward<Args>(args)...));
-				return {*instance, i};
-			}
-
-			return base_t::emplace_back(std::forward<Args>(args)...);
-		}
-
-		void shrink_to_fit()
-		{
-			shrink_to_fit([](auto, auto) {});
-		}
-		template <typename F>
-		void shrink_to_fit(F&& relocation)
-		{
-			if(_freelist.size() > ValueTraits::max_free) {
-				std::sort(_freelist.begin(), _freelist.end(), std::greater<>{});
-				for(auto i : _freelist) {
-					base_t::erase(i, relocation);
-				}
-				_freelist.clear();
-			}
-
-			base_t::shrink_to_fit(relocation);
-		}
-
+		/// Returns the element at the given index.
+		/// The behaviour is undefined if i is not a valid index.
+		T&       get(IndexType i) { return *std::launder(reinterpret_cast<T*>(_get_raw(i))); }
+		const T& get(IndexType i) const { return *std::launder(reinterpret_cast<const T*>(_get_raw(i))); }
 
 	  protected:
-		std::vector<IndexType> _freelist;
+		using chunk_type = std::unique_ptr<storage_t[]>;
+		std::vector<chunk_type>  _chunks;
+		IndexType                _used_elements = 0;
+		sorted_vector<IndexType> _freelist;
 
-		static auto& get_marker(const T* obj) noexcept { return *ValueTraits::marker_addr(obj); }
-		static void  set_free(const T* obj) noexcept
+		unsigned char* _get_raw(IndexType i)
 		{
-			const_cast<typename ValueTraits::Marker_type&>(get_marker(obj)) = ValueTraits::free_mark;
-			MIRRAGE_INVARIANT(!_valid(obj), "set_free failed");
+			return const_cast<unsigned char*>(static_cast<const pool*>(this)->_get_raw(i));
 		}
-		static bool _valid(const T* obj) noexcept
-		{
-			if(obj == nullptr)
-				return true;
+		auto _get_raw(IndexType i) const -> const unsigned char*;
 
-			return get_marker(obj) != ValueTraits::free_mark;
-		}
+		auto _chunk(IndexType chunk_idx) noexcept -> T*;
+		auto _chunk_end(T* begin, IndexType chunk_idx) noexcept -> T*;
+
+		/// Moves the range [src, src+count) to [dst, dst+count), calling on_relocate accordingly
+		/// The behaviour is undefined if any of the ranges contains an empty/invalid value!
+		/// The non-overlapping parts of the src range will be in the moved-from state afterwards.
+		template <typename F>
+		void _move_elements(index_t src, index_t dst, F&& on_relocate, index_t count = 1);
+
+		void _pop_back();
 	};
 
 
+	/// An iterator to the valid elements of a pool.
 	template <class Pool>
-	class pool_iterator : public std::iterator<std::bidirectional_iterator_tag, typename Pool::value_type> {
+	class pool_iterator {
 	  public:
-		using value_type = typename Pool::value_type;
+		using iterator_category = std::random_access_iterator_tag;
+		using value_type        = typename Pool::value_type;
+		using difference_type   = std::int_fast32_t;
+		using index_type        = typename Pool::index_t;
+		using pointer           = value_type*;
+		using reference         = value_type&;
 
-		pool_iterator(Pool& pool)
-		  : _pool(&pool)
-		  , _chunk_index(pool._chunks.size())
-		  , _element_iter(nullptr)
-		  , _element_iter_begin(nullptr)
-		  , _element_iter_end(nullptr)
+		pool_iterator();
+		pool_iterator(Pool& pool, typename Pool::index_t index);
+
+		/// The current index of the iterator as returned by std::distance(begin(pool), iter)
+		auto logical_index() const noexcept { return _logical_index; }
+
+		/// The current index of the iterator into the pool-storage, as required by pool::get(...)
+		auto physical_index() const noexcept { return _physical_index; }
+
+		value_type& operator*() noexcept { return *get(); }
+		value_type* operator->() noexcept { return get(); }
+		value_type* get() noexcept;
+
+		auto operator++() -> pool_iterator&;
+
+		auto operator++(int) -> pool_iterator;
+
+		auto operator--() -> pool_iterator&;
+
+		auto operator--(int) -> pool_iterator;
+
+		auto operator+=(difference_type n) -> pool_iterator&;
+		auto operator-=(difference_type n) -> pool_iterator&;
+
+		auto operator[](difference_type i) -> reference;
+
+
+		friend auto operator-(const pool_iterator& lhs, const pool_iterator& rhs) noexcept
 		{
+			return static_cast<difference_type>(lhs._logical_index)
+			       - static_cast<difference_type>(rhs._logical_index);
+		}
+		friend auto operator+(pool_iterator iter, difference_type offset)
+		{
+			iter += offset;
+			return iter;
+		}
+		friend auto operator+(difference_type offset, pool_iterator iter)
+		{
+			iter += offset;
+			return iter;
+		}
+		friend auto operator-(pool_iterator iter, difference_type offset)
+		{
+			iter -= offset;
+			return iter;
 		}
 
-		pool_iterator(Pool& pool, typename Pool::index_t index)
-		  : _pool(&pool)
-		  , _chunk_index(0)
-		  , _element_iter(pool._chunk(0))
-		  , _element_iter_begin(_element_iter)
-		  , _element_iter_end(pool._chunk_end(_element_iter_begin, 0))
+		friend auto operator<(const pool_iterator& lhs, const pool_iterator& rhs) noexcept
 		{
-
-			if(_element_iter) {
-				if(!Pool::_valid(_element_iter)) {
-					++*this; // jump to first valid element
-				}
-
-				// skip the first 'index' elements
-				for(auto i = static_cast<typename Pool::index_t>(0); i < index; i++) {
-					++*this;
-				}
-			}
+			return lhs._physical_index < rhs._physical_index;
 		}
-
-		value_type& operator*() noexcept
+		friend auto operator>(const pool_iterator& lhs, const pool_iterator& rhs) noexcept
 		{
-			MIRRAGE_INVARIANT(Pool::_valid(_element_iter), "access to invalid pool_iterator");
-			return *_element_iter;
+			return lhs._physical_index > rhs._physical_index;
 		}
-		value_type* operator->() noexcept
+		friend auto operator<=(const pool_iterator& lhs, const pool_iterator& rhs) noexcept
 		{
-			MIRRAGE_INVARIANT(Pool::_valid(_element_iter), "access to invalid pool_iterator");
-			return _element_iter;
+			return lhs._physical_index <= rhs._physical_index;
 		}
-
-		pool_iterator& operator++()
+		friend auto operator>=(const pool_iterator& lhs, const pool_iterator& rhs) noexcept
 		{
-			MIRRAGE_INVARIANT(_element_iter != nullptr, "iterator overflow");
-			do {
-				++_element_iter;
-				if(_element_iter == _element_iter_end) {
-					++_chunk_index;
-					_element_iter_begin = _element_iter = _pool->_chunk(_chunk_index);
-					_element_iter_end = _pool->_chunk_end(_element_iter_begin, _chunk_index);
-				}
-			} while(!Pool::_valid(_element_iter));
-
-			return *this;
+			return lhs._physical_index >= rhs._physical_index;
 		}
-
-		pool_iterator operator++(int)
+		friend auto operator==(const pool_iterator& lhs, const pool_iterator& rhs) noexcept
 		{
-			pool_iterator t = *this;
-			++*this;
-			return t;
+			return lhs._element_iter == rhs._element_iter;
 		}
-
-		pool_iterator& operator--()
+		friend auto operator!=(const pool_iterator& lhs, const pool_iterator& rhs) noexcept
 		{
-			do {
-				if(_element_iter == _element_iter_begin) {
-					MIRRAGE_INVARIANT(_chunk_index > 0, "iterator underflow");
-					--_chunk_index;
-					_element_iter_begin = _pool->_chunk(_chunk_index);
-					_element_iter_end   = _pool->_chunk_end(_element_iter_begin, _chunk_index);
-
-					if(_element_iter_end != _element_iter_begin) {
-						_element_iter = _element_iter_end - 1;
-					} else {
-						_element_iter = _element_iter_begin;
-					}
-				} else {
-					--_element_iter;
-				}
-			} while(!Pool::_valid(_element_iter));
-
-			return *this;
+			return !(lhs == rhs);
 		}
-
-		pool_iterator operator--(int)
-		{
-			pool_iterator t = *this;
-			--*this;
-			return t;
-		}
-
-
-		bool operator==(const pool_iterator& o) const { return _element_iter == o._element_iter; }
-		bool operator!=(const pool_iterator& o) const { return !(*this == o); }
 
 	  private:
-		Pool*                  _pool;
-		typename Pool::index_t _chunk_index;
-		value_type*            _element_iter;
-		value_type*            _element_iter_begin;
-		value_type*            _element_iter_end;
+		using free_iterator = typename sorted_vector<index_type>::const_iterator;
+
+		Pool*         _pool;
+		index_type    _logical_index;  ///< without empty slots
+		index_type    _physical_index; ///< including empty slots
+		index_type    _chunk_index;
+		value_type*   _element_iter;
+		value_type*   _element_iter_begin;
+		value_type*   _element_iter_end;
+		free_iterator _next_free;
 	};
 
-	template <class T, std::size_t ElementsPerChunk, class Index_type, class ValueTraits, bool use_empty_values>
-	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, use_empty_values>::begin() noexcept -> iterator
-	{
-		return iterator{*this, 0};
-	}
 
-	template <class T, std::size_t ElementsPerChunk, class Index_type, class ValueTraits, bool use_empty_values>
-	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, use_empty_values>::end() noexcept -> iterator
-	{
-		return iterator{*this};
-	}
-
-
-	template <class T, std::size_t ElementsPerChunk, class Index_type, class ValueTraits>
-	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, true>::begin() noexcept -> iterator
-	{
-		return iterator{*this, 0};
-	}
-
-	template <class T, std::size_t ElementsPerChunk, class Index_type, class ValueTraits>
-	auto pool<T, ElementsPerChunk, Index_type, ValueTraits, true>::end() noexcept -> iterator
-	{
-		return iterator{*this};
-	}
 } // namespace mirrage::util
+
+#define MIRRAGE_UTIL_POOL_INCLUDED
+#include "pool.hxx"
+
+
+namespace mirrage::util::tests {
+	struct accessor {
+		std::size_t chunk_count;
+
+		template <class Pool>
+		accessor(Pool& p) : chunk_count(p._chunks.size())
+		{
+		}
+	};
+
+	struct T {
+		int           id;
+		long long int f = 42;
+
+		T() = default;
+		T(int id, long long int f) : id(id), f(f) {}
+	};
+
+	struct pool_value_traits {
+		static constexpr int_fast32_t max_free = 8;
+
+		static constexpr bool sorted                   = true;
+		static constexpr auto sort_key                 = &T::id;
+		static constexpr auto sort_key_constructor_idx = 0;
+	};
+
+	TEST_CASE("[Mirrage Utils] Testing pool container")
+	{
+		using pool_t = pool<T, 16, pool_value_traits>;
+
+		auto p = pool_t();
+
+		CHECK_EQ(p.begin(), p.end());
+
+		// insertion
+		{
+			auto idx1 = p.emplace([](auto...) {}, 2, 2);
+			CHECK_EQ(std::get<1>(idx1), 0);
+
+			auto iter = p.begin();
+			CHECK_NE(iter, p.end());
+			CHECK_EQ(iter->id, 2);
+			iter++;
+			CHECK_EQ(iter, p.end());
+
+			auto idx2 = p.emplace([](auto...) {}, 1, 1);
+			CHECK_EQ(std::get<1>(idx2), 0);
+
+			auto idx3 = p.emplace([](auto...) {}, 3, 3);
+			CHECK_EQ(std::get<1>(idx3), 2);
+		}
+
+		// iteration
+		{
+			auto iter = p.begin();
+			CHECK_NE(iter, p.end());
+			CHECK_EQ((iter->id), 1);
+			iter++;
+
+			CHECK_EQ(iter->id, 2);
+			iter++;
+
+			CHECK_EQ(iter->id, 3);
+			iter++;
+
+			CHECK_EQ(iter, p.end());
+
+			CHECK_EQ(p.size(), 3);
+			CHECK(!p.empty());
+		}
+
+		// removal
+		{
+			p.erase(0, [](auto...) {});
+			CHECK_EQ(p.size(), 2);
+			CHECK(!p.empty());
+
+			auto iter = p.begin();
+			CHECK_EQ(iter->id, 2);
+			iter++;
+
+			CHECK_EQ(iter->id, 3);
+			iter++;
+
+			CHECK_EQ(iter, p.end());
+
+
+			p.erase(1, [](auto...) {});
+			CHECK_EQ(p.size(), 1);
+			CHECK(!p.empty());
+			p.erase(2, [](auto...) {});
+			CHECK_EQ(p.size(), 0);
+			CHECK(p.empty());
+		}
+
+		// shrinking
+		{
+			p.clear();
+
+			auto mapping   = std::array<int, 30001>();
+			auto relocator = [&](auto from, auto& v, auto to) {
+				CHECK_EQ(mapping[std::size_t(v.id)], from);
+				mapping[std::size_t(v.id)] = int(to);
+				CHECK_EQ(v.id, p.get(to).id);
+			};
+
+			for(auto i : util::range(1, 1024)) {
+				auto r = p.emplace(relocator, i, i);
+
+				mapping[std::size_t(i)] = int(std::get<1>(r));
+			}
+
+			CHECK_EQ(accessor{p}.chunk_count, 1024 / 16);
+
+			p.erase(mapping[654], relocator);
+			p.erase(mapping[3], relocator);
+			p.erase(mapping[900], relocator);
+			p.erase(mapping[432], relocator);
+
+			p.emplace(relocator, 2000, 2000);
+			p.emplace(relocator, 3, 3);
+
+			p.shrink_to_fit(relocator);
+
+			p.emplace(relocator, 3000, 3000);
+
+			auto sum = static_cast<long long int>(0);
+			for(auto& i : p) {
+				sum += i.f;
+			}
+
+			CHECK_EQ(sum, 527814);
+			CHECK(std::is_sorted(p.begin(), p.end(), [](auto& lhs, auto& rhs) { return lhs.id < rhs.id; }));
+		}
+	}
+} // namespace mirrage::util::tests

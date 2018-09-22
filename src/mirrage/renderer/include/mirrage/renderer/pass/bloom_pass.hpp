@@ -7,19 +7,13 @@
 
 namespace mirrage::renderer {
 
-	class Bloom_pass : public Pass {
+	class Bloom_pass : public Render_pass {
 	  public:
-		Bloom_pass(Deferred_renderer&,
-		           ecs::Entity_manager&,
-		           util::maybe<Meta_system&>,
-		           graphic::Render_target_2D& src);
+		Bloom_pass(Deferred_renderer&, graphic::Render_target_2D& src);
 
 
 		void update(util::Time dt) override;
-		void draw(vk::CommandBuffer&,
-		          Command_buffer_source&,
-		          vk::DescriptorSet global_uniform_set,
-		          std::size_t       swapchain_image) override;
+		void draw(Frame_data&) override;
 
 		auto name() const noexcept -> const char* override { return "Bloom"; }
 
@@ -50,12 +44,10 @@ namespace mirrage::renderer {
 		std::vector<graphic::DescriptorSet> _blur_descriptor_set_vertical_final;
 	};
 
-	class Bloom_pass_factory : public Pass_factory {
+	class Bloom_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&,
-		                 ecs::Entity_manager&,
-		                 util::maybe<Meta_system&>,
-		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
+		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool& write_first_pp_buffer)
+		        -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
 		        -> int override;

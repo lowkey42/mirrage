@@ -14,13 +14,13 @@ namespace mirrage::graphic {
 	  : _buffer(device.transfer().upload_buffer(
 	            vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer,
 	            owner_qfamily,
-	            vertex_count + index_count,
+	            gsl::narrow<std::int32_t>(vertex_count + index_count),
 	            [&](char* dest) {
 		            write_vertices(dest);
 		            write_indices(dest + vertex_count);
 	            }))
 	  , _index_offset(vertex_count)
-	  , _indices(index_count / sizeof(std::uint32_t))
+	  , _indices(std::uint32_t(index_count / sizeof(std::uint32_t)))
 	{
 	}
 

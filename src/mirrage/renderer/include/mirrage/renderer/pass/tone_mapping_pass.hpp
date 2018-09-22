@@ -7,20 +7,15 @@
 
 namespace mirrage::renderer {
 
-	class Tone_mapping_pass : public Pass {
+	class Tone_mapping_pass : public Render_pass {
 	  public:
 		Tone_mapping_pass(Deferred_renderer&,
-		                  ecs::Entity_manager&,
-		                  util::maybe<Meta_system&>,
 		                  graphic::Render_target_2D& src,
 		                  graphic::Render_target_2D& target);
 
 
 		void update(util::Time dt) override;
-		void draw(vk::CommandBuffer&,
-		          Command_buffer_source&,
-		          vk::DescriptorSet global_uniform_set,
-		          std::size_t       swapchain_image) override;
+		void draw(Frame_data&) override;
 
 		auto last_histogram() const noexcept -> auto& { return _last_result_data; }
 		auto max_histogram_size() const noexcept { return _last_max_histogram_size; }
@@ -37,7 +32,7 @@ namespace mirrage::renderer {
 		int                                 _ready_result = -1;
 		int                                 _next_result  = 0;
 		std::vector<float>                  _last_result_data;
-		std::uint32_t                       _last_max_histogram_size = 0;
+		int                                 _last_max_histogram_size = 0;
 
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;
@@ -59,25 +54,22 @@ namespace mirrage::renderer {
 		graphic::Render_pass   _apply_renderpass;
 		graphic::DescriptorSet _apply_desc_set;
 
-		void _clear_result_buffer(vk::CommandBuffer&);
-		auto _generate_foveal_image(vk::CommandBuffer&) -> std::uint32_t;
-		void _dispatch_build_histogram(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
-		void _dispatch_adjust_histogram(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
-		void _apply_tone_ampping(vk::DescriptorSet, vk::CommandBuffer&, std::uint32_t mip_level);
+		void _clear_result_buffer(vk::CommandBuffer);
+		auto _generate_foveal_image(vk::CommandBuffer) -> int;
+		void _dispatch_build_histogram(vk::DescriptorSet, vk::CommandBuffer, int mip_level);
+		void _dispatch_adjust_histogram(vk::DescriptorSet, vk::CommandBuffer, int mip_level);
+		void _apply_tone_ampping(vk::DescriptorSet, vk::CommandBuffer, int mip_level);
 	};
 
-	class Tone_mapping_pass_factory : public Pass_factory {
+	class Tone_mapping_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&,
-		                 ecs::Entity_manager&,
-		                 util::maybe<Meta_system&>,
-		                 bool& write_first_pp_buffer) -> std::unique_ptr<Pass> override;
+		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		        -> std::unique_ptr<Render_pass> override;
 
-		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
-		        -> int override;
+		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;
 
 		void configure_device(vk::PhysicalDevice,
-		                      util::maybe<std::uint32_t> graphics_queue,
+		                      util::maybe<std::uint32_t>,
 		                      graphic::Device_create_info&) override;
 	};
 } // namespace mirrage::renderer

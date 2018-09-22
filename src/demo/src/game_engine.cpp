@@ -1,9 +1,12 @@
 #include "game_engine.hpp"
 
 #include <mirrage/renderer/deferred_renderer.hpp>
+#include <mirrage/renderer/pass/animation_pass.hpp>
 #include <mirrage/renderer/pass/blit_pass.hpp>
 #include <mirrage/renderer/pass/bloom_pass.hpp>
+#include <mirrage/renderer/pass/debug_draw_pass.hpp>
 #include <mirrage/renderer/pass/deferred_pass.hpp>
+#include <mirrage/renderer/pass/frustum_culling_pass.hpp>
 #include <mirrage/renderer/pass/gen_mipmap_pass.hpp>
 #include <mirrage/renderer/pass/gi_pass.hpp>
 #include <mirrage/renderer/pass/gui_pass.hpp>
@@ -25,10 +28,11 @@ namespace mirrage {
 	                         char**             env)
 	  : Engine(org, title, version_major, version_minor, debug, false, argc, argv, env)
 	  , _renderer_factory(std::make_unique<renderer::Deferred_renderer_factory>(
-	            graphics_context(),
+	            *this,
 	            window(),
-	            assets(),
-	            util::make_vector(renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
+	            util::make_vector(renderer::make_pass_factory<renderer::Frustum_culling_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Animation_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Deferred_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Gen_mipmap_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Ssao_pass_factory>(),
@@ -36,6 +40,7 @@ namespace mirrage {
 	                              renderer::make_pass_factory<renderer::Taa_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Bloom_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Tone_mapping_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Debug_draw_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Blit_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Gui_pass_factory>())))
 	{

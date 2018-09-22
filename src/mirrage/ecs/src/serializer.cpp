@@ -24,22 +24,22 @@ namespace mirrage::ecs {
 
 		class Blueprint {
 		  public:
-			Blueprint(std::string id, std::string content, asset::Asset_manager* asset_mgr);
+			Blueprint(std::string id, std::string content, asset::Asset_manager*);
 			Blueprint(Blueprint&&) noexcept;
 			Blueprint(const Blueprint&) = delete;
 			~Blueprint() noexcept;
 			Blueprint& operator=(Blueprint&&) noexcept;
 
-			void detach(Entity_handle target) const;
+			void detach(Entity_facet target) const;
 			void on_reload();
 
-			mutable std::vector<Entity_handle> users;
-			mutable std::vector<Blueprint*>    children;
-			std::string                        id;
-			std::string                        content;
-			asset::Ptr<Blueprint>              parent;
-			asset::Asset_manager*              asset_mgr;
-			mutable Entity_manager*            entity_manager = nullptr;
+			mutable std::vector<Entity_facet> users;
+			mutable std::vector<Blueprint*>   children;
+			std::string                       id;
+			std::string                       content;
+			asset::Ptr<Blueprint>             parent;
+			asset::Asset_manager*             asset_mgr;
+			mutable Entity_manager*           entity_manager = nullptr;
 		};
 
 
@@ -110,13 +110,12 @@ namespace mirrage::ecs {
 			}
 
 			for(auto&& u : users) {
-				auto entity = entity_manager->get(u);
-				MIRRAGE_INVARIANT(entity.is_some(), "dead entity in blueprint.users");
-				apply(*this, entity.get_or_throw());
+				MIRRAGE_INVARIANT(u.valid(), "dead entity in blueprint.users");
+				apply(*this, u);
 			}
 		}
 
-		void Blueprint::detach(Entity_handle target) const { util::erase_fast(users, target); }
+		void Blueprint::detach(Entity_facet target) const { util::erase_fast(users, target); }
 	} // namespace
 } // namespace mirrage::ecs
 
@@ -143,10 +142,10 @@ namespace mirrage::ecs {
 			friend void save_component(ecs::Serializer& state, const Blueprint_component&);
 
 			Blueprint_component() = default;
-			Blueprint_component(ecs::Entity_manager&  manager,
-			                    ecs::Entity_handle    owner,
+			Blueprint_component(ecs::Entity_handle    owner,
+			                    ecs::Entity_manager&  manager,
 			                    asset::Ptr<Blueprint> blueprint = {}) noexcept
-			  : Component(manager, owner), blueprint(std::move(blueprint))
+			  : Component(owner, manager), _manager(&manager), blueprint(std::move(blueprint))
 			{
 			}
 			Blueprint_component(Blueprint_component&&) noexcept = default;
@@ -154,7 +153,7 @@ namespace mirrage::ecs {
 			~Blueprint_component()
 			{
 				if(blueprint) {
-					blueprint->detach(owner_handle());
+					blueprint->detach(owner(*_manager));
 					blueprint.reset();
 				}
 			}
@@ -162,13 +161,16 @@ namespace mirrage::ecs {
 			void set(asset::Ptr<Blueprint> blueprint)
 			{
 				if(this->blueprint) {
-					this->blueprint->detach(owner_handle());
+					this->blueprint->detach(owner(*_manager));
 				}
 
 				this->blueprint = std::move(blueprint);
 			}
 
+			auto& manager() { return *_manager; }
+
 		  private:
+			ecs::Entity_manager*  _manager;
 			asset::Ptr<Blueprint> blueprint;
 		};
 
@@ -180,9 +182,11 @@ namespace mirrage::ecs {
 			auto blueprint = state.assets.load<Blueprint>(
 			        AID{"blueprint"_strid, blueprintName}); // TODO: could/should be async
 			comp.set(blueprint);
-			blueprint->users.push_back(comp.owner_handle());
+
+			auto owner = comp.owner(comp.manager());
+			blueprint->users.push_back(owner);
 			blueprint->entity_manager = &comp.manager();
-			apply(*blueprint, comp.owner());
+			apply(*blueprint, owner);
 		}
 
 		void save_component(ecs::Serializer& state, const Blueprint_component& comp)
@@ -251,7 +255,7 @@ namespace mirrage::ecs {
 		else
 			e.get<Blueprint_component>().get_or_throw().set(b);
 
-		b->users.push_back(e.handle());
+		b->users.push_back(e);
 
 		apply(*b, e);
 	}

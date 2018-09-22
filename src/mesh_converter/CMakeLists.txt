@@ -4,18 +4,22 @@ project(mirrage_mesh_converter LANGUAGES CXX)
 
 
 add_executable(mesh_converter
-	main.cpp
-	model_parser.hpp
-	model_parser.cpp
-	material_parser.hpp
-	material_parser.cpp
-	filesystem.hpp
+	animation_parser.cpp
+	animation_parser.hpp
+	common.hpp
 	filesystem.cpp
+	filesystem.hpp
+	main.cpp
+	material_parser.cpp
+	material_parser.hpp
+	model_parser.cpp
+	model_parser.hpp
+	skeleton_parser.cpp
+	skeleton_parser.hpp
+	${BACKWARD_ENABLE}
 )
 
-set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
-target_compile_options(mesh_converter PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
-
+add_backward(mesh_converter)
 
 target_link_libraries(mesh_converter
 	PRIVATE
@@ -25,5 +29,6 @@ target_link_libraries(mesh_converter
 		assimp
 		sf2
 		stb_image
+		doctest
 )
 

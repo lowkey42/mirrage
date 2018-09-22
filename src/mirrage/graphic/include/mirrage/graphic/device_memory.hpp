@@ -81,8 +81,8 @@ namespace mirrage::graphic {
 		                        bool               dedicated_alloc_supported);
 		~Device_memory_allocator();
 
-		auto alloc(std::size_t     size,
-		           std::size_t     alignment,
+		auto alloc(std::uint32_t   size,
+		           std::uint32_t   alignment,
 		           std::uint32_t   type_mask,
 		           bool            host_visible,
 		           Memory_lifetime lifetime = Memory_lifetime::normal) -> util::maybe<Device_memory>;
@@ -113,11 +113,13 @@ namespace mirrage::graphic {
 		auto alloc_dedicated(vk::Buffer, vk::Image, bool host_visible) -> util::maybe<Device_memory>;
 	};
 
-	template <class T>
+	template <class UniqueHandleType>
 	class Memory_backed {
 	  public:
+		using T = std::remove_reference_t<decltype(std::declval<UniqueHandleType>().get())>;
+
 		Memory_backed() = default;
-		Memory_backed(vk::UniqueHandle<T>&& instance, Device_memory&& memory)
+		Memory_backed(UniqueHandleType&& instance, Device_memory&& memory)
 		  : _instance(std::move(instance)), _memory(std::move(memory))
 		{
 		}
@@ -128,10 +130,10 @@ namespace mirrage::graphic {
 		auto memory() -> auto& { return _memory; }
 
 	  private:
-		vk::UniqueHandle<T> _instance;
-		Device_memory       _memory;
+		UniqueHandleType _instance;
+		Device_memory    _memory;
 	};
 
-	using Backed_buffer = Memory_backed<vk::Buffer>;
-	using Backed_image  = Memory_backed<vk::Image>;
+	using Backed_buffer = Memory_backed<vk::UniqueBuffer>;
+	using Backed_image  = Memory_backed<vk::UniqueImage>;
 } // namespace mirrage::graphic

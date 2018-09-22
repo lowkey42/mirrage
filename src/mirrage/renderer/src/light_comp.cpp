@@ -20,7 +20,8 @@ namespace mirrage::renderer {
 		                   sf2::vmember("temperature", temperature),
 		                   sf2::vmember("shadow_size", comp._shadow_size),
 		                   sf2::vmember("near_plane", comp._shadow_near_plane),
-		                   sf2::vmember("far_plane", comp._shadow_far_plane));
+		                   sf2::vmember("far_plane", comp._shadow_far_plane),
+		                   sf2::vmember("update_frequency", comp._shadow_update_frequency));
 
 		comp._source_radius = src_radius * 1_m;
 		if(temperature >= 0.f) {
@@ -35,18 +36,17 @@ namespace mirrage::renderer {
 		                    sf2::vmember("color", comp._color),
 		                    sf2::vmember("shadow_size", comp._shadow_size),
 		                    sf2::vmember("near_plane", comp._shadow_near_plane),
-		                    sf2::vmember("far_plane", comp._shadow_far_plane));
+		                    sf2::vmember("far_plane", comp._shadow_far_plane),
+		                    sf2::vmember("update_frequency", comp._shadow_update_frequency));
 	}
 
 	void Directional_light_comp::temperature(float kelvin) { _color = temperature_to_color(kelvin); }
 
-	auto Directional_light_comp::calc_shadowmap_view_proj() const -> glm::mat4
+	auto Directional_light_comp::calc_shadowmap_view_proj(ecs::components::Transform_comp& transform) const
+	        -> glm::mat4
 	{
-		auto& transform = owner().get<ecs::components::Transform_comp>().get_or_throw(
-		        "Required Transform_comp missing");
-
-		auto inv_view = glm::toMat4(transform.orientation());
-		inv_view[3]   = glm::vec4(transform.position(), 1.f);
+		auto inv_view = glm::toMat4(transform.orientation);
+		inv_view[3]   = glm::vec4(transform.position, 1.f);
 		return glm::ortho(-_shadow_size,
 		                  _shadow_size,
 		                  -_shadow_size,
@@ -54,6 +54,39 @@ namespace mirrage::renderer {
 		                  _shadow_near_plane,
 		                  _shadow_far_plane)
 		       * glm::inverse(inv_view);
+	}
+
+	void Point_light_comp::temperature(float kelvin) { _color = temperature_to_color(kelvin); }
+
+	float Point_light_comp::calc_radius() const
+	{
+		constexpr auto cutoff = 0.01f;
+
+		auto r = _source_radius.value() * std::sqrt(_intensity / 10000.f / cutoff);
+		return util::min(20.f, r * 1.3f); // factor to compensate for coarse light volumn
+	}
+
+	void load_component(ecs::Deserializer& state, Point_light_comp& comp)
+	{
+		auto src_radius  = comp._source_radius / 1_m;
+		auto temperature = -1.f;
+
+		state.read_virtual(sf2::vmember("source_radius", src_radius),
+		                   sf2::vmember("intensity", comp._intensity),
+		                   sf2::vmember("color", comp._color),
+		                   sf2::vmember("temperature", temperature));
+
+		comp._source_radius = src_radius * 1_m;
+		if(temperature >= 0.f) {
+			comp.temperature(temperature);
+		}
+	}
+
+	void save_component(ecs::Serializer& state, const Point_light_comp& comp)
+	{
+		state.write_virtual(sf2::vmember("source_radius", comp._source_radius / 1_m),
+		                    sf2::vmember("intensity", comp._intensity),
+		                    sf2::vmember("color", comp._color));
 	}
 
 	auto temperature_to_color(float kelvin) -> util::Rgb

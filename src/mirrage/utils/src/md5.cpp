@@ -33,6 +33,8 @@ documentation and/or software.
 /* interface header */
 #include <mirrage/utils/md5.hpp>
 
+#include <gsl/gsl>
+
 /* system implementation headers */
 #include <cstdio>
 
@@ -153,7 +155,7 @@ namespace mirrage::util {
 	MD5::MD5(const std::string& text)
 	{
 		init();
-		update(text.c_str(), text.length());
+		update(text.c_str(), gsl::narrow<size_type>(text.length()));
 		finalize();
 	}
 
@@ -190,10 +192,10 @@ namespace mirrage::util {
 	void MD5::encode(uint1 output[], const uint4 input[], size_type len)
 	{
 		for(size_type i = 0, j = 0; j < len; i++, j += 4) {
-			output[j]     = input[i] & 0xff;
-			output[j + 1] = (input[i] >> 8) & 0xff;
-			output[j + 2] = (input[i] >> 16) & 0xff;
-			output[j + 3] = (input[i] >> 24) & 0xff;
+			output[j]     = static_cast<uint1>(input[i] & 0xff);
+			output[j + 1] = static_cast<uint1>((input[i] >> 8) & 0xff);
+			output[j + 2] = static_cast<uint1>((input[i] >> 16) & 0xff);
+			output[j + 3] = static_cast<uint1>((input[i] >> 24) & 0xff);
 		}
 	}
 
