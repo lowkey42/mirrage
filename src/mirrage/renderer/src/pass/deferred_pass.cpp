@@ -14,7 +14,6 @@ namespace mirrage::renderer {
 		                       graphic::Render_target_2D& color_target,
 		                       graphic::Render_target_2D& color_target_diff,
 		                       graphic::Render_target_2D& depth_buffer,
-		                       vk::Format                 depth_buffer_format,
 		                       Deferred_geometry_subpass& gpass,
 		                       Deferred_lighting_subpass& lpass,
 		                       graphic::Framebuffer&      out_framebuffer)
@@ -24,10 +23,10 @@ namespace mirrage::renderer {
 
 			auto depth = builder.add_attachment(
 			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
-			                                  depth_buffer_format,
+			                                  renderer.device().get_depth_format(),
 			                                  vk::SampleCountFlagBits::e1,
 			                                  vk::AttachmentLoadOp::eClear,
-			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
 			                                  vk::AttachmentLoadOp::eDontCare,
 			                                  vk::AttachmentStoreOp::eDontCare,
 			                                  vk::ImageLayout::eUndefined,
@@ -201,7 +200,6 @@ namespace mirrage::renderer {
 	                                   color_target,
 	                                   color_target_diff,
 	                                   renderer.gbuffer().depth_buffer,
-	                                   renderer.device().get_depth_format(),
 	                                   _gpass,
 	                                   _lpass,
 	                                   _gbuffer_framebuffer))

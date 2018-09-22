@@ -76,8 +76,6 @@ namespace mirrage::graphic {
 			switch(layout) {
 				case vk::ImageLayout::eUndefined: return vk::AccessFlags{};
 
-				case vk::ImageLayout::eGeneral: return ~vk::AccessFlags{};
-
 				case vk::ImageLayout::ePreinitialized: return vk::AccessFlagBits::eHostWrite;
 
 				case vk::ImageLayout::eColorAttachmentOptimal:
@@ -100,8 +98,9 @@ namespace mirrage::graphic {
 
 				case vk::ImageLayout::eSharedPresentKHR:
 				case vk::ImageLayout::ePresentSrcKHR: return vk::AccessFlagBits::eColorAttachmentWrite;
+
+				default: return ~vk::AccessFlags{};
 			}
-			MIRRAGE_FAIL("Unreachable");
 		}
 	} // namespace
 

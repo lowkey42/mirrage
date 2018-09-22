@@ -28,7 +28,7 @@ namespace mirrage::renderer {
 			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
 			auto depth = builder.add_attachment(
 			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
-			                                  renderer.gbuffer().depth_format,
+			                                  renderer.device().get_depth_format(),
 			                                  vk::SampleCountFlagBits::e1,
 			                                  vk::AttachmentLoadOp::eLoad,
 			                                  vk::AttachmentStoreOp::eStore,
