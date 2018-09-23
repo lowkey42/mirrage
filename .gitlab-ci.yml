@@ -43,7 +43,7 @@ build_clang:
       - build/bin
     expire_in: 1 week
 
-build_scanbuild:
+.build_scanbuild:
   stage: build
   script: 
     - export CC=clang
