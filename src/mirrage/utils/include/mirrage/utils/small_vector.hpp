@@ -100,6 +100,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdlib>
+#include <cstdio>
 #include <cstring>
 #include <initializer_list>
 #include <iterator>

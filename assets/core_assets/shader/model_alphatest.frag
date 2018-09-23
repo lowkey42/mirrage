@@ -13,6 +13,8 @@ layout(location = 2) in vec2 tex_coords;
 layout(location = 0) out vec4 depth_out;
 layout(location = 1) out vec4 albedo_mat_id_out;
 layout(location = 2) out vec4 mat_data_out;
+layout(location = 3) out vec4 color_out;
+layout(location = 4) out vec4 color_diffuse_out;
 
 layout(set=1, binding = 0) uniform sampler2D albedo_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
@@ -47,6 +49,7 @@ void main() {
 	depth_out         = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
 	albedo_mat_id_out = vec4(albedo.rgb, 0.0);
 	mat_data_out      = vec4(encode_normal(normal), roughness, metallic);
+	color_diffuse_out = color_out = vec4(0,0,0,1);
 }
 
 vec3 decode_tangent_normal(vec2 tn) {

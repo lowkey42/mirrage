@@ -177,7 +177,7 @@ namespace mirrage::renderer {
 
 		for(auto& geo : frame.geometry_queue) {
 			if(!geo.model->rigged())
-				break;
+				continue;
 
 			auto offset = gsl::narrow<std::uint32_t>(required_size);
 

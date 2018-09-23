@@ -65,7 +65,7 @@ namespace mirrage::util {
 			return arr;
 		}
 
-		constexpr auto pow_38_table = gen_pow_38_table<str_id_max_length>();
+		constexpr auto pow_38_table = gen_pow_38_table<str_id_max_length + 1>();
 
 	} // namespace detail
 

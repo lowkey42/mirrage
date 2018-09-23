@@ -196,7 +196,7 @@ namespace mirrage::renderer {
 		if(!_renderer.settings().bloom)
 			return;
 
-		auto blur_mip_levels = 3;
+		auto blur_mip_levels = 2;
 		auto start_mip_level = std::min(3, _src.mip_levels() - blur_mip_levels);
 
 

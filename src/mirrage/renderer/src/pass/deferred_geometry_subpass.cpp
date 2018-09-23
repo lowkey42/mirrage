@@ -34,21 +34,15 @@ namespace mirrage::renderer {
 	{
 		pass.stage("default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, vk::ColorComponentFlags{})
-		        .color_mask(4, vk::ColorComponentFlags{});
+		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("emissive"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, graphic::all_color_components)
-		        .color_mask(4, graphic::all_color_components);
+		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("alphatest"_strid)
 		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, vk::ColorComponentFlags{})
-		        .color_mask(4, vk::ColorComponentFlags{});
+		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 	}
 
 	void Deferred_geometry_subpass::configure_animation_pipeline(Deferred_renderer&             renderer,
@@ -74,48 +68,30 @@ namespace mirrage::renderer {
 	void Deferred_geometry_subpass::configure_animation_subpass(Deferred_renderer&        renderer,
 	                                                            graphic::Subpass_builder& pass)
 	{
-		// TODO: technically UB if !independentBlend, because the shaders never write the attachments
-		//         but seems to work fine on GTX 1060 and would only affect Intel<=Ivy Bridge and Android
-		auto gpu_features = renderer.device().physical_device().getFeatures();
-		auto ignore_mask =
-		        gpu_features.independentBlend ? vk::ColorComponentFlags{} : graphic::all_color_components;
-
 		pass.stage("default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, ignore_mask)
-		        .color_mask(4, ignore_mask);
+		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("emissive"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, graphic::all_color_components)
-		        .color_mask(4, graphic::all_color_components);
+		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("alphatest"_strid)
 		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, ignore_mask)
-		        .color_mask(4, ignore_mask);
+		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
 
 
 		pass.stage("dq_default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, ignore_mask)
-		        .color_mask(4, ignore_mask);
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("dq_emissive"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, graphic::all_color_components)
-		        .color_mask(4, graphic::all_color_components);
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("dq_alphatest"_strid)
 		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex)
-		        .color_mask(3, ignore_mask)
-		        .color_mask(4, ignore_mask);
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
 	}
 
 	void Deferred_geometry_subpass::update(util::Time) {}
@@ -192,6 +168,9 @@ namespace mirrage::renderer {
 		last_model        = static_cast<const Model*>(nullptr);
 
 		for(auto& geo : _rigged_geometry_range) {
+			if(geo.animation_uniform_offset.is_nothing())
+				continue;
+
 			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
 			prepare_draw(geo);
 

@@ -178,10 +178,10 @@ namespace mirrage::renderer {
 			auto attachments = std::array<Framebuffer_attachment_desc, 6>{
 			        {{depth_buffer.view(0), 1.f},
 			         {gbuffer.depth.view(0), util::Rgba(1.f)},
-			         {gbuffer.albedo_mat_id.view(0), sky_color},
+			         {gbuffer.albedo_mat_id.view(0), util::Rgba{0, 0, 0, 0}},
 			         {gbuffer.mat_data.view(0), util::Rgba{0, 0, 1, 0}},
-			         {color_target.view(0), util::Rgba{0, 0, 0, 0}},
-			         {color_target_diff.view(0), util::Rgba{0, 0, 0, 0}}}};
+			         {color_target.view(0), sky_color},
+			         {color_target_diff.view(0), sky_color}}};
 			out_framebuffer =
 			        builder.build_framebuffer(attachments, color_target.width(), color_target.height());
 
@@ -273,7 +273,5 @@ namespace mirrage::renderer {
 	                                             util::maybe<std::uint32_t>,
 	                                             graphic::Device_create_info& ci)
 	{
-		// enable independent blend if available for faster geometry pass
-		ci.features.setIndependentBlend(pd.getFeatures().independentBlend);
 	}
 } // namespace mirrage::renderer

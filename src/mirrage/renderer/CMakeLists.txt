@@ -43,6 +43,11 @@ add_library(mirrage::renderer ALIAS mirrage_renderer)
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_renderer PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 
+option(MIRRAGE_COMPILE_SHADERS "Compile demo shaders" OFF)
+if(MIRRAGE_COMPILE_SHADERS)
+	include(shaders.cmake)
+	add_dependencies(mirrage_renderer demo_shaders)
+endif()
 
 target_include_directories(mirrage_renderer PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

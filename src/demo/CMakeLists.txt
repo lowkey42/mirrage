@@ -30,15 +30,9 @@ target_link_libraries(demo
 		doctest
 )
 
-option(MIRRAGE_COMPILE_SHADERS "Compile demo shaders" OFF)
-if(MIRRAGE_COMPILE_SHADERS)
-	include(shaders.cmake)
-	add_dependencies(demo demo_shaders)
-endif()
-
 option(MIRRAGE_EXPORT_EXECUTABLE "Export executable" OFF)
 if(MIRRAGE_EXPORT_EXECUTABLE)
-	install(DIRECTORY ${ROOT_DIR}/assets/ DESTINATION bin)
+	install(DIRECTORY ${MIRRAGE_ROOT_DIR}/assets/ DESTINATION bin)
 	install(TARGETS demo RUNTIME DESTINATION bin)
 endif()
 

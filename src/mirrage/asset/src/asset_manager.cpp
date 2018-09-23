@@ -138,10 +138,19 @@ namespace {
 
 	void init_physicsfs(const std::string& exe_name)
 	{
-		if(!PHYSFS_isInit() && !PHYSFS_init(exe_name.empty() ? nullptr : exe_name.c_str())) {
+		if(PHYSFS_isInit())
+			return;
+
+		if(!PHYSFS_init(exe_name.empty() ? nullptr : exe_name.c_str())) {
 			throw std::system_error(static_cast<mirrage::asset::Asset_error>(PHYSFS_getLastErrorCode()),
 			                        "Unable to initalize PhysicsFS.");
 		}
+
+		if(!PHYSFS_mount(PHYSFS_getBaseDir(), nullptr, 1)
+		   || !PHYSFS_mount(append_file(PHYSFS_getBaseDir(), "..").c_str(), nullptr, 1)
+		   || !PHYSFS_mount(mirrage::asset::pwd().c_str(), nullptr, 1))
+			throw std::system_error(static_cast<mirrage::asset::Asset_error>(PHYSFS_getLastErrorCode()),
+			                        "Unable to setup default search path.");
 	}
 
 	constexpr auto default_source = {std::make_tuple("assets", false), std::make_tuple("assets.zip", true)};
@@ -170,7 +179,7 @@ namespace mirrage::asset {
 		init_physicsfs(exe_name);
 
 		if(exists_dir("write_dir")) {
-			return "write_dir";
+			return std::string(PHYSFS_getRealDir("write_dir")) + "/write_dir";
 		}
 
 		return PHYSFS_getPrefDir(org_name.c_str(), app_name.c_str());
@@ -184,15 +193,7 @@ namespace mirrage::asset {
 		init_physicsfs(exe_name);
 
 		auto write_dir = ::mirrage::asset::write_dir(exe_name, org_name, app_name);
-
-		if(!PHYSFS_mount(PHYSFS_getBaseDir(), nullptr, 1)
-		   || !PHYSFS_mount(append_file(PHYSFS_getBaseDir(), "..").c_str(), nullptr, 1)
-		   || !PHYSFS_mount(pwd().c_str(), nullptr, 1))
-			throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
-			                        "Unable to setup default search path.");
-
 		create_dir(write_dir);
-
 		LOG(plog::debug) << "Write dir: " << write_dir;
 
 		if(!PHYSFS_mount(write_dir.c_str(), nullptr, 0))
@@ -205,6 +206,7 @@ namespace mirrage::asset {
 
 
 		auto add_source = [](const char* path) {
+			LOG(plog::info) << "Added FS directory: " << path;
 			if(!PHYSFS_mount(path, nullptr, 1))
 				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 				                        "Error adding custom archive: "s + path);
@@ -240,7 +242,6 @@ namespace mirrage::asset {
 			for(auto&& l : in.lines()) {
 				if(l.find_last_of('*') != std::string::npos) {
 					for(auto& file : list_wildcard_files(l)) {
-						LOG(plog::info) << "Added FS directory: " << file;
 						add_source(file.c_str());
 					}
 					continue;
