@@ -179,9 +179,12 @@ namespace mirrage::renderer {
 			if(!geo.model->rigged())
 				continue;
 
-			auto offset = gsl::narrow<std::uint32_t>(required_size);
+			auto entity_mb = _ecs.get(geo.entity);
+			if(entity_mb.is_nothing())
+				continue;
 
-			auto entity = _ecs.get(geo.entity).get_or_throw("Invalid entity in render queue");
+			auto entity = entity_mb.get_or_throw();
+			auto offset = gsl::narrow<std::uint32_t>(required_size);
 
 			auto upload_required = entity.get<Shared_pose_comp>().process(true, [&](auto& sp) {
 				auto pose_offset = util::find_maybe(_animation_uniform_offsets, sp.pose_owner);

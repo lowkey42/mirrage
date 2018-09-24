@@ -216,6 +216,7 @@ namespace mirrage::renderer {
 				queue.insert(queue.end(), lines.begin(), lines.end());
 			}
 		}
+		auto low_level_draw_queue() -> auto& { return _frame_data.geometry_queue; }
 
 
 		auto profiler() const noexcept -> auto& { return _profiler; }

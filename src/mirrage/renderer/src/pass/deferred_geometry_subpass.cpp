@@ -141,11 +141,12 @@ namespace mirrage::renderer {
 			dpc.model    = _renderer.global_uniforms().view_mat * dpc.model;
 
 			if(sub_mesh.material->substance_id() == "emissive"_strid) {
-				auto emissive_color =
-				        _ecs.get(geo.entity)
-				                .get_or_throw()
-				                .template get<Material_property_comp>()
-				                .process(glm::vec3(200, 200, 200), [](auto& m) { return m.emissive_color; });
+				auto emissive_color = glm::vec3(1000, 1000, 1000);
+
+				if(auto entity = _ecs.get(geo.entity); entity.is_some()) {
+					emissive_color = entity.get_or_throw().template get<Material_property_comp>().process(
+					        emissive_color, [](auto& m) { return m.emissive_color; });
+				}
 
 				dpc.light_data = glm::vec4(emissive_color / 10000.0f, 1.f);
 			}
