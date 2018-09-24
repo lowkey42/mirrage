@@ -65,7 +65,7 @@ namespace mirrage::asset {
 
 		auto aid() const noexcept -> const AID& { return _aid; }
 		auto get_blocking() const -> const R&;
-		auto get_if_ready() const -> util::maybe<R&>;
+		auto get_if_ready() const -> util::maybe<const R&>;
 		auto ready() const -> bool;
 		auto internal_task() const -> auto& { return _task; }
 		void reset();

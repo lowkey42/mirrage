@@ -20,7 +20,7 @@ namespace mirrage::asset {
 	}
 
 	template <class R>
-	auto Ptr<R>::get_if_ready() const -> util::maybe<R&>
+	auto Ptr<R>::get_if_ready() const -> util::maybe<const R&>
 	{
 		if(_cached_result)
 			return util::justPtr(_cached_result);
