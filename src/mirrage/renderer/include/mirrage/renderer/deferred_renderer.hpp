@@ -216,6 +216,12 @@ namespace mirrage::renderer {
 				queue.insert(queue.end(), lines.begin(), lines.end());
 			}
 		}
+		void debug_draw(const Debug_geometry& line)
+		{
+			if(_factory->settings().debug_geometry) {
+				_frame_data.debug_geometry_queue.emplace_back(line);
+			}
+		}
 		auto low_level_draw_queue() -> auto& { return _frame_data.geometry_queue; }
 
 
