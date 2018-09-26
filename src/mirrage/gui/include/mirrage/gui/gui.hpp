@@ -26,6 +26,10 @@
 
 #include <memory>
 
+extern nk_size nk_do_progress(nk_flags *state,
+					   struct nk_command_buffer *out, struct nk_rect bounds,
+					   nk_size value, nk_size max, int modifiable,
+					   const struct nk_style_progress *style, struct nk_input *in);
 
 struct nk_context;
 
@@ -101,6 +105,8 @@ namespace mirrage::gui {
 		void start_frame();
 
 		auto ctx() -> nk_context*;
+
+		auto viewport() -> glm::vec4 {return _viewport;}
 
 		void viewport(glm::vec4 new_viewport);
 

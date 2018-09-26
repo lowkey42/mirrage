@@ -1,4 +1,5 @@
 #define NK_IMPLEMENTATION
+#define NK_LIB
 
 #include <mirrage/gui/gui.hpp>
 
