@@ -216,7 +216,7 @@ namespace mirrage::renderer {
 		auto active   = static_cast<Camera_comp*>(nullptr);
 
 		for(auto& camera : *_cameras) {
-			if(camera.priority() > max_prio) {
+			if(camera.priority() > max_prio && camera.owner(*_entity_manager).is_some()) {
 				max_prio = camera.priority();
 				active   = &camera;
 			}
@@ -225,6 +225,7 @@ namespace mirrage::renderer {
 		if(active) {
 			const auto& viewport  = _factory->_window.viewport();
 			auto&       transform = active->owner(*_entity_manager)
+			                          .get_or_throw()
 			                          .get<ecs::components::Transform_comp>()
 			                          .get_or_throw("Camera without transform component!");
 			_active_camera = Camera_state(*active, transform, viewport);

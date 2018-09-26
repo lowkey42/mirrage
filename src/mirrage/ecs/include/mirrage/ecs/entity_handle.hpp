@@ -37,9 +37,9 @@ namespace mirrage::ecs {
 		constexpr Entity_id id() const noexcept { return _data >> 4; }
 		constexpr void      id(Entity_id id) noexcept { _data = id << 4 | revision(); }
 
-		constexpr uint8_t revision() const noexcept { return _data & 0xf; }
+		constexpr uint8_t revision() const noexcept { return _data & 0xfu; }
 		constexpr void    revision(uint8_t revision) noexcept { _data = id() << 4 | (revision & 0xfu); }
-		void              increment_revision() noexcept { _data = (_data & (~0xfu)) | ((_data + 1) & 0xfu); }
+		void              increment_revision() noexcept { revision(revision() + 1); }
 
 		constexpr packed_t             pack() const noexcept { return _data; }
 		static constexpr Entity_handle unpack(packed_t d) noexcept { return Entity_handle{d}; }
@@ -92,16 +92,31 @@ namespace mirrage::ecs {
 		// thread-safe
 		auto get_new() -> Entity_handle
 		{
+			auto          tries = 0;
 			Entity_handle h;
-			if(_free.try_dequeue(h)) {
+			while(_free.try_dequeue(h)) {
 				auto& rev          = util::at(_slots, static_cast<std::size_t>(h.id() - 1));
 				auto  expected_rev = static_cast<uint8_t>(h.revision() | Entity_handle::free_rev);
 				h.revision(static_cast<uint8_t>(rev & ~Entity_handle::free_rev)); // mark as used
 
-				bool success = rev.compare_exchange_strong(expected_rev, h.revision());
-				MIRRAGE_INVARIANT(success, "My handle got stolen :(");
+				auto success = true;
+				auto cas     = expected_rev;
+				do {
+					cas     = expected_rev;
+					success = rev.compare_exchange_strong(cas, h.revision());
+					if(!success && expected_rev == cas) {
+						LOG(plog::debug) << "Spurious CAS failure in ECS handle generator.";
+					}
+				} while(!success && expected_rev == cas);
 
-				return h;
+				if(success)
+					return h;
+				else if(tries++ >= 4) {
+					LOG(plog::warning) << "My handle got stolen: expected="
+					                   << int(h.revision() | Entity_handle::free_rev)
+					                   << ", found=" << int(expected_rev) << ", rev=" << int(rev.load());
+					break;
+				}
 			}
 
 			auto slot = _next_free_slot++;

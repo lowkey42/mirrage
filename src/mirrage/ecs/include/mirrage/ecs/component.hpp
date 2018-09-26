@@ -74,6 +74,8 @@ namespace mirrage::ecs {
 
 
 	namespace detail {
+		extern auto get_entity_facet(Entity_manager&, Entity_handle) -> util::maybe<Entity_facet>;
+
 		/**
 		 * Non-template base class for components that know their entity
 		 */
@@ -87,7 +89,10 @@ namespace mirrage::ecs {
 				MIRRAGE_INVARIANT(_owner, "invalid component");
 				return _owner;
 			}
-			auto owner(Entity_manager& manager) const -> Entity_facet { return {manager, owner_handle()}; }
+			auto owner(Entity_manager& manager) const -> util::maybe<Entity_facet>
+			{
+				return get_entity_facet(manager, owner_handle());
+			}
 
 		  protected:
 			Entity_handle _owner;

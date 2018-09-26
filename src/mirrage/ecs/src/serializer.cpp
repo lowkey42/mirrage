@@ -30,16 +30,16 @@ namespace mirrage::ecs {
 			~Blueprint() noexcept;
 			Blueprint& operator=(Blueprint&&) noexcept;
 
-			void detach(Entity_facet target) const;
+			void detach(Entity_handle target) const;
 			void on_reload();
 
-			mutable std::vector<Entity_facet> users;
-			mutable std::vector<Blueprint*>   children;
-			std::string                       id;
-			std::string                       content;
-			asset::Ptr<Blueprint>             parent;
-			asset::Asset_manager*             asset_mgr;
-			mutable Entity_manager*           entity_manager = nullptr;
+			mutable std::vector<std::tuple<Entity_handle, Entity_manager*>> users;
+			mutable std::vector<Blueprint*>                                 children;
+			std::string                                                     id;
+			std::string                                                     content;
+			asset::Ptr<Blueprint>                                           parent;
+			asset::Asset_manager*                                           asset_mgr;
+			mutable Entity_manager*                                         entity_manager = nullptr;
 		};
 
 
@@ -109,13 +109,20 @@ namespace mirrage::ecs {
 				c->on_reload();
 			}
 
-			for(auto&& u : users) {
-				MIRRAGE_INVARIANT(u.valid(), "dead entity in blueprint.users");
-				apply(*this, u);
+			for(auto&& [u, manager] : users) {
+				auto facet = manager->get(u);
+				if(facet.is_some()) {
+					apply(*this, facet.get_or_throw());
+				} else {
+					LOG(plog::error) << "dead entity in blueprint.";
+				}
 			}
 		}
 
-		void Blueprint::detach(Entity_facet target) const { util::erase_fast(users, target); }
+		void Blueprint::detach(Entity_handle target) const
+		{
+			util::erase_if(users, [&](auto& e) { return std::get<0>(e) == target; });
+		}
 	} // namespace
 } // namespace mirrage::ecs
 
@@ -153,7 +160,7 @@ namespace mirrage::ecs {
 			~Blueprint_component()
 			{
 				if(blueprint) {
-					blueprint->detach(owner(*_manager));
+					blueprint->detach(owner_handle());
 					blueprint.reset();
 				}
 			}
@@ -161,7 +168,7 @@ namespace mirrage::ecs {
 			void set(asset::Ptr<Blueprint> blueprint)
 			{
 				if(this->blueprint) {
-					this->blueprint->detach(owner(*_manager));
+					this->blueprint->detach(owner_handle());
 				}
 
 				this->blueprint = std::move(blueprint);
@@ -183,8 +190,9 @@ namespace mirrage::ecs {
 			        AID{"blueprint"_strid, blueprintName}); // TODO: could/should be async
 			comp.set(blueprint);
 
-			auto owner = comp.owner(comp.manager());
-			blueprint->users.push_back(owner);
+			auto owner = comp.owner(comp.manager())
+			                     .get_or_throw("instanciated Blueprint_component on dead entity");
+			blueprint->users.emplace_back(owner, &comp.manager());
 			blueprint->entity_manager = &comp.manager();
 			apply(*blueprint, owner);
 		}
@@ -255,7 +263,7 @@ namespace mirrage::ecs {
 		else
 			e.get<Blueprint_component>().get_or_throw().set(b);
 
-		b->users.push_back(e);
+		b->users.emplace_back(e.handle(), &e.manager());
 
 		apply(*b, e);
 	}

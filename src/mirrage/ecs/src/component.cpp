@@ -1,6 +1,17 @@
 #include <mirrage/ecs/component.hpp>
 
+#include <mirrage/ecs/entity_manager.hpp>
+
 namespace mirrage::ecs {
+
+	namespace detail {
+
+		auto get_entity_facet(Entity_manager& manager, Entity_handle h) -> util::maybe<Entity_facet>
+		{
+			return manager.get(h);
+		}
+
+	} // namespace detail
 
 	void Sparse_index_policy::attach(Entity_id owner, Component_index comp)
 	{

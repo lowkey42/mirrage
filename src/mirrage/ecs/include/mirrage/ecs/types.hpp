@@ -57,7 +57,6 @@ namespace mirrage::ecs {
 	class Entity_facet {
 	  public:
 		Entity_facet() : _manager(nullptr), _owner(invalid_entity) {}
-		Entity_facet(Entity_manager& manager, Entity_handle owner);
 
 		template <typename T>
 		util::maybe<T&> get();
@@ -88,6 +87,10 @@ namespace mirrage::ecs {
 		void reset() { _owner = invalid_entity; }
 
 	  private:
+		friend class Entity_manager;
+
+		Entity_facet(Entity_manager& manager, Entity_handle owner);
+
 		Entity_manager* _manager;
 		Entity_handle   _owner;
 	};

@@ -21,25 +21,28 @@ namespace mirrage::renderer {
 	{
 		for(auto& model : _loading_models) {
 			if(model.model().ready()) {
-				auto owner = model.owner(_ecs);
-				owner.emplace<Model_comp>(model.model());
-				owner.erase<Model_loading_comp>();
+				model.owner(_ecs).process([&](auto& owner) {
+					owner.template emplace<Model_comp>(model.model());
+					owner.template erase<Model_loading_comp>();
+				});
 			}
 		}
 	}
 
 	void Loading_system::_load(Model_unloaded_comp& model)
 	{
-		auto owner = model.owner(_ecs);
-		owner.emplace<Model_loading_comp>(_assets.load<Model>(model.model_aid()));
-		owner.erase<Model_unloaded_comp>();
+		model.owner(_ecs).process([&](auto& owner) {
+			owner.template emplace<Model_loading_comp>(_assets.load<Model>(model.model_aid()));
+			owner.template erase<Model_unloaded_comp>();
+		});
 	}
 
 	void Loading_system::_unload(Model_comp& model)
 	{
-		auto owner = model.owner(_ecs);
-		owner.emplace<Model_unloaded_comp>(model.model_aid());
-		owner.erase<Model_comp>();
+		model.owner(_ecs).process([&](auto& owner) {
+			owner.template emplace<Model_unloaded_comp>(model.model_aid());
+			owner.template erase<Model_comp>();
+		});
 	}
 
 	void Loading_system::_update(util::Time)
