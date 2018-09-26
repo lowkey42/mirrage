@@ -142,7 +142,10 @@ namespace mirrage {
 				continue;
 			}
 
-			auto mat_id = model_name + "_" + name.C_Str();
+			auto mat_id = std::string(name.C_Str());
+			if(cfg.prefix_materials) {
+				mat_id = model_name + "_" + mat_id;
+			}
 			util::to_lower_inplace(mat_id);
 			if(!convert_material(mat_id, *mat, base_dir, output, cfg)) {
 				LOG(plog::warning) << "Unable to parse material \"" << name.C_Str() << "\"!";
