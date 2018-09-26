@@ -42,6 +42,7 @@ namespace mirrage {
 
 		bool print_material_info = false;
 		bool print_animations    = true;
+		bool prefix_materials    = true;
 	};
 	sf2_structDef(Mesh_converted_config,
 	              texture_mappings,
@@ -50,7 +51,8 @@ namespace mirrage {
 	              default_output_directory,
 	              skinning_type,
 	              print_material_info,
-	              print_animations);
+	              print_animations,
+	              prefix_materials);
 
 
 	template <typename T>

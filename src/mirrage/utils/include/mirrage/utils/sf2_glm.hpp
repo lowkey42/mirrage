@@ -60,6 +60,52 @@ namespace glm {
 		                sf2::vmember("w", v.w));
 	}
 
+	inline void load(sf2::JsonDeserializer& s, ivec2& v)
+	{
+		s.read_virtual(sf2::vmember("x", v.x),
+		               sf2::vmember("y", v.y),
+		               sf2::vmember("w", v.x),
+		               sf2::vmember("h", v.y));
+	}
+	inline void save(sf2::JsonSerializer& s, const ivec2& v)
+	{
+		s.write_virtual(sf2::vmember("x", v.x), sf2::vmember("y", v.y));
+	}
+
+	inline void load(sf2::JsonDeserializer& s, ivec3& v)
+	{
+		s.read_virtual(sf2::vmember("x", v.x),
+		               sf2::vmember("y", v.y),
+		               sf2::vmember("z", v.z),
+
+		               sf2::vmember("r", v.x),
+		               sf2::vmember("g", v.y),
+		               sf2::vmember("b", v.z));
+	}
+	inline void save(sf2::JsonSerializer& s, const ivec3& v)
+	{
+		s.write_virtual(sf2::vmember("x", v.x), sf2::vmember("y", v.y), sf2::vmember("z", v.z));
+	}
+
+	inline void load(sf2::JsonDeserializer& s, ivec4& v)
+	{
+		s.read_virtual(sf2::vmember("x", v.x),
+		               sf2::vmember("y", v.y),
+		               sf2::vmember("z", v.z),
+		               sf2::vmember("w", v.w),
+
+		               sf2::vmember("r", v.x),
+		               sf2::vmember("g", v.y),
+		               sf2::vmember("b", v.z),
+		               sf2::vmember("a", v.a));
+	}
+	inline void save(sf2::JsonSerializer& s, const ivec4& v)
+	{
+		s.write_virtual(sf2::vmember("x", v.x),
+		                sf2::vmember("y", v.y),
+		                sf2::vmember("z", v.z),
+		                sf2::vmember("w", v.w));
+	}
 
 	inline void load(sf2::JsonDeserializer& s, quat& v)
 	{
