@@ -281,7 +281,7 @@ namespace mirrage::systems {
 	{
 		_affected_entities.clear();
 		for(auto& nim_comp : _nim_components) {
-			_affected_entities.emplace(nim_comp.uid(), nim_comp.owner(_ecs));
+			_affected_entities.emplace(nim_comp.uid(), nim_comp.owner(_ecs).get_or_throw());
 		}
 	}
 } // namespace mirrage::systems
