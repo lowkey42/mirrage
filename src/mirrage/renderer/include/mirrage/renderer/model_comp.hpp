@@ -19,7 +19,7 @@ namespace mirrage::renderer {
 		Material_property_comp() = default;
 		Material_property_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
 
-		glm::vec3 emissive_color = glm::vec3(200, 200, 200);
+		glm::vec4 emissive_color = glm::vec4(1, 1, 1, 1000.f);
 	};
 	sf2_structDef(Material_property_comp, emissive_color);
 
