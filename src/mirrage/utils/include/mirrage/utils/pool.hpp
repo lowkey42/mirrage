@@ -94,7 +94,7 @@ namespace mirrage::util {
 		/// Searches for an element based on its sort_key.
 		/// find shall only participate in overload resolution if the pool is sorted.
 		/// Complexity: O(log N)
-		template <class Key, class = std::enable_if_t<sorted>>
+		template <class Key>
 		auto find(const Key& key) -> util::maybe<index_t>;
 
 		/// Deletes an element based on its index.

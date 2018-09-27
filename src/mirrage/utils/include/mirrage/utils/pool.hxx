@@ -43,16 +43,21 @@ namespace mirrage::util {
 	}
 
 	MIRRAGE_POOL_HEADER
-	template <class Key, class>
+	template <class Key>
 	auto MIRRAGE_POOL::find(const Key& key) -> util::maybe<index_t>
 	{
-		auto iter = std::lower_bound(
-		        begin(), end(), key, [](auto& lhs, auto& rhs) { return lhs.*(ValueTraits::sort_key) < rhs; });
+		if constexpr(sorted) {
+			auto iter = std::lower_bound(begin(), end(), key, [](auto& lhs, auto& rhs) {
+				return lhs.*(ValueTraits::sort_key) < rhs;
+			});
 
-		if(iter == end())
-			return util::nothing;
-		else
-			return iter.index();
+			if(iter == end())
+				return util::nothing;
+			else
+				return iter.index();
+		} else {
+			MIRRAGE_FAIL("called find on unsorted pool.");
+		}
 	}
 
 	MIRRAGE_POOL_HEADER
