@@ -1,5 +1,7 @@
 #include <mirrage/renderer/deferred_renderer.hpp>
 
+#include <mirrage/renderer/model_comp.hpp>
+
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/ecs/ecs.hpp>
 #include <mirrage/engine.hpp>
@@ -64,6 +66,7 @@ namespace mirrage::renderer {
 	                      }))
 	  , _cameras(&ecs.list<Camera_comp>())
 	{
+		ecs.register_component_type<Material_property_comp>();
 
 		_write_global_uniform_descriptor_set();
 
