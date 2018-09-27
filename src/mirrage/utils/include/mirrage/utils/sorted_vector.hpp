@@ -14,7 +14,8 @@ namespace mirrage::util {
 	template <class T>
 	class sorted_vector {
 	  public:
-		using const_iterator = typename std::vector<T>::const_iterator;
+		using const_iterator         = typename std::vector<T>::const_iterator;
+		using const_reverse_iterator = typename std::vector<T>::const_reverse_iterator;
 
 		sorted_vector() = default;
 		sorted_vector(std::vector<T> data) : _data(data) { std::sort(data.begin(), data.end()); }

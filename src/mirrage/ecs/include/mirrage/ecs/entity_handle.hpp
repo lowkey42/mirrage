@@ -140,7 +140,7 @@ namespace mirrage::ecs {
 		auto valid(Entity_handle h) const noexcept -> bool
 		{
 			return h
-			       && (static_cast<Entity_id>(_slots.size()) <= h.id() - 1
+			       && (static_cast<Entity_id>(_slots.size()) > h.id() - 1
 			           || util::at(_slots, static_cast<std::size_t>(h.id() - 1)) == h.revision());
 		}
 

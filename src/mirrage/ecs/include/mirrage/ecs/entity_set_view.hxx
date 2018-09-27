@@ -60,6 +60,7 @@ namespace mirrage::ecs {
 
 			} else {
 				auto max_size = *min_sorted_size * 10;
+				(void) max_size;
 				return std::array<bool, sizeof...(SortedPools) + sizeof...(UnsortedPools)>{
 				        (std::get<SortedPools*>(sorted_pools)->size() <= max_size)...,
 				        (std::get<UnsortedPools*>(unsorted_pools) && false)...};

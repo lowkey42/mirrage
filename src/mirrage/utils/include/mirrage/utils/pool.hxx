@@ -68,7 +68,9 @@ namespace mirrage::util {
 			if constexpr(max_free_slots > 0) {
 				if(leave_holes) {
 					// empty slot allowed => leave a hole
-					get(i).~T();
+					auto& e = get(i);
+					e.~T();
+					std::memset(reinterpret_cast<char*>(&e), 0, sizeof(T));
 					_freelist.insert(i);
 					return;
 				}
@@ -281,7 +283,7 @@ namespace mirrage::util {
 				std::memmove(_get_raw(c_dst), _get_raw(c_src), std::size_t(step));
 			} else {
 				// nay, have to check if valid and call move-assignment / placement-new
-				if(src < dst) {
+				if(c_dst > c_src) {
 					std::move_backward(&get(c_src), &get(c_src) + step, &get(c_dst) + step);
 				} else {
 					std::move(&get(c_src), &get(c_src) + step, &get(c_dst));

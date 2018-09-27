@@ -210,13 +210,15 @@ namespace mirrage::ecs {
 		struct Pool_storage_policy_sort {
 			static constexpr bool sorted = false;
 		};
+		/*
+		// FIXME: sorted pool returns/erases the wrong values under heavy contention
 		template <class T>
 		struct Pool_storage_policy_sort<T, util::void_t<decltype(T::sort_key), decltype(T::sort_key_index)>> {
 			static constexpr bool sorted                   = true;
 			static constexpr auto sort_key                 = T::sort_key;
 			static constexpr auto sort_key_constructor_idx = T::sort_key_index;
 		};
-
+*/
 		template <class T, std::size_t Holes>
 		struct Pool_storage_policy_value_traits : Pool_storage_policy_sort<T> {
 			static constexpr int_fast32_t max_free = Holes;

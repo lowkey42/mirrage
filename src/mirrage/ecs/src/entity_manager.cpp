@@ -62,6 +62,9 @@ namespace mirrage::ecs {
 			if(count > 0) {
 				for(std::size_t i = 0; i < count; i++) {
 					const auto h = erase_buffer[i];
+					if(!validate(h))
+						continue;
+
 					_local_queue_erase.emplace_back(h);
 
 					for(auto& component : _components) {
