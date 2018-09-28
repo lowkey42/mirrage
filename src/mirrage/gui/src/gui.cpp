@@ -461,6 +461,14 @@ namespace mirrage::gui {
 		_renderer = renderer;
 	}
 
+	auto Gui::virtual_viewport() const noexcept -> glm::vec4
+	{
+		if(_impl)
+			return {0.f, 0.f, _impl->screen_size.x, _impl->screen_size.y};
+		else
+			return _viewport;
+	}
+
 	void Gui::viewport(glm::vec4 new_viewport)
 	{
 		_viewport = new_viewport;
