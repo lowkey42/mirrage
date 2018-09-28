@@ -34,6 +34,7 @@ add_library(mirrage_renderer STATIC
 	src/loading_system.cpp
 	src/model_comp.cpp
 	src/model.cpp
+	src/particle_system.cpp
 	src/render_pass.cpp
 	
 	${HEADER_FILES}

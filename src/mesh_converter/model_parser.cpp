@@ -120,7 +120,7 @@ namespace mirrage {
 		                | aiProcess_OptimizeMeshes | aiProcess_ValidateDataStructure
 		                | aiProcess_FindDegenerates | aiProcess_FindInvalidData | aiProcess_FlipUVs
 		                | aiProcess_FixInfacingNormals | aiProcess_LimitBoneWeights | aiProcess_OptimizeGraph
-		                | aiProcess_GenUVCoords | aiProcess_TransformUVCoords);
+		                | aiProcess_GenUVCoords | aiProcess_TransformUVCoords | aiProcess_SortByPType);
 
 		MIRRAGE_INVARIANT(scene, "Unable to load model '" << path << "': " << importer.GetErrorString());
 
@@ -203,6 +203,10 @@ namespace mirrage {
 
 			for(auto& mesh_idx : gsl::span(node->mMeshes, node->mNumMeshes)) {
 				auto mesh = scene->mMeshes[mesh_idx];
+				if(mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE) {
+					LOG(plog::warning) << "Skipped non-triangle mesh";
+					//continue;
+				}
 
 				const auto first_index = rigged ? rigged_vertices.size() : normal_vertices.size();
 
@@ -229,9 +233,14 @@ namespace mirrage {
 				}
 
 				for(auto& face : gsl::span<const aiFace>(mesh->mFaces, mesh->mNumFaces)) {
-					indices.emplace_back(face.mIndices[0] + first_index);
-					indices.emplace_back(face.mIndices[1] + first_index);
-					indices.emplace_back(face.mIndices[2] + first_index);
+					if(face.mIndices[0] < mesh->mNumVertices && face.mIndices[1] < mesh->mNumVertices
+					   && face.mIndices[2] < mesh->mNumVertices) {
+						indices.emplace_back(face.mIndices[0] + first_index);
+						indices.emplace_back(face.mIndices[1] + first_index);
+						indices.emplace_back(face.mIndices[2] + first_index);
+					} else {
+						LOG(plog::warning) << "Skipped face with out-of-range indices";
+					}
 				}
 
 				if(rigged && mesh->HasBones()) {
