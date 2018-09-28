@@ -10,12 +10,16 @@ layout(location = 1) in vec3 color;
 
 layout(location = 0) out vec3 out_color;
 
+layout(push_constant) uniform Push_constants {
+	mat4 projection;
+} pcs;
+
 out gl_PerVertex {
 	vec4 gl_Position;
 };
 
 
 void main() {
-	gl_Position = global_uniforms.view_proj_mat * vec4(position, 1.0);
+	gl_Position = pcs.projection * vec4(position, 1.0);
 	out_color = color;
 }

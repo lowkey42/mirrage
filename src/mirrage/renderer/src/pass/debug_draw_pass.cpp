@@ -55,6 +55,7 @@ namespace mirrage::renderer {
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 
 			pipeline.vertex<Debug_vertex>(0, false, 0, &Debug_vertex::position, 1, &Debug_vertex::color);
+			pipeline.add_push_constant("pcs"_strid, 0, sizeof(glm::mat4), vk::ShaderStageFlagBits::eVertex);
 
 			auto& pass =
 			        builder.add_subpass(pipeline).color_attachment(color).depth_stencil_attachment(depth);
@@ -88,7 +89,7 @@ namespace mirrage::renderer {
 
 	void Debug_draw_pass::draw(Frame_data& frame)
 	{
-		if(frame.debug_geometry_queue.empty())
+		if(frame.debug_geometry_queue.empty() || _renderer.active_camera().is_nothing())
 			return;
 
 		auto vert_count = gsl::narrow<std::uint32_t>(frame.debug_geometry_queue.size() * 2);
@@ -108,6 +109,10 @@ namespace mirrage::renderer {
 
 		_render_pass.execute(frame.main_command_buffer, _framebuffer, [&] {
 			_render_pass.bind_descriptor_set(0, frame.global_uniform_set);
+
+			const auto& cam  = _renderer.active_camera().get_or_throw();
+			auto        proj = cam.pure_projection * cam.view;
+			_render_pass.push_constant("pcs"_strid, proj);
 
 			auto buffer = _vertices.read_buffer();
 			auto offset = vk::DeviceSize(0);
