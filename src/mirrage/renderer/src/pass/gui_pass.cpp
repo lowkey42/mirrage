@@ -77,7 +77,7 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	Gui_pass::Gui_pass(Deferred_renderer& drenderer, Engine& engine)
+	Gui_pass::Gui_pass(Deferred_renderer& drenderer, Engine&)
 	  : _renderer(drenderer)
 	  , _sampler(drenderer.device().create_sampler(1,
 	                                               vk::SamplerAddressMode::eClampToEdge,
@@ -111,8 +111,6 @@ namespace mirrage::renderer {
 		// remove unused textures from cache
 		for(auto& texture : _loaded_textures) {
 			if(texture.use_count() == 1) {
-				_renderer.device().destroy_after_frame(std::move(texture->descriptor_set));
-				_renderer.device().destroy_after_frame(std::move(texture->texture));
 				texture.reset();
 			}
 		}
@@ -126,18 +124,35 @@ namespace mirrage::renderer {
 	                                         vk::Sampler             sampler,
 	                                         Deferred_renderer&      renderer,
 	                                         vk::DescriptorSetLayout desc_layout)
-	  : descriptor_set(renderer.create_descriptor_set(desc_layout, 1))
+	  : handle{nk_image_id(handle)}
+	  , descriptor_set(renderer.create_descriptor_set(desc_layout, 1))
 	  , texture(std::move(texture))
-	  , handle{nk_image_id(handle)}
+	  , sampler(sampler)
+	  , renderer(&renderer)
 	{
+	}
+	Gui_pass::Loaded_texture::~Loaded_texture()
+	{
+		renderer->device().destroy_after_frame(std::move(descriptor_set));
+		renderer->device().destroy_after_frame(std::move(texture));
+	}
+	auto Gui_pass::Loaded_texture::get_if_ready() -> util::maybe<const graphic::DescriptorSet&>
+	{
+		if(!texture.ready())
+			return util::nothing;
 
-		auto desc_image = vk::DescriptorImageInfo{
-		        sampler, this->texture->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
+		if(!initialized) {
+			auto desc_image = vk::DescriptorImageInfo{
+			        sampler, this->texture->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
 
-		auto desc_write = vk::WriteDescriptorSet{
-		        *descriptor_set, 0, 0, 1, vk::DescriptorType::eCombinedImageSampler, &desc_image, nullptr};
+			auto desc_write = vk::WriteDescriptorSet{
+			        *descriptor_set, 0, 0, 1, vk::DescriptorType::eCombinedImageSampler, &desc_image, nullptr};
 
-		renderer.device().vk_device()->updateDescriptorSets(1, &desc_write, 0, nullptr);
+			renderer->device().vk_device()->updateDescriptorSets(1, &desc_write, 0, nullptr);
+			initialized = true;
+		}
+
+		return descriptor_set;
 	}
 
 	auto Gui_pass::load_texture(int width, int height, int channels, const std::uint8_t* data)
@@ -240,7 +255,11 @@ namespace mirrage::renderer {
 			auto texture = _loaded_textures_by_handle[texture_handle].lock();
 			MIRRAGE_INVARIANT(texture, "The requested texture has not been loaded or already been freed!");
 
-			_render_pass.bind_descriptor_sets(0, {texture->descriptor_set.get_ptr(), 1});
+			auto descset = texture->get_if_ready();
+			if(descset.is_nothing())
+				return;
+
+			_render_pass.bind_descriptor_sets(0, {descset.get_or_throw().get_ptr(), 1});
 			_bound_texture_handle = texture_handle;
 		}
 

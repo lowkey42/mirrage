@@ -39,15 +39,24 @@ namespace mirrage::renderer {
 
 	  private:
 		struct Loaded_texture {
-			graphic::DescriptorSet descriptor_set;
-			graphic::Texture_ptr   texture;
-			struct nk_image        handle;
+		  public:
+			struct nk_image handle;
+
+			auto get_if_ready() -> util::maybe<const graphic::DescriptorSet&>;
 
 			Loaded_texture(int                  handle,
 			               graphic::Texture_ptr texture,
 			               vk::Sampler,
 			               Deferred_renderer&,
 			               vk::DescriptorSetLayout);
+			~Loaded_texture();
+
+		  private:
+			graphic::DescriptorSet descriptor_set;
+			graphic::Texture_ptr   texture;
+			vk::Sampler            sampler;
+			Deferred_renderer*     renderer;
+			bool                   initialized = false;
 		};
 
 		Deferred_renderer&                _renderer;
