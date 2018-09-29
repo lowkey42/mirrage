@@ -508,6 +508,12 @@ namespace mirrage::gui {
 		return &_impl->ctx.ctx;
 	}
 
+	auto Gui::load_texture(const asset::AID& aid) -> std::shared_ptr<struct nk_image>
+	{
+		MIRRAGE_INVARIANT(_renderer, "No gui renderer instantiated when load_texture was called!");
+		return _renderer->load_texture(aid);
+	}
+
 	auto Gui::centered(int width, int height) -> struct nk_rect {
 		return nk_rect(_impl->screen_size.x / 2.f - float(width) / 2.f,
 		               _impl->screen_size.y / 2.f - float(height) / 2.f,

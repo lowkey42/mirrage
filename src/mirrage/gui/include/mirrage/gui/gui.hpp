@@ -121,6 +121,8 @@ namespace mirrage::gui {
 
 		auto ready() const noexcept { return bool(_impl); }
 
+		auto load_texture(const asset::AID&) -> std::shared_ptr<struct nk_image>;
+
 	  private:
 		template <class>
 		friend class Gui_renderer_instance;

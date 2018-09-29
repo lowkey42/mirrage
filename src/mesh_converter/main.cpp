@@ -3,6 +3,7 @@
 
 #include "common.hpp"
 #include "filesystem.hpp"
+#include "material_parser.hpp"
 #include "model_parser.hpp"
 
 #include <mirrage/utils/log.hpp>
@@ -62,7 +63,10 @@ int main(int argc, char** argv)
 	create_directory(output + "/textures");
 
 	for(auto&& input : args) {
-		convert_model(input, output, config);
+		if(util::ends_with(input, ".png"))
+			convert_texture(input, output);
+		else
+			convert_model(input, output, config);
 	}
 
 	return res;

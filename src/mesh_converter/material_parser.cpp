@@ -395,4 +395,16 @@ namespace mirrage {
 
 		return true;
 	}
+
+	void convert_texture(const std::string& input, const std::string& output_dir)
+	{
+		auto data = load_texture2d(input, true);
+		generate_mip_maps(data, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+
+		auto input_path = util::split_on_last(input, "/");
+		auto input_name = input_path.second.empty() ? input_path.first : input_path.second;
+		input_name      = util::split_on_last(input_name, ".").first;
+
+		store_texture(data, output_dir + "/" + input_name + ".ktx", false);
+	}
 } // namespace mirrage
