@@ -88,6 +88,9 @@ float sample_shadowmap(vec3 view_pos) {
 	vec4 lightspace_pos = model_uniforms.model * vec4(view_pos, 1.0);
 	lightspace_pos /= lightspace_pos.w;
 	lightspace_pos.xy = lightspace_pos.xy * 0.5 + 0.5;
+	
+	if(lightspace_pos.x<0 || lightspace_pos.y<0 || lightspace_pos.x>=1 || lightspace_pos.y>=1)
+		return 1.0;
 
 	float shadowmap_size = textureSize(sampler2D(shadowmaps[shadowmap], shadowmap_depth_sampler), 0).x;
 	float light_size = model_uniforms.light_data.r / 800.0;
