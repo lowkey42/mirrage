@@ -194,9 +194,10 @@ namespace mirrage::renderer {
 				dpc.light_data.r = light_data.source_radius() / 1_m;
 				auto dir =
 				        _renderer.global_uniforms().view_mat * glm::vec4(-light.transform->direction(), 0.f);
-				dpc.light_data.g  = dir.x;
-				dpc.light_data.b  = dir.y;
-				dpc.light_data.a  = dir.z;
+				auto dir_len      = glm::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+				dpc.light_data.g  = dir.x / dir_len;
+				dpc.light_data.b  = dir.y / dir_len;
+				dpc.light_data.a  = dir.z / dir_len;
 				dpc.light_data2.r = _gbuffer.shadowmaps ? light_data.shadowmap_id() : -1;
 
 				render_pass.push_constant("dpc"_strid, dpc);

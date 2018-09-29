@@ -10,6 +10,22 @@ using namespace mirrage::graphic;
 namespace mirrage::renderer {
 
 	namespace {
+		glm::vec2 oct_wrap(float x, float y)
+		{
+			return glm::fma(glm::step(glm::vec2(0.f), glm::vec2(x, y)), glm::vec2(2.f), glm::vec2(-1.f));
+		}
+		glm::vec2 encode_normal(glm::vec3 n)
+		{
+			auto l = glm::dot(glm::abs(n), glm::vec3(1.f));
+			n.x /= l;
+			n.y /= l;
+			return mix(glm::vec2(n.x, n.y),
+			           (glm::vec2(1.0f) - glm::abs(glm::vec2(n.y, n.x))) * oct_wrap(n.x, n.y),
+			           glm::step(n.z, 0.f))
+			               * 0.5f
+			       + 0.5f;
+		}
+
 		auto build_render_pass(Deferred_renderer&         renderer,
 		                       graphic::Render_target_2D& color_target,
 		                       graphic::Render_target_2D& color_target_diff,
@@ -175,13 +191,14 @@ namespace mirrage::renderer {
 			auto sky_color = util::Rgba{temperature_to_color(25000.f), 1};
 			sky_color *= renderer.settings().background_intensity;
 
-			auto attachments = std::array<Framebuffer_attachment_desc, 6>{
-			        {{depth_buffer.view(0), 1.f},
-			         {gbuffer.depth.view(0), util::Rgba(1.f)},
-			         {gbuffer.albedo_mat_id.view(0), util::Rgba{0, 0, 0, 0}},
-			         {gbuffer.mat_data.view(0), util::Rgba{0, 0, 1, 0}},
-			         {color_target.view(0), sky_color},
-			         {color_target_diff.view(0), sky_color}}};
+			const auto def_normal  = encode_normal(glm::vec3(0, 0, 1));
+			auto       attachments = std::array<Framebuffer_attachment_desc, 6>{
+                    {{depth_buffer.view(0), 1.f},
+                     {gbuffer.depth.view(0), util::Rgba(1.f)},
+                     {gbuffer.albedo_mat_id.view(0), util::Rgba{0, 0, 0, 0}},
+                     {gbuffer.mat_data.view(0), util::Rgba{def_normal.x, def_normal.y, 1, 0}},
+                     {color_target.view(0), sky_color},
+                     {color_target_diff.view(0), sky_color}}};
 			out_framebuffer =
 			        builder.build_framebuffer(attachments, color_target.width(), color_target.height());
 
