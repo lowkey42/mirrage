@@ -48,12 +48,14 @@ void main() {
 
 	roughness = mix(0.01, 0.99, roughness*roughness);
 
-	albedo.rgb *= model_uniforms.material_properties.rgb;
+	float emmissive_power = texture(mat_data2_sampler, tex_coords).r;
+
+	albedo.rgb *= mix(vec3(1), model_uniforms.material_properties.rgb, step(0.1, emmissive_power));
 
 	depth_out     = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
 	albedo_mat_id = vec4(albedo.rgb, 1.0);
 	mat_data_out      = vec4(encode_normal(N), 1, 0);
-	color_out     = vec4(albedo.rgb * texture(mat_data2_sampler, tex_coords).r * model_uniforms.material_properties.a, 1.0);
+	color_out     = vec4(albedo.rgb * emmissive_power * model_uniforms.material_properties.a, 1.0);
 	color_diffuse_out = color_out;
 }
 
