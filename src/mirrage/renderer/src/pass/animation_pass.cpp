@@ -13,7 +13,8 @@ using mirrage::ecs::components::Transform_comp;
 namespace mirrage::renderer {
 
 	namespace {
-		constexpr auto initial_animation_capacity = 256 * 4 * 4 * 4;
+		constexpr auto shader_buffer_size         = 64 * 3 * 4 * int(sizeof(float));
+		constexpr auto initial_animation_capacity = 16 * shader_buffer_size;
 
 		auto animation_substance(util::Str_id substance_id, Skinning_type st)
 		{
@@ -46,7 +47,7 @@ namespace mirrage::renderer {
             return r.create_descriptor_set(*r.gbuffer().animation_data_layout, 1);
         });
 		auto anim_desc_buffer_writes = util::build_vector(buffers, [&](auto i) {
-			return vk::DescriptorBufferInfo{_animation_uniforms.buffer(i), 0, initial_animation_capacity};
+			return vk::DescriptorBufferInfo{_animation_uniforms.buffer(i), 0, shader_buffer_size};
 		});
 		auto anim_desc_writes        = util::build_vector(buffers, [&](auto i) {
             return vk::WriteDescriptorSet{*_animation_desc_sets.at(i),
@@ -210,7 +211,7 @@ namespace mirrage::renderer {
 					offset             = ex->second;
 
 					if(success) {
-						_animation_uniform_queue.emplace_back(geo.model, pose, required_size);
+						_animation_uniform_queue.emplace_back(geo.model, pose, offset);
 						required_size += aligned_byte_size(geo.model->bone_count());
 					}
 				});
@@ -222,7 +223,7 @@ namespace mirrage::renderer {
 		if(_animation_uniforms.resize(required_size)) {
 			// recreate DescriptorSet if the buffer has been recreated
 			auto anim_desc_buffer_write = vk::DescriptorBufferInfo{
-			        _animation_uniforms.write_buffer(), 0, vk::DeviceSize(required_size)};
+			        _animation_uniforms.write_buffer(), 0, vk::DeviceSize(64u * 3u * 4u * sizeof(float))};
 			auto anim_desc_writes = vk::WriteDescriptorSet{
 			        *_animation_desc_sets.at(std::size_t(_animation_uniforms.write_buffer_index())),
 			        0,

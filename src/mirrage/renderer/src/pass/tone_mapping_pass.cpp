@@ -509,6 +509,8 @@ namespace mirrage::renderer {
 		auto pcs         = Push_constants{};
 		pcs.parameters.x = std::log(std::max(_renderer.settings().min_display_luminance, 0.0001f));
 		pcs.parameters.y = std::log(_renderer.settings().max_display_luminance);
+		pcs.parameters.z = _renderer.settings().scene_luminance_override;
+		pcs.parameters.w = _renderer.settings().exposure_luminance_override;
 		command_buffer.pushConstants(
 		        *_compute_pipeline_layout, vk::ShaderStageFlagBits::eCompute, 0, sizeof(Push_constants), &pcs);
 
@@ -553,6 +555,14 @@ namespace mirrage::renderer {
 		_apply_renderpass.execute(command_buffer, _apply_framebuffer, [&] {
 			auto desc_sets = std::array<vk::DescriptorSet, 2>{global_uniform_set, *_apply_desc_set};
 			_apply_renderpass.bind_descriptor_sets(0, desc_sets);
+
+			auto pcs         = Push_constants{};
+			pcs.parameters.x = 1.f - _renderer.settings().scotopic_sim_weight;
+			command_buffer.pushConstants(*_compute_pipeline_layout,
+			                             vk::ShaderStageFlagBits::eCompute,
+			                             0,
+			                             sizeof(Push_constants),
+			                             &pcs);
 
 			command_buffer.draw(3, 1, 0, 0);
 		});

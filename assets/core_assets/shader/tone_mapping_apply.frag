@@ -17,6 +17,11 @@ layout (constant_id = 0) const float HISTOGRAM_MIN = 0;
 layout (constant_id = 1) const float HISTOGRAM_MAX = 0;
 layout (constant_id = 2) const int HISTOGRAM_SLOTS = 256;
 
+layout(push_constant) uniform Push_constants {
+	// r:desaturation weight
+	vec4 parameters;
+} pcs;
+
 
 float calc_histogram_index_fp(float luminance) {
 	luminance = (luminance-HISTOGRAM_MIN) / (HISTOGRAM_MAX-HISTOGRAM_MIN);
@@ -37,7 +42,7 @@ void main() {
 	// scotopic simulation
 	float scotopic_lum = min(lum, max_mesoptic);
 	float alpha = clamp((scotopic_lum - min_mesoptic) / (max_mesoptic-min_mesoptic), 0.0, 1.0);
-	cie_color = mix(cie_white * scotopic_lum, cie_color, alpha);
+	cie_color = mix(mix(cie_white * scotopic_lum, cie_color, alpha), cie_color, pcs.parameters.x);
 
 	// histogram adjustment / tone mapping
 	float idx = calc_histogram_index_fp(log(lum));

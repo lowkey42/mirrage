@@ -260,7 +260,10 @@ namespace mirrage::graphic {
 
 
 		if(debug) {
-			_enabled_layers = check_layers({"VK_LAYER_LUNARG_standard_validation"});
+			_enabled_layers = check_layers({"VK_LAYER_LUNARG_standard_validation",
+			                                "VK_LAYER_LUNARG_parameter_validation",
+			                                "VK_LAYER_LUNARG_core_validation",
+			                                "VK_LAYER_GOOGLE_threading"});
 
 			required_extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		}

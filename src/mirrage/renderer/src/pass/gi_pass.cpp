@@ -1167,11 +1167,11 @@ namespace mirrage::renderer {
 
 					auto stage = "sample"_strid;
 
-					if(i == end - 1) {
+					if(i <= begin) {
+						stage = "sample_la"_strid;
+					} else if(i == end - 1) {
 						stage        = "sample_fi"_strid;
 						sample_count = to_2prod(_renderer.settings().gi_lowres_samples);
-					} else if(i == begin) {
-						stage = "sample_la"_strid;
 					}
 
 					if(_renderer.settings().gi_shadows && i - _min_mip_level > 1)
@@ -1224,7 +1224,7 @@ namespace mirrage::renderer {
 				// upsample
 				if(i < int(_sample_framebuffers.size() - 1)) {
 					_sample_renderpass.execute(command_buffer, fb_upsample, [&] {
-						if(i + base_mip > begin)
+						if(i >= begin - base_mip)
 							_sample_renderpass.set_stage("upsample"_strid);
 						else
 							_sample_renderpass.set_stage("upsample_np"_strid);

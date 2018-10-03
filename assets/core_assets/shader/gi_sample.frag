@@ -87,7 +87,7 @@ vec3 gi_sample(int lod, int base_mip) {
 	ivec2 uv = ivec2(vertex_out.tex_coords * texture_size);
 
 	// clamp area to reduce artefacts around borders
-	if(uv.y >= texture_size.y-1 || uv.x >= texture_size.x-1)
+	if(uv.x<=0 || uv.y<=0 || uv.y >= texture_size.y-1 || uv.x >= texture_size.x-1)
 		return vec3(0, 0, 0);
 
 	// fetch the depth/normal of the target pixel and reconstruct its view-space position
@@ -101,9 +101,9 @@ vec3 gi_sample(int lod, int base_mip) {
 
 	float angle = random(vec4(vertex_out.tex_coords, lod, global_uniforms.time.w)).r * 2*PI;
 
-	float outer_radius = R;
-	float inner_radius = LAST_SAMPLE==0 ? outer_radius / 2.0 - 4.0 : 0.0;
-	float angle_step = PI * 2.0 / pow((sqrt(5.0) + 1.0) / 2.0, 2.0);
+	float outer_radius = R+2.0;
+	float inner_radius = LAST_SAMPLE==0 ? outer_radius / 2.0 : 2.0;
+	float angle_step = 2.39996;// PI * 2.0 / pow((sqrt(5.0) + 1.0) / 2.0, 2.0);
 
 	float normal_dir = 0.5*PI;
 	float normal_weight = abs(N.z);
@@ -114,7 +114,7 @@ vec3 gi_sample(int lod, int base_mip) {
 
 	for(int i=0; i<SAMPLES; i++) {
 		float r = max(
-				4.0,
+				2.0,
 				mix(inner_radius, outer_radius, sqrt(float(i) / float(SAMPLES))));
 		float a = i * angle_step + angle;
 
@@ -196,7 +196,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 
 	// if the material is an emitter (mat_data.b=0), flip the normal if that would result in a higher
 	//   itensity (approximates light emitted from the backside by assuming rotation invariance)
-	NdotL_src = mix(max(clamp(dot(-N, dir), 0.0, 1.0), NdotL_src), NdotL_src, step(0.0001, mat_data.b));
+	NdotL_src = mix(NdotL_src, max(clamp(dot(-N, dir), 0.0, 1.0), NdotL_src), step(0.999999, mat_data.b));
 
 	// calculate the size of the differential area
 	float cos_alpha = Pn.z;

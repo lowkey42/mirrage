@@ -29,6 +29,13 @@ layout (constant_id = 0) const int NO_PREV_RESULT = 0;
 #include "upsample.glsl"
 
 void main() {
+	vec2 tex_size = textureSize(depth_sampler, 0);
+	ivec2 iuv = ivec2(tex_size*vertex_out.tex_coords);
+	if(iuv.x<=1 || iuv.y<=1 || iuv.x>=tex_size.x-2 || iuv.y>=tex_size.y-2) {
+		out_color = vec4(0,0,0, NO_PREV_RESULT);
+		return;
+	}
+	
 	out_color = vec4(upsampled_result(depth_sampler, mat_data_sampler,
 	                                  prev_depth_sampler, prev_mat_data_sampler,
 	                                  prev_level_result_sampler, vertex_out.tex_coords), NO_PREV_RESULT);

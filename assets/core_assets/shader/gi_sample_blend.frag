@@ -77,6 +77,12 @@ void main() {
 	// read diffuse color, modulate with modulo if equal to min/max of neighborhood => noise
 	ivec2 result_sampler_size = textureSize(result_sampler, 0).xy;
 	ivec2 uv = ivec2(result_sampler_size * vertex_out.tex_coords);
+	
+	if(uv.x<=1 || uv.y<=1 || uv.x>=result_sampler_size.x-2 || uv.y>=result_sampler_size.y-2) {
+		out_color = vec4(texelFetch(result_sampler, uv, 0).rgb, 1);
+		return;
+	}
+	
 	vec3 colors[9] = vec3[](
 		texelFetchOffset(result_sampler, uv, 0, ivec2(-1,-1)).rgb,
 		texelFetchOffset(result_sampler, uv, 0, ivec2(-1, 0)).rgb,
@@ -88,19 +94,6 @@ void main() {
 		texelFetchOffset(result_sampler, uv, 0, ivec2( 1, 0)).rgb,
 		texelFetchOffset(result_sampler, uv, 0, ivec2( 1, 1)).rgb
 	);
-
-	// clamp texture coordinates
-	float w = result_sampler_size.x;
-	float h = result_sampler_size.y;
-	colors[0] = uv.x>0 && uv.y>0 ? colors[0] : colors[4];
-	colors[1] = uv.x>0           ? colors[1] : colors[4];
-	colors[2] =           uv.y>0 ? colors[2] : colors[4];
-	colors[3] =           uv.y<h ? colors[3] : colors[4];
-	colors[5] = uv.x<w && uv.y>0 ? colors[5] : colors[4];
-	colors[6] = uv.x>0 && uv.y<h ? colors[6] : colors[4];
-	colors[7] = uv.x<w           ? colors[7] : colors[4];
-	colors[8] = uv.x<w && uv.y<h ? colors[8] : colors[4];
-
 
 	float min_c = pixel_intensity(colors[0]);
 	float max_c = min_c;

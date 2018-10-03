@@ -19,6 +19,11 @@ void main() {
 	vec2 hws_step = 1.0 / hws_size;
 	ivec2 hws_uv = ivec2(hws_size * vertex_out.tex_coords.xy);
 
+	if(hws_uv.x<=1 || hws_uv.y<=1 || hws_uv.x>=hws_size.x-2 || hws_uv.y>=hws_size.y-2) {
+		out_weight = vec4(0,0,0,1);
+		return;
+	}
+	
 	float weights[9];
 	vec4 w = textureGather(success_sampler, vertex_out.tex_coords.xy-hws_step, 0);
 	weights[0] = w[0];
@@ -38,5 +43,5 @@ void main() {
 
 	weight.r = mix(weight.r, median_float(weights), 0.2);
 
-	out_weight = vec4(weight.r * (weight.g+1), 0, 0, 1);
+	out_weight = vec4(min(100, weight.r * (weight.g+1)), 0, 0, 1);
 }

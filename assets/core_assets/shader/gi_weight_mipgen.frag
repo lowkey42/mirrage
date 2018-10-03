@@ -19,12 +19,19 @@ layout(push_constant) uniform Push_constants {
 } pcs;
 
 void main() {
+	ivec2 result_sampler_size = textureSize(prev_level_sampler, 0).xy;
+	ivec2 uv = ivec2(result_sampler_size * vertex_out.tex_coords);
+	if(uv.x<=0 || uv.y<=0 || uv.x>=result_sampler_size.x-1 || uv.y>=result_sampler_size.y-1) {
+		out_weight = vec4(0, 0,0,1);
+		return;
+	}
+	
 	vec4 weights = textureGather(prev_level_sampler, vertex_out.tex_coords.xy, 0);
 
 	float min_weight = min(weights[0], min(weights[1], min(weights[2], weights[3])));
 	float avg_weight = dot(vec4(1.0), weights) / 4;
 
 	float mip = pcs.prev_projection[0][3];
-	float weight = mix(min_weight, avg_weight, clamp(mip,0,1));
+	float weight = mix(min_weight, avg_weight, clamp(mip/2,0,1));
 	out_weight = vec4(weight, 0,0,1);
 }

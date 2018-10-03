@@ -37,6 +37,13 @@ void main() {
 	const vec2 uv_01 = vertex_out.tex_coords + vec2(-1, 1) / tex_size;
 	const ivec2[] center_offsets = ivec2[4](ivec2(0,0), ivec2(1,0), ivec2(1,1), ivec2(0,1));
 
+	ivec2 iuv = ivec2(tex_size*vertex_out.tex_coords);
+	if(iuv.x<=1 || iuv.y<=1 || iuv.x>=tex_size.x-2 || iuv.y>=tex_size.y-2) {
+		out_depth    = texelFetch(depth_sampler,    ivec2(vertex_out.tex_coords * tex_size), 0);
+		out_mat_data = texelFetch(mat_data_sampler, ivec2(vertex_out.tex_coords * tex_size), 0);
+		return;
+	}
+	
 	// sample depth and calculate score based on their difference to the center depth value
 	vec4 depth_00 = textureGather(depth_sampler, uv_00, 0);
 	vec4 depth_10 = textureGather(depth_sampler, uv_10, 0);

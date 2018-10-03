@@ -42,16 +42,19 @@ namespace mirrage::renderer {
 		int  gi_lowres_samples         = 128;
 		int  gi_low_quality_mip_levels = 0;
 
-		bool  tonemapping           = true;
-		float exposure_override     = 0.f;
-		float min_display_luminance = 2.f;
-		float max_display_luminance = 150.0f;
+		bool  tonemapping                 = true;
+		float exposure_override           = 0.f;
+		float scene_luminance_override    = -1.f;
+		float exposure_luminance_override = -1.f;
+		float scotopic_sim_weight         = 1.f;
+		float min_display_luminance       = 2.f;
+		float max_display_luminance       = 150.0f;
 
 		bool taa   = true;
 		bool ssao  = true;
 		bool bloom = true;
 
-		float background_intensity = 1.f;
+		float background_intensity = 0.f;
 
 		bool shadows          = true;
 		bool dynamic_lighting = true;
