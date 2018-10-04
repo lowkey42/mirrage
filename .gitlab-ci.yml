@@ -5,7 +5,6 @@ stages:
   
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  GIT_SSL_NO_VERIFY: "1"
   
 build_gcc:
   stage: build
@@ -16,14 +15,17 @@ build_gcc:
     - cd build
     - mkdir -p bin
     - rm -rf src
-    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release ..
-    - cmake --build . --target all
+    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
     - cmake --build . --target test
   artifacts:
     paths:
       - build/bin
     expire_in: 1 day
+  cache:
+    key: "gcc_${CI_COMMIT_REF_SLUG}"
+    paths:
+    - build
 
 build_clang:
   stage: build
@@ -34,16 +36,22 @@ build_clang:
     - cd build
     - mkdir -p bin
     - rm -rf src
-    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release ..
-    - cmake --build . --target all
+    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
     - cmake --build . --target test
+    - wget https://github.com/lowkey42/mirrage/releases/download/v0.2/model_data_lbs.tar.xz || true
+    - cd bin/bin
+    - tar xf ../../model_data_lbs.tar.xz
   artifacts:
     paths:
       - build/bin
     expire_in: 1 week
+  cache:
+    key: "clang_${CI_COMMIT_REF_SLUG}"
+    paths:
+    - build
 
-.build_scanbuild:
+build_scanbuild:
   stage: build
   script: 
     - export CC=clang
@@ -55,7 +63,7 @@ build_clang:
   artifacts:
     paths:
       - build/result
-    expire_in: 2 day
+    expire_in: 1 week
     when: always
 
 
