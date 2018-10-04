@@ -153,7 +153,7 @@ namespace mirrage::renderer {
 	{
 		_emmitter.emplace_back(std::move(e));
 	}
-
+	/*
 	namespace {
 		struct Emitter_descriptor {
 			std::string                          texture_aid;
@@ -161,6 +161,7 @@ namespace mirrage::renderer {
 		};
 		sf2_structDef(Emitter_descriptor, texture_aid, keyframes);
 	} // namespace
+	*/
 	auto Particle_system::add_emitter(asset::AID descriptor) -> std::shared_ptr<Particle_emitter>
 	{
 		// TODO: load destriptor
