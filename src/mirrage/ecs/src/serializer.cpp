@@ -21,6 +21,8 @@ namespace mirrage::ecs {
 		const std::string import_key = "$import";
 		void              apply(const Blueprint& b, Entity_facet e);
 
+		// used for hot-reloading (TODO: better ideas???)
+		std::vector<Entity_manager*> entity_managers;
 
 		class Blueprint {
 		  public:
@@ -30,16 +32,13 @@ namespace mirrage::ecs {
 			~Blueprint() noexcept;
 			Blueprint& operator=(Blueprint&&) noexcept;
 
-			void detach(Entity_handle target) const;
 			void on_reload();
 
-			mutable std::vector<std::tuple<Entity_handle, Entity_manager*>> users;
-			mutable std::vector<Blueprint*>                                 children;
-			std::string                                                     id;
-			std::string                                                     content;
-			asset::Ptr<Blueprint>                                           parent;
-			asset::Asset_manager*                                           asset_mgr;
-			mutable Entity_manager*                                         entity_manager = nullptr;
+			mutable std::vector<Blueprint*> children;
+			std::string                     id;
+			std::string                     content;
+			asset::Ptr<Blueprint>           parent;
+			asset::Asset_manager*           asset_mgr;
 		};
 
 
@@ -67,9 +66,7 @@ namespace mirrage::ecs {
 		  , content(std::move(rhs.content))
 		  , parent(std::move(rhs.parent))
 		  , asset_mgr(rhs.asset_mgr)
-		  , entity_manager(rhs.entity_manager)
 		{
-
 			if(parent) {
 				util::erase_fast(parent->children, &rhs);
 				parent->children.push_back(this);
@@ -86,7 +83,7 @@ namespace mirrage::ecs {
 		Blueprint& Blueprint::operator=(Blueprint&& o) noexcept
 		{
 			// swap data but keep user-list
-			id      = o.id;
+			id      = std::move(o.id);
 			content = std::move(o.content);
 			if(parent) {
 				util::erase_fast(parent->children, this);
@@ -102,26 +99,6 @@ namespace mirrage::ecs {
 			on_reload();
 
 			return *this;
-		}
-		void Blueprint::on_reload()
-		{
-			for(auto&& c : children) {
-				c->on_reload();
-			}
-
-			for(auto&& [u, manager] : users) {
-				auto facet = manager->get(u);
-				if(facet.is_some()) {
-					apply(*this, facet.get_or_throw());
-				} else {
-					LOG(plog::error) << "dead entity in blueprint.";
-				}
-			}
-		}
-
-		void Blueprint::detach(Entity_handle target) const
-		{
-			util::erase_if(users, [&](auto& e) { return std::get<0>(e) == target; });
 		}
 	} // namespace
 } // namespace mirrage::ecs
@@ -157,22 +134,9 @@ namespace mirrage::ecs {
 			}
 			Blueprint_component(Blueprint_component&&) noexcept = default;
 			Blueprint_component& operator=(Blueprint_component&&) = default;
-			~Blueprint_component()
-			{
-				if(blueprint) {
-					blueprint->detach(owner_handle());
-					blueprint.reset();
-				}
-			}
+			~Blueprint_component() {}
 
-			void set(asset::Ptr<Blueprint> blueprint)
-			{
-				if(this->blueprint) {
-					this->blueprint->detach(owner_handle());
-				}
-
-				this->blueprint = std::move(blueprint);
-			}
+			void set(asset::Ptr<Blueprint> blueprint) { this->blueprint = std::move(blueprint); }
 
 			auto& manager() { return *_manager; }
 
@@ -192,8 +156,6 @@ namespace mirrage::ecs {
 
 			auto owner = comp.owner(comp.manager())
 			                     .get_or_throw("instanciated Blueprint_component on dead entity");
-			blueprint->users.emplace_back(owner, &comp.manager());
-			blueprint->entity_manager = &comp.manager();
 			apply(*blueprint, owner);
 		}
 
@@ -226,6 +188,20 @@ namespace mirrage::ecs {
 				                 << column << ": " << msg;
 			};
 		}
+
+		void Blueprint::on_reload()
+		{
+			for(auto&& c : children) {
+				c->on_reload();
+			}
+
+			for(auto entity_manager : entity_managers) {
+				for(auto&& [owner, b] : entity_manager->list<Entity_facet, Blueprint_component>()) {
+					(void) b;
+					apply(*this, owner);
+				}
+			}
+		}
 	} // namespace
 
 
@@ -244,7 +220,12 @@ namespace mirrage::ecs {
 	{
 	}
 
-	void init_serializer(Entity_manager& ecs) { ecs.register_component_type<Blueprint_component>(); }
+	void init_serializer(Entity_manager& ecs)
+	{
+		ecs.register_component_type<Blueprint_component>();
+		entity_managers.emplace_back(&ecs);
+	}
+	void deinit_serializer(Entity_manager& ecs) { util::erase_fast(entity_managers, &ecs); }
 
 	Component_type blueprint_comp_id = component_type_id<Blueprint_component>();
 
@@ -262,8 +243,6 @@ namespace mirrage::ecs {
 			e.emplace<Blueprint_component>(b);
 		else
 			e.get<Blueprint_component>().get_or_throw().set(b);
-
-		b->users.emplace_back(e.handle(), &e.manager());
 
 		apply(*b, e);
 	}

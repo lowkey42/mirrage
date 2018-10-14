@@ -44,24 +44,24 @@ namespace mirrage::ecs {
 		constexpr packed_t             pack() const noexcept { return _data; }
 		static constexpr Entity_handle unpack(packed_t d) noexcept { return Entity_handle{d}; }
 
+		constexpr friend bool operator==(const Entity_handle& lhs, const Entity_handle& rhs) noexcept
+		{
+			return lhs._data == rhs._data;
+		}
+		constexpr friend bool operator!=(const Entity_handle& lhs, const Entity_handle& rhs) noexcept
+		{
+			return lhs._data != rhs._data;
+		}
+		constexpr inline friend bool operator<(const Entity_handle& lhs, const Entity_handle& rhs) noexcept
+		{
+			return lhs._data < rhs._data;
+		}
+
 	  private:
 		uint32_t _data;
 
 		constexpr Entity_handle(uint32_t data) : _data(data) {}
 	};
-
-	constexpr inline bool operator==(const Entity_handle& lhs, const Entity_handle& rhs) noexcept
-	{
-		return lhs.id() == rhs.id() && lhs.revision() == rhs.revision();
-	}
-	constexpr inline bool operator!=(const Entity_handle& lhs, const Entity_handle& rhs) noexcept
-	{
-		return lhs.id() != rhs.id() || lhs.revision() != rhs.revision();
-	}
-	inline bool operator<(const Entity_handle& lhs, const Entity_handle& rhs) noexcept
-	{
-		return std::make_tuple(lhs.id(), lhs.revision()) < std::make_tuple(rhs.id(), rhs.revision());
-	}
 
 	static_assert(sizeof(Entity_handle::packed_t) <= sizeof(void*),
 	              "what the hell is wrong with your plattform?!");
@@ -109,12 +109,10 @@ namespace mirrage::ecs {
 					}
 				} while(!success && expected_rev == cas);
 
-				if(success)
+				if(success) {
 					return h;
-				else if(tries++ >= 4) {
-					LOG(plog::warning) << "My handle got stolen: expected="
-					                   << int(h.revision() | Entity_handle::free_rev)
-					                   << ", found=" << int(expected_rev) << ", rev=" << int(rev.load());
+				} else if(tries++ >= 20) {
+					LOG(plog::error) << "Too many handle tries (" << tries << ") giving up!";
 					break;
 				}
 			}
@@ -140,7 +138,7 @@ namespace mirrage::ecs {
 		auto valid(Entity_handle h) const noexcept -> bool
 		{
 			return h
-			       && (static_cast<Entity_id>(_slots.size()) > h.id() - 1
+			       && (static_cast<std::size_t>(h.id() - 1) >= _slots.size()
 			           || util::at(_slots, static_cast<std::size_t>(h.id() - 1)) == h.revision());
 		}
 

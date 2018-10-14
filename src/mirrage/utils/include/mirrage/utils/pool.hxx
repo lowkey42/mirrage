@@ -62,7 +62,7 @@ namespace mirrage::util {
 
 	MIRRAGE_POOL_HEADER
 	template <typename F>
-	void MIRRAGE_POOL::erase(IndexType i, F&& relocation, bool leave_holes)
+	void MIRRAGE_POOL::erase(IndexType i, F&& relocation)
 	{
 		MIRRAGE_INVARIANT(i < _used_elements, "erase is out of range: " << i << ">=" << _used_elements);
 
@@ -71,19 +71,13 @@ namespace mirrage::util {
 
 		} else {
 			if constexpr(max_free_slots > 0) {
-				if(leave_holes) {
-					// empty slot allowed => leave a hole
-					auto& e = get(i);
-					e.~T();
-					std::memset(reinterpret_cast<char*>(&e), 0, sizeof(T));
-					_freelist.insert(i);
-					return;
-				}
-			}
+				// empty slot allowed => leave a hole
+				auto& e = get(i);
+				e.~T();
+				std::memset(reinterpret_cast<char*>(&e), 0, sizeof(T));
+				_freelist.insert(i);
 
-			if constexpr(ValueTraits::sorted) {
-				// TODO[optimization]: _move_elements could be called with a larger range
-
+			} else if constexpr(ValueTraits::sorted) {
 				// shift all later elements and delete the last (now empty)
 				_move_elements(i + 1, i, relocation, _used_elements - i - 1);
 				_pop_back();
@@ -124,7 +118,7 @@ namespace mirrage::util {
 						auto block_size = next_free - read_position;
 
 						// move block of non-free slots to insert_position
-						_move_elements(read_position, write_position, relocation, block_size);
+						_move_elements_uninitialized(read_position, write_position, relocation, block_size);
 						read_position += block_size;
 						write_position += block_size;
 					}
@@ -132,9 +126,30 @@ namespace mirrage::util {
 					_used_elements = write_position;
 
 				} else {
-					for(auto i : range_reverse(_freelist)) {
-						erase(i, relocation, false);
+					auto last_used_idx = std::int64_t(_used_elements) - 1;
+					auto next_free     = std::int64_t(_freelist.size()) - 1;
+
+					for(auto to_fill : util::range(std::int64_t(_freelist.size()))) {
+						for(; next_free > to_fill; next_free--) {
+							if(_freelist[next_free] == last_used_idx)
+								last_used_idx--;
+							else if(_freelist[next_free] < last_used_idx)
+								break;
+						}
+
+						if(last_used_idx < 0 || next_free <= to_fill)
+							break;
+
+						auto& src  = get(last_used_idx);
+						auto  addr = new(_get_raw(_freelist[to_fill])) T(std::move(src));
+						src.~T();
+						std::memset(reinterpret_cast<char*>(&src), 0, sizeof(T));
+
+						relocation(last_used_idx, *addr, _freelist[to_fill]);
+						last_used_idx--;
 					}
+
+					_used_elements -= _freelist.size();
 				}
 
 				_freelist.clear();
@@ -143,7 +158,8 @@ namespace mirrage::util {
 
 		// free unused chunks
 		auto min_chunks = std::ceil(static_cast<float>(_used_elements) / chunk_len);
-		_chunks.resize(static_cast<std::size_t>(min_chunks));
+		_chunks.resize(
+		        util::max(static_cast<std::size_t>(min_chunks), util::min(_chunks.size(), std::size_t(1))));
 	}
 
 	MIRRAGE_POOL_HEADER
@@ -181,6 +197,7 @@ namespace mirrage::util {
 				}
 			}();
 
+
 			// find insert position
 			auto iter = std::lower_bound(begin(), end(), sort_key, [](auto& lhs, auto& rhs) {
 				return lhs.*(ValueTraits::sort_key) < rhs;
@@ -194,7 +211,7 @@ namespace mirrage::util {
 				// find first free slot
 				auto first_empty = [&] {
 					if constexpr(max_free_slots > 0) {
-						auto min = std::lower_bound(_freelist.begin(), _freelist.end(), i - 1);
+						auto min = std::lower_bound(_freelist.begin(), _freelist.end(), i);
 						if(min != _freelist.end()) {
 							auto min_v = *min;
 							_freelist.erase(min);
@@ -209,19 +226,32 @@ namespace mirrage::util {
 					return _used_elements - 1;
 				}();
 
-				if(first_empty < i)
-					i = first_empty;
+				MIRRAGE_INVARIANT(first_empty >= i, "first_empty (" << first_empty << ") < i (" << i << ")");
 
 				if(first_empty > i) {
-					new(_get_raw(first_empty)) T(std::move(get(first_empty - 1)));
-
 					// shift to make room for new element
-					if(first_empty - i > 1) {
-						_move_elements(i, i + 1, relocation, first_empty - i - 1);
-					}
-
+					_move_elements(i, i + 1, relocation, first_empty - i, true);
 					iter->~T();
 				}
+
+				// create new element
+				auto instance = new(addr(i)) T(std::forward<Args>(args)...);
+
+#ifdef MIRRAGE_SLOW_INVARIANTS
+				for(auto& e : *this) {
+					MIRRAGE_INVARIANT(e.*(ValueTraits::sort_key), "invalid key");
+				}
+
+				MIRRAGE_INVARIANT(std::is_sorted(begin(),
+				                                 end(),
+				                                 [](auto& lhs, auto& rhs) {
+					                                 return lhs.*(ValueTraits::sort_key)
+					                                        < rhs.*(ValueTraits::sort_key);
+				                                 }),
+				                  "pool is not sorted anymore");
+#endif
+
+				return {*instance, i};
 
 			} else {
 				// insert at the end
@@ -242,6 +272,15 @@ namespace mirrage::util {
 		auto instance2 = instance + 1;
 
 		(void) instance2;
+
+		MIRRAGE_INVARIANT(!ValueTraits::sorted
+		                          || std::is_sorted(begin(),
+		                                            end(),
+		                                            [](auto& lhs, auto& rhs) {
+			                                            return lhs.*(ValueTraits::sort_key)
+			                                                   < rhs.*(ValueTraits::sort_key);
+		                                            }),
+		                  "pool is not sorted anymore");
 
 		return {*instance, i};
 	}
@@ -277,22 +316,69 @@ namespace mirrage::util {
 
 	MIRRAGE_POOL_HEADER
 	template <typename F>
-	void MIRRAGE_POOL::_move_elements(index_t src, index_t dst, F&& on_relocate, index_t count)
+	void MIRRAGE_POOL::_move_elements(
+	        const index_t src, const index_t dst, F&& on_relocate, const index_t count, const bool last_empty)
 	{
+		MIRRAGE_INVARIANT(src != dst, "_move_elements with src==dst");
+
+		(void) last_empty;
+
+		if constexpr(!std::is_trivially_copyable_v<T>) {
+			if(dst > src && last_empty) {
+				new(_get_raw(dst + count - 1)) T(std::move(get(src + count - 1)));
+				if(count > 1)
+					_move_elements(src, dst, on_relocate, count - 1, false);
+
+				on_relocate(src + count - 1, get(dst + count - 1), dst + count - 1);
+				return;
+			}
+		}
+
 		auto c_src = src;
 		auto c_dst = dst;
 		while(c_src - src < count) {
 			auto step = util::min(count, chunk_len - c_src % chunk_len, chunk_len - c_dst % chunk_len);
 			if constexpr(std::is_trivially_copyable_v<T>) {
 				// yay, we can memmove
-				std::memmove(_get_raw(c_dst), _get_raw(c_src), std::size_t(step));
+				std::memmove(_get_raw(c_dst), _get_raw(c_src), std::size_t(step) * sizeof(T));
 			} else {
-				// nay, have to check if valid and call move-assignment / placement-new
-				if(c_dst > c_src) {
+				// nay, we hava to move the objects
+				if(dst > src) {
 					std::move_backward(&get(c_src), &get(c_src) + step, &get(c_dst) + step);
 				} else {
 					std::move(&get(c_src), &get(c_src) + step, &get(c_dst));
 				}
+			}
+			c_src += step;
+			c_dst += step;
+		}
+
+		for(auto i : util::range(count)) {
+			on_relocate(src + i, get(dst + i), dst + i);
+		}
+	}
+
+	MIRRAGE_POOL_HEADER
+	template <typename F>
+	void MIRRAGE_POOL::_move_elements_uninitialized(const index_t src,
+	                                                const index_t dst,
+	                                                F&&           on_relocate,
+	                                                const index_t count)
+	{
+		MIRRAGE_INVARIANT((src < dst && src + count < dst) || (dst < src && dst + count < src),
+		                  "_move_elements_uninitialized with overlapping ranges");
+
+		auto c_src = src;
+		auto c_dst = dst;
+		while(c_src - src < count) {
+			auto step = util::min(count, chunk_len - c_src % chunk_len, chunk_len - c_dst % chunk_len);
+			if constexpr(std::is_trivially_copyable_v<T>) {
+				// yay, we can memmove
+				std::memmove(_get_raw(c_dst), _get_raw(c_src), std::size_t(step) * sizeof(T));
+			} else {
+				// nay, we hava to move the objects
+				std::uninitialized_move(
+				        &get(c_src), &get(c_src) + step, reinterpret_cast<T*>(_get_raw(c_dst)));
 			}
 			c_src += step;
 			c_dst += step;

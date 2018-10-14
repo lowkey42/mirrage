@@ -210,7 +210,7 @@ namespace mirrage::ecs {
 		struct Pool_storage_policy_sort {
 			static constexpr bool sorted = false;
 		};
-		/*
+
 		// FIXME: sorted pool returns/erases the wrong values under heavy contention
 		template <class T>
 		struct Pool_storage_policy_sort<T, util::void_t<decltype(T::sort_key), decltype(T::sort_key_index)>> {
@@ -218,7 +218,7 @@ namespace mirrage::ecs {
 			static constexpr auto sort_key                 = T::sort_key;
 			static constexpr auto sort_key_constructor_idx = T::sort_key_index;
 		};
-*/
+
 		template <class T, std::size_t Holes>
 		struct Pool_storage_policy_value_traits : Pool_storage_policy_sort<T> {
 			static constexpr int_fast32_t max_free = Holes;
@@ -364,27 +364,35 @@ namespace mirrage::ecs {
 	  protected:
 		void restore(Entity_handle owner, Deserializer& deserializer) override
 		{
-			auto entity_id = get_entity_id(owner, _manager);
-			if(entity_id == invalid_entity_id) {
-				MIRRAGE_FAIL("emplace_or_find_now of component from invalid/deleted entity");
-			}
-
-			auto& comp = [&]() -> T& {
-				auto comp_idx = _index.find(entity_id);
-				if(comp_idx.is_some()) {
-					return _storage.get(comp_idx.get_or_throw());
+			if constexpr(std::is_constructible_v<T, Entity_handle, Entity_manager&>) {
+				auto entity_id = get_entity_id(owner, _manager);
+				if(entity_id == invalid_entity_id) {
+					MIRRAGE_FAIL("emplace_or_find_now of component from invalid/deleted entity");
 				}
 
-				auto relocator = [&](auto, auto& comp, auto new_idx) {
-					_index.attach(comp.owner_handle().id(), new_idx);
-				};
+				auto& comp = [&]() -> T& {
+					auto comp_idx = _index.find(entity_id);
+					if(comp_idx.is_some()) {
+						return _storage.get(comp_idx.get_or_throw());
+					}
 
-				auto comp = _storage.emplace(relocator, owner, _manager);
-				_index.attach(entity_id, std::get<1>(comp));
-				return std::get<0>(comp);
-			}();
+					auto relocator = [&](auto, auto& comp, auto new_idx) {
+						_index.attach(comp.owner_handle().id(), new_idx);
+					};
 
-			load_component(deserializer, comp);
+					auto comp = _storage.emplace(relocator, owner, _manager);
+					_index.attach(entity_id, std::get<1>(comp));
+					return std::get<0>(comp);
+				}();
+
+				load_component(deserializer, comp);
+
+			} else {
+				(void) owner;
+				(void) deserializer;
+				MIRRAGE_FAIL("Tried to load component " << T::name()
+				                                        << " that has no two-argument constructor!");
+			}
 		}
 
 		bool save(Entity_handle owner, Serializer& serializer) override
@@ -416,10 +424,10 @@ namespace mirrage::ecs {
 
 			if(_unoptimized_deletes > 32) {
 				_unoptimized_deletes = 0;
-				_index.shrink_to_fit();
 				_storage.shrink_to_fit([&](auto, auto& comp, auto new_idx) {
 					_index.attach(comp.owner_handle().id(), new_idx);
 				});
+				_index.shrink_to_fit();
 			}
 		}
 
@@ -448,24 +456,11 @@ namespace mirrage::ecs {
 						auto comp_idx = comp_idx_mb.get_or_throw();
 						_index.detach(entity_id);
 
-						Insertion insertion;
-						if(_queued_insertions.try_dequeue(insertion)) {
-							auto entity_id = get_entity_id(std::get<1>(insertion), _manager);
-							if(entity_id == invalid_entity_id) {
-								_storage.erase(comp_idx, [&](auto, auto& comp, auto new_idx) {
-									_index.attach(comp.owner_handle().id(), new_idx);
-								});
-							} else {
-								_storage.replace(comp_idx, std::move(std::get<0>(insertion)));
-								_index.attach(std::get<1>(insertion).id(), comp_idx);
-							}
-						} else {
-							_storage.erase(comp_idx, [&](auto, auto& comp, auto new_idx) {
-								auto entity_id = get_entity_id(comp.owner_handle(), _manager);
-								_index.attach(entity_id, new_idx);
-							});
-							_unoptimized_deletes++;
-						}
+						_storage.erase(comp_idx, [&](auto, auto& comp, auto new_idx) {
+							auto entity_id = get_entity_id(comp.owner_handle(), _manager);
+							_index.attach(entity_id, new_idx);
+						});
+						_unoptimized_deletes++;
 					}
 				} else {
 					break;

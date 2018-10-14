@@ -43,6 +43,7 @@ namespace mirrage::ecs {
 	class Entity_manager {
 	  public:
 		Entity_manager(asset::Asset_manager&, util::any_ptr userdata);
+		~Entity_manager();
 
 		// user interface; thread-safe
 		auto emplace() noexcept -> Entity_facet;

@@ -101,7 +101,7 @@ namespace mirrage::util {
 		/// The behaviour is undefined if i is not a valid index.
 		/// Complexity: O(1) for spare or unsorted pools and O(N) else
 		template <typename F>
-		void erase(IndexType i, F&& relocation, bool leave_holes = true);
+		void erase(IndexType i, F&& relocation);
 
 		/// Tries to compact the elements and free unused memory.
 		/// Complexity: O(N) for sparse pools and O(1) else
@@ -145,9 +145,18 @@ namespace mirrage::util {
 
 		/// Moves the range [src, src+count) to [dst, dst+count), calling on_relocate accordingly
 		/// The behaviour is undefined if any of the ranges contains an empty/invalid value!
+		/// If last_empty is true the last element in the destination range has to be empty.
 		/// The non-overlapping parts of the src range will be in the moved-from state afterwards.
 		template <typename F>
-		void _move_elements(index_t src, index_t dst, F&& on_relocate, index_t count = 1);
+		void _move_elements(
+		        index_t src, index_t dst, F&& on_relocate, index_t count = 1, bool last_empty = false);
+
+		/// Moves the range [src, src+count) to [dst, dst+count), calling on_relocate accordingly
+		/// The behaviour is undefined if the two ranges overlap!
+		/// The behaviour is undefined if the src ranges contains an empty/invalid value!
+		/// The behaviour is undefined if the dst ranges contains any intitialized/valid values!
+		template <typename F>
+		void _move_elements_uninitialized(index_t src, index_t dst, F&& on_relocate, index_t count = 1);
 
 		void _pop_back();
 	};
@@ -256,7 +265,7 @@ namespace mirrage::util {
 #define MIRRAGE_UTIL_POOL_INCLUDED
 #include "pool.hxx"
 
-
+/*
 namespace mirrage::util::tests {
 	struct accessor {
 		std::size_t chunk_count;
@@ -393,3 +402,4 @@ namespace mirrage::util::tests {
 		}
 	}
 } // namespace mirrage::util::tests
+*/

@@ -7,6 +7,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <vector>
 
 namespace mirrage::util {
@@ -46,7 +47,8 @@ namespace mirrage::util {
 		template <class Key>
 		auto find(const Key& key) -> const_iterator
 		{
-			return std::lower_bound(begin(), end(), key);
+			auto iter = std::lower_bound(begin(), end(), key);
+			return iter != end() && *iter == key ? iter : end();
 		}
 
 		void erase(const_iterator iter) { _data.erase(iter); }
@@ -72,6 +74,8 @@ namespace mirrage::util {
 		auto end() const { return _data.end(); }
 		auto rbegin() const { return _data.rbegin(); }
 		auto rend() const { return _data.rend(); }
+
+		decltype(auto) operator[](std::int64_t i) { return _data.at(i); }
 
 	  private:
 		std::vector<T> _data;

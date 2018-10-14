@@ -19,9 +19,9 @@ namespace mirrage::ecs {
 	Entity_manager::Entity_manager(asset::Asset_manager& assets, util::any_ptr ud)
 	  : _assets(assets), _userdata(ud)
 	{
-
 		init_serializer(*this);
 	}
+	Entity_manager::~Entity_manager() { deinit_serializer(*this); }
 
 	Entity_facet Entity_manager::emplace() noexcept { return {*this, _handles.get_new()}; }
 	Entity_facet Entity_manager::emplace(const std::string& blueprint)
