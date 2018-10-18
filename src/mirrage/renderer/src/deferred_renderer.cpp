@@ -251,6 +251,160 @@ namespace mirrage::renderer {
 		return _descriptor_set_pool.create_descriptor(layout, bindings);
 	}
 
+	void Deferred_renderer::debug_draw_sphere(const glm::vec3& center, float radius, const util::Rgb& color)
+	{
+		constexpr auto vertices = std::array<glm::vec3, 42>{
+		        glm::vec3(0.000000, -1.000000, 0.000000),   glm::vec3(0.723607, -0.447220, 0.525725),
+		        glm::vec3(-0.276388, -0.447220, 0.850649),  glm::vec3(-0.894426, -0.447216, 0.000000),
+		        glm::vec3(-0.276388, -0.447220, -0.850649), glm::vec3(0.723607, -0.447220, -0.525725),
+		        glm::vec3(0.276388, 0.447220, 0.850649),    glm::vec3(-0.723607, 0.447220, 0.525725),
+		        glm::vec3(-0.723607, 0.447220, -0.525725),  glm::vec3(0.276388, 0.447220, -0.850649),
+		        glm::vec3(0.894426, 0.447216, 0.000000),    glm::vec3(0.000000, 1.000000, 0.000000),
+		        glm::vec3(-0.162456, -0.850654, 0.499995),  glm::vec3(0.425323, -0.850654, 0.309011),
+		        glm::vec3(0.262869, -0.525738, 0.809012),   glm::vec3(0.850648, -0.525736, 0.000000),
+		        glm::vec3(0.425323, -0.850654, -0.309011),  glm::vec3(-0.525730, -0.850652, 0.000000),
+		        glm::vec3(-0.688189, -0.525736, 0.499997),  glm::vec3(-0.162456, -0.850654, -0.499995),
+		        glm::vec3(-0.688189, -0.525736, -0.499997), glm::vec3(0.262869, -0.525738, -0.809012),
+		        glm::vec3(0.951058, 0.000000, 0.309013),    glm::vec3(0.951058, 0.000000, -0.309013),
+		        glm::vec3(0.000000, 0.000000, 1.000000),    glm::vec3(0.587786, 0.000000, 0.809017),
+		        glm::vec3(-0.951058, 0.000000, 0.309013),   glm::vec3(-0.587786, 0.000000, 0.809017),
+		        glm::vec3(-0.587786, 0.000000, -0.809017),  glm::vec3(-0.951058, 0.000000, -0.309013),
+		        glm::vec3(0.587786, 0.000000, -0.809017),   glm::vec3(0.000000, 0.000000, -1.000000),
+		        glm::vec3(0.688189, 0.525736, 0.499997),    glm::vec3(-0.262869, 0.525738, 0.809012),
+		        glm::vec3(-0.850648, 0.525736, 0.000000),   glm::vec3(-0.262869, 0.525738, -0.809012),
+		        glm::vec3(0.688189, 0.525736, -0.499997),   glm::vec3(0.162456, 0.850654, 0.499995),
+		        glm::vec3(0.525730, 0.850652, 0.000000),    glm::vec3(-0.425323, 0.850654, 0.309011),
+		        glm::vec3(-0.425323, 0.850654, -0.309011),  glm::vec3(0.162456, 0.850654, -0.499995)};
+
+		if(_factory->settings().debug_geometry) {
+			const auto line = [&](auto b, auto e) {
+				_frame_data.debug_geometry_queue.emplace_back(vertices[std::size_t(b - 1)] * radius + center,
+				                                              vertices[std::size_t(e - 1)] * radius + center,
+				                                              color);
+			};
+
+			line(1, 13);
+			line(1, 14);
+			line(1, 17);
+			line(1, 18);
+			line(1, 20);
+			line(2, 14);
+			line(2, 15);
+			line(2, 16);
+			line(2, 23);
+			line(2, 26);
+			line(3, 13);
+			line(3, 15);
+			line(3, 19);
+			line(3, 25);
+			line(3, 28);
+			line(4, 18);
+			line(4, 19);
+			line(4, 21);
+			line(4, 27);
+			line(4, 30);
+			line(5, 20);
+			line(5, 21);
+			line(5, 22);
+			line(5, 29);
+			line(5, 32);
+			line(6, 16);
+			line(6, 17);
+			line(6, 22);
+			line(6, 24);
+			line(6, 31);
+			line(7, 25);
+			line(7, 26);
+			line(7, 33);
+			line(7, 34);
+			line(7, 38);
+			line(8, 27);
+			line(8, 28);
+			line(8, 34);
+			line(8, 35);
+			line(8, 40);
+			line(9, 29);
+			line(9, 30);
+			line(9, 35);
+			line(9, 36);
+			line(9, 41);
+			line(10, 31);
+			line(10, 32);
+			line(10, 36);
+			line(10, 37);
+			line(10, 42);
+			line(11, 23);
+			line(11, 24);
+			line(11, 33);
+			line(11, 37);
+			line(11, 39);
+			line(12, 38);
+			line(12, 39);
+			line(12, 40);
+			line(12, 41);
+			line(12, 42);
+			line(13, 14);
+			line(13, 15);
+			line(13, 18);
+			line(13, 19);
+			line(14, 15);
+			line(14, 16);
+			line(14, 17);
+			line(15, 25);
+			line(15, 26);
+			line(16, 17);
+			line(16, 23);
+			line(16, 24);
+			line(17, 20);
+			line(17, 22);
+			line(18, 19);
+			line(18, 20);
+			line(18, 21);
+			line(19, 27);
+			line(19, 28);
+			line(20, 21);
+			line(20, 22);
+			line(21, 29);
+			line(21, 30);
+			line(22, 31);
+			line(22, 32);
+			line(23, 24);
+			line(23, 26);
+			line(23, 33);
+			line(24, 31);
+			line(24, 37);
+			line(25, 26);
+			line(25, 28);
+			line(25, 34);
+			line(27, 28);
+			line(27, 30);
+			line(27, 35);
+			line(28, 34);
+			line(29, 30);
+			line(29, 32);
+			line(29, 36);
+			line(30, 35);
+			line(31, 32);
+			line(31, 37);
+			line(32, 36);
+			line(33, 38);
+			line(33, 39);
+			line(34, 38);
+			line(34, 40);
+			line(35, 40);
+			line(35, 41);
+			line(36, 41);
+			line(36, 42);
+			line(37, 39);
+			line(37, 42);
+			line(38, 39);
+			line(38, 40);
+			line(39, 42);
+			line(40, 41);
+			line(41, 42);
+		}
+	}
+
 
 	struct Deferred_renderer_factory::Asset_loaders {
 		asset::Asset_manager& assets;

@@ -225,6 +225,7 @@ namespace mirrage::renderer {
 				_frame_data.debug_geometry_queue.emplace_back(line);
 			}
 		}
+		void debug_draw_sphere(const glm::vec3& center, float radius, const util::Rgb&);
 		auto low_level_draw_queue() -> auto& { return _frame_data.geometry_queue; }
 
 

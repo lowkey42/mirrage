@@ -99,6 +99,12 @@ namespace mirrage::renderer {
 		glm::vec3 start;
 		glm::vec3 end;
 		util::Rgb color;
+
+		Debug_geometry() = default;
+		Debug_geometry(const glm::vec3& start, const glm::vec3& end, const util::Rgb& color)
+		  : start(start), end(end), color(color)
+		{
+		}
 	};
 
 	class Frame_data {
