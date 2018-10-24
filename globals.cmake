@@ -40,7 +40,7 @@ endif()
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic -Wextra-semi
 		-Wzero-as-null-pointer-constant -Wold-style-cast -Werror
-		-Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces)
+		-Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces -Wno-error-unused-command-line-argument)
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic
