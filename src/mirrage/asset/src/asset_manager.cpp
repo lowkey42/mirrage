@@ -1,5 +1,6 @@
 #include <mirrage/asset/asset_manager.hpp>
 
+#include <mirrage/asset/embedded_asset.hpp>
 #include <mirrage/asset/error.hpp>
 
 #include <mirrage/utils/log.hpp>
@@ -185,7 +186,6 @@ namespace mirrage::asset {
 		return PHYSFS_getPrefDir(org_name.c_str(), app_name.c_str());
 	}
 
-
 	Asset_manager::Asset_manager(const std::string& exe_name,
 	                             const std::string& org_name,
 	                             const std::string& app_name)
@@ -204,6 +204,19 @@ namespace mirrage::asset {
 			throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 			                        "Unable to set write-dir: "s + write_dir);
 
+		for(auto ea : Embedded_asset::instances()) {
+			LOG(plog::info) << "Include embedded asset \"" << ea->name() << "\": " << ea->data().size()
+			                << " bytes";
+			if(!PHYSFS_mountMemory(ea->data().data(),
+			                       static_cast<PHYSFS_uint64>(ea->data().size_bytes()),
+			                       nullptr,
+			                       "embedded.zip",
+			                       nullptr,
+			                       0)) {
+				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
+				                        "Unable to add embedded archive: "s + ea->name());
+			}
+		}
 
 		auto add_source = [](const char* path) {
 			LOG(plog::info) << "Added FS directory: " << path;

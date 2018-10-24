@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-project(mirrage_demo LANGUAGES CXX)
+project(mirrage_demo LANGUAGES CXX ASM)
 
 file(GLOB_RECURSE HEADER_FILES
 	RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}

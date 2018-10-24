@@ -1,5 +1,6 @@
 #include <mirrage/renderer/deferred_renderer.hpp>
 
+#include <mirrage/asset/embedded_asset.hpp>
 #include <mirrage/renderer/model_comp.hpp>
 
 #include <mirrage/ecs/components/transform_comp.hpp>
@@ -13,6 +14,8 @@
 #include <gsl/gsl>
 
 using namespace mirrage::graphic;
+
+extern void ref_embedded_assets_mirrage_renderer();
 
 namespace mirrage::renderer {
 
@@ -67,6 +70,7 @@ namespace mirrage::renderer {
 	  , _cameras(&ecs.list<Camera_comp>())
 	{
 		ecs.register_component_type<Material_property_comp>();
+		ref_embedded_assets_mirrage_renderer();
 
 		_write_global_uniform_descriptor_set();
 

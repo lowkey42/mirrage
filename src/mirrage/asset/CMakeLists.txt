@@ -11,6 +11,7 @@ file(GLOB_RECURSE HEADER_FILES
 add_library(mirrage_asset STATIC
 	src/aid.cpp
 	src/asset_manager.cpp
+	src/embedded_asset.cpp
 	src/error.cpp
 	src/stream.cpp
 	${HEADER_FILES}

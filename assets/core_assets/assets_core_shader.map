@@ -1,96 +1,96 @@
 shader: = shader/
 
-vert_shader:blit = shader/bin/fullscreen.vert.spv
-frag_shader:blit = shader/bin/blit.frag.spv
+vert_shader:blit = shader/fullscreen.vert.spv
+frag_shader:blit = shader/blit.frag.spv
 
-vert_shader:debug_draw = shader/bin/debug_draw.vert.spv
-frag_shader:debug_draw = shader/bin/debug_draw.frag.spv
-
-
-vert_shader:light_directional = shader/bin/fullscreen.vert.spv
-frag_shader:light_directional = shader/bin/light_directional.frag.spv
-
-vert_shader:light_point = shader/bin/light_point.vert.spv
-frag_shader:light_point = shader/bin/light_point.frag.spv
-
-vert_shader:shadow_model = shader/bin/shadow_model.vert.spv
-vert_shader:shadow_model_animated = shader/bin/shadow_model_animated.vert.spv
-vert_shader:shadow_model_animated_dqs = shader/bin/shadow_model_animated_dqs.vert.spv
-frag_shader:shadow_model = shader/bin/shadow_model.frag.spv
-
-vert_shader:model = shader/bin/model.vert.spv
-vert_shader:model_animated = shader/bin/model_animated.vert.spv
-vert_shader:model_animated_dqs = shader/bin/model_animated_dqs.vert.spv
-frag_shader:model = shader/bin/model.frag.spv
-frag_shader:model_emissive = shader/bin/model_emissive.frag.spv
-frag_shader:model_alphatest = shader/bin/model_alphatest.frag.spv
-
-vert_shader:ui = shader/bin/ui.vert.spv
-frag_shader:ui = shader/bin/ui.frag.spv
-
-vert_shader:taa = shader/bin/fullscreen.vert.spv
-frag_shader:taa = shader/bin/taa.frag.spv
-
-vert_shader:ssao_blur = shader/bin/ssao_blur.vert.spv
-frag_shader:ssao_blur = shader/bin/ssao_blur.frag.spv
-
-vert_shader:ssao = shader/bin/fullscreen.vert.spv
-frag_shader:ssao = shader/bin/ssao.frag.spv
+vert_shader:debug_draw = shader/debug_draw.vert.spv
+frag_shader:debug_draw = shader/debug_draw.frag.spv
 
 
-vert_shader:gi_blend = shader/bin/fullscreen.vert.spv
-frag_shader:gi_blend = shader/bin/gi_blend.frag.spv
+vert_shader:light_directional = shader/fullscreen.vert.spv
+frag_shader:light_directional = shader/light_directional.frag.spv
 
-vert_shader:gi_diffuse_reproject = shader/bin/fullscreen.vert.spv
-frag_shader:gi_diffuse_reproject = shader/bin/gi_diffuse_reproject.frag.spv
+vert_shader:light_point = shader/light_point.vert.spv
+frag_shader:light_point = shader/light_point.frag.spv
 
-vert_shader:gi_integrate_brdf = shader/bin/gi_integrate_brdf.vert.spv
-frag_shader:gi_integrate_brdf = shader/bin/gi_integrate_brdf.frag.spv
+vert_shader:shadow_model = shader/shadow_model.vert.spv
+vert_shader:shadow_model_animated = shader/shadow_model_animated.vert.spv
+vert_shader:shadow_model_animated_dqs = shader/shadow_model_animated_dqs.vert.spv
+frag_shader:shadow_model = shader/shadow_model.frag.spv
 
-vert_shader:gi_mipgen = shader/bin/fullscreen.vert.spv
-frag_shader:gi_mipgen = shader/bin/gi_mipgen.frag.spv
+vert_shader:model = shader/model.vert.spv
+vert_shader:model_animated = shader/model_animated.vert.spv
+vert_shader:model_animated_dqs = shader/model_animated_dqs.vert.spv
+frag_shader:model = shader/model.frag.spv
+frag_shader:model_emissive = shader/model_emissive.frag.spv
+frag_shader:model_alphatest = shader/model_alphatest.frag.spv
 
-vert_shader:gi_sample = shader/bin/fullscreen.vert.spv
-frag_shader:gi_sample = shader/bin/gi_sample.frag.spv
+vert_shader:ui = shader/ui.vert.spv
+frag_shader:ui = shader/ui.frag.spv
 
-vert_shader:gi_sample_upsample = shader/bin/fullscreen.vert.spv
-frag_shader:gi_sample_upsample = shader/bin/gi_sample_upsample.frag.spv
+vert_shader:taa = shader/fullscreen.vert.spv
+frag_shader:taa = shader/taa.frag.spv
 
-vert_shader:gi_sample_blend = shader/bin/fullscreen.vert.spv
-frag_shader:gi_sample_blend = shader/bin/gi_sample_blend.frag.spv
+vert_shader:ssao_blur = shader/ssao_blur.vert.spv
+frag_shader:ssao_blur = shader/ssao_blur.frag.spv
 
-vert_shader:gi_sample_spec = shader/bin/fullscreen.vert.spv
-frag_shader:gi_sample_spec = shader/bin/gi_sample_spec.frag.spv
+vert_shader:ssao = shader/fullscreen.vert.spv
+frag_shader:ssao = shader/ssao.frag.spv
 
-vert_shader:gi_spec_blur = shader/bin/gi_spec_blur.vert.spv
-frag_shader:gi_spec_blur = shader/bin/gi_spec_blur.frag.spv
 
-vert_shader:gi_reproject = shader/bin/fullscreen.vert.spv
-frag_shader:gi_reproject = shader/bin/gi_reproject.frag.spv
+vert_shader:gi_blend = shader/fullscreen.vert.spv
+frag_shader:gi_blend = shader/gi_blend.frag.spv
 
-vert_shader:gi_reprojection_weights = shader/bin/fullscreen.vert.spv
-frag_shader:gi_reprojection_weights = shader/bin/gi_reprojection_weights.frag.spv
+vert_shader:gi_diffuse_reproject = shader/fullscreen.vert.spv
+frag_shader:gi_diffuse_reproject = shader/gi_diffuse_reproject.frag.spv
 
-vert_shader:gi_weight_mipgen = shader/bin/fullscreen.vert.spv
-frag_shader:gi_weight_mipgen = shader/bin/gi_weight_mipgen.frag.spv
+vert_shader:gi_integrate_brdf = shader/gi_integrate_brdf.vert.spv
+frag_shader:gi_integrate_brdf = shader/gi_integrate_brdf.frag.spv
 
-vert_shader:median_filter = shader/bin/fullscreen.vert.spv
-frag_shader:median_filter = shader/bin/median_filter.frag.spv
+vert_shader:gi_mipgen = shader/fullscreen.vert.spv
+frag_shader:gi_mipgen = shader/gi_mipgen.frag.spv
 
-vert_shader:luminance = shader/bin/fullscreen.vert.spv
-frag_shader:luminance = shader/bin/luminance.frag.spv
+vert_shader:gi_sample = shader/fullscreen.vert.spv
+frag_shader:gi_sample = shader/gi_sample.frag.spv
 
-vert_shader:luminance_adapt = shader/bin/fullscreen.vert.spv
-frag_shader:luminance_adapt = shader/bin/luminance_adapt.frag.spv
+vert_shader:gi_sample_upsample = shader/fullscreen.vert.spv
+frag_shader:gi_sample_upsample = shader/gi_sample_upsample.frag.spv
 
-vert_shader:bloom_apply = shader/bin/fullscreen.vert.spv
-frag_shader:bloom_apply = shader/bin/bloom_apply.frag.spv
+vert_shader:gi_sample_blend = shader/fullscreen.vert.spv
+frag_shader:gi_sample_blend = shader/gi_sample_blend.frag.spv
 
-vert_shader:bloom_blur = shader/bin/bloom_blur.vert.spv
-frag_shader:bloom_blur = shader/bin/bloom_blur.frag.spv
+vert_shader:gi_sample_spec = shader/fullscreen.vert.spv
+frag_shader:gi_sample_spec = shader/gi_sample_spec.frag.spv
 
-comp_shader:tone_mapping_adjust = shader/bin/tone_mapping_adjust.comp.spv
-comp_shader:tone_mapping_histogram = shader/bin/tone_mapping_histogram.comp.spv
+vert_shader:gi_spec_blur = shader/gi_spec_blur.vert.spv
+frag_shader:gi_spec_blur = shader/gi_spec_blur.frag.spv
 
-vert_shader:tone_mapping_apply = shader/bin/fullscreen.vert.spv
-frag_shader:tone_mapping_apply = shader/bin/tone_mapping_apply.frag.spv
+vert_shader:gi_reproject = shader/fullscreen.vert.spv
+frag_shader:gi_reproject = shader/gi_reproject.frag.spv
+
+vert_shader:gi_reprojection_weights = shader/fullscreen.vert.spv
+frag_shader:gi_reprojection_weights = shader/gi_reprojection_weights.frag.spv
+
+vert_shader:gi_weight_mipgen = shader/fullscreen.vert.spv
+frag_shader:gi_weight_mipgen = shader/gi_weight_mipgen.frag.spv
+
+vert_shader:median_filter = shader/fullscreen.vert.spv
+frag_shader:median_filter = shader/median_filter.frag.spv
+
+vert_shader:luminance = shader/fullscreen.vert.spv
+frag_shader:luminance = shader/luminance.frag.spv
+
+vert_shader:luminance_adapt = shader/fullscreen.vert.spv
+frag_shader:luminance_adapt = shader/luminance_adapt.frag.spv
+
+vert_shader:bloom_apply = shader/fullscreen.vert.spv
+frag_shader:bloom_apply = shader/bloom_apply.frag.spv
+
+vert_shader:bloom_blur = shader/bloom_blur.vert.spv
+frag_shader:bloom_blur = shader/bloom_blur.frag.spv
+
+comp_shader:tone_mapping_adjust = shader/tone_mapping_adjust.comp.spv
+comp_shader:tone_mapping_histogram = shader/tone_mapping_histogram.comp.spv
+
+vert_shader:tone_mapping_apply = shader/fullscreen.vert.spv
+frag_shader:tone_mapping_apply = shader/tone_mapping_apply.frag.spv

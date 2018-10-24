@@ -1,4 +1,3 @@
-
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -6,6 +5,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # required at top-level
 set(MIRRAGE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${MIRRAGE_ROOT_DIR}/modules")
+
+enable_language(C CXX ASM GLSL)
 
 # add_definitions(-DHPC_HISTOGRAM_DEBUG_VIEW)
 add_definitions(-DGSL_TERMINATE_ON_CONTRACT_VIOLATION)
@@ -103,4 +104,6 @@ option(MIRRAGE_ENABLE_CLANG_FORMAT "Includes a clangformat target, that automati
 if(MIRRAGE_ENABLE_CLANG_FORMAT)
 	include(clang-format.cmake)
 endif()
+
+include(embed_assets.cmake)
 
