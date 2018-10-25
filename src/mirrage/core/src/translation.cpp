@@ -76,18 +76,22 @@ namespace mirrage {
 
 	auto Translator::supported_languages() const -> std::vector<Language_id>
 	{
-		return _assets.load<Language_info>("cfg:language_info"_aid)->supported_languages;
+		return _assets.load_maybe<Language_info>("cfg:language_info"_aid)
+		        .process(std::vector<Language_id>{},
+		                 [&](auto& lang_info) { return lang_info->supported_languages; });
 	}
 
 	void Translator::_reload()
 	{
 		_print_missing();
 
-		auto info = _assets.load<Language_info>("cfg:languages_info"_aid);
+		auto info = _assets.load_maybe<Language_info>("cfg:languages_info"_aid);
+		if(info.is_nothing())
+			return;
 
-		if(!contains(info->supported_languages, _language)) {
+		if(!contains(info.get_or_throw()->supported_languages, _language)) {
 			LOG(plog::info) << "Unsupported language: " << _language;
-			_language = Language_id{info->default_language};
+			_language = Language_id{info.get_or_throw()->default_language};
 		}
 		LOG(plog::info) << "Using text language: " << _language;
 

@@ -20,6 +20,7 @@
 #include <signal.h>
 #endif
 
+extern void ref_embedded_assets_mirrage();
 
 namespace mirrage {
 	namespace {
@@ -113,6 +114,7 @@ namespace mirrage {
 	  , _current_time(SDL_GetTicks() / 1000.0)
 	  , _headless(headless)
 	{
+		ref_embedded_assets_mirrage();
 
 		_graphics_main_window.process([&](auto& window) {
 			_input_manager->viewport({0, 0, window.width(), window.height()});

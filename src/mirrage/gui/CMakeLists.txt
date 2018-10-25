@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-project(mirrage_gui LANGUAGES CXX)
+project(mirrage_gui)
 
 # need to be specified with the sources for correct syntax highlighting in some IDEs
 file(GLOB_RECURSE HEADER_FILES
@@ -16,6 +16,13 @@ add_library(mirrage_gui STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::gui ALIAS mirrage_gui)
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_gui.map" CONTENT
+"cfg:gui = settings/gui.json
+font: = fonts/
+font:default_font = fonts/default_font.ttf
+")
+mirrage_embed_asset(mirrage_gui "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_gui.map;${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts"
+	"${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_gui.map")
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_gui PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})

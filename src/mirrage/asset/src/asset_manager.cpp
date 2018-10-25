@@ -4,6 +4,7 @@
 #include <mirrage/asset/error.hpp>
 
 #include <mirrage/utils/log.hpp>
+#include <mirrage/utils/md5.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
 #include <physfs.h>
@@ -206,13 +207,16 @@ namespace mirrage::asset {
 
 		for(auto ea : Embedded_asset::instances()) {
 			LOG(plog::info) << "Include embedded asset \"" << ea->name() << "\": " << ea->data().size()
-			                << " bytes";
+			                << " bytes MD5: "
+			                << util::md5(std::string(reinterpret_cast<const char*>(ea->data().data()),
+			                                         std::size_t(ea->data().size_bytes())));
+			auto name = "embedded_" + ea->name() + ".zip";
 			if(!PHYSFS_mountMemory(ea->data().data(),
 			                       static_cast<PHYSFS_uint64>(ea->data().size_bytes()),
 			                       nullptr,
-			                       "embedded.zip",
+			                       name.c_str(),
 			                       nullptr,
-			                       0)) {
+			                       1)) {
 				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 				                        "Unable to add embedded archive: "s + ea->name());
 			}
@@ -262,6 +266,13 @@ namespace mirrage::asset {
 				add_source(l.c_str());
 			}
 		}
+
+		// unmount default search-path
+		PHYSFS_unmount(PHYSFS_getBaseDir());
+		PHYSFS_unmount(append_file(PHYSFS_getBaseDir(), "..").c_str());
+		PHYSFS_unmount(mirrage::asset::pwd().c_str());
+
+		print_dir_recursiv("/", 0, [](auto&& path) { LOG(plog::fatal) << path; });
 
 		_reload_dispatchers();
 	}

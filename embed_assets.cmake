@@ -1,7 +1,11 @@
+cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+
 #optional: generated files to depend on
 macro(mirrage_embed_asset target src_files)
+	string (REPLACE ";" "$<SEMICOLON>" src_files_str "${src_files}")
+
 	add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.zip" "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s"
-		COMMAND ${CMAKE_COMMAND} -DSRC_FILES=${src_files} -DDST_DIR=${CMAKE_CURRENT_BINARY_DIR} -P ${MIRRAGE_ROOT_DIR}/copy_recursive.cmake
+		COMMAND ${CMAKE_COMMAND} -DSRC_FILES=${src_files_str} -DDST_DIR=${CMAKE_CURRENT_BINARY_DIR} -P ${MIRRAGE_ROOT_DIR}/copy_recursive.cmake
 		COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s"
 		DEPENDS ${ARGN}
 		VERBATIM
@@ -40,3 +44,4 @@ void ref_embedded_assets_${target}() {
 	add_custom_target(mirrage_embedded_assets_${target} DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.zip" "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s") 
 	add_dependencies(${target} mirrage_embedded_assets_${target})
 endmacro()
+

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-project(mirrage_input LANGUAGES CXX)
+project(mirrage_input)
 
 find_package(SDL2 REQUIRED)
 add_library(sdl2::sdl2 INTERFACE IMPORTED)

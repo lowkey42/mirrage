@@ -1,7 +1,10 @@
+cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+
 function(mirrage_copy_recursive src dst)
 	foreach(path ${src})
 		get_filename_component(file ${path} NAME)
 		if(IS_DIRECTORY ${path})
+			set(files "")
 			file(GLOB files ${path}/*)
 			mirrage_copy_recursive("${files}" "${dst}/${file}")
 			set(local_copied_files ${local_copied_files} ${copied_files}) 
@@ -18,10 +21,10 @@ function(mirrage_copy_recursive src dst)
 	set(copied_files "${local_copied_files}" PARENT_SCOPE)
 endfunction()
 
+mirrage_copy_recursive("${SRC_FILES}" "${DST_DIR}/embed")
 
-mirrage_copy_recursive(${SRC_FILES} "${DST_DIR}/embed")
-
-execute_process(COMMAND ${CMAKE_COMMAND} -E tar "cfv" "${DST_DIR}/embedded_assets.zip" --format=zip ${copied_files}
+execute_process(COMMAND #zip -r "${DST_DIR}/embedded_assets.zip" ${copied_files}
+${CMAKE_COMMAND} -E tar "cfv" "${DST_DIR}/embedded_assets.zip" --format=zip ${copied_files}
 	WORKING_DIRECTORY "${DST_DIR}/embed"
-	OUTPUT_QUIET
 )
+

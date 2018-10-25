@@ -16,6 +16,8 @@
 #include <string>
 
 
+extern void ref_embedded_assets_mirrage_gui();
+
 namespace mirrage::gui {
 
 	namespace {
@@ -28,7 +30,7 @@ namespace mirrage::gui {
 		};
 
 		struct Gui_cfg {
-			std::vector<Font_desc> fonts;
+			std::vector<Font_desc> fonts{{"font:default_font", 12, true}};
 		};
 		sf2_structDef(Font_desc, aid, size, default_font);
 		sf2_structDef(Gui_cfg, fonts);
@@ -442,6 +444,7 @@ namespace mirrage::gui {
 	Gui::Gui(glm::vec4 viewport, asset::Asset_manager& assets, input::Input_manager& input)
 	  : _viewport(viewport), _assets(assets), _input(input)
 	{
+		ref_embedded_assets_mirrage_gui();
 	}
 	Gui::~Gui() { MIRRAGE_INVARIANT(_renderer == nullptr, "GUI still has a renderer registered (leak?)"); }
 

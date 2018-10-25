@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-project(mirrage_ecs LANGUAGES CXX)
+project(mirrage_ecs)
 
 # need to be specified with the sources for correct syntax highlighting in some IDEs
 file(GLOB_RECURSE HEADER_FILES

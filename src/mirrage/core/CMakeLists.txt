@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-project(mirrage LANGUAGES CXX)
+project(mirrage)
 
 include(version_info.cmake)
 
@@ -24,6 +24,19 @@ add_library(mirrage STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::mirrage ALIAS mirrage)
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map" CONTENT
+"cfg:input_mapping = settings/input_mapping.json
+cfg:graphics = graphics-cfg.json
+cfg:renderer = renderer-cfg.json
+cfg:sounds = sounds-cfg.json
+cfg:language = language-cfg.json
+cfg:languages_info = settings/languages.json
+cfg:gui = settings/gui.json
+
+loc: = loc/
+pl_cache: = pipeline_caches
+")
+mirrage_embed_asset(mirrage "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map")
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})

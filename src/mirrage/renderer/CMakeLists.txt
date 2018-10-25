@@ -14,7 +14,8 @@ file(GLOB_RECURSE ALL_SHADERS
 	shader/*.frag
 	shader/*.vert
 	shader/*.comp
-	shader/*.glsl)
+	shader/*.glsl
+	assets/assets_mirrage_renderer_shader.map)
 
 add_custom_target(mirrage_renderer_shaders SOURCES ${ALL_SHADERS})
 
@@ -69,7 +70,13 @@ add_library(mirrage_renderer STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::renderer ALIAS mirrage_renderer)
-mirrage_embed_asset(mirrage_renderer "${CMAKE_CURRENT_BINARY_DIR}/shader" ${SPIRV_BINARY_FILES})
+set(EMBEDDED_ASSETS
+	"${CMAKE_CURRENT_BINARY_DIR}/shader"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/textures"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_shader.map"
+	"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_textures.map"
+)
+mirrage_embed_asset(mirrage_renderer "${EMBEDDED_ASSETS}" ${SPIRV_BINARY_FILES})
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_renderer PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
