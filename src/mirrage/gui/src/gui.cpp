@@ -30,7 +30,7 @@ namespace mirrage::gui {
 		};
 
 		struct Gui_cfg {
-			std::vector<Font_desc> fonts{{"font:default_font", 12, true}};
+			std::vector<Font_desc> fonts;
 		};
 		sf2_structDef(Font_desc, aid, size, default_font);
 		sf2_structDef(Gui_cfg, fonts);
@@ -336,17 +336,22 @@ namespace mirrage::gui {
 				nk_font_atlas_init_default(&atlas);
 				nk_font_atlas_begin(&atlas);
 
+				auto load_font = [&](const Font_desc& font) {
+					assets.load_maybe<asset::Bytes>(font.aid, false).process([&](auto&& data) {
+						auto f = nk_font_atlas_add_from_memory(
+						        &atlas, const_cast<char*>(data->data()), data->size(), font.size, nullptr);
+						if(font.default_font) {
+							atlas.default_font = f;
+						}
+						LOG(plog::debug) << "Loaded font \"" << font.aid << "\" in fontsize " << font.size;
+					});
+				};
+
+				load_font({"font:default_font", 10, true});
+
 				assets.load_maybe<Gui_cfg>("cfg:gui"_aid, false).process([&](auto& cfg) {
 					for(auto& font : cfg->fonts) {
-						assets.load_maybe<asset::Bytes>(font.aid, false).process([&](auto&& data) {
-							auto f = nk_font_atlas_add_from_memory(
-							        &atlas, const_cast<char*>(data->data()), data->size(), font.size, nullptr);
-							if(font.default_font) {
-								atlas.default_font = f;
-							}
-							LOG(plog::debug)
-							        << "Loaded font \"" << font.aid << "\" in fontsize " << font.size;
-						});
+						load_font(font);
 					}
 				});
 

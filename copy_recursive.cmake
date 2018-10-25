@@ -23,8 +23,8 @@ endfunction()
 
 mirrage_copy_recursive("${SRC_FILES}" "${DST_DIR}/embed")
 
-execute_process(COMMAND #zip -r "${DST_DIR}/embedded_assets.zip" ${copied_files}
-${CMAKE_COMMAND} -E tar "cfv" "${DST_DIR}/embedded_assets.zip" --format=zip ${copied_files}
+execute_process(COMMAND ${CMAKE_COMMAND} -E tar "cfv" "${DST_DIR}/embedded_assets.zip" --format=zip ${copied_files}
 	WORKING_DIRECTORY "${DST_DIR}/embed"
+	OUTPUT_QUIET
 )
 
