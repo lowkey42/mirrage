@@ -68,6 +68,32 @@ namespace mirrage::ecs {
 		return _manager->list<T>().find(_owner);
 	}
 
+	namespace detail {
+		template <typename F, std::size_t... I>
+		void infer_process_args(Entity_facet& facet, F&& function, std::index_sequence<I...>)
+		{
+			facet.process<std::decay_t<util::nth_func_arg_t<F, I>>...>(std::forward<F>(function));
+		}
+	} // namespace detail
+
+	template <typename... Ts, typename F>
+	void Entity_facet::process(F&& function)
+	{
+		if constexpr(sizeof...(Ts) == 0) {
+			detail::infer_process_args(*this,
+			                           std::forward<F>(function),
+			                           std::make_index_sequence<util::func_trait<F>::argument_count>());
+
+		} else {
+			MIRRAGE_INVARIANT(_manager && _manager->validate(_owner),
+			                  "Access to invalid Entity_facet for " << entity_name(_owner));
+			auto r = std::make_tuple(_manager->list<Ts>().find(_owner)...);
+			if(std::apply([](auto&&... c) { return (... && c.is_some()); }, r)) {
+				std::apply([&](auto&... c) { function(c.get_or_throw()...); }, r);
+			}
+		}
+	}
+
 	template <typename T>
 	bool Entity_facet::has()
 	{

@@ -61,6 +61,9 @@ namespace mirrage::ecs {
 		template <typename T>
 		util::maybe<T&> get();
 
+		template <typename... Ts, typename F>
+		void process(F&&);
+
 		template <typename T>
 		bool has();
 
