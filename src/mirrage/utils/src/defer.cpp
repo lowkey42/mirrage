@@ -17,7 +17,7 @@ namespace mirrage::util {
 		        _defered_actions.begin(), _defered_actions.end(), [](auto& a) { return !a.ready(); });
 
 		if(new_end != _defered_actions.end()) {
-			auto saved = std::vector(new_end, _defered_actions.end());
+			auto saved = std::vector<Defered_action>(new_end, _defered_actions.end());
 			_defered_actions.erase(new_end, _defered_actions.end());
 
 			for(auto& a : saved) {
