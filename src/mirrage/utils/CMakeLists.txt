@@ -10,6 +10,7 @@ file(GLOB_RECURSE HEADER_FILES
 
 add_library(mirrage_utils STATIC
 	src/command.cpp
+	src/defer.cpp
 	src/log.cpp
 	src/md5.cpp
 	src/pool.cpp

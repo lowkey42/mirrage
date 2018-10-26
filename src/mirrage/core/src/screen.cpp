@@ -5,6 +5,15 @@
 
 namespace mirrage {
 
+	Screen::~Screen() noexcept = default;
+
+	void Screen::_actual_update(util::Time delta_time)
+	{
+		Deferred_action_container::update(delta_time);
+		_update(delta_time);
+	}
+
+
 	Screen_manager::Screen_manager(Engine& engine) : _engine(engine) {}
 
 	Screen_manager::~Screen_manager() noexcept { clear(); }
@@ -45,7 +54,7 @@ namespace mirrage {
 		for(; screen_index >= 0; screen_index--) {
 			auto& s = screen_stack.at(size_t(screen_index));
 
-			s->_update(delta_time);
+			s->_actual_update(delta_time);
 
 			if(s->_prev_screen_policy() != Prev_screen_policy::update)
 				break;

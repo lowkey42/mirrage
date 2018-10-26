@@ -7,6 +7,9 @@
 
 #pragma once
 
+#include <mirrage/asset/asset_manager.hpp>
+
+#include <mirrage/utils/defer.hpp>
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/units.hpp>
 
@@ -19,13 +22,15 @@ namespace mirrage {
 
 	enum class Prev_screen_policy { discard, stack, draw, update };
 
-	class Screen {
+	class Screen : private util::Deferred_action_container {
 	  public:
 		Screen(Engine& engine) : _engine(engine) {}
 		Screen(const Screen&) = delete;
 		Screen& operator=(const Screen&) = delete;
 
-		virtual ~Screen() noexcept = default;
+		virtual ~Screen() noexcept;
+
+		using Deferred_action_container::defer;
 
 	  protected:
 		friend class Screen_manager;
@@ -37,6 +42,9 @@ namespace mirrage {
 		virtual auto _prev_screen_policy() const noexcept -> Prev_screen_policy = 0;
 
 		Engine& _engine;
+
+	  private:
+		void _actual_update(util::Time delta_time);
 	};
 
 	class Screen_manager {
