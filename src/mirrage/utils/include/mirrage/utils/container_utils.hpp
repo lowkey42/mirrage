@@ -15,8 +15,8 @@
 namespace mirrage::util {
 
 	// helpers to erase elements from vectors
-	template <typename T, typename K>
-	void erase_fast(std::vector<T>& c, const K& v)
+	template <typename C, typename K>
+	void erase_fast(C& c, const K& v)
 	{
 		using std::swap;
 
@@ -26,8 +26,8 @@ namespace mirrage::util {
 			c.pop_back();
 		}
 	}
-	template <typename T, typename K>
-	void erase_fast_stable(std::vector<T>& c, const K& v)
+	template <typename C, typename K>
+	void erase_fast_stable(C& c, const K& v)
 	{
 		auto ne = std::remove(c.begin(), c.end(), v);
 
@@ -55,10 +55,10 @@ namespace mirrage::util {
 
 
 	// helpers to construct map, vectors and arrays
-	template <typename T, typename F>
-	auto map(std::vector<T>& c, F&& f)
+	template <typename C, typename F>
+	auto map(C&& c, F&& f)
 	{
-		auto result = std::vector<decltype(f(std::declval<T&>()))>();
+		auto result = std::vector<decltype(f(c[0]))>();
 		result.reserve(c.size());
 
 		for(auto& e : c) {

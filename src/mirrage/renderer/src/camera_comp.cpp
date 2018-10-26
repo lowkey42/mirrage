@@ -45,7 +45,30 @@ namespace mirrage::renderer {
 			model[3]   = glm::vec4(position, 1.f);
 			return model;
 		}
+		auto def_projection(glm::vec4 viewport) -> glm::mat4
+		{
+			auto m = glm::perspective(glm::radians(50.f), aspect_radio(viewport), 0.1f, 100.f);
+			m[1][1] *= -1;
+			return m;
+		}
 	} // namespace
+
+
+	Camera_state::Camera_state(glm::vec4 viewport)
+	  : eye_position(0, 0, 0)
+	  , viewport(viewport)
+	  , inv_view(1.f)
+	  , view(glm::inverse(inv_view))
+	  , projection(def_projection(viewport))
+	  , pure_projection(projection)
+	  , view_projection(projection * view)
+	  , near_plane(0.1f)
+	  , far_plane(100.f)
+	  , aspect_ratio((viewport.z - viewport.x) / (viewport.w - viewport.y))
+	  , fov_vertical(glm::radians(50.f))
+	  , fov_horizontal(2.f * std::atan(std::tan(fov_vertical / 2.f) * aspect_ratio))
+	{
+	}
 
 	Camera_state::Camera_state(const Camera_comp&                     cam,
 	                           const ecs::components::Transform_comp& transform,

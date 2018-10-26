@@ -285,12 +285,13 @@ namespace mirrage::renderer {
 	}
 
 
-	auto Animation_pass_factory::create_pass(Deferred_renderer&   renderer,
-	                                         ecs::Entity_manager& entities,
+	auto Animation_pass_factory::create_pass(Deferred_renderer&                renderer,
+	                                         util::maybe<ecs::Entity_manager&> entities,
 	                                         Engine&,
 	                                         bool&) -> std::unique_ptr<Render_pass>
 	{
-		return std::make_unique<Animation_pass>(renderer, entities);
+		return std::make_unique<Animation_pass>(
+		        renderer, entities.get_or_throw("Animation_pass requires an entitymanager."));
 	}
 
 	auto Animation_pass_factory::rank_device(vk::PhysicalDevice,

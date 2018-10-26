@@ -267,8 +267,8 @@ namespace mirrage::renderer {
 		}
 	}
 
-	auto Deferred_pass_factory::create_pass(Deferred_renderer&   renderer,
-	                                        ecs::Entity_manager& entities,
+	auto Deferred_pass_factory::create_pass(Deferred_renderer&                renderer,
+	                                        util::maybe<ecs::Entity_manager&> entities,
 	                                        Engine&,
 	                                        bool& use_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
@@ -277,7 +277,11 @@ namespace mirrage::renderer {
 		auto& color_target_diff = use_first_pp_buffer ? renderer.gbuffer().colorB : renderer.gbuffer().colorA;
 
 		use_first_pp_buffer = !use_first_pp_buffer;
-		return std::make_unique<Deferred_pass>(renderer, entities, color_target, color_target_diff);
+		return std::make_unique<Deferred_pass>(
+		        renderer,
+		        entities.get_or_throw("Deferred_pass requires an entitymanager."),
+		        color_target,
+		        color_target_diff);
 	}
 
 	auto Deferred_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)

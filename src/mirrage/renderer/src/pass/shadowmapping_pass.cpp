@@ -361,13 +361,14 @@ namespace mirrage::renderer {
 	}
 
 
-	auto Shadowmapping_pass_factory::create_pass(Deferred_renderer&   renderer,
-	                                             ecs::Entity_manager& entities,
+	auto Shadowmapping_pass_factory::create_pass(Deferred_renderer&                renderer,
+	                                             util::maybe<ecs::Entity_manager&> entities,
 	                                             Engine&,
 	                                             bool&) -> std::unique_ptr<Render_pass>
 	{
 		if(renderer.settings().shadows)
-			return std::make_unique<Shadowmapping_pass>(renderer, entities);
+			return std::make_unique<Shadowmapping_pass>(
+			        renderer, entities.get_or_throw("Shadowmapping_pass requires an entitymanager."));
 		else
 			return {};
 	}

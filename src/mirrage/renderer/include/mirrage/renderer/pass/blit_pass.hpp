@@ -7,8 +7,12 @@
 
 namespace mirrage::renderer {
 
+	class Blit_pass_factory;
+
 	class Blit_pass : public Render_pass {
 	  public:
+		using Factory = Blit_pass_factory;
+
 		Blit_pass(Deferred_renderer&, graphic::Texture_2D& src);
 
 		void update(util::Time dt) override;
@@ -28,8 +32,12 @@ namespace mirrage::renderer {
 
 	class Blit_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool& write_first_pp_buffer)
-		        -> std::unique_ptr<Render_pass> override;
+		auto id() const noexcept -> Render_pass_id override { return render_pass_id_of<Blit_pass_factory>(); }
+
+		auto create_pass(Deferred_renderer&,
+		                 util::maybe<ecs::Entity_manager&>,
+		                 Engine&,
+		                 bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
 		        -> int override;

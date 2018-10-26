@@ -19,13 +19,20 @@ extern void ref_embedded_assets_mirrage_renderer();
 
 namespace mirrage::renderer {
 
-	Deferred_renderer::Deferred_renderer(Deferred_renderer_factory&                         factory,
-	                                     std::vector<std::unique_ptr<Render_pass_factory>>& passes,
-	                                     ecs::Entity_manager&                               ecs,
-	                                     Engine&                                            engine)
+	namespace {
+		auto gbuffer_required(const std::vector<Render_pass_factory*>& passes)
+		{
+			return std::any_of(passes.begin(), passes.end(), [&](auto& p) { return p->requires_gbuffer(); });
+		}
+	} // namespace
+
+	Deferred_renderer::Deferred_renderer(Deferred_renderer_factory&        factory,
+	                                     std::vector<Render_pass_factory*> passes,
+	                                     util::maybe<ecs::Entity_manager&> ecs,
+	                                     Engine&                           engine)
 	  : _engine(&engine)
 	  , _factory(&factory)
-	  , _entity_manager(&ecs)
+	  , _entity_manager(ecs)
 	  , _descriptor_set_pool(device().create_descriptor_pool(128,
 	                                                         {vk::DescriptorType::eUniformBuffer,
 	                                                          vk::DescriptorType::eUniformBufferDynamic,
@@ -36,8 +43,11 @@ namespace mirrage::renderer {
 	                                                          vk::DescriptorType::eStorageImage,
 	                                                          vk::DescriptorType::eSampledImage,
 	                                                          vk::DescriptorType::eSampler}))
-	  , _gbuffer(std::make_unique<GBuffer>(
-	            device(), _descriptor_set_pool, factory._window.width(), factory._window.height()))
+	  , _gbuffer(gbuffer_required(passes) ? std::make_unique<GBuffer>(device(),
+	                                                                  _descriptor_set_pool,
+	                                                                  factory._window.width(),
+	                                                                  factory._window.height())
+	                                      : std::unique_ptr<GBuffer>())
 	  , _profiler(device(), 64)
 
 	  , _global_uniform_descriptor_set_layout(
@@ -63,13 +73,16 @@ namespace mirrage::renderer {
 	                                           vk::Filter::eNearest,
 	                                           vk::SamplerMipmapMode::eNearest))
 	  , _noise_descriptor_set_layout(device(), *_noise_sampler, 1, vk::ShaderStageFlagBits::eFragment)
-	  , _passes(util::map(passes,
+	  , _pass_factories(std::move(passes))
+	  , _passes(util::map(_pass_factories,
 	                      [&, write_first_pp_buffer = true](auto& factory) mutable {
 		                      return factory->create_pass(*this, ecs, engine, write_first_pp_buffer);
 	                      }))
-	  , _cameras(&ecs.list<Camera_comp>())
+	  , _cameras(ecs.is_some() ? util::justPtr(&ecs.get_or_throw().list<Camera_comp>()) : util::nothing)
 	{
-		ecs.register_component_type<Material_property_comp>();
+		if(ecs.is_some())
+			ecs.get_or_throw().register_component_type<Material_property_comp>();
+
 		ref_embedded_assets_mirrage_renderer();
 
 		_write_global_uniform_descriptor_set();
@@ -96,16 +109,18 @@ namespace mirrage::renderer {
 				pass.reset();
 		}
 
-		_gbuffer.reset();
+		if(gbuffer_required(_pass_factories)) {
+			_gbuffer.reset();
 
-		// recreate gbuffer and renderpasses
-		_gbuffer = std::make_unique<GBuffer>(
-		        device(), _descriptor_set_pool, _factory->_window.width(), _factory->_window.height());
+			// recreate gbuffer and renderpasses
+			_gbuffer = std::make_unique<GBuffer>(
+			        device(), _descriptor_set_pool, _factory->_window.width(), _factory->_window.height());
+		}
 
 		auto write_first_pp_buffer = true;
 		for(auto i = std::size_t(0); i < _passes.size(); i++) {
-			_passes[i] = _factory->_pass_factories.at(i)->create_pass(
-			        *this, *_entity_manager, *_engine, write_first_pp_buffer);
+			_passes[i] = _pass_factories.at(i)->create_pass(
+			        *this, _entity_manager, *_engine, write_first_pp_buffer);
 		}
 
 		_profiler = graphic::Profiler(device(), 64);
@@ -219,33 +234,39 @@ namespace mirrage::renderer {
 		if(_active_camera.is_some())
 			return _active_camera.get_or_throw();
 
-		auto max_prio = std::numeric_limits<float>::lowest();
-		auto active   = static_cast<Camera_comp*>(nullptr);
+		if(_cameras.is_some()) {
+			auto max_prio = std::numeric_limits<float>::lowest();
+			auto active   = static_cast<Camera_comp*>(nullptr);
 
-		for(auto& camera : *_cameras) {
-			if(camera.priority() > max_prio && camera.owner(*_entity_manager).is_some()) {
-				max_prio = camera.priority();
-				active   = &camera;
-			}
-		}
-
-		if(active) {
-			const auto& viewport  = _factory->_window.viewport();
-			auto&       transform = active->owner(*_entity_manager)
-			                          .get_or_throw()
-			                          .get<ecs::components::Transform_comp>()
-			                          .get_or_throw("Camera without transform component!");
-			_active_camera = Camera_state(*active, transform, viewport);
-
-			for(auto& p : _passes) {
-				if(p)
-					p->process_camera(_active_camera.get_or_throw());
+			for(auto& camera : _cameras.get_or_throw()) {
+				if(camera.priority() > max_prio && camera.owner(_entity_manager.get_or_throw()).is_some()) {
+					max_prio = camera.priority();
+					active   = &camera;
+				}
 			}
 
-			return _active_camera.get_or_throw();
+			if(active) {
+				const auto& viewport  = _factory->_window.viewport();
+				auto&       transform = active->owner(_entity_manager.get_or_throw())
+				                          .get_or_throw()
+				                          .get<ecs::components::Transform_comp>()
+				                          .get_or_throw("Camera without transform component!");
+				_active_camera = Camera_state(*active, transform, viewport);
+
+				for(auto& p : _passes) {
+					if(p)
+						p->process_camera(_active_camera.get_or_throw());
+				}
+
+				return util::justPtr(&_active_camera.get_or_throw());
+			} else {
+				_active_camera = util::nothing;
+				return util::maybe<Camera_state&>();
+			}
+
 		} else {
-			_active_camera = util::nothing;
-			return util::nothing;
+			_active_camera.emplace(_factory->_window.viewport());
+			return util::justPtr(&_active_camera.get_or_throw());
 		}
 	}
 
@@ -452,8 +473,8 @@ namespace mirrage::renderer {
 	  , _model_desc_set_layout(create_material_descriptor_set_layout(*_device, *_model_material_sampler))
 	  , _asset_loaders(std::make_unique<Asset_loaders>(
 	            _assets, *_device, *_model_material_sampler, *_model_desc_set_layout, _draw_queue_family))
+	  , _all_passes_mask(util::map(_pass_factories, [&](auto& f) { return f->id(); }))
 	{
-
 		auto maybe_settings = _assets.load_maybe<Renderer_settings>("cfg:renderer"_aid);
 		if(maybe_settings.is_nothing()) {
 			_settings = asset::make_ready_asset("cfg:renderer"_aid, Renderer_settings{});
@@ -476,10 +497,19 @@ namespace mirrage::renderer {
 		_settings = _assets.load<Renderer_settings>("cfg:renderer"_aid);
 	}
 
-	auto Deferred_renderer_factory::create_renderer(ecs::Entity_manager& ecs)
+	auto Deferred_renderer_factory::create_renderer(util::maybe<ecs::Entity_manager&> ecs,
+	                                                Render_pass_mask                  passes)
 	        -> std::unique_ptr<Deferred_renderer>
 	{
-		return std::make_unique<Deferred_renderer>(*this, _pass_factories, ecs, _engine);
+		auto pass_factories = std::vector<Render_pass_factory*>();
+		pass_factories.reserve(_pass_factories.size());
+		for(auto& p : _pass_factories) {
+			if(passes.empty() || std::find(passes.begin(), passes.end(), p->id()) != passes.end()) {
+				pass_factories.emplace_back(p.get());
+			}
+		}
+
+		return std::make_unique<Deferred_renderer>(*this, pass_factories, ecs, _engine);
 	}
 
 	void Deferred_renderer_factory::finish_frame()

@@ -8,8 +8,12 @@
 
 namespace mirrage::renderer {
 
+	class Debug_draw_pass_factory;
+
 	class Debug_draw_pass : public Render_pass {
 	  public:
+		using Factory = Debug_draw_pass_factory;
+
 		Debug_draw_pass(Deferred_renderer&, graphic::Render_target_2D& src);
 
 		void update(util::Time dt) override;
@@ -26,7 +30,12 @@ namespace mirrage::renderer {
 
 	class Debug_draw_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool& write_first_pp_buffer)
+		auto id() const noexcept -> Render_pass_id override
+		{
+			return render_pass_id_of<Debug_draw_pass_factory>();
+		}
+
+		auto create_pass(Deferred_renderer&, util::maybe<ecs::Entity_manager&>, Engine&, bool&)
 		        -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)

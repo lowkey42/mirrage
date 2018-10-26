@@ -7,8 +7,12 @@
 
 namespace mirrage::renderer {
 
+	class Tone_mapping_pass_factory;
+
 	class Tone_mapping_pass : public Render_pass {
 	  public:
+		using Factory = Tone_mapping_pass_factory;
+
 		Tone_mapping_pass(Deferred_renderer&,
 		                  graphic::Render_target_2D& src,
 		                  graphic::Render_target_2D& target);
@@ -63,7 +67,12 @@ namespace mirrage::renderer {
 
 	class Tone_mapping_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		auto id() const noexcept -> Render_pass_id override
+		{
+			return render_pass_id_of<Tone_mapping_pass_factory>();
+		}
+
+		auto create_pass(Deferred_renderer&, util::maybe<ecs::Entity_manager&>, Engine&, bool&)
 		        -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;

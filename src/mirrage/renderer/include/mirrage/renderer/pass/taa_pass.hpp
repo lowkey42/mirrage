@@ -12,8 +12,12 @@ namespace mirrage::renderer {
 		glm::mat4 fov_reprojection{}; // fov_reprojection[3].xy = offset
 	};
 
+	class Taa_pass_factory;
+
 	class Taa_pass : public Render_pass {
 	  public:
+		using Factory = Taa_pass_factory;
+
 		Taa_pass(Deferred_renderer&, graphic::Render_target_2D& write, graphic::Texture_2D& read);
 
 
@@ -47,7 +51,9 @@ namespace mirrage::renderer {
 
 	class Taa_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		auto id() const noexcept -> Render_pass_id override { return render_pass_id_of<Taa_pass_factory>(); }
+
+		auto create_pass(Deferred_renderer&, util::maybe<ecs::Entity_manager&>, Engine&, bool&)
 		        -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;

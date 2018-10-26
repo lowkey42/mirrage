@@ -272,8 +272,6 @@ namespace mirrage::asset {
 		PHYSFS_unmount(append_file(PHYSFS_getBaseDir(), "..").c_str());
 		PHYSFS_unmount(mirrage::asset::pwd().c_str());
 
-		print_dir_recursiv("/", 0, [](auto&& path) { LOG(plog::fatal) << path; });
-
 		_reload_dispatchers();
 	}
 

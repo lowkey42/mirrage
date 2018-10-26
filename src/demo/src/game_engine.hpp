@@ -29,14 +29,18 @@ namespace mirrage {
 		            int                argc,
 		            char**             argv,
 		            char**             env);
-		~Game_engine();
+		~Game_engine() override;
 
 		auto renderer_factory() noexcept -> auto& { return *_renderer_factory; }
+		auto global_render() noexcept -> auto& { return *_global_render; }
+		auto render_pass_mask() noexcept -> auto& { return _render_pass_mask; }
 
 	  protected:
 		void _on_post_frame(util::Time) override;
 
 	  private:
 		std::unique_ptr<renderer::Deferred_renderer_factory> _renderer_factory;
+		std::unique_ptr<renderer::Deferred_renderer>         _global_render;
+		renderer::Render_pass_mask                           _render_pass_mask;
 	};
 } // namespace mirrage

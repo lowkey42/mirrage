@@ -569,7 +569,7 @@ namespace mirrage::renderer {
 	}
 
 	auto Tone_mapping_pass_factory::create_pass(Deferred_renderer& renderer,
-	                                            ecs::Entity_manager&,
+	                                            util::maybe<ecs::Entity_manager&>,
 	                                            Engine&,
 	                                            bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{

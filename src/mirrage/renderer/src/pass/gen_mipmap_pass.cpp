@@ -185,7 +185,7 @@ namespace mirrage::renderer {
 
 
 	auto Gen_mipmap_pass_factory::create_pass(Deferred_renderer& renderer,
-	                                          ecs::Entity_manager&,
+	                                          util::maybe<ecs::Entity_manager&>,
 	                                          Engine&,
 	                                          bool&) -> std::unique_ptr<Render_pass>
 	{

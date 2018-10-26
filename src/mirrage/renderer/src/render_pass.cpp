@@ -25,4 +25,7 @@ namespace mirrage::renderer {
 		return geo_range;
 	}
 
+
+	Render_pass_factory::Render_pass_factory() = default;
+
 } // namespace mirrage::renderer

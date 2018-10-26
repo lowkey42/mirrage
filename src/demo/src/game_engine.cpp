@@ -43,7 +43,10 @@ namespace mirrage {
 	                              renderer::make_pass_factory<renderer::Debug_draw_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Blit_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Gui_pass_factory>())))
+	  , _global_render(_renderer_factory->create_renderer<renderer::Gui_pass_factory>())
+	  , _render_pass_mask(_renderer_factory->all_passes_mask())
 	{
+		util::erase_fast(_render_pass_mask, renderer::render_pass_id_of<renderer::Gui_pass_factory>());
 	}
 
 	Game_engine::~Game_engine()
@@ -51,6 +54,11 @@ namespace mirrage {
 		screens().clear(); // destroy all screens before the engine
 	}
 
-	void Game_engine::_on_post_frame(util::Time) { _renderer_factory->finish_frame(); }
+	void Game_engine::_on_post_frame(util::Time dt)
+	{
+		_global_render->update(dt);
+		_global_render->draw();
+		_renderer_factory->finish_frame();
+	}
 
 } // namespace mirrage

@@ -34,6 +34,7 @@ namespace mirrage::renderer {
 
 	struct Camera_state {
 	  public:
+		Camera_state(glm::vec4 viewport);
 		Camera_state(const Camera_comp&, const ecs::components::Transform_comp&, glm::vec4 viewport);
 		Camera_state(const Camera_comp&, glm::vec3 position, glm::quat orientation, glm::vec4 viewport);
 

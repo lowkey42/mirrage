@@ -21,7 +21,7 @@ namespace mirrage::util {
 		return demangle(typeid(T).name());
 	}
 
-	using type_uid_t = int32_t;
+	using type_uid_t = int_fast32_t;
 
 	constexpr auto no_type_uid = type_uid_t(0);
 

@@ -12,8 +12,12 @@
 
 namespace mirrage::renderer {
 
+	class Gui_pass_factory;
+
 	class Gui_pass : public Render_pass, public gui::Gui_renderer_interface {
 	  public:
+		using Factory = Gui_pass_factory;
+
 		Gui_pass(Deferred_renderer&, Engine&);
 
 
@@ -82,7 +86,11 @@ namespace mirrage::renderer {
 
 	class Gui_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		auto id() const noexcept -> Render_pass_id override { return render_pass_id_of<Gui_pass_factory>(); }
+
+		auto requires_gbuffer() const noexcept -> bool override { return false; }
+
+		auto create_pass(Deferred_renderer&, util::maybe<ecs::Entity_manager&>, Engine&, bool&)
 		        -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;

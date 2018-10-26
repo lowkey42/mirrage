@@ -7,8 +7,12 @@
 
 namespace mirrage::renderer {
 
+	class Ssao_pass_factory;
+
 	class Ssao_pass : public Render_pass {
 	  public:
+		using Factory = Ssao_pass_factory;
+
 		Ssao_pass(Deferred_renderer&);
 
 		void update(util::Time dt) override;
@@ -38,7 +42,9 @@ namespace mirrage::renderer {
 
 	class Ssao_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		auto id() const noexcept -> Render_pass_id override { return render_pass_id_of<Ssao_pass_factory>(); }
+
+		auto create_pass(Deferred_renderer&, util::maybe<ecs::Entity_manager&>, Engine&, bool&)
 		        -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;

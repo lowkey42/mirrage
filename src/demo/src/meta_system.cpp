@@ -11,7 +11,7 @@ namespace mirrage {
 
 	Meta_system::Meta_system(Game_engine& engine)
 	  : _entities(engine.assets(), this)
-	  , _renderer(engine.renderer_factory().create_renderer(_entities))
+	  , _renderer(engine.renderer_factory().create_renderer(_entities, engine.render_pass_mask()))
 	  , _model_loading(std::make_unique<renderer::Loading_system>(_entities, engine.assets()))
 	  , _nims(std::make_unique<systems::Nim_system>(_entities))
 	{

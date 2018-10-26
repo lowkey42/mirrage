@@ -7,11 +7,15 @@
 
 namespace mirrage::renderer {
 
+	class Gen_mipmap_pass_factory;
+
 	/**
 	 * @brief Generates mipmaps for depth and normal (mat_data) buffer
 	 */
 	class Gen_mipmap_pass : public Render_pass {
 	  public:
+		using Factory = Gen_mipmap_pass_factory;
+
 		Gen_mipmap_pass(Deferred_renderer&);
 
 
@@ -34,7 +38,12 @@ namespace mirrage::renderer {
 
 	class Gen_mipmap_pass_factory : public Render_pass_factory {
 	  public:
-		auto create_pass(Deferred_renderer&, ecs::Entity_manager&, Engine&, bool&)
+		auto id() const noexcept -> Render_pass_id override
+		{
+			return render_pass_id_of<Gen_mipmap_pass_factory>();
+		}
+
+		auto create_pass(Deferred_renderer&, util::maybe<ecs::Entity_manager&>, Engine&, bool&)
 		        -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;

@@ -3,6 +3,7 @@
 #include <mirrage/ecs/entity_handle.hpp>
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/ranges.hpp>
+#include <mirrage/utils/reflection.hpp>
 #include <mirrage/utils/str_id.hpp>
 #include <mirrage/utils/units.hpp>
 
@@ -132,14 +133,21 @@ namespace mirrage::renderer {
 		virtual auto name() const noexcept -> const char* = 0;
 	};
 
+	using Render_pass_id = util::type_uid_t;
+
 	class Render_pass_factory {
 	  public:
+		Render_pass_factory();
 		virtual ~Render_pass_factory() = default;
 
+		virtual auto id() const noexcept -> Render_pass_id = 0;
+
 		virtual auto create_pass(Deferred_renderer&,
-		                         ecs::Entity_manager&,
+		                         util::maybe<ecs::Entity_manager&>,
 		                         Engine&,
 		                         bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass> = 0;
+
+		virtual auto requires_gbuffer() const noexcept -> bool { return true; }
 
 		virtual auto rank_device(vk::PhysicalDevice,
 		                         util::maybe<std::uint32_t> graphics_queue,
@@ -156,5 +164,17 @@ namespace mirrage::renderer {
 			(void) graphics_queue;
 		}
 	};
+
+	template <class T>
+	auto render_pass_id_of()
+	{
+		if constexpr(std::is_base_of_v<Render_pass_factory, T>)
+			return util::type_uid_of<T>();
+		else {
+			static_assert(std::is_base_of_v<Render_pass_factory, T::Factory>,
+			              "T is not a renderpass, nor its factory.");
+			return util::type_uid_of<T::Factory>();
+		}
+	}
 
 } // namespace mirrage::renderer

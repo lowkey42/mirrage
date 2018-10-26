@@ -99,8 +99,8 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <initializer_list>
 #include <iterator>
@@ -1519,6 +1519,8 @@ namespace llvm {
 #endif // LLVM_SMALL_VECTOR_IMPLEMENTATION
 
 
+#include <vector>
+
 namespace mirrage::util {
 
 	// alias in our own namespace and terminate on throw in special members
@@ -1526,6 +1528,8 @@ namespace mirrage::util {
 	class small_vector final : public llvm::SmallVector<T, N> {
 	  public:
 		small_vector() noexcept {}
+		small_vector(const std::vector<T>& rng) noexcept : llvm::SmallVector<T, N>(rng.begin(), rng.end()) {}
+		small_vector(const std::initializer_list<T>& lst) noexcept : llvm::SmallVector<T, N>(lst) {}
 		small_vector(small_vector&& rhs) noexcept : llvm::SmallVector<T, N>(std::move(rhs)) {}
 		small_vector(const small_vector& rhs) noexcept : llvm::SmallVector<T, N>(rhs) {}
 
