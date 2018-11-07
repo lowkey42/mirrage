@@ -13,6 +13,7 @@
 #include <mirrage/info.hpp>
 
 #include <mirrage/asset/asset_manager.hpp>
+#include <mirrage/gui/debug_ui.hpp>
 
 #include <SDL2/SDL.h>
 #include <doctest.h>
@@ -81,7 +82,9 @@ namespace {
 		static auto fileAppender = plog::RollingFileAppender<plog::TxtFormatter>(
 		        (write_dir + "/mirrage.log").c_str(), 1024L * 1024L, 4);
 		static auto consoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>();
-		plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender);
+		plog::init(plog::debug, &fileAppender)
+		        .addAppender(&consoleAppender)
+		        .addAppender(&gui::debug_console_appender());
 
 
 		::argc = argc;

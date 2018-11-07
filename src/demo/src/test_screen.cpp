@@ -350,13 +350,6 @@ namespace mirrage {
 			_draw_settings_window();
 			_draw_histogram_window();
 			_draw_animation_window();
-
-			if(_show_profiler) {
-				_meta_system.renderer().profiler().enable();
-				_draw_profiler_window();
-			} else {
-				_meta_system.renderer().profiler().disable();
-			}
 		}
 
 		_meta_system.renderer().debug_draw({renderer::Debug_geometry{{0, 1, 0}, {0, 5, 0}, {1, 0, 0}},
@@ -392,11 +385,6 @@ namespace mirrage {
 
 
 			nk_layout_row_dynamic(ctx, 20, 1);
-			auto show_profiler = _show_profiler ? 1 : 0;
-			if(nk_checkbox_label(ctx, "Show Profiler", &show_profiler)) {
-				_show_profiler = show_profiler == 1;
-			}
-
 
 			if(!_meta_system.nims().is_playing()) {
 				nk_layout_row_dynamic(ctx, 20, 1);
@@ -533,117 +521,6 @@ namespace mirrage {
 				_meta_system.renderer().settings(renderer::Renderer_settings{}, true);
 			}
 		}
-		nk_end(ctx);
-	}
-
-	namespace {
-		template <typename T>
-		auto to_fixed_str(T num, int digits)
-		{
-			auto ss = std::stringstream{};
-			ss << std::fixed << std::setprecision(digits) << num;
-			return ss.str();
-		}
-
-		auto pad_left(const std::string& str, int padding)
-		{
-			return std::string(std::size_t(padding), ' ') + str;
-		}
-
-		template <std::size_t N, typename Container, typename Comp>
-		auto top_n(const Container& container, Comp&& less)
-		{
-			auto max_elements = std::array<decltype(container.begin()), N>();
-			max_elements.fill(container.end());
-
-			for(auto iter = container.begin(); iter != container.end(); iter++) {
-				// compare with each of the top elements
-				for(auto i = std::size_t(0); i < N; i++) {
-					if(max_elements[i] == container.end() || less(*max_elements[i], *iter)) {
-						// move top elements to make room
-						for(auto j = i + 1; j < N; j++) {
-							max_elements[j] = max_elements[j - 1];
-						}
-						max_elements[i] = iter;
-						break;
-					}
-				}
-			}
-
-			return max_elements;
-		}
-
-		template <typename Container, typename T>
-		auto index_of(const Container& container, const T& element) -> int
-		{
-			auto top_entry = std::find(container.begin(), container.end(), element);
-			if(top_entry == container.end())
-				return -1;
-
-			return gsl::narrow<int>(std::distance(container.begin(), top_entry));
-		}
-	} // namespace
-	void Test_screen::_draw_profiler_window()
-	{
-		auto ctx = _gui.ctx();
-		if(nk_begin_titled(ctx,
-		                   "profiler",
-		                   "Profiler",
-		                   _gui.centered_right(330, 380),
-		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
-
-			nk_layout_row_dynamic(ctx, 20, 1);
-			if(nk_button_label(ctx, "Reset")) {
-				_meta_system.renderer().profiler().reset();
-			}
-
-#if 0
-			if(_performance_log.is_nothing() && nk_button_label(ctx, "Record")) {
-				_performance_log = _engine.assets().save_raw("log:perf.log"_aid);
-			}
-#endif
-
-			constexpr auto rows = std::array<float, 5>{{0.4f, 0.15f, 0.15f, 0.15f, 0.15f}};
-			nk_layout_row(ctx, NK_DYNAMIC, 25, rows.size(), rows.data());
-			nk_label(ctx, "RenderPass", NK_TEXT_CENTERED);
-			nk_label(ctx, "Curr (ms)", NK_TEXT_CENTERED);
-			nk_label(ctx, "Min (ms)", NK_TEXT_CENTERED);
-			nk_label(ctx, "Avg (ms)", NK_TEXT_CENTERED);
-			nk_label(ctx, "Max (ms)", NK_TEXT_CENTERED);
-
-			nk_layout_row(ctx, NK_DYNAMIC, 10, rows.size(), rows.data());
-
-
-			auto print_entry =
-			        [&](auto&& printer, const Profiler_result& result, int depth = 0, int rank = -1) -> void {
-				auto color = [&] {
-					switch(rank) {
-						case 0: return nk_rgb(255, 0, 0);
-						case 1: return nk_rgb(255, 220, 128);
-						default: return nk_rgb(255, 255, 255);
-					}
-				}();
-
-				nk_label_colored(ctx, pad_left(result.name(), depth * 4).c_str(), NK_TEXT_LEFT, color);
-				nk_label_colored(ctx, to_fixed_str(result.time_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-				nk_label_colored(ctx, to_fixed_str(result.time_min_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-				nk_label_colored(ctx, to_fixed_str(result.time_avg_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-				nk_label_colored(ctx, to_fixed_str(result.time_max_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-
-
-				auto worst_timings = top_n<2>(
-				        result, [](auto&& lhs, auto&& rhs) { return lhs.time_avg_ms() < rhs.time_avg_ms(); });
-
-				for(auto iter = result.begin(); iter != result.end(); iter++) {
-					auto rank = index_of(worst_timings, iter);
-					printer(printer, *iter, depth + 1, rank);
-				}
-			};
-
-			auto& result = _meta_system.renderer().profiler().results();
-			print_entry(print_entry, result);
-		}
-
 		nk_end(ctx);
 	}
 

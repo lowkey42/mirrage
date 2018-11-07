@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <mirrage/utils/maybe.hpp>
+
 #include <functional>
 #include <iostream>
 #include <tuple>
@@ -135,6 +137,40 @@ namespace mirrage::util {
 				return std::invoke(f, self, std::forward<decltype(args)>(args)...);
 			};
 		}
+	}
+
+	template <typename T>
+	struct type_wrapper {
+		using type = T;
+	};
+
+	namespace detail {
+		template <typename Func, typename ArgSource, std::size_t... Is>
+		void foreach_function_arg_call(Func&& callback, ArgSource&& arg_srcs, std::index_sequence<Is...>)
+		{
+			// uses brace-init, so that the evaluation order is well definied
+			auto args =
+			        std::tuple<decltype(arg_srcs(type_wrapper<nth_func_arg_t<std::decay_t<Func>, Is>>{}))...>{
+			                arg_srcs(type_wrapper<nth_func_arg_t<std::decay_t<Func>, Is>>{})...};
+
+			auto all_valid = std::apply([](auto&&... arg) { return (... && arg.is_some()); }, args);
+
+			if(all_valid) {
+				std::apply(
+				        [&](auto&&... args) {
+					        callback(std::forward<decltype(args)>(args).get_or_throw()...);
+				        },
+				        std::move(args));
+			}
+		}
+	} // namespace detail
+	template <typename Func, typename ArgSource>
+	void foreach_function_arg_call(Func&& callback, ArgSource&& args)
+	{
+		detail::foreach_function_arg_call(
+		        std::forward<Func>(callback),
+		        std::forward<ArgSource>(args),
+		        std::make_index_sequence<func_trait<std::decay_t<Func>>::argument_count>{});
 	}
 } // namespace mirrage::util
 

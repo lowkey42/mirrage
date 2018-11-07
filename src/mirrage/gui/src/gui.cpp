@@ -20,6 +20,30 @@ extern void ref_embedded_assets_mirrage_gui();
 
 namespace mirrage::gui {
 
+	nk_flags nk_complete_begin(struct nk_context* ctx, char* memory, int* len, int max)
+	{
+		auto header    = nk_widget_bounds(ctx);
+		auto cmd_event = nk_edit_string(ctx, NK_EDIT_FIELD | NK_EDIT_SIG_ENTER, memory, len, max, nullptr);
+
+		if(cmd_event & NK_EDIT_ACTIVE) {
+			struct nk_rect bounds;
+			bounds.x = 0;
+			bounds.y = header.y + header.h - ctx->style.window.combo_border;
+			bounds.w = header.w;
+			bounds.h = nk_null_rect.h;
+
+			nk_popup_begin(ctx,
+			               NK_POPUP_DYNAMIC,
+			               "__##Complete##__",
+			               NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER | NK_PANEL_COMBO,
+			               bounds);
+		}
+
+		return cmd_event;
+	}
+	void nk_complete_end(struct nk_context* ctx) { nk_tooltip_end(ctx); }
+
+
 	namespace {
 		struct Nk_renderer;
 

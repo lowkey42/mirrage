@@ -32,7 +32,9 @@
                 "F3": {"type":"once", "action":"playback"},
                 "Space": {"type":"once", "action":"pause"},
 
-                "F11": {"type":"once", "action":"toggle_ui"}
+                "F11": {"type":"once", "action":"toggle_ui"},
+
+                "Caret": {"type":"once", "action":"console"}
             },
 
             "pad_sticks": {

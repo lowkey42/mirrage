@@ -58,6 +58,10 @@ namespace mirrage::gui {
 		struct Nk_renderer;
 	}
 
+	extern nk_flags nk_complete_begin(struct nk_context* ctx, char* memory, int* len, int max);
+	extern void     nk_complete_end(struct nk_context*);
+
+
 	struct Gui_vertex {
 		glm::vec2 position;
 		glm::vec2 uv;

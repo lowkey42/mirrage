@@ -10,6 +10,7 @@ file(GLOB_RECURSE HEADER_FILES
 
 add_library(mirrage_gui STATIC
 	src/color_picker.cpp
+	src/debug_ui.cpp
 	src/gui.cpp
 	src/menu.cpp
 	src/text_edit.cpp

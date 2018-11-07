@@ -27,6 +27,7 @@ namespace mirrage {
 	                         char**             argv,
 	                         char**             env)
 	  : Engine(org, title, version_major, version_minor, debug, false, argc, argv, env)
+	  , _debug_ui(gui(), bus())
 	  , _renderer_factory(std::make_unique<renderer::Deferred_renderer_factory>(
 	            *this,
 	            window(),
@@ -56,6 +57,8 @@ namespace mirrage {
 
 	void Game_engine::_on_post_frame(util::Time dt)
 	{
+		_debug_ui.draw();
+
 		_global_render->update(dt);
 		_global_render->draw();
 		_renderer_factory->finish_frame();

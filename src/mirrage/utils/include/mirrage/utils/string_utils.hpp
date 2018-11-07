@@ -8,6 +8,7 @@
 #pragma once
 
 #include <mirrage/utils/maybe.hpp>
+#include <mirrage/utils/template_utils.hpp>
 
 #include <algorithm>
 #include <cctype>
@@ -54,6 +55,28 @@ namespace mirrage::util {
 		std::stringstream ss;
 		ss << t;
 		return ss.str();
+	}
+
+	template <class T>
+	auto from_string(std::string_view) -> util::maybe<T>
+	{
+		static_assert(util::dependent_false<T>(), "No matching from_string() for type T.");
+	}
+
+	template <class T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
+	auto from_string(std::string_view view) -> util::maybe<T>
+	{
+		T v;
+		if(from_chars(&view[0], &view[0] + view.size(), v).ec != std::errc())
+			return util::nothing;
+		else
+			return v;
+	}
+
+	template <>
+	inline auto from_string(std::string_view view) -> util::maybe<std::string>
+	{
+		return std::string(view);
 	}
 
 	// trim from start

@@ -66,7 +66,6 @@ namespace mirrage {
 		util::Time            _record_timer{0};
 
 		bool        _show_ui                 = true;
-		bool        _show_profiler           = false;
 		std::size_t _last_selected_histogram = 0;
 
 		util::maybe<asset::ostream> _performance_log;
@@ -81,7 +80,6 @@ namespace mirrage {
 		void _update_sun_position();
 
 		void _draw_settings_window();
-		void _draw_profiler_window();
 		void _draw_histogram_window();
 		void _draw_animation_window();
 	};

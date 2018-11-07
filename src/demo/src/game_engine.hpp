@@ -11,6 +11,7 @@
 
 #include <mirrage/engine.hpp>
 #include <mirrage/graphic/device.hpp>
+#include <mirrage/gui/debug_ui.hpp>
 #include <mirrage/utils/maybe.hpp>
 
 
@@ -39,6 +40,7 @@ namespace mirrage {
 		void _on_post_frame(util::Time) override;
 
 	  private:
+		gui::Debug_ui                                        _debug_ui;
 		std::unique_ptr<renderer::Deferred_renderer_factory> _renderer_factory;
 		std::unique_ptr<renderer::Deferred_renderer>         _global_render;
 		renderer::Render_pass_mask                           _render_pass_mask;
