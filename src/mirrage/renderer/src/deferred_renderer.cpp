@@ -296,7 +296,7 @@ namespace mirrage::renderer {
 	{
 		_time_acc += dt.value();
 		_delta_time    = dt.value();
-		_frame_counter = (_frame_counter + 1) % 1000000;
+		_frame_counter = (_frame_counter + 1) % 10;
 
 		for(auto& pass : _passes) {
 			if(pass)

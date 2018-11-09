@@ -41,10 +41,10 @@ float calc_upsampled_weights(sampler2D highres_depth_sampler, sampler2D highres_
 	uv_01 = tex_coords + vec2(-1, 1) / tex_size;
 
 	// initialize the per-pixel weights with gaussian weights
-	weight_00 = vec4(1,2,1,1)/20.0;//vec4(0.125794409230998, 0.132980760133811, 0.125794409230998, 0.118996412547595);
-	weight_10 = vec4(2,1,1,1)/20.0;//vec4(0.125794409230998, 0.106482668507451, 0.100728288549083, 0.118996412547595);
-	weight_11 = vec4(1,1,1,2)/20.0;//vec4(0.100728288549083, 0.085264655436308, 0.100728288549083, 0.118996412547595);
-	weight_01 = vec4(1,1,2,1)/20.0;//vec4(0.100728288549083, 0.106482668507451, 0.125794409230998, 0.118996412547595);
+	weight_00 = vec4(1,2,1,1)/20.0;
+	weight_10 = vec4(2,1,1,1)/20.0;
+	weight_11 = vec4(1,1,1,2)/20.0;
+	weight_01 = vec4(1,1,2,1)/20.0;
 
 	// calculate the maximum depth deviation based on the distance, to reduce bluring
 	//   near the camera where it's most noticable

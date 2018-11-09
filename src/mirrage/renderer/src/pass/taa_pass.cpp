@@ -92,7 +92,7 @@ namespace mirrage::renderer {
 		}
 
 		constexpr auto offsets       = build_halton_2_3<32>();
-		constexpr auto offset_factor = 0.25f;
+		constexpr auto offset_factor = 0.05f;
 	} // namespace
 
 

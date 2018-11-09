@@ -74,7 +74,7 @@ float pixel_intensity(vec3 c) {
 }
 
 void main() {
-	// read diffuse color, modulate with modulo if equal to min/max of neighborhood => noise
+	// read diffuse color, modulate with median if equal to min/max of neighborhood => noise
 	ivec2 result_sampler_size = textureSize(result_sampler, 0).xy;
 	ivec2 uv = ivec2(result_sampler_size * vertex_out.tex_coords);
 	
