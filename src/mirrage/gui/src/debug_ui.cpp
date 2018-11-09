@@ -29,28 +29,31 @@ namespace mirrage::gui {
 
 	Debug_ui::Debug_ui(Gui& gui, util::Message_bus& bus) : _gui(gui), _mailbox(bus)
 	{
-		_commands.add("show <ui>", [&](std::string ui) {
-			if(Debug_menu::is_debug_menu(ui)) {
-				_shown_debug_menus.insert(std::move(ui));
-				_show_console = false;
-			} else
-				LOG(plog::error) << "Unknown ui menu " << ui
-				                 << " expected one of: " << Debug_menu::print_names;
-		});
-		_commands.add("hide <ui>", [&](std::string ui) {
-			if(Debug_menu::is_debug_menu(ui))
-				_shown_debug_menus.erase(ui);
-			else
-				LOG(plog::error) << "Unknown ui menu " << ui
-				                 << " expected one of: " << Debug_menu::print_names;
-		});
-		_commands.add("list_uis", [&]() { LOG(plog::info) << "UI menus: " << Debug_menu::print_names; });
+		_commands.add("show <ui> | Enables a specific debug UI element (see list_uis for possible options)",
+		              [&](std::string ui) {
+			              if(Debug_menu::is_debug_menu(ui)) {
+				              _shown_debug_menus.insert(std::move(ui));
+				              _show_console = false;
+			              } else
+				              LOG(plog::error) << "Unknown ui menu " << ui
+				                               << " expected one of: " << Debug_menu::print_names;
+		              });
+		_commands.add("hide <ui> | Disables a specific debug UI element (see list_uis for possible options)",
+		              [&](std::string ui) {
+			              if(Debug_menu::is_debug_menu(ui))
+				              _shown_debug_menus.erase(ui);
+			              else
+				              LOG(plog::error) << "Unknown ui menu " << ui
+				                               << " expected one of: " << Debug_menu::print_names;
+		              });
+		_commands.add("list_uis | Lists all available debug UI elements",
+		              [&]() { LOG(plog::info) << "UI menus: " << Debug_menu::print_names; });
 
 		_mailbox.subscribe_to([&](input::Once_action& e) {
 			switch(e.id) {
 				case "console"_strid:
-					_show_console         = !_show_console;
-					_show_console_changed = true;
+					_show_console = !_show_console;
+					_focus_prompt = true;
 					break;
 			}
 		});
@@ -70,7 +73,10 @@ namespace mirrage::gui {
 		auto viewport = _gui.virtual_viewport();
 		auto width    = viewport.z - 100;
 		auto ctx      = _gui.ctx();
-		if(nk_begin(ctx, "debug_console", nk_rect(50, 0, float(width), float(400)), NK_WINDOW_NO_SCROLLBAR)) {
+		if(nk_begin(ctx,
+		            "debug_console",
+		            nk_rect(50, 0, float(width), float(_show_suggestions ? 400 + 12 * 10 : 400)),
+		            NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_DYNAMIC)) {
 			nk_layout_row_dynamic(ctx, 360, 1);
 
 			auto max_y_scroll = std::uint32_t(
@@ -103,14 +109,18 @@ namespace mirrage::gui {
 			nk_group_end(ctx);
 			_scroll_lock = _scroll_y >= max_y_scroll;
 
-			if(_show_console_changed) {
-				_show_console_changed = false;
+			if(_focus_prompt) {
 				nk_edit_focus(ctx, 0);
+				_focus_prompt = false;
 			}
 
 			nk_layout_row_dynamic(ctx, 30, 1);
-			auto cmd_event = nk_complete_begin(
-			        ctx, _command_input_buffer.data(), &_command_input_length, max_command_length);
+			auto cmd_event = nk_edit_string(ctx,
+			                                NK_EDIT_FIELD | NK_EDIT_SIG_ENTER | NK_EDIT_GOTO_END_ON_ACTIVATE,
+			                                _command_input_buffer.data(),
+			                                &_command_input_length,
+			                                max_command_length,
+			                                nullptr);
 			auto cmd = std::string_view(_command_input_buffer.data(), std::size_t(_command_input_length));
 
 			if(cmd_event & NK_EDIT_COMMITED) {
@@ -118,15 +128,54 @@ namespace mirrage::gui {
 					_command_input_length = 0;
 				}
 			}
-			if(cmd_event & NK_EDIT_ACTIVE) {
-				nk_layout_row_dynamic(ctx, 12, 1);
+
+			if(_show_suggestions) {
+				nk_layout_row_dynamic(ctx, 12, 3);
 
 				for(auto& s : util::Console_command_container::complete(cmd)) {
-					nk_label(ctx, s->api().c_str(), NK_TEXT_LEFT);
-				}
+					auto any_clicked = false;
+					auto sep         = s->api().find("|");
 
-				nk_complete_end(ctx);
+					auto name_sep = s->api().find(" ");
+					auto name_len = int(name_sep == std::string::npos ? s->api().size() : name_sep);
+					any_clicked |= nk_interactive_text(ctx, s->api().c_str(), name_len);
+
+					if(name_sep != std::string::npos) {
+						name_sep++;
+						auto space = s->api().find_first_not_of(" ", name_sep);
+						if(space != std::string::npos)
+							name_sep = space;
+
+						if(s->api()[name_sep] != '|')
+							any_clicked |= nk_interactive_text(
+							        ctx, s->api().c_str() + name_sep, int(sep - name_sep));
+						else
+							any_clicked |= nk_interactive_text(ctx, "", 0);
+
+					} else {
+						any_clicked |= nk_interactive_text(ctx, "", 0);
+					}
+
+					if(sep != std::string::npos) {
+						sep++;
+						auto space = s->api().find_first_not_of(" ", sep);
+						if(space != std::string::npos)
+							sep = space;
+						any_clicked |=
+						        nk_interactive_text(ctx, s->api().c_str() + sep, int(s->api().size() - sep));
+					} else
+						any_clicked |= nk_interactive_text(ctx, "", 0);
+
+					if(any_clicked && name_len > _command_input_length) {
+						std::copy(
+						        s->api().begin(), s->api().begin() + name_len, _command_input_buffer.begin());
+						_command_input_length = name_len;
+						_focus_prompt         = true;
+					}
+				}
 			}
+
+			_show_suggestions = cmd_event & NK_EDIT_ACTIVE;
 		}
 		nk_end(ctx);
 	}

@@ -20,28 +20,12 @@ extern void ref_embedded_assets_mirrage_gui();
 
 namespace mirrage::gui {
 
-	nk_flags nk_complete_begin(struct nk_context* ctx, char* memory, int* len, int max)
+	bool nk_interactive_text(struct nk_context* ctx, const char* str, int len)
 	{
-		auto header    = nk_widget_bounds(ctx);
-		auto cmd_event = nk_edit_string(ctx, NK_EDIT_FIELD | NK_EDIT_SIG_ENTER, memory, len, max, nullptr);
-
-		if(cmd_event & NK_EDIT_ACTIVE) {
-			struct nk_rect bounds;
-			bounds.x = 0;
-			bounds.y = header.y + header.h - ctx->style.window.combo_border;
-			bounds.w = header.w;
-			bounds.h = nk_null_rect.h;
-
-			nk_popup_begin(ctx,
-			               NK_POPUP_DYNAMIC,
-			               "__##Complete##__",
-			               NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BORDER | NK_PANEL_COMBO,
-			               bounds);
-		}
-
-		return cmd_event;
+		auto bounds = nk_widget_bounds(ctx);
+		nk_text(ctx, str, len, NK_TEXT_ALIGN_LEFT);
+		return nk_button_behavior(&ctx->last_widget_state, bounds, &ctx->input, NK_BUTTON_DEFAULT);
 	}
-	void nk_complete_end(struct nk_context* ctx) { nk_tooltip_end(ctx); }
 
 
 	namespace {
@@ -86,6 +70,38 @@ namespace mirrage::gui {
 			}
 		}
 
+		int is_any_interacting(struct nk_context* ctx)
+		{
+			struct nk_window* iter;
+			NK_ASSERT(ctx);
+			if(!ctx)
+				return 0;
+			iter = ctx->begin;
+			while(iter) {
+				/* check if window is being hovered */
+				if(iter->flags & NK_WINDOW_MINIMIZED) {
+					struct nk_rect header = iter->bounds;
+					header.h              = ctx->style.font->height + 2 * ctx->style.window.header.padding.y;
+					if(nk_input_any_mouse_click_in_rect(&ctx->input, header)) {
+						return 1;
+					}
+				} else if((ctx->last_widget_state & NK_WIDGET_STATE_ACTIVE)
+				          || nk_input_any_mouse_click_in_rect(&ctx->input, iter->bounds)) {
+					return 1;
+				}
+				/* check if window popup is being hovered */
+				// (Willing to accept hover blocking for popups for now)
+				if(iter->popup.active && iter->popup.win
+				   && nk_input_is_mouse_hovering_rect(&ctx->input, iter->popup.win->bounds))
+					return 1;
+				/* check if window edit is being edited */
+				if(iter->edit.active & NK_EDIT_ACTIVE)
+					return 1;
+				iter = iter->next;
+			}
+			return 0;
+		}
+
 		class Gui_event_filter : public input::Sdl_event_filter {
 		  public:
 			Gui_event_filter(input::Input_manager& input_mgr,
@@ -103,7 +119,7 @@ namespace mirrage::gui {
 			void pre_input_events() override
 			{
 				_grab_clicks = nk_window_is_any_hovered(_ctx);
-				_grab_inputs = nk_item_is_any_active(_ctx);
+				_grab_inputs = is_any_interacting(_ctx);
 
 				nk_input_begin(_ctx);
 			}
