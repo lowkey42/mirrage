@@ -69,6 +69,7 @@ namespace mirrage::renderer {
 
 			return r;
 		}
+		constexpr float sample_point(int prime, int index) { return halton_seq(prime, index + 1) - 0.5f; }
 
 		template <class Function, std::size_t... Indices>
 		constexpr auto make_array_helper(Function f, std::index_sequence<Indices...>)
@@ -84,15 +85,29 @@ namespace mirrage::renderer {
 			return make_array_helper(f, std::make_index_sequence<N>{});
 		}
 
+		constexpr auto calc_halton_avg(int prime, int num_points)
+		{
+			auto avg = 0.f;
+			for(auto i = 0; i < num_points; i++)
+				avg += sample_point(prime, i);
+
+			return avg / num_points;
+		}
+
 		template <std::size_t Size>
 		constexpr auto build_halton_2_3()
 		{
-			return make_array<Size * 2>(
-			        [](std::size_t i) { return halton_seq(int(i) % 2 == 0 ? 2 : 3, int(i) + 1) - 0.5f; });
+			// + correction offsets, so the squence is centered around (0,0)
+			return make_array<Size * 2>([](std::size_t i) {
+				if(i % 2 == 0)
+					return sample_point(2, int(i / 2)) - calc_halton_avg(2, Size);
+				else
+					return sample_point(3, int(i / 2)) - calc_halton_avg(3, Size);
+			});
 		}
 
-		constexpr auto offsets       = build_halton_2_3<32>();
-		constexpr auto offset_factor = 0.05f;
+		constexpr auto offsets       = build_halton_2_3<16>();
+		constexpr auto offset_factor = 0.04f;
 	} // namespace
 
 

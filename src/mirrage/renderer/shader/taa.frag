@@ -8,7 +8,7 @@
 
 #include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
-
+#include "color_conversion.glsl"
 
 layout(location = 0) in Vertex_data {
 	vec2 tex_coords;
@@ -27,11 +27,6 @@ layout(push_constant) uniform Push_constants {
 } constants;
 
 
-float luminance(vec3 c) {
-	vec3 f = vec3(0.299,0.587,0.114);
-	return sqrt(c.r*c.r*f.r + c.g*c.g*f.g + c.b*c.b*f.b);
-}
-
 vec3 clip_aabb(vec3 aabb_min, vec3 aabb_max, vec3 p, vec3 q) {
 	// note: only clips towards aabb center (but fast!)
 	vec3 p_clip = 0.5 * (aabb_max + aabb_min);
@@ -46,35 +41,6 @@ vec3 clip_aabb(vec3 aabb_min, vec3 aabb_max, vec3 p, vec3 q) {
 		return p_clip + v_clip / ma_unit;
 	else
 		return q;// point inside aabb
-}
-
-//note: normalized random, float=[0;1[
-float PDnrand( vec2 n ) {
-	return fract( sin(dot(n.xy, vec2(12.9898f, 78.233f)))* 43758.5453f );
-}
-vec2 PDnrand2( vec2 n ) {
-	return fract( sin(dot(n.xy, vec2(12.9898f, 78.233f)))* vec2(43758.5453f, 28001.8384f) );
-}
-vec3 PDnrand3( vec2 n ) {
-	return fract( sin(dot(n.xy, vec2(12.9898f, 78.233f)))* vec3(43758.5453f, 28001.8384f, 50849.4141f ) );
-}
-vec4 PDnrand4( vec2 n ) {
-	return fract( sin(dot(n.xy, vec2(12.9898f, 78.233f)))* vec4(43758.5453f, 28001.8384f, 50849.4141f, 12996.89f) );
-}
-
-//====
-//note: signed random, float=[-1;1[
-float PDsrand( vec2 n ) {
-	return PDnrand( n ) * 2 - 1;
-}
-vec2 PDsrand2( vec2 n ) {
-	return PDnrand2( n ) * 2 - 1;
-}
-vec3 PDsrand3( vec2 n ) {
-	return PDnrand3( n ) * 2 - 1;
-}
-vec4 PDsrand4( vec2 n ) {
-	return PDnrand4( n ) * 2 - 1;
 }
 
 vec3 curr_color_normalized(vec2 uv) {
