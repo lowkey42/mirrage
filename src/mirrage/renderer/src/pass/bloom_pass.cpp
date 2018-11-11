@@ -190,6 +190,11 @@ namespace mirrage::renderer {
 			                       util::Rgba{0, 0, 0, 0},
 			                       vk::ImageLayout::eUndefined,
 			                       vk::ImageLayout::eShaderReadOnlyOptimal);
+			graphic::clear_texture(frame.main_command_buffer,
+			                       _blur_buffer,
+			                       util::Rgba{0, 0, 0, 0},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal);
 			return;
 		}
 

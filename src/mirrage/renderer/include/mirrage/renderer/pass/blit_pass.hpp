@@ -13,7 +13,7 @@ namespace mirrage::renderer {
 	  public:
 		using Factory = Blit_pass_factory;
 
-		Blit_pass(Deferred_renderer&, graphic::Texture_2D& src);
+		Blit_pass(Deferred_renderer&, graphic::Render_target_2D& src);
 
 		void update(util::Time dt) override;
 		void draw(Frame_data&) override;

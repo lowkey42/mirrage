@@ -54,7 +54,7 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	Blit_pass::Blit_pass(Deferred_renderer& renderer, graphic::Texture_2D& src)
+	Blit_pass::Blit_pass(Deferred_renderer& renderer, graphic::Render_target_2D& src)
 	  : _renderer(renderer)
 	  , _src(src)
 	  , _sampler(renderer.device().create_sampler(1,
@@ -63,7 +63,7 @@ namespace mirrage::renderer {
 	                                              vk::Filter::eLinear,
 	                                              vk::SamplerMipmapMode::eNearest))
 	  , _descriptor_set_layout(renderer.device(), *_sampler, 1)
-	  , _descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view()}))
+	  , _descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view(0)}))
 	  , _render_pass(build_render_pass(renderer, *_descriptor_set_layout, _framebuffers))
 	{
 	}

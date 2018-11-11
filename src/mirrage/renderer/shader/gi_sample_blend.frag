@@ -115,6 +115,7 @@ void main() {
 	// modulate diffuse GI by ambient occlusion
 	if(INCLUDE_AO==1) {
 		float ao = texture(ao_sampler, vertex_out.tex_coords).r * 0.75 + 0.25;
+		ao = mix(1.0, ao, pcs.projection[3][3]);
 		out_color.rgb *= ao;
 		for(int i=0; i<9; i++)
 			colors[i] *= ao;

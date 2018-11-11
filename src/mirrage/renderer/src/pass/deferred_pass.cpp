@@ -240,6 +240,22 @@ namespace mirrage::renderer {
 			                      _renderer.gbuffer().prev_depth,
 			                      vk::ImageLayout::eUndefined,
 			                      vk::ImageLayout::eShaderReadOnlyOptimal);
+		} else {
+			graphic::clear_texture(frame.main_command_buffer,
+			                       _renderer.gbuffer().colorA,
+			                       util::Rgba{0, 0, 0, 0},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal,
+			                       0,
+			                       _renderer.gbuffer().mip_levels);
+
+			graphic::clear_texture(frame.main_command_buffer,
+			                       _renderer.gbuffer().colorB,
+			                       util::Rgba{0, 0, 0, 0},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal,
+			                       0,
+			                       _renderer.gbuffer().mip_levels);
 		}
 
 		_gpass.pre_draw(frame);

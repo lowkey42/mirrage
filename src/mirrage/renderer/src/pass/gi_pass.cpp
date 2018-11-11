@@ -961,7 +961,7 @@ namespace mirrage::renderer {
 				                       vk::ImageLayout::eUndefined,
 				                       vk::ImageLayout::eShaderReadOnlyOptimal,
 				                       0,
-				                       1);
+				                       rt->mip_levels());
 			}
 
 			_prev_view = _renderer.global_uniforms().view_mat;
@@ -1149,12 +1149,6 @@ namespace mirrage::renderer {
 		pcs.prev_projection[1][3] = float(_max_mip_level - 1);
 		pcs.prev_projection[3][3] = float(_min_mip_level);
 
-		if(_renderer.gbuffer().ambient_occlusion.is_some()) {
-			pcs.reprojection[3][3] = 1.0;
-		} else {
-			pcs.reprojection[3][3] = 0.0;
-		}
-
 		{
 			auto _               = _renderer.profiler().push("Sample (diffuse)");
 			auto first_iteration = true;
@@ -1217,6 +1211,12 @@ namespace mirrage::renderer {
 		{
 			auto _ = _renderer.profiler().push("Sample (blend");
 
+			if(_renderer.gbuffer().ambient_occlusion.is_some()) {
+				pcs.reprojection[3][3] = 1.0;
+			} else {
+				pcs.reprojection[3][3] = 0.0;
+			}
+
 			for(auto i = int(_sample_framebuffers.size() - 1); i >= 0; i--) {
 				auto& fb_upsample = _sample_framebuffers.at(std::size_t(i));
 				auto& fb_final    = _sample_framebuffers_blend.at(std::size_t(i));
@@ -1243,6 +1243,7 @@ namespace mirrage::renderer {
 						_sample_renderpass.set_stage("blend_last"_strid);
 
 					_sample_renderpass.bind_descriptor_set(2, *_sample_descriptor_sets[std::size_t(i)]);
+					_sample_renderpass.push_constant("pcs"_strid, pcs);
 
 					command_buffer.draw(3, 1, 0, 0);
 				});
