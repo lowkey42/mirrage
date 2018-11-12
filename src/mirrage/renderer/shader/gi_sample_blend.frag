@@ -95,22 +95,7 @@ void main() {
 		texelFetchOffset(result_sampler, uv, 0, ivec2( 1, 1)).rgb
 	);
 
-	float min_c = pixel_intensity(colors[0]);
-	float max_c = min_c;
-
-	for(int i=1; i<9; i++) {
-		float intensity = pixel_intensity(colors[i]);
-		min_c = min(min_c, intensity);
-		max_c = max(max_c, intensity);
-	}
-
-	vec3 org = colors[4];
-	float org_intensity = dot(org, org);
-	if(max_c>org_intensity)
-		out_color = vec4(org, 1.0);
-	else {
-		out_color = vec4(median_vec3(colors), 1.0);
-	}
+	out_color = vec4(median_vec3(colors), 1.0);
 
 	// modulate diffuse GI by ambient occlusion
 	if(INCLUDE_AO==1) {

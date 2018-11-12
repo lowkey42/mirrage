@@ -39,5 +39,5 @@ void main() {
 
 	color_out = vec4(result / weight_sum, 1.0);
 
-	color_out.rgb = mix(color_out.rgb, center, 0.7);
+	color_out.rgb = mix(color_out.rgb, center, 0.6);
 }

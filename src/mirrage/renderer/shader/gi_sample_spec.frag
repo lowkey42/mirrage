@@ -80,6 +80,27 @@ vec3 sample_color_lod(float roughness, vec2 hit_uv, vec3 L, float coneTheta) {
 }
 
 void main() {
+	vec3 diffuse = textureLod(diffuse_sampler, vertex_out.tex_coords, pcs.prev_projection[0][3]).rgb/ (PI*PI*2);
+
+	float history_weight = texelFetch(history_weight_sampler,
+	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
+	                                  0).r;
+	if(history_weight<=0)
+		history_weight = 0.0;
+	else if(history_weight>100)
+		history_weight = 1.0;
+	else
+		history_weight = 1.0-1.0/(1+history_weight);
+
+	// blend to diffuse if history_weight is too high to avoid flicker
+	float diffuse_weight = smoothstep(0.9, 1.0, history_weight);
+	if(diffuse_weight>=1.0) {
+		out_color = vec4(diffuse,1);
+		return;
+	}
+	out_color.rgb = mix(diffuse, out_color.rgb, diffuse_weight);
+
+
 	float startLod = pcs.prev_projection[0][3];
 	vec2 depthSize = textureSize(depth_sampler, int(startLod + 0.5));
 
@@ -134,21 +155,10 @@ void main() {
 		out_color.rgb = max(color * factor_distance * factor_normal, vec3(0));
 
 	} else {
-		out_color.rgb = textureLod(diffuse_sampler, vertex_out.tex_coords, pcs.prev_projection[0][3]).rgb / (PI*PI*2);
+		out_color.rgb = diffuse;
 	}
 
-	float history_weight = texelFetch(history_weight_sampler,
-	                                  ivec2(vertex_out.tex_coords * textureSize(history_weight_sampler, 0)),
-	                                  0).r;
-	if(history_weight<=0)
-		history_weight = 0.0;
-	else if(history_weight>100)
-		history_weight = 1.0;
-	else
-		history_weight = 1.0-1.0/(1+history_weight);
-
 	out_color *= 1.0 - min(history_weight, 0.94);
-
 	out_color = max(out_color, vec4(0));
 }
 

@@ -106,8 +106,8 @@ namespace mirrage::renderer {
 			});
 		}
 
-		constexpr auto offsets       = build_halton_2_3<16>();
-		constexpr auto offset_factor = 0.04f;
+		constexpr auto offsets       = build_halton_2_3<8>();
+		constexpr auto offset_factor = 0.06f;
 	} // namespace
 
 
