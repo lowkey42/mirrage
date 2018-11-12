@@ -461,7 +461,7 @@ namespace mirrage {
 			nk_label(ctx, "Renderer Settings", NK_TEXT_LEFT);
 
 			nk_layout_row_dynamic(ctx, 20, 1);
-			nk_property_int(ctx, "Debug Layer", -1, &renderer_settings.debug_gi_layer, 5, 1, 1);
+			nk_property_int(ctx, "Debug Layer", -1, &renderer_settings.debug_gi_layer, 10, 1, 1);
 
 			bool_nk_wrapper = renderer_settings.gi ? 1 : 0;
 			nk_checkbox_label(ctx, "Indirect Illumination", &bool_nk_wrapper);

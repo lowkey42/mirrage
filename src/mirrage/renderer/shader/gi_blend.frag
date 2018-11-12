@@ -41,8 +41,16 @@ void main() {
 		out_color.rgb = texture(result_spec_sampler, vertex_out.tex_coords).rgb;
 		out_color.a = 1;
 
-	} else if(pcs.prev_projection[2][3]>=1) {
-		out_color.rgb = textureLod(result_diff_sampler, vertex_out.tex_coords, pcs.prev_projection[2][3]-1).rgb;
+	} else if(pcs.prev_projection[2][3]==1) {
+		out_color.rgb = specular;
+		out_color.a = 1;
+
+	} else if(pcs.prev_projection[2][3]==2) {
+		out_color.rgb = radiance;
+		out_color.a = 1;
+
+	} else if(pcs.prev_projection[2][3]>=3) {
+		out_color.rgb = textureLod(result_diff_sampler, vertex_out.tex_coords, pcs.prev_projection[2][3]-3).rgb;
 		out_color.a = 1;
 	}
 
