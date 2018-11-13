@@ -23,7 +23,7 @@ Required:
 - CMake >= 3.8
 - SDL2 >= 2.0.8
 - Vulkan + Vulkan-HPP >= 1.1.80
-- GLSLC (if MIRRAGE_COMPILE_SHADERS is ON)
+- GLSLC
 
 
 Included in this repository:
@@ -38,8 +38,8 @@ Included in this repository:
 
 
 ### Supported Compilers
-- GCC >= 7
-- Clang >= 5
+- GCC >= 8
+- Clang >= 7
 
 
 ### Build from Source
@@ -53,7 +53,6 @@ In order to execute the compiled demo application, the src/demo/demo binary has 
 
 The project can be further configured by setting the following CMake-Properties (-DPROP=ON/OFF):
 - MIRRAGE_BUILD_MESH_CONVERTER: Also build the mesh converter that can be used to converter models into the engine specific data format (Default: OFF)
-- MIRRAGE_COMPILE_SHADERS: Also compile the glsl shaders into SPIR-V (requires GLSLC)
 - MIRRAGE_ENABLE_CLANG_FORMAT: Includes an additional clangformat target, that can be used to automatically format all source files in the project
 - MIRRAGE_ENABLE_LTO: Activates link time optimizations on gcc/clang (Default: OFF)
 - MIRRAGE_SAN: Build with clang sanatizers (address, integer, undefined and address-use-after-scope) (Default: OFF)
