@@ -11,6 +11,7 @@
 
 #include <mirrage/utils/defer.hpp>
 #include <mirrage/utils/maybe.hpp>
+#include <mirrage/utils/ranges.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <memory>
@@ -31,6 +32,8 @@ namespace mirrage {
 		virtual ~Screen() noexcept;
 
 		using Deferred_action_container::defer;
+
+		virtual auto name() const -> std::string = 0;
 
 	  protected:
 		friend class Screen_manager;
@@ -67,6 +70,22 @@ namespace mirrage {
 		void on_frame(util::Time delta_time);
 		void do_queued_actions();
 		void clear();
+
+		template <class Stream>
+		auto print_stack(Stream& out) const -> auto&
+		{
+			for(auto& screen : util::range_reverse(_screen_stack)) {
+				out << screen->name();
+				switch(screen->_prev_screen_policy()) {
+					case Prev_screen_policy::discard: out << " |"; break;
+					case Prev_screen_policy::stack: out << " S> "; break;
+					case Prev_screen_policy::draw: out << " D> "; break;
+					case Prev_screen_policy::update: out << " U> "; break;
+				}
+			}
+
+			return out;
+		}
 
 	  protected:
 		Engine&                              _engine;

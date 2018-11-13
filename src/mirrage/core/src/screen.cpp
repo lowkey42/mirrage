@@ -122,4 +122,5 @@ namespace mirrage {
 
 		_screen_stack.clear();
 	}
+
 } // namespace mirrage

@@ -14,6 +14,7 @@
 
 #include <mirrage/asset/asset_manager.hpp>
 #include <mirrage/gui/debug_ui.hpp>
+#include <mirrage/utils/console_command.hpp>
 
 #include <SDL2/SDL.h>
 #include <doctest.h>
@@ -29,7 +30,8 @@ using namespace std::string_literals;
 
 
 namespace {
-	std::unique_ptr<Engine> engine;
+	std::unique_ptr<Engine>                          engine;
+	std::unique_ptr<util::Console_command_container> global_commands;
 
 	void init_env(int argc, char** argv, char** env);
 	void init_engine();
@@ -119,6 +121,23 @@ namespace {
 
 		engine = std::make_unique<Game_engine>(org_name, app_name, 0, 1, debug, argc, argv, env);
 
+		global_commands = std::make_unique<util::Console_command_container>();
+		global_commands->add("screen.leave <count> | Pops the top <count> screens",
+		                     [&](std::uint8_t depth) { engine->screens().leave(depth); });
+		global_commands->add(
+		        "screen.print | Prints the currently open screens (=> update+draw next, D> only draw, S> "
+		        "don't update+draw)",
+		        [&]() {
+			        LOG(plog::info) << "Open Screens: " << [](std::ostream & out) -> auto&
+			        {
+				        engine->screens().print_stack(out);
+				        return out;
+			        };
+		        });
+
+		global_commands->add("screen.enter.test | Enters the test screen",
+		                     [&]() { engine->screens().enter<Test_screen>(); });
+
 		if(argc > 1 && argv[1] == "test"s)
 			engine->screens().enter<Test_screen>();
 		else
@@ -127,5 +146,9 @@ namespace {
 
 	void onFrame() { engine->on_frame(); }
 
-	void shutdown() { engine.reset(); }
+	void shutdown()
+	{
+		global_commands.reset();
+		engine.reset();
+	}
 } // namespace

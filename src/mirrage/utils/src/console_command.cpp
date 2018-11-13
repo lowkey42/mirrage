@@ -27,7 +27,7 @@ namespace mirrage::util {
 			return false;
 		}
 
-		auto args = cmd.substr(arg_sep);
+		auto args = arg_sep != std::string::npos ? cmd.substr(arg_sep) : std::string_view{};
 
 		for(auto& [key, value] : util::range(begin, end))
 			value.call(args);
@@ -45,6 +45,9 @@ namespace mirrage::util {
 				matches.emplace_back(&value);
 			}
 		}
+
+		std::sort(
+		        begin(matches), end(matches), [](auto& lhs, auto& rhs) { return lhs->name() < rhs->name(); });
 
 		return matches;
 	}

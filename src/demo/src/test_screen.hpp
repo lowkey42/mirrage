@@ -23,6 +23,8 @@ namespace mirrage {
 		Test_screen(Engine& engine);
 		~Test_screen() noexcept;
 
+		auto name() const -> std::string override { return "Test"; }
+
 	  protected:
 		void _update(util::Time delta_time) override;
 		void _draw() override;

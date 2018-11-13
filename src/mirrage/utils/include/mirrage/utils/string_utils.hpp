@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <fstream>
 #include <iostream>
 #include <sstream>
@@ -58,19 +59,20 @@ namespace mirrage::util {
 	}
 
 	template <class T>
-	auto from_string(std::string_view) -> util::maybe<T>
-	{
-		static_assert(util::dependent_false<T>(), "No matching from_string() for type T.");
-	}
-
-	template <class T, typename = std::enable_if_t<std::is_arithmetic_v<T>>>
 	auto from_string(std::string_view view) -> util::maybe<T>
 	{
-		T v;
-		if(from_chars(&view[0], &view[0] + view.size(), v).ec != std::errc())
+		if constexpr(std::is_arithmetic_v<T>) {
+			T v;
+			if(std::from_chars(&view[0], &view[0] + view.size(), v).ec != std::errc())
+				return util::nothing;
+			else
+				return v;
+
+		} else {
+			(void) view;
+			static_assert(util::dependent_false<T>(), "No matching from_string() for type T.");
 			return util::nothing;
-		else
-			return v;
+		}
 	}
 
 	template <>

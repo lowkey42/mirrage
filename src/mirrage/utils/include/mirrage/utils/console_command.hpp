@@ -103,15 +103,24 @@ namespace mirrage::util {
                                 if(arg_iter == arg_end) {
                                     LOG(plog::error) << "Not enough arguments.";
                                     return util::nothing;
-                                } else {
-                                    // TODO: unescape quotes if the argument was quoted!
-                                    auto arg =
-                                            (*arg_iter)[1].length() == 0
-                                                    ? cmd.substr(std::size_t(arg_iter->position()),
-                                                                 std::size_t(arg_iter->length()))
-                                                    : std::string_view((*arg_iter)[1].first,
-                                                                       std::size_t((*arg_iter)[1].length()));
-                                    return util::from_string<typename decltype(type)::type>(arg);
+
+                                } else if((*arg_iter)[1].length() == 0) {
+                                    return util::from_string<typename decltype(type)::type>(
+                                            cmd.substr(std::size_t(arg_iter->position()),
+                                                       std::size_t(arg_iter->length())));
+
+                                } else { // quoted
+                                    auto arg = std::string_view((*arg_iter)[1].first,
+                                                                std::size_t((*arg_iter)[1].length()));
+                                    if(!arg.find("\\"))
+                                        return util::from_string<typename decltype(type)::type>(arg);
+                                    else {
+                                        // contains escape sequences we have to replace
+                                        auto arg_str = std::string(arg);
+                                        util::replace_inplace(arg_str, "\\\"", "\"");
+                                        util::replace_inplace(arg_str, "\\\\", "\\");
+                                        return util::from_string<typename decltype(type)::type>(arg);
+                                    }
                                 }
                             });
                 }));
