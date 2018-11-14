@@ -1,5 +1,7 @@
 #include <mirrage/renderer/deferred_renderer.hpp>
 
+#include "debug_ui.hpp"
+
 #include <mirrage/asset/embedded_asset.hpp>
 #include <mirrage/renderer/model_comp.hpp>
 
@@ -26,151 +28,7 @@ namespace mirrage::renderer {
 		{
 			return std::any_of(passes.begin(), passes.end(), [&](auto& p) { return p->requires_gbuffer(); });
 		}
-
-		template <typename T>
-		auto to_fixed_str(T num, int digits)
-		{
-			auto ss = std::stringstream{};
-			ss << std::fixed << std::setprecision(digits) << num;
-			return ss.str();
-		}
-
-		auto pad_left(const std::string& str, int padding)
-		{
-			return std::string(std::size_t(padding), ' ') + str;
-		}
-
-		template <std::size_t N, typename Container, typename Comp>
-		auto top_n(const Container& container, Comp&& less)
-		{
-			auto max_elements = std::array<decltype(container.begin()), N>();
-			max_elements.fill(container.end());
-
-			for(auto iter = container.begin(); iter != container.end(); iter++) {
-				// compare with each of the top elements
-				for(auto i = std::size_t(0); i < N; i++) {
-					if(max_elements[i] == container.end() || less(*max_elements[i], *iter)) {
-						// move top elements to make room
-						for(auto j = i + 1; j < N; j++) {
-							max_elements[j] = max_elements[j - 1];
-						}
-						max_elements[i] = iter;
-						break;
-					}
-				}
-			}
-
-			return max_elements;
-		}
-
-		template <typename Container, typename T>
-		auto index_of(const Container& container, const T& element) -> int
-		{
-			auto top_entry = std::find(container.begin(), container.end(), element);
-			if(top_entry == container.end())
-				return -1;
-
-			return gsl::narrow<int>(std::distance(container.begin(), top_entry));
-		}
 	} // namespace
-
-	class Deferred_renderer_factory::Profiler_menu : public gui::Debug_menu {
-	  public:
-		Profiler_menu(std::vector<Deferred_renderer*>& renderer_instances)
-		  : Debug_menu("profiler"), _renderer_instances(renderer_instances)
-		{
-		}
-
-		void on_show() override
-		{
-			for(auto& r : _renderer_instances)
-				r->profiler().enable();
-		}
-		void on_hide() override
-		{
-			for(auto& r : _renderer_instances)
-				r->profiler().disable();
-		}
-
-		void draw(gui::Gui& gui) override
-		{
-			for(auto& r : _renderer_instances)
-				r->profiler().enable();
-
-			auto ctx = gui.ctx();
-			if(nk_begin_titled(
-			           ctx,
-			           "profiler",
-			           "Profiler",
-			           gui.centered_right(330, 380),
-			           NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
-
-				nk_layout_row_dynamic(ctx, 20, 1);
-				if(nk_button_label(ctx, "Reset")) {
-					for(auto& r : _renderer_instances)
-						r->profiler().reset();
-				}
-
-#if 0
-				if(_performance_log.is_nothing() && nk_button_label(ctx, "Record")) {
-					_performance_log = _engine.assets().save_raw("log:perf.log"_aid);
-				}
-#endif
-
-				constexpr auto rows = std::array<float, 5>{{0.4f, 0.15f, 0.15f, 0.15f, 0.15f}};
-				nk_layout_row(ctx, NK_DYNAMIC, 25, rows.size(), rows.data());
-				nk_label(ctx, "RenderPass", NK_TEXT_CENTERED);
-				nk_label(ctx, "Curr (ms)", NK_TEXT_CENTERED);
-				nk_label(ctx, "Min (ms)", NK_TEXT_CENTERED);
-				nk_label(ctx, "Avg (ms)", NK_TEXT_CENTERED);
-				nk_label(ctx, "Max (ms)", NK_TEXT_CENTERED);
-
-				nk_layout_row(ctx, NK_DYNAMIC, 10, rows.size(), rows.data());
-
-
-				auto print_entry = [&](auto&&                 printer,
-				                       const Profiler_result& result,
-				                       int                    depth = 0,
-				                       int                    rank  = -1) -> void {
-					auto color = [&] {
-						switch(rank) {
-							case 0: return nk_rgb(255, 0, 0);
-							case 1: return nk_rgb(255, 220, 128);
-							default: return nk_rgb(255, 255, 255);
-						}
-					}();
-
-					nk_label_colored(ctx, pad_left(result.name(), depth * 4).c_str(), NK_TEXT_LEFT, color);
-					nk_label_colored(ctx, to_fixed_str(result.time_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-					nk_label_colored(
-					        ctx, to_fixed_str(result.time_min_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-					nk_label_colored(
-					        ctx, to_fixed_str(result.time_avg_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-					nk_label_colored(
-					        ctx, to_fixed_str(result.time_max_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-
-
-					auto worst_timings = top_n<2>(result, [](auto&& lhs, auto&& rhs) {
-						return lhs.time_avg_ms() < rhs.time_avg_ms();
-					});
-
-					for(auto iter = result.begin(); iter != result.end(); iter++) {
-						auto rank = index_of(worst_timings, iter);
-						printer(printer, *iter, depth + 1, rank);
-					}
-				};
-
-
-				for(auto& r : _renderer_instances)
-					print_entry(print_entry, r->profiler().results());
-			}
-
-			nk_end(ctx);
-		}
-
-	  private:
-		std::vector<Deferred_renderer*>& _renderer_instances;
-	};
 
 
 	Deferred_renderer::Deferred_renderer(Deferred_renderer_factory&        factory,
@@ -622,6 +480,7 @@ namespace mirrage::renderer {
 	            _assets, *_device, *_model_material_sampler, *_model_desc_set_layout, _draw_queue_family))
 	  , _all_passes_mask(util::map(_pass_factories, [&](auto& f) { return f->id(); }))
 	  , _profiler_menu(std::make_unique<Profiler_menu>(_renderer_instances))
+	  , _settings_menu(std::make_unique<Settings_menu>(*this, _window))
 	{
 		auto maybe_settings = _assets.load_maybe<Renderer_settings>("cfg:renderer"_aid);
 		if(maybe_settings.is_nothing()) {

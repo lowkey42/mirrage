@@ -171,7 +171,9 @@ namespace mirrage::renderer {
 		Render_pass_mask                _all_passes_mask;
 
 		class Profiler_menu;
+		class Settings_menu;
 		std::unique_ptr<Profiler_menu> _profiler_menu;
+		std::unique_ptr<Settings_menu> _settings_menu;
 
 		void _present();
 		auto _rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> gqueue) -> int;

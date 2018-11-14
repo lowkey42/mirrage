@@ -8,6 +8,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 
 #include "game_engine.hpp"
+#include "test_animation_screen.hpp"
 #include "test_screen.hpp"
 
 #include <mirrage/info.hpp>
@@ -137,9 +138,13 @@ namespace {
 
 		global_commands->add("screen.enter.test | Enters the test screen",
 		                     [&]() { engine->screens().enter<Test_screen>(); });
+		global_commands->add("screen.enter.animation_test | Enters the animation test screen",
+		                     [&]() { engine->screens().enter<Test_animation_screen>(); });
 
 		if(argc > 1 && argv[1] == "test"s)
 			engine->screens().enter<Test_screen>();
+		else if(argc > 1 && argv[1] == "animation_test"s)
+			engine->screens().enter<Test_animation_screen>();
 		else
 			engine->screens().enter<Test_screen>();
 	}

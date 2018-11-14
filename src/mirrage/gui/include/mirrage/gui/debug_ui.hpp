@@ -68,8 +68,10 @@ namespace mirrage::gui {
 		virtual ~Debug_menu();
 
 		virtual void draw(Gui&) = 0;
-		virtual void on_show()  = 0;
-		virtual void on_hide()  = 0;
+		virtual void on_show() {}
+		virtual void on_hide() {}
+
+		auto name() const noexcept -> auto& { return _name; }
 
 		static void draw_all(const std::string& name, Gui& gui)
 		{
@@ -99,6 +101,8 @@ namespace mirrage::gui {
 			}
 			return stream;
 		}
+
+		static auto all_debug_menus() -> const std::vector<Debug_menu*>& { return instances(); }
 
 	  private:
 		friend class Debug_ui;

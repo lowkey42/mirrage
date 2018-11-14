@@ -58,6 +58,7 @@ add_library(mirrage_renderer STATIC
 	src/animation.cpp
 	src/animation_comp.cpp
 	src/camera_comp.cpp
+	src/debug_ui.hpp
 	src/deferred_renderer.cpp
 	src/gbuffer.cpp
 	src/light_comp.cpp
@@ -77,6 +78,12 @@ set(EMBEDDED_ASSETS
 	"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_textures.map"
 )
 mirrage_embed_asset(mirrage_renderer "${EMBEDDED_ASSETS}" ${SPIRV_BINARY_FILES})
+
+option(MIRRAGE_HISTOGRAM_DEBUG_VIEW "Enable debug view for tone mapping pass" OFF)
+if(MIRRAGE_HISTOGRAM_DEBUG_VIEW)
+	target_compile_definitions(mirrage_renderer PUBLIC MIRRAGE_HISTOGRAM_DEBUG_VIEW)
+endif()
+
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_renderer PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})

@@ -38,6 +38,12 @@ namespace mirrage::gui {
 				              LOG(plog::error) << "Unknown ui menu " << ui
 				                               << " expected one of: " << Debug_menu::print_names;
 		              });
+		_commands.add("show.all | Enables all debug UI elements", [&] {
+			for(auto& m : Debug_menu::all_debug_menus()) {
+				_shown_debug_menus.insert(m->name());
+				_show_console = false;
+			}
+		});
 		_commands.add("hide <ui> | Disables a specific debug UI element (see list_uis for possible options)",
 		              [&](std::string ui) {
 			              if(Debug_menu::is_debug_menu(ui))
@@ -46,6 +52,8 @@ namespace mirrage::gui {
 				              LOG(plog::error) << "Unknown ui menu " << ui
 				                               << " expected one of: " << Debug_menu::print_names;
 		              });
+		_commands.add("hide.all | Disables all debug UI elements", [&] { _shown_debug_menus.clear(); });
+
 		_commands.add("list_uis | Lists all available debug UI elements",
 		              [&]() { LOG(plog::info) << "UI menus: " << Debug_menu::print_names; });
 

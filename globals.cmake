@@ -10,7 +10,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${MIRRAGE_ROOT_DIR}/modules")
 
 enable_language(C CXX ASM GLSL)
 
-# add_definitions(-DHPC_HISTOGRAM_DEBUG_VIEW)
 add_definitions(-DGSL_TERMINATE_ON_CONTRACT_VIOLATION)
 
 # LTO

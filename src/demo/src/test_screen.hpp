@@ -37,7 +37,7 @@ namespace mirrage {
 			return Prev_screen_policy::discard;
 		}
 
-	  private:
+	  protected:
 		util::Mailbox_collection _mailbox;
 
 		Meta_system _meta_system;
@@ -46,10 +46,6 @@ namespace mirrage {
 
 		ecs::Entity_facet _camera;
 		ecs::Entity_facet _sun;
-		ecs::Entity_facet _animation_test_dqs;
-		ecs::Entity_facet _animation_test_lbs;
-		ecs::Entity_facet _animation_test2_dqs;
-		ecs::Entity_facet _animation_test2_lbs;
 
 		float _sun_elevation         = 0.92f;
 		float _sun_azimuth           = 1.22f;
@@ -74,15 +70,9 @@ namespace mirrage {
 		util::Time                  _performance_log_delay_left{1};
 		bool                        _preformance_log_first_row = true;
 
-		int  _window_width;
-		int  _window_height;
-		bool _window_fullscreen;
-
 		void _set_preset(int);
 		void _update_sun_position();
 
 		void _draw_settings_window();
-		void _draw_histogram_window();
-		void _draw_animation_window();
 	};
 } // namespace mirrage
