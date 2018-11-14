@@ -8,6 +8,7 @@
 
 
 namespace mirrage {
+	using namespace ecs::components;
 
 	Meta_system::Meta_system(Game_engine& engine)
 	  : _entities(engine.assets(), this)
@@ -16,6 +17,29 @@ namespace mirrage {
 	  , _nims(std::make_unique<systems::Nim_system>(_entities))
 	{
 		_entities.register_component_type<ecs::components::Transform_comp>();
+
+		_commands.add("reload | Reloads most assets", [&] { engine.assets().reload(); });
+
+		_commands.add("ecs.emplace <blueprint> | Creates a new entity in front of the current camera",
+		              [&](std::string blueprint) {
+			              auto  pos  = glm::vec3(0, 0, 0);
+			              float prio = -1.f;
+			              for(auto&& [transform, cam] :
+			                  _entities.list<Transform_comp, renderer::Camera_comp>()) {
+				              if(cam.priority() > prio) {
+					              prio = cam.priority();
+					              pos  = transform.position + transform.direction() * 2.f;
+				              }
+			              }
+			              _entities.emplace(blueprint).get<Transform_comp>().process(
+			                      [&](auto& transform) { transform.position = pos; });
+		              });
+
+		_commands.add("mem.renderer | Prints memory usage of renderer", [&] {
+			auto msg = std::stringstream();
+			_renderer->device().print_memory_usage(msg);
+			LOG(plog::info) << "Renderer Memory usage: " << msg.str();
+		});
 	}
 
 	Meta_system::~Meta_system()
