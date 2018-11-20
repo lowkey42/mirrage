@@ -20,10 +20,10 @@ extern void ref_embedded_assets_mirrage_gui();
 
 namespace mirrage::gui {
 
-	bool nk_interactive_text(struct nk_context* ctx, const char* str, int len)
+	auto nk_interactive_text(struct nk_context* ctx, const char* str, int len, nk_color color) -> int
 	{
 		auto bounds = nk_widget_bounds(ctx);
-		nk_text(ctx, str, len, NK_TEXT_ALIGN_LEFT);
+		nk_text_colored(ctx, str, len, NK_TEXT_ALIGN_LEFT, color);
 		return nk_button_behavior(&ctx->last_widget_state, bounds, &ctx->input, NK_BUTTON_DEFAULT);
 	}
 
@@ -134,6 +134,9 @@ namespace mirrage::gui {
 					case SDLK_RSHIFT:
 					case SDLK_LSHIFT: nk_input_key(_ctx, NK_KEY_SHIFT, down); return false;
 
+					case SDLK_RCTRL:
+					case SDLK_LCTRL: nk_input_key(_ctx, NK_KEY_CTRL, down); return false;
+
 					case SDLK_DELETE: nk_input_key(_ctx, NK_KEY_DEL, down); return false;
 
 					case SDLK_RETURN: nk_input_key(_ctx, NK_KEY_ENTER, down); return false;
@@ -164,6 +167,8 @@ namespace mirrage::gui {
 					case SDLK_b: nk_input_key(_ctx, NK_KEY_TEXT_LINE_START, down && ctrl); return false;
 					case SDLK_e: nk_input_key(_ctx, NK_KEY_TEXT_LINE_END, down && ctrl); return false;
 
+					case SDLK_a: nk_input_key(_ctx, NK_KEY_TEXT_SELECT_ALL, down && ctrl); return false;
+
 					case SDLK_LEFT:
 						nk_input_key(_ctx, NK_KEY_TEXT_WORD_LEFT, down && ctrl);
 						nk_input_key(_ctx, NK_KEY_LEFT, down && !ctrl);
@@ -173,6 +178,9 @@ namespace mirrage::gui {
 						nk_input_key(_ctx, NK_KEY_TEXT_WORD_RIGHT, down && ctrl);
 						nk_input_key(_ctx, NK_KEY_RIGHT, down && !ctrl);
 						return false;
+
+					case SDLK_UP: nk_input_key(_ctx, NK_KEY_UP, down); return false;
+					case SDLK_DOWN: nk_input_key(_ctx, NK_KEY_DOWN, down); return false;
 
 					default: return true;
 				}
@@ -186,6 +194,9 @@ namespace mirrage::gui {
 						if(!_grab_inputs)
 							return true;
 
+						if(evt.type == SDL_KEYDOWN && evt.key.repeat != 0) {
+							handle_key(false, evt.key.keysym.sym);
+						}
 						handle_key(evt.type == SDL_KEYDOWN, evt.key.keysym.sym);
 						return evt.key.keysym.sym == SDLK_ESCAPE;
 

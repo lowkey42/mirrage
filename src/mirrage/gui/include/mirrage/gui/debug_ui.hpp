@@ -49,12 +49,13 @@ namespace mirrage::gui {
 
 		Gui&                                 _gui;
 		util::Mailbox_collection             _mailbox;
-		bool                                 _show_console     = false;
-		bool                                 _focus_prompt     = false;
-		bool                                 _show_suggestions = false;
-		std::uint32_t                        _scroll_x         = 0;
-		std::uint32_t                        _scroll_y         = 0;
-		bool                                 _scroll_lock      = true;
+		bool                                 _show_console        = false;
+		bool                                 _focus_prompt        = false;
+		bool                                 _show_suggestions    = false;
+		int                                  _selected_suggestion = -1;
+		std::uint32_t                        _scroll_x            = 0;
+		std::uint32_t                        _scroll_y            = 0;
+		bool                                 _scroll_lock         = true;
 		std::array<char, max_command_length> _command_input_buffer{};
 		int                                  _command_input_length = 0;
 		util::Console_command_container      _commands;

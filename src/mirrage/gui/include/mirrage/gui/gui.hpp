@@ -58,7 +58,7 @@ namespace mirrage::gui {
 		struct Nk_renderer;
 	}
 
-	extern bool nk_interactive_text(struct nk_context* ctx, const char* str, int len);
+	extern auto nk_interactive_text(struct nk_context* ctx, const char* str, int len, nk_color color) -> int;
 
 
 	struct Gui_vertex {

@@ -4,6 +4,7 @@
 
 #include <mirrage/input/events.hpp>
 #include <mirrage/utils/console_command.hpp>
+#include <mirrage/utils/ranges.hpp>
 
 
 namespace mirrage::gui {
@@ -83,7 +84,7 @@ namespace mirrage::gui {
 		auto ctx      = _gui.ctx();
 		if(nk_begin(ctx,
 		            "debug_console",
-		            nk_rect(50, 0, float(width), float(_show_suggestions ? 400 + 12 * 10 : 400)),
+		            nk_rect(50, 0, float(width), float(_show_suggestions ? 400 + 12 * 5 : 400)),
 		            NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_DYNAMIC)) {
 			nk_layout_row_dynamic(ctx, 360, 1);
 
@@ -119,7 +120,9 @@ namespace mirrage::gui {
 
 			if(_focus_prompt) {
 				nk_edit_focus(ctx, 0);
-				_focus_prompt = false;
+				_focus_prompt            = false;
+				ctx->text_edit.cursor    = _command_input_length;
+				ctx->active->edit.cursor = _command_input_length;
 			}
 
 			nk_layout_row_dynamic(ctx, 30, 1);
@@ -132,21 +135,64 @@ namespace mirrage::gui {
 			auto cmd = std::string_view(_command_input_buffer.data(), std::size_t(_command_input_length));
 
 			if(cmd_event & NK_EDIT_COMMITED) {
-				if(util::Console_command_container::call(cmd)) {
+				auto suggestions = util::Console_command_container::complete(cmd);
+
+				if(_selected_suggestion >= 0 && gsl::narrow<int>(suggestions.size()) > _selected_suggestion) {
+					auto s        = suggestions[std::size_t(_selected_suggestion)];
+					auto name_sep = s->api().find(" ");
+					auto name_len = int(name_sep == std::string::npos ? s->api().size() : name_sep);
+					std::copy(s->api().begin(), s->api().begin() + name_len, _command_input_buffer.begin());
+					_command_input_length = name_len;
+					_focus_prompt         = true;
+					_selected_suggestion  = -1;
+
+				} else if(util::Console_command_container::call(cmd)) {
 					_command_input_length = 0;
+				}
+			} else if(cmd_event & NK_EDIT_ACTIVE && _selected_suggestion >= 0) {
+				for(auto i : util::range(static_cast<int>(NK_KEY_MAX))) {
+					if(i != NK_KEY_UP && i != NK_KEY_DOWN && i != NK_KEY_ENTER
+					   && nk_input_is_key_pressed(&ctx->input, static_cast<enum nk_keys>(i))) {
+						_selected_suggestion = -1;
+						break;
+					}
 				}
 			}
 
 			if(_show_suggestions) {
+				auto suggestions      = util::Console_command_container::complete(cmd);
+				auto suggestions_size = gsl::narrow<int>(suggestions.size());
+
+				auto up_pressed   = nk_input_is_key_pressed(&ctx->input, NK_KEY_UP);
+				auto down_pressed = nk_input_is_key_pressed(&ctx->input, NK_KEY_DOWN);
+
+				if(up_pressed == nk_true || down_pressed == nk_true || _selected_suggestion >= 0) {
+					if(up_pressed)
+						_selected_suggestion--;
+					else if(down_pressed)
+						_selected_suggestion++;
+
+					if(_selected_suggestion < 0)
+						_selected_suggestion = suggestions_size - 1;
+					else if(_selected_suggestion >= suggestions_size)
+						_selected_suggestion = 0;
+				}
+
 				nk_layout_row_dynamic(ctx, 12, 3);
 
-				for(auto& s : util::Console_command_container::complete(cmd)) {
-					auto any_clicked = false;
-					auto sep         = s->api().find("|");
+				auto i = -1;
+				for(auto& s : suggestions) {
+					i++;
+
+					auto button_state = 0;
+					auto sep          = s->api().find("|");
+
+					auto color = _selected_suggestion == i ? nk_color{255, 255, 255, 255}
+					                                       : nk_color{180, 180, 180, 180};
 
 					auto name_sep = s->api().find(" ");
 					auto name_len = int(name_sep == std::string::npos ? s->api().size() : name_sep);
-					any_clicked |= nk_interactive_text(ctx, s->api().c_str(), name_len);
+					button_state |= nk_interactive_text(ctx, s->api().c_str(), name_len, color);
 
 					if(name_sep != std::string::npos) {
 						name_sep++;
@@ -155,13 +201,13 @@ namespace mirrage::gui {
 							name_sep = space;
 
 						if(s->api()[name_sep] != '|')
-							any_clicked |= nk_interactive_text(
-							        ctx, s->api().c_str() + name_sep, int(sep - name_sep));
+							button_state |= nk_interactive_text(
+							        ctx, s->api().c_str() + name_sep, int(sep - name_sep), color);
 						else
-							any_clicked |= nk_interactive_text(ctx, "", 0);
+							button_state |= nk_interactive_text(ctx, "", 0, color);
 
 					} else {
-						any_clicked |= nk_interactive_text(ctx, "", 0);
+						button_state |= nk_interactive_text(ctx, "", 0, color);
 					}
 
 					if(sep != std::string::npos) {
@@ -169,16 +215,18 @@ namespace mirrage::gui {
 						auto space = s->api().find_first_not_of(" ", sep);
 						if(space != std::string::npos)
 							sep = space;
-						any_clicked |=
-						        nk_interactive_text(ctx, s->api().c_str() + sep, int(s->api().size() - sep));
+						button_state |= nk_interactive_text(
+						        ctx, s->api().c_str() + sep, int(s->api().size() - sep), color);
 					} else
-						any_clicked |= nk_interactive_text(ctx, "", 0);
+						button_state |= nk_interactive_text(ctx, "", 0, color);
 
-					if(any_clicked && name_len > _command_input_length) {
+					if((button_state & NK_WIDGET_STATE_ACTIVE) && name_len > _command_input_length) {
 						std::copy(
 						        s->api().begin(), s->api().begin() + name_len, _command_input_buffer.begin());
 						_command_input_length = name_len;
 						_focus_prompt         = true;
+					} else if(button_state & NK_WIDGET_STATE_HOVERED) {
+						_selected_suggestion = i;
 					}
 				}
 			}

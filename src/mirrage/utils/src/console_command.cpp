@@ -49,6 +49,9 @@ namespace mirrage::util {
 		std::sort(
 		        begin(matches), end(matches), [](auto& lhs, auto& rhs) { return lhs->name() < rhs->name(); });
 
+		if(matches.size() > 5)
+			matches.resize(5);
+
 		return matches;
 	}
 } // namespace mirrage::util

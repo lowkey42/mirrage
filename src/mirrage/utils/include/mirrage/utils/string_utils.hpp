@@ -10,6 +10,8 @@
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
+#include <sf2/sf2.hpp>
+
 #include <algorithm>
 #include <cctype>
 #include <charconv>
@@ -67,6 +69,12 @@ namespace mirrage::util {
 				return util::nothing;
 			else
 				return v;
+
+		} else if constexpr(sf2::is_annotated_struct<T>()) {
+			return sf2::deserialize_json<T>(std::stringstream(std::string(view)));
+
+		} else if constexpr(sf2::is_annotated_enum<T>()) {
+			return sf2::get_enum_info<T>().value_of(view);
 
 		} else {
 			(void) view;
