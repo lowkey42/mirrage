@@ -334,7 +334,7 @@ namespace mirrage::asset {
 	}
 	auto Asset_manager::open_rw(const AID& id) -> ostream
 	{
-		auto path = resolve(id);
+		auto path = resolve(id, false);
 		if(path.is_nothing()) {
 			path = resolve(AID{id.type(), ""}).process(id.str(), [&](auto&& prefix) {
 				return append_file(prefix, id.str());
@@ -448,6 +448,7 @@ namespace mirrage::asset {
 				auto        kvp  = util::split(l, "=");
 				std::string path = util::trim_copy(kvp.second);
 				if(!path.empty()) {
+					LOG(plog::debug) << "    " << AID{kvp.first}.str() << " = " << path;
 					_dispatchers.emplace(AID{kvp.first}, std::move(path));
 				}
 			}

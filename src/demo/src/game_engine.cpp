@@ -27,7 +27,7 @@ namespace mirrage {
 	                         char**             argv,
 	                         char**             env)
 	  : Engine(org, title, version_major, version_minor, debug, false, argc, argv, env)
-	  , _debug_ui(gui(), bus())
+	  , _debug_ui(assets(), gui(), bus())
 	  , _renderer_factory(std::make_unique<renderer::Deferred_renderer_factory>(
 	            *this,
 	            window(),

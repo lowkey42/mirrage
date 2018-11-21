@@ -55,9 +55,19 @@ namespace mirrage::util {
 	template <class T>
 	inline std::string to_string(const T& t)
 	{
-		std::stringstream ss;
-		ss << t;
-		return ss.str();
+		if constexpr(sf2::is_json_deserializable<T>) {
+			auto ss = std::stringstream();
+			sf2::serialize_json<T>(ss, t);
+			return ss.str();
+
+		} else if constexpr(sf2::is_annotated_enum<T>::value) {
+			return sf2::get_enum_info<T>().name_of(t);
+
+		} else {
+			std::stringstream ss;
+			ss << t;
+			return ss.str();
+		}
 	}
 
 	template <class T>
@@ -70,10 +80,22 @@ namespace mirrage::util {
 			else
 				return v;
 
-		} else if constexpr(sf2::is_annotated_struct<T>()) {
-			return sf2::deserialize_json<T>(std::stringstream(std::string(view)));
+		} else if constexpr(sf2::is_json_deserializable<T>) {
+			auto ss    = std::stringstream(std::string(view));
+			auto val   = T{};
+			auto error = false;
+			sf2::deserialize_json<T>(ss,
+			                         [&](auto& msg, uint32_t row, uint32_t column) {
+				                         error = true;
+				                         LOG(plog::error)
+				                                 << "Unable to parse string \"" << view << "\". Error at "
+				                                 << row << ":" << column << ": " << msg;
+			                         },
+			                         val);
 
-		} else if constexpr(sf2::is_annotated_enum<T>()) {
+			return error ? util::nothing : util::just(std::move(val));
+
+		} else if constexpr(sf2::is_annotated_enum<T>::value) {
 			return sf2::get_enum_info<T>().value_of(view);
 
 		} else {

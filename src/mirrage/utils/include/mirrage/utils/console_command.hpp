@@ -55,6 +55,13 @@ namespace mirrage::util {
 		Func         _exec;
 	};
 
+	namespace detail {
+		template <typename T>
+		struct Default_var_setter {
+			void operator()(T& org, T new_val) { org = new_val; }
+		};
+	} // namespace detail
+
 	class Console_command_container {
 	  public:
 		~Console_command_container();
@@ -62,13 +69,33 @@ namespace mirrage::util {
 		template <typename F>
 		auto add(std::string api, F &&) -> Console_command_container&;
 
+		template <typename T, typename F = detail::Default_var_setter<T>>
+		auto add_var(const std::string& name, T& var, F setter = {})
+		{
+			add_property(name,
+			             [&var, setter = std::move(setter)](T new_val) mutable { setter(var, new_val); },
+			             [&var, name = name]() -> decltype(auto) { return var; });
+		}
+
+		template <typename FS, typename FG>
+		auto add_property(const std::string& name, FS&& setter, FG&& getter)
+		{
+			add("set." + name + " <value> | Sets the value of the property", std::forward<FS>(setter));
+			add("get." + name + " | Gets the value of the property",
+			    [name = name, getter = std::forward<FG>(getter)] {
+				    LOG(plog::info) << "Value of " << name << ": " << util::to_string(getter());
+			    });
+		}
+
 		/// returns false if no such command could be found
 		static auto call(std::string_view cmd) -> bool;
 
 		static auto complete(std::string_view input) -> std::vector<Console_command*>;
 
+		static auto list_all_commands() -> const auto& { return all_commands(); }
+
 	  private:
-		static auto all_commands() -> auto&
+		static auto all_commands() -> std::unordered_multimap<std::string, Console_command>&
 		{
 			static std::unordered_multimap<std::string, Console_command> cmds;
 			return cmds;
@@ -88,7 +115,7 @@ namespace mirrage::util {
 	auto Console_command_container::add(std::string api, F&& f) -> Console_command_container&
 	{
 		static const auto split_args_regex =
-		        std::regex(R"xxx(\"((?:[^"]|\\")+)(?!\\).\"|([^ ]+))xxx", std::regex::optimize);
+		        std::regex(R"xxx(\"((?:[^"]|\\")+(?!\\).)\"|([^ ]+))xxx", std::regex::optimize);
 
 		auto name = api.substr(0, api.find(" "));
 		auto c    = all_commands().emplace(
@@ -119,7 +146,7 @@ namespace mirrage::util {
                                         auto arg_str = std::string(arg);
                                         util::replace_inplace(arg_str, "\\\"", "\"");
                                         util::replace_inplace(arg_str, "\\\\", "\\");
-                                        return util::from_string<typename decltype(type)::type>(arg);
+                                        return util::from_string<typename decltype(type)::type>(arg_str);
                                     }
                                 }
                             });

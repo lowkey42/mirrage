@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <mirrage/asset/asset_manager.hpp>
 #include <mirrage/utils/console_command.hpp>
 #include <mirrage/utils/messagebus.hpp>
 
@@ -40,7 +41,7 @@ namespace mirrage::gui {
 
 	class Debug_ui {
 	  public:
-		Debug_ui(Gui&, util::Message_bus&);
+		Debug_ui(asset::Asset_manager&, Gui&, util::Message_bus&);
 
 		void draw();
 
@@ -49,6 +50,7 @@ namespace mirrage::gui {
 
 		Gui&                                 _gui;
 		util::Mailbox_collection             _mailbox;
+		asset::Asset_manager&                _assets;
 		bool                                 _show_console        = false;
 		bool                                 _focus_prompt        = false;
 		bool                                 _show_suggestions    = false;
@@ -60,6 +62,10 @@ namespace mirrage::gui {
 		int                                  _command_input_length = 0;
 		util::Console_command_container      _commands;
 		std::unordered_set<std::string>      _shown_debug_menus;
+		std::vector<std::string>             _history;
+		int                                  _current_history_entry = -1;
+
+		void _save_history();
 	};
 
 

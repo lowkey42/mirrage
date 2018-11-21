@@ -20,16 +20,61 @@ namespace mirrage::gui {
                 nk_color{140, 140, 140, 255}, //	debug = 5,
                 nk_color{140, 140, 140, 255}  //	verbose = 6
         }};
+
+		const auto history_aid = "cfg:console_history"_aid;
 	} // namespace
 
 	void Debug_console_appender::write(const plog::Record& record)
 	{
-		_messages.emplace_back(record.getSeverity(), plog::TxtFormatter::format(record));
+		auto msg      = plog::TxtFormatter::format(record);
+		auto prev_pos = std::string::size_type(0);
+		auto pos      = std::string::size_type(0);
+		while((pos = msg.find("\n", prev_pos)) != std::string::npos) {
+			auto len = pos - prev_pos + 1;
+			if(len > 0)
+				_messages.emplace_back(record.getSeverity(),
+				                       prev_pos == 0 ? msg.substr(prev_pos, pos - prev_pos)
+				                                     : "    " + msg.substr(prev_pos, pos - prev_pos));
+
+			prev_pos = pos + 1;
+		}
 	}
 
 
-	Debug_ui::Debug_ui(Gui& gui, util::Message_bus& bus) : _gui(gui), _mailbox(bus)
+	Debug_ui::Debug_ui(asset::Asset_manager& assets, Gui& gui, util::Message_bus& bus)
+	  : _gui(gui), _mailbox(bus), _assets(assets)
 	{
+		assets.open(history_aid).process([&](auto& is) { _history = is.lines(); });
+
+		_commands.add("help | Prints all available commands", [&]() {
+			LOG(plog::info) << "Available commands:\n"
+			                << [](std::ostream& stream) -> std::ostream& {
+				for(auto& c : util::Console_command_container::list_all_commands()) {
+					stream << c.second.api() << "\n";
+				}
+				return stream;
+			};
+		});
+
+		_commands.add("history | Prints all previous commands", [&]() {
+			IF_LOG_(PLOG_DEFAULT_INSTANCE, plog::info)
+			{
+				auto record =
+				        plog::Record(plog::info, PLOG_GET_FUNC(), __LINE__, PLOG_GET_FILE(), PLOG_GET_THIS());
+
+				record << "History:\n";
+				for(auto& h : _history) {
+					record << h << "\n";
+				}
+
+				(*plog::get<PLOG_DEFAULT_INSTANCE>()) += std::move(record);
+			}
+		});
+		_commands.add("history.clear | Clears the history", [&]() {
+			_history.clear();
+			_save_history();
+		});
+
 		_commands.add("show <ui> | Enables a specific debug UI element (see list_uis for possible options)",
 		              [&](std::string ui) {
 			              if(Debug_menu::is_debug_menu(ui)) {
@@ -108,7 +153,7 @@ namespace mirrage::gui {
 					else
 						nk_text_colored(ctx,
 						                msg.msg.c_str(),
-						                int(msg.msg.size()) - 1,
+						                int(msg.msg.size()),
 						                NK_TEXT_ALIGN_LEFT,
 						                msg_color[std::size_t(msg.severity)]);
 
@@ -147,7 +192,10 @@ namespace mirrage::gui {
 					_selected_suggestion  = -1;
 
 				} else if(util::Console_command_container::call(cmd)) {
-					_command_input_length = 0;
+					_history.emplace_back(cmd);
+					_save_history();
+					_command_input_length  = 0;
+					_current_history_entry = -1;
 				}
 			} else if(cmd_event & NK_EDIT_ACTIVE && _selected_suggestion >= 0) {
 				for(auto i : util::range(static_cast<int>(NK_KEY_MAX))) {
@@ -176,6 +224,30 @@ namespace mirrage::gui {
 						_selected_suggestion = suggestions_size - 1;
 					else if(_selected_suggestion >= suggestions_size)
 						_selected_suggestion = 0;
+
+					_current_history_entry = -1;
+				}
+
+				if(!_history.empty()) {
+					auto history_up   = nk_input_is_key_pressed(&ctx->input, NK_KEY_SCROLL_UP);
+					auto history_down = nk_input_is_key_pressed(&ctx->input, NK_KEY_SCROLL_DOWN);
+
+					if(history_up) {
+						_current_history_entry--;
+					} else if(history_down) {
+						_current_history_entry++;
+					}
+
+					if(history_up || history_down) {
+						if(_current_history_entry < 0)
+							_current_history_entry = int(_history.size() - 1);
+						else if(_current_history_entry >= int(_history.size() - 1))
+							_current_history_entry = 0;
+
+						auto& history = _history[std::size_t(_current_history_entry)];
+						std::copy(history.begin(), history.end(), _command_input_buffer.begin());
+						_command_input_length = int(history.size());
+					}
 				}
 
 				nk_layout_row_dynamic(ctx, 12, 3);
@@ -200,10 +272,11 @@ namespace mirrage::gui {
 						if(space != std::string::npos)
 							name_sep = space;
 
-						if(s->api()[name_sep] != '|')
-							button_state |= nk_interactive_text(
-							        ctx, s->api().c_str() + name_sep, int(sep - name_sep), color);
-						else
+						if(s->api()[name_sep] != '|') {
+							auto len = sep != std::string::npos ? int(sep - name_sep)
+							                                    : int(s->api().size() - name_sep);
+							button_state |= nk_interactive_text(ctx, s->api().c_str() + name_sep, len, color);
+						} else
 							button_state |= nk_interactive_text(ctx, "", 0, color);
 
 					} else {
@@ -234,6 +307,14 @@ namespace mirrage::gui {
 			_show_suggestions = cmd_event & NK_EDIT_ACTIVE;
 		}
 		nk_end(ctx);
+	}
+
+	void Debug_ui::_save_history()
+	{
+		auto os = _assets.open_rw(history_aid);
+		for(auto& h : _history)
+			os << h << "\n";
+		os.close();
 	}
 
 

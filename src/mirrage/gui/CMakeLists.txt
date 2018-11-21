@@ -19,6 +19,7 @@ add_library(mirrage_gui STATIC
 add_library(mirrage::gui ALIAS mirrage_gui)
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_gui.map" CONTENT
 "cfg:gui = settings/gui.json
+cfg:console_history = console_history.txt
 font: = fonts/
 font:default_font = fonts/default_font.ttf
 ")

@@ -13,6 +13,7 @@
 #include <mirrage/engine.hpp>
 #include <mirrage/gui/gui.hpp>
 #include <mirrage/renderer/deferred_renderer.hpp>
+#include <mirrage/utils/console_command.hpp>
 #include <mirrage/utils/maybe.hpp>
 
 
@@ -69,6 +70,8 @@ namespace mirrage {
 		util::maybe<asset::ostream> _performance_log;
 		util::Time                  _performance_log_delay_left{1};
 		bool                        _preformance_log_first_row = true;
+
+		util::Console_command_container _cmd_commands;
 
 		void _set_preset(int);
 		void _update_sun_position();

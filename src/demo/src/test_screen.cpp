@@ -84,6 +84,17 @@ namespace mirrage {
 		auto cornell = _meta_system.entities().emplace("cornell");
 		cornell.get<Transform_comp>().process([&](auto& transform) { transform.position = {1000, 0, 0}; });
 
+		_cmd_commands.add_property("pos",
+		                           [&](glm::vec3 position) {
+			                           _camera.get<Transform_comp>().process(
+			                                   [&](auto& transform) { transform.position = position; });
+		                           },
+		                           [&]() {
+			                           return _camera.get<Transform_comp>().process(
+			                                   glm::vec3(0, 0, 0),
+			                                   [&](auto& transform) { return transform.position; });
+		                           });
+
 		_meta_system.entities().emplace("sponza");
 
 		_sun = _meta_system.entities().emplace("sun");
