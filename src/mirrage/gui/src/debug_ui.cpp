@@ -49,8 +49,26 @@ namespace mirrage::gui {
 		_commands.add("help | Prints all available commands", [&]() {
 			LOG(plog::info) << "Available commands:\n"
 			                << [](std::ostream& stream) -> std::ostream& {
+				auto max_width = 0;
 				for(auto& c : util::Console_command_container::list_all_commands()) {
-					stream << c.second.api() << "\n";
+					auto sep = c.second.api().find("|");
+					max_width =
+					        std::max(max_width, int(sep != std::string::npos ? sep : c.second.api().size()));
+				}
+
+				for(auto& c : util::Console_command_container::list_all_commands()) {
+					auto sep = c.second.api().find("|");
+
+					stream << c.second.api().substr(0, sep);
+					for(int i = int(sep != std::string::npos ? sep : c.second.api().size());
+					    i < max_width + 10;
+					    i++)
+						stream << ' ';
+
+					if(sep != std::string::npos)
+						stream << c.second.api().substr(sep + 1);
+
+					stream << "\n";
 				}
 				return stream;
 			};
@@ -124,17 +142,20 @@ namespace mirrage::gui {
 		if(!_show_console)
 			return;
 
-		auto viewport = _gui.virtual_viewport();
-		auto width    = viewport.z - 100;
-		auto ctx      = _gui.ctx();
+		auto viewport   = _gui.virtual_viewport();
+		auto width      = viewport.z - 100;
+		auto height     = 300;
+		auto log_height = height - 50;
+		auto ctx        = _gui.ctx();
 		if(nk_begin(ctx,
 		            "debug_console",
-		            nk_rect(50, 0, float(width), float(_show_suggestions ? 400 + 12 * 5 : 400)),
+		            nk_rect(50, 0, float(width), float(_show_suggestions ? height + 14 * 5 : height)),
 		            NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_DYNAMIC)) {
-			nk_layout_row_dynamic(ctx, 360, 1);
+			nk_layout_row_dynamic(ctx, log_height + 15, 1);
 
 			auto max_y_scroll = std::uint32_t(
-			        util::max(350, msg_height * debug_console_appender()._messages.size()) - 350);
+			        util::max(log_height, msg_height * debug_console_appender()._messages.size())
+			        - log_height);
 
 			if(_scroll_lock) {
 				_scroll_y = max_y_scroll;
@@ -145,7 +166,7 @@ namespace mirrage::gui {
 				nk_layout_row_dynamic(ctx, 12, 1);
 
 				auto begin = int(std::floor(float(_scroll_y) / msg_height));
-				auto end   = int(std::ceil(float(_scroll_y + 350) / msg_height));
+				auto end   = int(std::ceil(float(_scroll_y + float(log_height)) / msg_height));
 				auto i     = 0;
 				for(const auto& msg : debug_console_appender()._messages) {
 					if(i < begin || i > end)
@@ -160,8 +181,10 @@ namespace mirrage::gui {
 					i++;
 				}
 			}
-			nk_group_end(ctx);
+			nk_group_scrolled_end(ctx);
 			_scroll_lock = _scroll_y >= max_y_scroll;
+
+			ctx->current->layout->at_y -= 15;
 
 			if(_focus_prompt) {
 				nk_edit_focus(ctx, 0);
@@ -170,7 +193,7 @@ namespace mirrage::gui {
 				ctx->active->edit.cursor = _command_input_length;
 			}
 
-			nk_layout_row_dynamic(ctx, 30, 1);
+			nk_layout_row_dynamic(ctx, 28, 1);
 			auto cmd_event = nk_edit_string(ctx,
 			                                NK_EDIT_FIELD | NK_EDIT_SIG_ENTER | NK_EDIT_GOTO_END_ON_ACTIVATE,
 			                                _command_input_buffer.data(),
@@ -260,7 +283,7 @@ namespace mirrage::gui {
 					auto sep          = s->api().find("|");
 
 					auto color = _selected_suggestion == i ? nk_color{255, 255, 255, 255}
-					                                       : nk_color{180, 180, 180, 180};
+					                                       : nk_color{150, 150, 150, 150};
 
 					auto name_sep = s->api().find(" ");
 					auto name_len = int(name_sep == std::string::npos ? s->api().size() : name_sep);
