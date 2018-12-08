@@ -87,8 +87,8 @@ vec3 gi_sample(int lod, int base_mip) {
 	ivec2 uv = ivec2(vertex_out.tex_coords * texture_size);
 
 	// clamp area to reduce artefacts around borders
-	if(uv.x<=0 || uv.y<=0 || uv.y >= texture_size.y-1 || uv.x >= texture_size.x-1)
-		return vec3(0, 0, 0);
+//	if(uv.x<=0 || uv.y<=0 || uv.y >= texture_size.y-1 || uv.x >= texture_size.x-1)
+//		return vec3(0, 0, 0);
 
 	// fetch the depth/normal of the target pixel and reconstruct its view-space position
 	float depth  = texelFetch(depth_sampler, uv, 0).r;
@@ -99,9 +99,11 @@ vec3 gi_sample(int lod, int base_mip) {
 	// fetch SAMPLES samples in a spiral pattern and combine their GI contribution
 	vec3 c = vec3(0,0,0);
 
-	float angle = random(vec4(vertex_out.tex_coords, lod, global_uniforms.time.w)).r * 2*PI;
+	float angle = texelFetch(noise_sampler, ivec2(mod(vertex_out.tex_coords*textureSize(color_sampler,0),textureSize(noise_sampler,0))), 0).r;
+	angle = mod(angle+2.6180339887*int(global_uniforms.time.w), 1.0);
+	angle *= 2*PI;
 
-	float outer_radius = R+2.0;
+	float outer_radius = R+1.0;
 	float inner_radius = LAST_SAMPLE==0 ? outer_radius / 2.0 : 2.0;
 	float angle_step = 2.39996;// PI * 2.0 / pow((sqrt(5.0) + 1.0) / 2.0, 2.0);
 
@@ -114,8 +116,8 @@ vec3 gi_sample(int lod, int base_mip) {
 
 	for(int i=0; i<SAMPLES; i++) {
 		float r = max(
-				2.0,
-				mix(inner_radius, outer_radius, sqrt(float(i) / float(SAMPLES))));
+				1.0,
+				mix(inner_radius, outer_radius+4, sqrt(float(i) / float(SAMPLES))));
 		float a = i * angle_step + angle;
 
 		a = mod(a, 2.0*PI);

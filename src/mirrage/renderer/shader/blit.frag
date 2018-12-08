@@ -145,12 +145,12 @@ vec3 highlow_mix(vec3 color, float cutoff, vec3 low, vec3 high) {
 vec3 dither(vec3 color) {
 	vec3 color_srgb = highlow_mix(color, 0.0031308, 12.92*color, 1.055*pow(color, vec3(1.0/2.4))-0.055);
 
-	vec3 rand = texture(blue_noise, vertex_out.tex_coords*vec2(1920,1080)/128.0).rgb;
+	vec3 rand = texelFetch(blue_noise, ivec2(mod(vertex_out.tex_coords*textureSize(color_sampler,0), textureSize(blue_noise,0))), 0).rgb;
 
 	vec3 rand_tri = rand*2.0-1.0;
 	rand_tri = sign(rand_tri) * (1.0-sqrt(1.0-abs(rand_tri)));
 
-	color_srgb += rand / 253.0;
+	color_srgb += rand / 250.0;
 
 	return highlow_mix(color_srgb, 0.04045, color_srgb/12.92, pow(color_srgb/1.055 + 0.055/1.055, vec3(2.4)));
 }
