@@ -198,7 +198,7 @@ namespace mirrage::renderer {
 	           {renderer.settings().shadowmap_resolution, renderer.settings().shadowmap_resolution},
 	           1,
 	           get_depth_format(renderer.device()),
-	           vk::ImageUsageFlagBits::eDepthStencilAttachment,
+	           vk::ImageUsageFlagBits::eDepthStencilAttachment | vk::ImageUsageFlagBits::eInputAttachment,
 	           vk::ImageAspectFlagBits::eDepth)
 	  , _shadowmap_sampler(renderer.device().create_sampler(1,
 	                                                        vk::SamplerAddressMode::eClampToBorder,
