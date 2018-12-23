@@ -51,9 +51,10 @@ namespace mirrage::renderer {
 		float min_display_luminance       = 2.f;
 		float max_display_luminance       = 150.0f;
 
-		bool taa   = true;
-		bool ssao  = true;
-		bool bloom = true;
+		bool taa            = true;
+		bool ssao           = true;
+		bool bloom          = true;
+		bool depth_of_field = true;
 
 		float background_intensity = 0.f;
 
@@ -77,6 +78,7 @@ namespace mirrage::renderer {
 	              taa,
 	              ssao,
 	              bloom,
+	              depth_of_field,
 	              shadows,
 	              dynamic_lighting,
 	              debug_geometry);

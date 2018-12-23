@@ -25,11 +25,22 @@ namespace mirrage::renderer {
 		auto far_plane() const noexcept { return _far; }
 		auto fov() const noexcept { return _fov; }
 
+		void dof_focus(float v) noexcept { _dof_focus = v; }
+		auto dof_focus() const noexcept { return _dof_focus; }
+		void dof_range(float v) noexcept { _dof_range = v; }
+		auto dof_range() const noexcept { return _dof_range; }
+		void dof_power(float v) noexcept { _dof_power = v; }
+		auto dof_power() const noexcept { return _dof_power; }
+
 	  private:
 		util::Angle _fov;
 		float       _near     = 0.2f;
 		float       _far      = 1000.f;
 		float       _priority = 0.f;
+
+		float _dof_focus = 0.f;
+		float _dof_range = 1.f;
+		float _dof_power = 0.f;
 	};
 
 	struct Camera_state {
@@ -54,5 +65,9 @@ namespace mirrage::renderer {
 		float       aspect_ratio;
 		util::Angle fov_vertical;
 		util::Angle fov_horizontal;
+
+		float dof_focus = 0.f;
+		float dof_range = 1.f;
+		float dof_power = 0.f;
 	};
 } // namespace mirrage::renderer

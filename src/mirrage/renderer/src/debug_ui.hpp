@@ -247,6 +247,10 @@ namespace mirrage::renderer {
 				nk_checkbox_label(ctx, "Tonemapping", &bool_nk_wrapper);
 				renderer_settings.tonemapping = bool_nk_wrapper == 1;
 
+				bool_nk_wrapper = renderer_settings.depth_of_field ? 1 : 0;
+				nk_checkbox_label(ctx, "Depth of Field", &bool_nk_wrapper);
+				renderer_settings.depth_of_field = bool_nk_wrapper == 1;
+
 
 				nk_layout_row_dynamic(ctx, 20, 2);
 

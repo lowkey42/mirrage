@@ -359,8 +359,13 @@ namespace mirrage {
 			                     14,
 			                     nk_vec2(100.f, 200)));
 
-
 			nk_layout_row_dynamic(ctx, 20, 1);
+
+			_camera.process<renderer::Camera_comp>([&](auto& cam) {
+				cam.dof_focus(nk_propertyf(ctx, "Focus Plane", 0.1f, cam.dof_focus(), 100.f, 1.f, 0.01f));
+				cam.dof_range(nk_propertyf(ctx, "Focus Range", 0.1f, cam.dof_range(), 10.f, 0.1f, 0.001f));
+				cam.dof_power(nk_propertyf(ctx, "DOF Power", 0.01f, cam.dof_power(), 1.f, 0.1f, 0.001f));
+			});
 
 			if(!_meta_system.nims().is_playing()) {
 				nk_layout_row_dynamic(ctx, 20, 1);

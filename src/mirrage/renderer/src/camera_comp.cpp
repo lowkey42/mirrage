@@ -18,8 +18,12 @@ namespace mirrage::renderer {
 	{
 		auto fov = comp._fov / 1_deg;
 
-		state.read_virtual(
-		        sf2::vmember("fov", fov), sf2::vmember("near", comp._near), sf2::vmember("far", comp._far));
+		state.read_virtual(sf2::vmember("fov", fov),
+		                   sf2::vmember("near", comp._near),
+		                   sf2::vmember("far", comp._far),
+		                   sf2::vmember("dof_focus", comp._dof_focus),
+		                   sf2::vmember("dof_range", comp._dof_range),
+		                   sf2::vmember("dof_power", comp._dof_power));
 
 		comp._fov = fov * 1_deg;
 	}
@@ -27,8 +31,12 @@ namespace mirrage::renderer {
 	{
 		auto fov = comp._fov / 1_deg;
 
-		state.write_virtual(
-		        sf2::vmember("fov", fov), sf2::vmember("near", comp._near), sf2::vmember("far", comp._far));
+		state.write_virtual(sf2::vmember("fov", fov),
+		                    sf2::vmember("near", comp._near),
+		                    sf2::vmember("far", comp._far),
+		                    sf2::vmember("dof_focus", comp._dof_focus),
+		                    sf2::vmember("dof_range", comp._dof_range),
+		                    sf2::vmember("dof_power", comp._dof_power));
 	}
 
 	auto Camera_comp::calc_projection(glm::vec4 viewport) const -> glm::mat4
@@ -92,6 +100,9 @@ namespace mirrage::renderer {
 	  , aspect_ratio((viewport.z - viewport.x) / (viewport.w - viewport.y))
 	  , fov_vertical(cam.fov())
 	  , fov_horizontal(2.f * std::atan(std::tan(fov_vertical / 2.f) * aspect_ratio))
+	  , dof_focus(cam.dof_focus())
+	  , dof_range(cam.dof_range())
+	  , dof_power(cam.dof_power())
 	{
 	}
 

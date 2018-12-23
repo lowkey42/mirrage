@@ -58,7 +58,8 @@ namespace mirrage::renderer {
 	               {width, height},
 	               1,
 	               depth_format,
-	               vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc
+	               vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+	                       | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
 	                       | vk::ImageUsageFlagBits::eTransferDst,
 	               vk::ImageAspectFlagBits::eColor)
 	  , depth_buffer(

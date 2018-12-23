@@ -46,6 +46,7 @@ add_library(mirrage_renderer STATIC
 	src/pass/deferred_geometry_subpass.cpp
 	src/pass/deferred_lighting_subpass.cpp
 	src/pass/deferred_pass.cpp
+	src/pass/depth_of_field_pass.cpp
 	src/pass/frustum_culling_pass.cpp
 	src/pass/gen_mipmap_pass.cpp
 	src/pass/gi_pass.cpp
