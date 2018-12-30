@@ -1,9 +1,12 @@
 #pragma once
 
+#include <mirrage/renderer/model.hpp>
+
 #include <mirrage/asset/asset_manager.hpp>
 #include <mirrage/ecs/entity_manager.hpp>
 #include <mirrage/graphic/texture.hpp>
 #include <mirrage/utils/sf2_glm.hpp>
+#include <mirrage/utils/small_vector.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <glm/vec3.hpp>
@@ -15,11 +18,30 @@
 
 namespace mirrage::renderer {
 
-	enum class Particle_blend_mode { unlit };
-	sf2_enumDef(Particle_blend_mode, unlit);
+	// TODO: only for reference during IMPL, delete before merge
+	// emitter: {Particle_emitter_config, offset, relative-rotation, follow_entity, time-acc, toSpawn, particle-data, particle-cout, userdata?}
+	// affector: {position, rotation, relative/absolute, follow_entity, force:float, dir, decay:float}
+	//			gravity: {..., force=10, dir={0,-1,0}, decay=0}
+	//			point: {position=? dir={0,0,0}, decay=2}
+	//			flow: {position=? dir={1,0,0}, decay=2}
+	// particle_system: {shared_ptr<emitter>[], offset, relative-rotation, follow_entity, affector}
 
-	enum class Particle_emitter_shape { sphere };
-	sf2_enumDef(Particle_emitter_shape, sphere);
+
+	class Particle_script {
+	  public:
+		explicit Particle_script(vk::UniquePipeline pipeline) : _pipeline(std::move(pipeline)) {}
+
+		void bind(vk::CommandBuffer);
+
+	  private:
+		vk::UniquePipeline _pipeline;
+	};
+
+	enum class Particle_blend_mode { solid, volumn, transparent };
+	sf2_enumDef(Particle_blend_mode, solid, volumn, transparent);
+
+	enum class Particle_geometry { billboard, ribbon, mesh };
+	sf2_enumDef(Particle_geometry, billboard, ribbon, mesh);
 
 	template <typename T = std::uint8_t>
 	struct Particle_color {
@@ -31,11 +53,17 @@ namespace mirrage::renderer {
 	sf2_structDef(Particle_color<float>, hue, saturation, value, alpha);
 	sf2_structDef(Particle_color<std::uint8_t>, hue, saturation, value, alpha);
 
+	struct Particle_emitter_spawn {
+		float spawn_rate_mean     = 10.f;
+		float spawn_rate_variance = 1.f;
+		float time                = -1.f;
+	};
+	sf2_structDef(Particle_emitter_spawn, spawn_rate_mean, spawn_rate_variance, time);
+
 	struct Particle_emitter_config {
 		float time = 0;
 
-		float spawn_rate_mean     = 10.f;
-		float spawn_rate_variance = 1.f;
+		util::small_vector<Particle_emitter_spawn, 4> spawn;
 
 		Particle_color<float> color_mean            = {1, 1, 1, 1};
 		Particle_color<float> color_variance        = {0, 0, 0, 0};
@@ -58,19 +86,30 @@ namespace mirrage::renderer {
 		float velocity_mean     = 1.f;
 		float velocity_variance = 0.f;
 
-		Particle_blend_mode    blend      = Particle_blend_mode::unlit;
-		Particle_emitter_shape shape      = Particle_emitter_shape::sphere;
-		glm::vec3              shape_size = glm::vec3(1, 1, 1);
+		Particle_blend_mode blend    = Particle_blend_mode::transparent;
+		Particle_geometry   geometry = Particle_geometry::billboard;
 
-		float drag = 0.f;
+		std::string            material_id;
+		renderer::Material_ptr material;
 
-		// returns offset and direction
-		auto calc_offset(std::mt19937&) -> std::tuple<glm::vec3, glm::vec3>;
+		std::string                 model_id;
+		asset::Ptr<renderer::Model> model;
+
+		float drag            = 0.f;
+		float parent_velocity = 0.f;
+
+		glm::vec3 offset{0, 0, 0};
+		glm::quat rotation{1, 0, 0, 0};
+
+		std::string emit_script_id;
+		std::string update_script_id;
+
+		asset::Ptr<Particle_script> emit_script;
+		asset::Ptr<Particle_script> update_script;
 	};
 	sf2_structDef(Particle_emitter_config,
 	              time,
-	              spawn_rate_mean,
-	              spawn_rate_variance,
+	              spawn,
 	              color_mean,
 	              color_variance,
 	              color_change_mean,
@@ -88,66 +127,229 @@ namespace mirrage::renderer {
 	              velocity_mean,
 	              velocity_variance,
 	              blend,
-	              shape,
-	              shape_size,
-	              drag);
+	              geometry,
+	              material_id,
+	              model_id,
+	              drag,
+	              parent_velocity,
+	              emit_script_id,
+	              update_script_id);
+
+	struct Particle_effector_config {
+		glm::vec3 position{0, 0, 0};
+		glm::quat rotation{1, 0, 0, 0};
+
+		float     force = 0.f;
+		glm::vec3 force_dir{0, 0, 0};
+		float     distance_decay = 2.f;
+	};
+	sf2_structDef(Particle_effector_config, position, rotation, force, force_dir, distance_decay);
+
+	struct Particle_system_config {
+		util::small_vector<Particle_emitter_config, 1>  emitter;
+		util::small_vector<Particle_effector_config, 1> effector;
+	};
+	sf2_structDef(Particle_system_config, emitter, effector);
 
 
 	class Particle_emitter {
 	  public:
-		Particle_emitter(graphic::Texture_ptr                 texture,
-		                 std::vector<Particle_emitter_config> keyframes,
-		                 std::size_t                          capacity,
-		                 util::maybe<ecs::Entity_facet>       follow_entity = {});
+		explicit Particle_emitter(const Particle_emitter_config& cfg) : _cfg(cfg) {}
 
-		void position(glm::vec3 p)
+		void absolute(bool a) noexcept
 		{
-			_center_position = p;
-			_follow_entity   = {};
+			_absolute = a;
+			_follow   = {};
 		}
-		void follow(ecs::Entity_facet f) { _follow_entity = f; }
+		auto absolute() const noexcept { return _absolute; }
 
-		void update(util::Time dt, bool emit_new, std::mt19937&);
-		auto dead() const -> bool { return _positions.empty(); }
+		void position(glm::vec3 p) noexcept
+		{
+			_position = p;
+			_follow   = {};
+		}
+		auto position() const noexcept { return _position; }
 
-		auto active() const noexcept { return _active; }
-		void enable() { _active = true; }
-		void disable() { _active = false; }
+		void rotation(glm::quat r) noexcept
+		{
+			_rotation = r;
+			_follow   = {};
+		}
+		auto rotation() const noexcept { return _rotation; }
+
+		void follow(ecs::Entity_handle e) { _follow = e; }
+		auto follow() const { return _follow; }
+
+		void incr_time(float dt) { _time_accumulator += dt; }
+
+		/// returns old buffer (that might still be needed by the last frame)
+		auto update_data(int count, graphic::Backed_buffer data) -> graphic::Backed_buffer;
 
 	  private:
-		graphic::Texture_ptr                 _texture;
-		std::vector<Particle_emitter_config> _config_keyframes;
+		const Particle_emitter_config& _cfg;
 
-		std::vector<glm::vec3>     _positions;
-		std::vector<std::uint32_t> _seeds;
-		std::vector<float>         _creation_times;
-		std::vector<float>         _ttls;
-		std::vector<glm::vec3>     _velocities;
+		// TODO: userdata?
+		glm::vec3          _position{0, 0, 0};
+		glm::quat          _rotation{1, 0, 0, 0};
+		bool               _absolute = false;
+		ecs::Entity_handle _follow;
 
-		std::vector<std::int_fast32_t> _dead_indices;
-
-		util::Time _time     = util::Time{0.f};
-		float      _to_spawn = 0.f;
-		bool       _active   = true;
-
-		glm::vec3                      _center_position = {0, 0, 0};
-		util::maybe<ecs::Entity_facet> _follow_entity;
+		float                  _time_accumulator = 0.f;
+		int                    _particle_count   = 0;
+		graphic::Backed_buffer _particle_data;
 	};
 
-	class Particle_system {
+	class Particle_effector {
 	  public:
-		Particle_system(asset::Asset_manager& assets);
+		explicit Particle_effector(const Particle_effector_config& cfg) : _cfg(cfg) {}
 
-		void add_emitter(std::shared_ptr<Particle_emitter>);
-		auto add_emitter(asset::AID descriptor) -> std::shared_ptr<Particle_emitter>;
+		auto cfg() const noexcept -> auto& { return _cfg; }
 
-		void update(util::Time);
+		void absolute(bool a) noexcept
+		{
+			_absolute = a;
+			_follow   = {};
+		}
+		auto absolute() const noexcept { return _absolute; }
+
+		void position(glm::vec3 p) noexcept
+		{
+			_position = p;
+			_follow   = {};
+		}
+		auto position() const noexcept { return _position; }
+
+		void rotation(glm::quat r) noexcept
+		{
+			_rotation = r;
+			_follow   = {};
+		}
+		auto rotation() const noexcept { return _rotation; }
+
+		void follow(ecs::Entity_handle e) { _follow = e; }
+		auto follow() const { return _follow; }
 
 	  private:
-		asset::Asset_manager& _assets;
-		std::mt19937          _random_gen;
+		const Particle_effector_config& _cfg;
 
-		std::vector<std::shared_ptr<Particle_emitter>> _emmitter;
-		// TODO
+		glm::vec3          _position{0, 0, 0};
+		glm::quat          _rotation{1, 0, 0, 0};
+		bool               _absolute = false;
+		ecs::Entity_handle _follow;
 	};
+
+	class Particle_emitter_ref;
+
+	class Particle_system : private std::enable_shared_from_this<Particle_system> {
+	  public:
+		using Emitter_list = util::small_vector<Particle_emitter, 1>;
+
+		Particle_system(asset::Ptr<Particle_system_config> cfg, glm::vec3 position, glm::quat rotation);
+		explicit Particle_system(asset::Ptr<Particle_system_config> cfg, ecs::Entity_handle follow = {});
+
+		auto cfg_aid() const { return _cfg.aid(); }
+
+		auto emitters() noexcept -> auto& { return _emitters; }
+		auto emitters() const noexcept -> auto& { return _emitters; }
+
+		auto emitter(int i) -> Particle_emitter_ref;
+		auto emitter_count() const noexcept { return _emitters.size(); }
+
+		auto effectors() noexcept -> auto& { return _effectors; }
+		auto effectors() const noexcept -> auto& { return _effectors; }
+
+		void position(glm::vec3 p) noexcept
+		{
+			_position = p;
+			_follow   = {};
+		}
+		auto position() const noexcept { return _position; }
+
+		void rotation(glm::quat r) noexcept
+		{
+			_rotation = r;
+			_follow   = {};
+		}
+		auto rotation() const noexcept { return _rotation; }
+
+		void follow(ecs::Entity_handle e) { _follow = e; }
+		auto follow() const { return _follow; }
+
+	  private:
+		asset::Ptr<Particle_system_config> _cfg;
+		Emitter_list                       _emitters;
+		std::vector<Particle_effector>     _effectors;
+
+		glm::vec3          _position{0, 0, 0};
+		glm::quat          _rotation{1, 0, 0, 0};
+		ecs::Entity_handle _follow;
+	};
+
+	using Particle_system_ptr = std::shared_ptr<Particle_system>;
+
+
+	class Particle_emitter_ref {
+	  public:
+		auto operator-> () -> Particle_emitter* { return &**this; }
+		auto operator-> () const -> Particle_emitter* { return &**this; }
+		auto operator*() -> Particle_emitter& { return (*_system_emitters)[_index]; }
+		auto operator*() const -> Particle_emitter& { return (*_system_emitters)[_index]; }
+
+	  private:
+		using Emitter_ptr = std::shared_ptr<Particle_system::Emitter_list>;
+
+		friend class Particle_system;
+
+		Particle_emitter_ref(Emitter_ptr emitters, int index)
+		  : _system_emitters(std::move(emitters)), _index(gsl::narrow<std::size_t>(index))
+		{
+		}
+
+		Emitter_ptr _system_emitters;
+		std::size_t _index;
+	};
+
+
+	class Particle_system_comp : public ecs::Component<Particle_system_comp> {
+	  public:
+		static constexpr const char* name() { return "Particle_system"; }
+		friend void                  load_component(ecs::Deserializer& state, Particle_system_comp&);
+		friend void                  save_component(ecs::Serializer& state, const Particle_system_comp&);
+
+		Particle_system_comp() = default;
+		Particle_system_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
+
+		Particle_system_ptr particle_system;
+	};
+
 } // namespace mirrage::renderer
+
+namespace mirrage::asset {
+
+	template <>
+	struct Loader<renderer::Particle_script> {
+	  public:
+		Loader(graphic::Device& device, vk::DescriptorSetLayout);
+
+		auto              load(istream in) -> renderer::Particle_script;
+		[[noreturn]] void save(ostream, const renderer::Particle_script&)
+		{
+			MIRRAGE_FAIL("Save of materials is not supported!");
+		}
+
+	  private:
+		graphic::Device&         _device;
+		vk::UniquePipelineLayout _layout;
+	};
+
+	template <>
+	struct Loader<renderer::Particle_system_config> {
+	  public:
+		static auto              load(istream in) -> async::task<renderer::Particle_system_config>;
+		[[noreturn]] static void save(ostream, const renderer::Particle_system_config&)
+		{
+			MIRRAGE_FAIL("Save of materials is not supported!");
+		}
+	};
+
+} // namespace mirrage::asset

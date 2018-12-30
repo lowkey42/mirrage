@@ -51,6 +51,7 @@ add_library(mirrage_renderer STATIC
 	src/pass/gen_mipmap_pass.cpp
 	src/pass/gi_pass.cpp
 	src/pass/gui_pass.cpp
+	src/pass/particle_pass.cpp
 	src/pass/shadowmapping_pass.cpp
 	src/pass/ssao_pass.cpp
 	src/pass/taa_pass.cpp

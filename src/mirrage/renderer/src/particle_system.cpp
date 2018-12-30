@@ -1,180 +1,146 @@
 #include <mirrage/renderer/particle_system.hpp>
 
 #include <mirrage/ecs/components/transform_comp.hpp>
-
+#include <mirrage/graphic/device.hpp>
 #include <mirrage/utils/ranges.hpp>
 
+#include <vulkan/vulkan.hpp>
 
 namespace mirrage::renderer {
 
-	namespace {
-		glm::vec3 spherical_rand(std::mt19937& gen)
-		{
-			float theta = std::uniform_real_distribution(0.f, 6.283185307179586476925286766559f)(gen);
-			float phi   = std::acos(std::uniform_real_distribution(-1.0f, 1.0f)(gen));
+	void Particle_script::bind(vk::CommandBuffer cb)
+	{
+		cb.bindPipeline(vk::PipelineBindPoint::eCompute, *_pipeline);
+	}
 
-			float x = std::sin(phi) * std::cos(theta);
-			float y = std::sin(phi) * std::sin(theta);
-			float z = std::cos(phi);
+	Particle_system::Particle_system(asset::Ptr<Particle_system_config> cfg,
+	                                 glm::vec3                          position,
+	                                 glm::quat                          rotation)
+	  : Particle_system(std::move(cfg))
+	{
+		_position = position;
+		_rotation = rotation;
+	}
+	Particle_system::Particle_system(asset::Ptr<Particle_system_config> c, ecs::Entity_handle follow)
+	  : _cfg(std::move(c)), _follow(follow)
+	{
+		auto&& cfg = *_cfg;
 
-			return {x, y, z};
+		_emitters.reserve(cfg.emitter.size());
+		for(auto& e : cfg.emitter) {
+			_emitters.emplace_back(e);
 		}
 
-		template <typename T, typename I>
-		void erase_by(std::vector<T>& v, const std::vector<I> indices)
-		{
-			for(auto i : indices) {
-				v.erase(v.begin() + i);
+		_effectors.reserve(cfg.effector.size());
+		for(auto& e : cfg.effector) {
+			_effectors.emplace_back(e);
+		}
+	}
+
+	auto Particle_system::emitter(int i) -> Particle_emitter_ref
+	{
+		MIRRAGE_INVARIANT(i >= 0 && i < int(_emitters.size()),
+		                  "particle emitter index out of bounds " << i << " >= " << _emitters.size());
+		return {std::shared_ptr<Particle_system::Emitter_list>(shared_from_this(), &_emitters), i};
+	}
+
+	void load_component(ecs::Deserializer& state, Particle_system_comp& comp)
+	{
+		auto aid = comp.particle_system ? comp.particle_system->cfg_aid().str() : std::string("");
+
+		state.read_virtual(sf2::vmember("cfg", aid));
+
+		if(aid != comp.particle_system->cfg_aid().str()) {
+			if(aid.empty())
+				comp.particle_system = {};
+			else {
+				comp.particle_system = std::make_shared<Particle_system>(
+				        state.assets.load<Particle_system_config>(asset::AID(aid)), comp.owner_handle());
 			}
 		}
-	} // namespace
-
-	auto Particle_emitter_config::calc_offset(std::mt19937& gen) -> std::tuple<glm::vec3, glm::vec3>
-	{
-		switch(shape) {
-			case Particle_emitter_shape::sphere: {
-				auto dir    = spherical_rand(gen);
-				auto radius = std::uniform_real_distribution(0.f, shape_size.x)(gen);
-				return {dir *= radius, dir};
-			}
-		}
-		MIRRAGE_FAIL("Unhandled particle shape: " << int(shape));
 	}
-
-
-	Particle_emitter::Particle_emitter(graphic::Texture_ptr                 texture,
-	                                   std::vector<Particle_emitter_config> keyframes,
-	                                   std::size_t                          capacity,
-	                                   util::maybe<ecs::Entity_facet>       follow_entity)
-	  : _texture(std::move(texture)), _config_keyframes(std::move(keyframes)), _follow_entity(follow_entity)
+	void save_component(ecs::Serializer& state, const Particle_system_comp& comp)
 	{
-		_positions.reserve(capacity);
-		_seeds.reserve(capacity);
-		_creation_times.reserve(capacity);
-		_ttls.reserve(capacity);
-		_velocities.reserve(capacity);
-	}
-
-	void Particle_emitter::update(util::Time dt, bool emit_new, std::mt19937& gen)
-	{
-		const auto now = _time.value();
-
-		_follow_entity.process([&](auto& entity) {
-			auto transform = entity ? entity.template get<ecs::components::Transform_comp>() : util::nothing;
-			if(transform.is_some()) {
-				_center_position = transform.get_or_throw().position;
-			} else {
-				_follow_entity = util::nothing;
-			}
-		});
-
-		auto config      = _config_keyframes.at(0); // TODO: interpolate
-		auto drag_factor = 1.f - config.drag * dt.value();
-
-		// update existing particles
-		for(auto i : util::range(_positions.size())) {
-			auto vel = _velocities[i];
-			_positions[i] += vel * dt.value();
-			_velocities[i] *= drag_factor;
-		}
-
-
-		// find dead particles (high indices to low)
-		auto dead_count = std::count_if(_ttls.begin(), _ttls.end(), [=](auto t) { return t <= now; });
-		_dead_indices.reserve(gsl::narrow<std::size_t>(dead_count));
-		auto i = std::int_fast32_t(0);
-		for(auto ttl : util::range_reverse(_ttls)) {
-			if(ttl <= now)
-				_dead_indices.emplace_back(i);
-
-			i++;
-		}
-
-		// spawn new particles
-		if(_active && emit_new) {
-			auto spawn_rate =
-			        std::normal_distribution(config.spawn_rate_mean, config.spawn_rate_variance)(gen);
-			_to_spawn += spawn_rate * dt.value();
-			auto spawn_now = std::size_t(_to_spawn);
-			_to_spawn -= spawn_now;
-
-			auto spawn = [&](auto i) {
-				auto [offset, direction] = config.calc_offset(gen);
-				_positions[i]            = _center_position + offset;
-				_seeds[i]                = std::uniform_int_distribution<std::uint32_t>(0)(gen);
-				_creation_times[i]       = now;
-				_ttls[i] = now + std::normal_distribution(config.ttl_mean, config.ttl_variance)(gen);
-				_velocities[i] =
-				        direction
-				        * std::normal_distribution(config.velocity_mean, config.velocity_variance)(gen);
-			};
-
-			// reuse old slots
-			while(spawn_now > 0 && !_dead_indices.empty()) {
-				spawn(std::size_t(_dead_indices.back()));
-				_dead_indices.pop_back();
-				spawn_now--;
-			}
-
-			// create new slots
-			auto new_size = _positions.size() + spawn_now;
-			_positions.resize(new_size);
-			_seeds.resize(new_size);
-			_creation_times.resize(new_size);
-			_ttls.resize(new_size);
-			_velocities.resize(new_size);
-
-			for(auto i : util::range(spawn_now)) {
-				spawn(_positions.size() - 1u - i);
-			}
-		}
-
-		// remove dead particles
-		if(!_dead_indices.empty()) {
-			erase_by(_positions, _dead_indices);
-			erase_by(_seeds, _dead_indices);
-			erase_by(_creation_times, _dead_indices);
-			erase_by(_ttls, _dead_indices);
-			erase_by(_velocities, _dead_indices);
-
-			_dead_indices.clear();
-		}
-
-		_time += dt;
-	}
-
-
-	Particle_system::Particle_system(asset::Asset_manager& assets)
-	  : _assets(assets), _random_gen(std::random_device()())
-	{
-	}
-
-	void Particle_system::add_emitter(std::shared_ptr<Particle_emitter> e)
-	{
-		_emmitter.emplace_back(std::move(e));
-	}
-	/*
-	namespace {
-		struct Emitter_descriptor {
-			std::string                          texture_aid;
-			std::vector<Particle_emitter_config> keyframes;
-		};
-		sf2_structDef(Emitter_descriptor, texture_aid, keyframes);
-	} // namespace
-	*/
-	auto Particle_system::add_emitter(asset::AID descriptor) -> std::shared_ptr<Particle_emitter>
-	{
-		// TODO: load destriptor
-		return {};
-	}
-
-	void Particle_system::update(util::Time dt)
-	{
-		for(auto& e : _emmitter) {
-			e->update(dt, e.use_count() > 1, _random_gen);
-		}
-
-		util::erase_if(_emmitter, [&](auto& e) { return e.use_count() <= 1 && e->dead(); });
+		auto aid = comp.particle_system ? comp.particle_system->cfg_aid().str() : std::string("");
+		state.write_virtual(sf2::vmember("cfg", aid));
 	}
 
 } // namespace mirrage::renderer
+
+namespace mirrage::asset {
+
+	Loader<renderer::Particle_script>::Loader(graphic::Device&        device,
+	                                          vk::DescriptorSetLayout desc_set_layout)
+	  : _device(device)
+	  , _layout(device.vk_device()->createPipelineLayoutUnique(
+	            vk::PipelineLayoutCreateInfo{{}, 1, &desc_set_layout, 1, nullptr}))
+	{
+	}
+
+	auto Loader<renderer::Particle_script>::load(istream in) -> renderer::Particle_script
+	{
+		auto code = in.bytes();
+		auto module_info =
+		        vk::ShaderModuleCreateInfo{{}, code.size(), reinterpret_cast<const uint32_t*>(code.data())};
+
+		auto module = _device.vk_device()->createShaderModuleUnique(module_info);
+
+		auto stage = vk::PipelineShaderStageCreateInfo{
+		        {}, vk::ShaderStageFlagBits::eCompute, *module, "main", nullptr};
+
+		return renderer::Particle_script{_device.vk_device()->createComputePipelineUnique(
+		        _device.pipeline_cache(), vk::ComputePipelineCreateInfo{{}, stage, *_layout})};
+	}
+
+
+	auto Loader<renderer::Particle_system_config>::load(istream in)
+	        -> async::task<renderer::Particle_system_config>
+	{
+		auto r = renderer::Particle_system_config();
+
+		sf2::deserialize_json(in,
+		                      [&](auto& msg, uint32_t row, uint32_t column) {
+			                      LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at "
+			                                       << row << ":" << column << ": " << msg;
+		                      },
+		                      r);
+
+		auto loads = std::vector<async::task<void>>();
+		loads.reserve(r.emitter.size() * 4);
+
+		for(auto& e : r.emitter) {
+			e.emit_script   = in.manager().load<renderer::Particle_script>(e.emit_script_id);
+			e.update_script = in.manager().load<renderer::Particle_script>(e.update_script_id);
+
+			if(!e.model_id.empty()) {
+				e.model = in.manager().load<renderer::Model>(e.model_id);
+				loads.emplace_back(async::when_all(e.model.internal_task(),
+				                                   e.emit_script.internal_task(),
+				                                   e.update_script.internal_task())
+				                           .then([](auto&&...) { return; }));
+
+			} else {
+				e.material = in.manager().load<renderer::Material>(e.material_id);
+				loads.emplace_back(async::when_all(e.material.internal_task(),
+				                                   e.emit_script.internal_task(),
+				                                   e.update_script.internal_task())
+				                           .then([](auto&&...) { return; }));
+			}
+		}
+
+		return async::when_all(loads.begin(), loads.end()).then([r = std::move(r)](auto&&...) mutable {
+			for(auto& e : r.emitter) {
+				if(e.model) {
+					MIRRAGE_INVARIANT(!e.model->rigged(), "Animations are not supported for particle-models");
+					MIRRAGE_INVARIANT(e.model->sub_meshes().size() == 1,
+					                  "Particle-models must have exacly one sub-mesh");
+
+					e.material = e.model->sub_meshes().at(0).material;
+				}
+			}
+
+			return std::move(r);
+		});
+	}
+
+} // namespace mirrage::asset
