@@ -26,7 +26,12 @@ namespace mirrage::gui {
 
 	void Debug_console_appender::write(const plog::Record& record)
 	{
-		auto msg      = plog::TxtFormatter::format(record);
+		auto msg      =
+#ifdef _WIN32
+				plog::util::toNarrow(plog::TxtFormatter::format(record), 0);
+#else
+				plog::TxtFormatter::format(record);
+#endif
 		auto prev_pos = std::string::size_type(0);
 		auto pos      = std::string::size_type(0);
 		while((pos = msg.find("\n", prev_pos)) != std::string::npos) {

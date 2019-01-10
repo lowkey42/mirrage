@@ -11,6 +11,9 @@ function(mirrage_copy_recursive src dst)
 		else()
 			execute_process(
 				COMMAND ${CMAKE_COMMAND} -E make_directory "${dst}"
+				OUTPUT_QUIET
+			)
+			execute_process(
 				COMMAND ${CMAKE_COMMAND} -E copy_if_different "${path}" "${dst}/"
 				OUTPUT_QUIET
 			)

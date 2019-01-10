@@ -12,6 +12,7 @@
 #include <mirrage/utils/messagebus.hpp>
 
 #include <unordered_set>
+#include <iostream>
 
 
 namespace mirrage::gui {
@@ -94,8 +95,7 @@ namespace mirrage::gui {
 
 			return false;
 		}
-		template <class Stream>
-		static Stream& print_names(Stream& stream)
+		static std::ostream& print_names(std::ostream& stream)
 		{
 			auto first = true;
 			for(auto dm : instances()) {
