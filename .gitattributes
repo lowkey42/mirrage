@@ -1,0 +1,14 @@
+*.hpp linguist-language=c++
+*.hxx linguist-language=c++
+*.cpp linguist-language=c++
+*.cxx linguist-language=c++
+*.inl linguist-language=c++
+*.h linguist-language=c
+*.c linguist-language=c
+
+dependencies/assimp/*.h linguist-language=c++
+dependencies/asyncplusplus/*.h linguist-language=c++
+dependencies/doctest/*.h linguist-language=c++
+dependencies/moodycamel/*.h linguist-language=c++
+dependencies/plog/*.h linguist-language=c++
+dependencies/robin-map/*.h linguist-language=c++
