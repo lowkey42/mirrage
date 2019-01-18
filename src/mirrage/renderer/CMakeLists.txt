@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_renderer)
 
@@ -73,6 +73,8 @@ add_library(mirrage_renderer STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::renderer ALIAS mirrage_renderer)
+target_compile_features(mirrage_renderer PUBLIC cxx_std_17)
+
 set(EMBEDDED_ASSETS
 	"${CMAKE_CURRENT_BINARY_DIR}/shader"
 	"${CMAKE_CURRENT_SOURCE_DIR}/assets/textures"

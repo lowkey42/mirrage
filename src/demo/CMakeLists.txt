@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_demo LANGUAGES CXX ASM)
 
@@ -17,6 +17,7 @@ add_executable(demo ${HEADER_FILES}
 	${BACKWARD_ENABLE}
 )
 add_backward(demo)
+target_compile_features(demo PUBLIC cxx_std_17)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(demo PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})

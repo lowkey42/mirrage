@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage)
 
@@ -24,6 +24,8 @@ add_library(mirrage STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::mirrage ALIAS mirrage)
+target_compile_features(mirrage PUBLIC cxx_std_17)
+
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map" CONTENT
 "cfg:input_mapping = settings/input_mapping.json
 cfg:graphics = graphics-cfg.json

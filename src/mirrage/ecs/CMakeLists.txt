@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_ecs)
 
@@ -18,6 +18,7 @@ add_library(mirrage_ecs STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::ecs ALIAS mirrage_ecs)
+target_compile_features(mirrage_ecs PUBLIC cxx_std_17)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_ecs PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
