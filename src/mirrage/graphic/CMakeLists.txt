@@ -5,9 +5,9 @@ project(mirrage_graphic)
 find_package(Vulkan REQUIRED)
 
 find_package(SDL2 REQUIRED)
-add_library(sdl2::sdl2 INTERFACE IMPORTED)
-set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_LINK_LIBRARIES ${SDL2_LIBRARY})
-set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${SDL2_INCLUDE_DIR})
+#add_library(sdl2::sdl2 INTERFACE IMPORTED)
+#set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_LINK_LIBRARIES ${SDL2_LIBRARY})
+#set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${SDL2_INCLUDE_DIR})
 
 
 # need to be specified with the sources for correct syntax highlighting in some IDEs
@@ -53,7 +53,7 @@ target_link_libraries(mirrage_graphic
 		gsl
 		mirrage::asset
 		sf2
-		sdl2::sdl2
+		SDL2::SDL2
 		Vulkan::Vulkan
 )
 

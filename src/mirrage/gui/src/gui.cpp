@@ -7,7 +7,7 @@
 #include <mirrage/input/events.hpp>
 #include <mirrage/input/input_manager.hpp>
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <sf2/sf2.hpp>

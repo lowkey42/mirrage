@@ -17,7 +17,7 @@
 #include <mirrage/gui/debug_ui.hpp>
 #include <mirrage/utils/console_command.hpp>
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <doctest.h>
 #include <plog/Appenders/ColorConsoleAppender.h>
 #include <plog/Log.h>
