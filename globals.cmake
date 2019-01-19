@@ -12,6 +12,12 @@ enable_language(C CXX ASM)
 
 add_definitions(-DGSL_TERMINATE_ON_CONTRACT_VIOLATION)
 
+if (WIN)
+	option(MIRRAGE_ENABLE_BACKWARD "Enable stacktraces through backward-cpp" OFF)
+else()
+	option(MIRRAGE_ENABLE_BACKWARD "Enable stacktraces through backward-cpp" ON)
+endif()
+
 # LTO
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=1024 -fno-strict-aliasing")

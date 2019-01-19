@@ -18,7 +18,9 @@ add_executable(mesh_converter
 	skeleton_parser.hpp
 	${BACKWARD_ENABLE}
 )
-add_backward(mesh_converter)
+if(${MIRRAGE_ENABLE_BACKWARD})
+	add_backward(mesh_converter)
+endif()
 target_compile_features(mesh_converter PUBLIC cxx_std_17)
 
 target_link_libraries(mesh_converter

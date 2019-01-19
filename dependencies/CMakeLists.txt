@@ -2,7 +2,11 @@ cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
 SET(BUILD_SHARED_LIBS FALSE CACHE BOOL "" FORCE)
 add_subdirectory(asyncplusplus)
-add_subdirectory(backward-cpp)
+
+if(${MIRRAGE_ENABLE_BACKWARD})
+	add_subdirectory(backward-cpp)
+endif()
+
 add_subdirectory(enet)
 include(glm_interface.cmake)
 include(gsl_interface.cmake)

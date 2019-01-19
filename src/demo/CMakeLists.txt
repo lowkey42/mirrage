@@ -16,7 +16,9 @@ add_executable(demo ${HEADER_FILES}
 	src/test_animation_screen.cpp
 	${BACKWARD_ENABLE}
 )
-add_backward(demo)
+if(${MIRRAGE_ENABLE_BACKWARD})
+	add_backward(demo)
+endif()
 target_compile_features(demo PUBLIC cxx_std_17)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
