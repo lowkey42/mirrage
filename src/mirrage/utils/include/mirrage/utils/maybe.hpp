@@ -179,7 +179,7 @@ namespace mirrage::util {
 				f(_data);
 		}
 		template <typename Func,
-		          class = std::enable_if_t<not std::is_same<std::result_of_t<Func(T&)>, void>::value>>
+		          class = std::enable_if_t<!std::is_same<std::result_of_t<Func(T&)>, void>::value>>
 		auto process(Func&& f) const -> maybe<std::result_of_t<Func(const T&)>>
 		{
 			if(is_some())
@@ -196,7 +196,7 @@ namespace mirrage::util {
 				f(_data);
 		}
 		template <typename Func,
-		          class = std::enable_if_t<not std::is_same<std::result_of_t<Func(T&)>, void>::value>>
+		          class = std::enable_if_t<!std::is_same<std::result_of_t<Func(T&)>, void>::value>>
 		auto process(Func&& f) -> maybe<std::result_of_t<Func(T&)>>
 		{
 			if(is_some())
@@ -355,7 +355,7 @@ namespace mirrage::util {
 				f(*_ref);
 		}
 		template <typename Func,
-		          class = std::enable_if_t<not std::is_same<std::result_of_t<Func(T&)>, void>::value>>
+		          class = std::enable_if_t<!std::is_same<std::result_of_t<Func(T&)>, void>::value>>
 		auto process(Func&& f) const -> maybe<std::result_of_t<Func(const T&)>>
 		{
 			if(is_some())
@@ -372,7 +372,7 @@ namespace mirrage::util {
 				f(*_ref);
 		}
 		template <typename Func,
-		          class = std::enable_if_t<not std::is_same<std::result_of_t<Func(T&)>, void>::value>>
+		          class = std::enable_if_t<!std::is_same<std::result_of_t<Func(T&)>, void>::value>>
 		auto process(Func&& f) -> maybe<std::result_of_t<Func(T&)>>
 		{
 			if(is_some())
