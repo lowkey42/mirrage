@@ -7,7 +7,7 @@
 
 Mirrage (Mirrage Indirect Radiance Renderer And Game Engine) is a Vulkan based deferred renderer with bits and pieces of a simple game engine, that has been developed as part of my CS Bachelor thesis about screen-space global illumination. As such it is (at least in its current state) mostly just a fancy renderer with a simple demo application and just enough engine stuff (ECS, input, ui, glue-code) to keep that running. But in the future I will hopefully get it to an actually usefull state and use it as a basis for my future projects.
 
-The repository at <a href="https://github.com/lowkey42/mirrage">is a readonly mirror</a> and the main repository is located on <a href="https://gitlab.com/lowkey42/mirrage">Gitlab.com</a>.
+The repository at <a href="https://github.com/lowkey42/mirrage">GitHub</a> is a readonly mirror and the main repository is located on <a href="https://gitlab.com/lowkey42/mirrage">Gitlab.com</a>.
 
 ### Demo
 <a href="http://www.youtube.com/watch?feature=player_embedded&v=gHHLuwjDiZo" target="_blank"><img src="screenshots/video_thumbnail2.jpeg" alt="Demo Video" height="180" border="10" /></a>
@@ -50,7 +50,7 @@ Included in this repository:
 - cmake ../mirrage
 - cmake --build .
 
-In order to execute the compiled demo application, the src/demo/demo binary has be be executed from the working directory assets (the folder containing the archives.lst) and this folder has to contain the required models (Sponza and Conrnell-Box) in its extensions sub-directory. This assets can be downloaded from the latetest release.
+In order to execute the compiled demo application, the src/demo/demo binary has be be executed from the working directory assets (the folder containing the archives.lst).
 
 The project can be further configured by setting the following CMake-Properties (-DPROP=ON/OFF):
 - MIRRAGE_BUILD_MESH_CONVERTER: Also build the mesh converter that can be used to converter models into the engine specific data format (Default: OFF)
