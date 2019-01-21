@@ -1,0 +1,5 @@
+{
+    "substance_id": "emissive",
+    "albedo_aid": "cornell_light_albedo.ktx",
+    "mat_data2_aid": "cornell_light_mat_data2.ktx"
+}

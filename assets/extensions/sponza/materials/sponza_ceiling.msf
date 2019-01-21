@@ -1,0 +1,5 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "sponza_ceiling_albedo.ktx",
+    "mat_data_aid": "sponza_ceiling_mat_data.ktx"
+}

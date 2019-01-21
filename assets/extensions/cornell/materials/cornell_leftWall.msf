@@ -1,0 +1,5 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "cornell_leftWall_albedo.ktx",
+    "mat_data_aid": "cornell_leftWall_mat_data.ktx"
+}

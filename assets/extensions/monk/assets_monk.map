@@ -1,0 +1,14 @@
+blueprint:monk = blueprints/monk.json
+skel:monk = models/monk.mbf
+
+blueprint:monk_lbs = blueprints/monk_lbs.json
+skel:monk_lbs = models/monk_lbs.mbf
+
+anim:monk_attack = animations/attack.maf
+anim:monk_dance = animations/dance.maf
+anim:monk_die = animations/die.maf
+anim:monk_flee = animations/flee.maf
+anim:monk_idle = animations/idle.maf
+anim:monk_sad = animations/sad.maf
+anim:monk_sleep = animations/sleep.maf
+anim:monk_walk = animations/walk.maf

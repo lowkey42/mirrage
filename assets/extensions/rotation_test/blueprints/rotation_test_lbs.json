@@ -1,0 +1,22 @@
+{
+	"Transform":{
+		"scale": {"x": 0.003, "y": 0.003, "z": 0.003}
+	},
+	"Model": {
+		"aid": "model:rotation.mmf"
+	},
+	"Pose": {"skeleton": "skel:rotation_test_lbs"},
+	
+	"Animation": {},
+	"Simple_animation_controller": {
+		"animations": {
+			"test": "anim:rotation_test"
+		},
+		"current_animation": {
+			"id": "test",
+			"speed": 0.2
+		}
+	},
+	"Shadowcaster": {},
+	"Point_light": {"source_radius":1.0, "intensity":620, "temperature":1900}
+}

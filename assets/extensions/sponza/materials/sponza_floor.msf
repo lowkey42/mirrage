@@ -1,0 +1,5 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "sponza_floor_albedo.ktx",
+    "mat_data_aid": "sponza_floor_mat_data.ktx"
+}
