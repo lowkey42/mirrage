@@ -163,8 +163,8 @@ namespace mirrage::ecs {
 	class Component : public Tiny_component<T, Index_policy, Storage_policy>,
 	                  public detail::Owned_component_base {
 	  public:
-		using component_base_t               = Component;
-		static constexpr auto sort_key       = &Component::_owner;
+		using component_base_t = Component;
+		static constexpr auto sort_key() { return &Component::_owner; }
 		static constexpr auto sort_key_index = 0;
 
 		Component() = default;

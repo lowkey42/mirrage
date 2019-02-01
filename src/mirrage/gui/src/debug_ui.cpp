@@ -26,11 +26,11 @@ namespace mirrage::gui {
 
 	void Debug_console_appender::write(const plog::Record& record)
 	{
-		auto msg      =
+		auto msg =
 #ifdef _WIN32
-				plog::util::toNarrow(plog::TxtFormatter::format(record), 0);
+		        plog::util::toNarrow(plog::TxtFormatter::format(record), 0);
 #else
-				plog::TxtFormatter::format(record);
+		        plog::TxtFormatter::format(record);
 #endif
 		auto prev_pos = std::string::size_type(0);
 		auto pos      = std::string::size_type(0);
@@ -53,7 +53,7 @@ namespace mirrage::gui {
 
 		_commands.add("help | Prints all available commands", [&]() {
 			LOG(plog::info) << "Available commands:\n"
-			                << [](std::ostream& stream) -> std::ostream& {
+			                << +[](plog::util::nostringstream& stream) -> plog::util::nostringstream& {
 				auto max_width = 0;
 				for(auto& c : util::Console_command_container::list_all_commands()) {
 					auto sep = c.second.api().find("|");

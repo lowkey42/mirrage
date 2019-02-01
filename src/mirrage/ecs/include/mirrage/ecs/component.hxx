@@ -215,7 +215,7 @@ namespace mirrage::ecs {
 		template <class T>
 		struct Pool_storage_policy_sort<T, util::void_t<decltype(T::sort_key), decltype(T::sort_key_index)>> {
 			static constexpr bool sorted                   = true;
-			static constexpr auto sort_key                 = T::sort_key;
+			static constexpr auto sort_key                 = T::sort_key();
 			static constexpr auto sort_key_constructor_idx = T::sort_key_index;
 		};
 
@@ -267,7 +267,7 @@ namespace mirrage::ecs {
 		auto empty() const -> bool { return _pool.empty(); }
 
 		template <class Key,
-		          class = std::enable_if_t<std::is_same_v<Key, decltype(std::declval<T>().*T::sort_key)>>>
+		          class = std::enable_if_t<std::is_same_v<Key, decltype(std::declval<T>().*T::sort_key())>>>
 		auto find(const Key& key)
 		{
 			return _pool.find(key);
@@ -601,7 +601,7 @@ namespace mirrage::ecs {
 		{
 			if constexpr(pool_based) {
 				auto& component = *_iterator;
-				_last_value     = value_type{(component.*T::sort_key).id(), &component};
+				_last_value     = value_type{(component.*T::sort_key()).id(), &component};
 			} else {
 				auto&& [entity, idx] = *_iterator;
 				_last_value          = value_type{entity, &_container->_storage.get(idx)};

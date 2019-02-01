@@ -101,6 +101,27 @@ namespace mirrage::renderer {
 		  : Component(owner, em)
 		{
 		}
+		Simple_animation_controller_comp(Simple_animation_controller_comp&& rhs) noexcept
+		  : Component(static_cast<Component&&>(rhs))
+		  , _animations(std::move(rhs._animations))
+		  , _current_animation(std::move(rhs._current_animation))
+		  , _prev_animation(std::move(rhs._prev_animation))
+		  , _next_animation(std::move(rhs._next_animation))
+		  , _fade_time(std::move(rhs._fade_time))
+		  , _fade_time_left(std::move(rhs._fade_time_left))
+		{
+		}
+		auto operator=(Simple_animation_controller_comp&& rhs) noexcept -> Simple_animation_controller_comp&
+		{
+			Component::operator=(static_cast<Component&&>(rhs));
+			_animations        = std::move(rhs._animations);
+			_current_animation = std::move(rhs._current_animation);
+			_prev_animation    = std::move(rhs._prev_animation);
+			_next_animation    = std::move(rhs._next_animation);
+			_fade_time         = std::move(rhs._fade_time);
+			_fade_time_left    = std::move(rhs._fade_time_left);
+			return *this;
+		}
 
 		void play(util::Str_id animation, bool preserve_state = true);
 		void play(util::Str_id animation, float speed, bool reversed, bool paused, bool looped);

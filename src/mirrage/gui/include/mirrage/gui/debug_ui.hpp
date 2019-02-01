@@ -11,8 +11,8 @@
 #include <mirrage/utils/console_command.hpp>
 #include <mirrage/utils/messagebus.hpp>
 
-#include <unordered_set>
 #include <iostream>
+#include <unordered_set>
 
 
 namespace mirrage::gui {
@@ -95,7 +95,7 @@ namespace mirrage::gui {
 
 			return false;
 		}
-		static std::ostream& print_names(std::ostream& stream)
+		static plog::util::nostringstream& print_names(plog::util::nostringstream& stream)
 		{
 			auto first = true;
 			for(auto dm : instances()) {
