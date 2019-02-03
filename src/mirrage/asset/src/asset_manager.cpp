@@ -222,7 +222,7 @@ namespace mirrage::asset {
 			}
 		}
 
-		auto add_source = [](const char* path) {
+		auto add_source = [this](const char* path) {
 			LOG(plog::info) << "Added FS directory: " << path;
 			if(!PHYSFS_mount(path, nullptr, 1))
 				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
@@ -245,7 +245,7 @@ namespace mirrage::asset {
 
 			if(lost) {
 				LOG(plog::fatal) << "No archives.lst found. printing search-path...\n";
-				print_dir_recursiv("/", 0, [](auto&& path) { LOG(plog::fatal) << path; });
+				print_dir_recursiv("/", 0, [this](auto&& path) { LOG(plog::fatal) << path; });
 
 				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 				                        "No archives.lst found.");

@@ -90,7 +90,7 @@ namespace mirrage {
 	  protected:
 		Engine&                              _engine;
 		std::vector<std::shared_ptr<Screen>> _screen_stack;
-		int32_t                              _leave = 0;
+		int32_t                              _leave_count = 0;
 		std::vector<std::shared_ptr<Screen>> _next_screens;
 	};
 } // namespace mirrage

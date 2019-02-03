@@ -12,7 +12,7 @@ enable_language(C CXX ASM)
 
 add_definitions(-DGSL_TERMINATE_ON_CONTRACT_VIOLATION)
 
-if (WIN)
+if (WIN32)
 	option(MIRRAGE_ENABLE_BACKWARD "Enable stacktraces through backward-cpp" OFF)
 else()
 	option(MIRRAGE_ENABLE_BACKWARD "Enable stacktraces through backward-cpp" ON)
@@ -55,7 +55,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 		-Wno-missing-braces)
 
 elseif(MSVC)
-	set(MIRRAGE_DEFAULT_COMPILER_ARGS /Za)
+	set(MIRRAGE_DEFAULT_COMPILER_ARGS /DWIN32_LEAN_AND_MEAN /DNOMINMAX)
 endif()
 
 # Select optimal linker
