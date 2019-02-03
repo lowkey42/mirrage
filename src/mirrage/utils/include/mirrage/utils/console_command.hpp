@@ -121,12 +121,12 @@ namespace mirrage::util {
 		auto c    = all_commands().emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(name),
-                std::forward_as_tuple(name, api, [api, f = std::forward<F>(f)](std::string_view cmd) {
+                std::forward_as_tuple(name, api, [api, f = std::forward<F>(f), this](std::string_view cmd) {
                     auto arg_iter = std::cregex_iterator(cmd.begin(), cmd.end(), split_args_regex);
                     auto arg_end  = std::cregex_iterator();
 
                     util::foreach_function_arg_call(
-                            f, [&](auto type) -> util::maybe<typename decltype(type)::type> {
+                            f, [&, this](auto type) -> util::maybe<typename decltype(type)::type> {
                                 if(arg_iter == arg_end) {
                                     LOG(plog::error) << "Not enough arguments.";
                                     return util::nothing;
