@@ -28,8 +28,6 @@ target_compile_options(demo PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 
 target_link_libraries(demo
 	PRIVATE
-		mingw32
-		SDL2::SDL2main
 		mirrage::mirrage
 		mirrage::renderer
 		plog
@@ -37,6 +35,13 @@ target_link_libraries(demo
 		sf2
 		doctest
 )
+if (WIN32)
+	target_link_libraries(demo
+		PRIVATE
+			mingw32
+			SDL2::SDL2main
+	)
+endif()
 
 option(MIRRAGE_EXPORT_EXECUTABLE "Export executable" OFF)
 if(MIRRAGE_EXPORT_EXECUTABLE)
