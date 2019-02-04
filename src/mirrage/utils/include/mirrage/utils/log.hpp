@@ -26,7 +26,9 @@ namespace mirrage::util {
 	do {                                                                                                      \
 		IF_LOG_(PLOG_DEFAULT_INSTANCE, plog::fatal)                                                           \
 		(*plog::get<PLOG_DEFAULT_INSTANCE>()) +=                                                              \
-		        (plog::Record(plog::fatal, PLOG_GET_FUNC(), __LINE__, PLOG_GET_FILE(), PLOG_GET_THIS()) << M) \
+		        (plog::Record(                                                                                \
+		                 plog::fatal, PLOG_GET_FUNC(), __LINE__, PLOG_GET_FILE(), reinterpret_cast<void*>(0)) \
+		         << M)                                                                                        \
 		        << "\n"                                                                                       \
 		        << mirrage::util::print_stacktrace();                                                         \
 		std::abort();                                                                                         \

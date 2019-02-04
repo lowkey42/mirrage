@@ -52,31 +52,28 @@ namespace mirrage::gui {
 		assets.open(history_aid).process([&](auto& is) { _history = is.lines(); });
 
 		_commands.add("help | Prints all available commands", [&]() {
-			LOG(plog::info) << "Available commands:\n"
-			                << +[](plog::util::nostringstream& stream) -> plog::util::nostringstream& {
-				auto max_width = 0;
-				for(auto& c : util::Console_command_container::list_all_commands()) {
-					auto sep = c.second.api().find("|");
-					max_width =
-					        std::max(max_width, int(sep != std::string::npos ? sep : c.second.api().size()));
-				}
+			auto stream    = std::stringstream{};
+			auto max_width = 0;
+			for(auto& c : util::Console_command_container::list_all_commands()) {
+				auto sep  = c.second.api().find("|");
+				max_width = std::max(max_width, int(sep != std::string::npos ? sep : c.second.api().size()));
+			}
 
-				for(auto& c : util::Console_command_container::list_all_commands()) {
-					auto sep = c.second.api().find("|");
+			for(auto& c : util::Console_command_container::list_all_commands()) {
+				auto sep = c.second.api().find("|");
 
-					stream << c.second.api().substr(0, sep);
-					for(int i = int(sep != std::string::npos ? sep : c.second.api().size());
-					    i < max_width + 10;
-					    i++)
-						stream << ' ';
+				stream << c.second.api().substr(0, sep);
+				for(int i = int(sep != std::string::npos ? sep : c.second.api().size()); i < max_width + 10;
+				    i++)
+					stream << ' ';
 
-					if(sep != std::string::npos)
-						stream << c.second.api().substr(sep + 1);
+				if(sep != std::string::npos)
+					stream << c.second.api().substr(sep + 1);
 
-					stream << "\n";
-				}
-				return stream;
-			};
+				stream << "\n";
+			}
+
+			LOG(plog::info) << "Available commands:\n" << stream.str();
 		});
 
 		_commands.add("history | Prints all previous commands", [&]() {
@@ -105,7 +102,7 @@ namespace mirrage::gui {
 				              _show_console = false;
 			              } else
 				              LOG(plog::error) << "Unknown ui menu " << ui
-				                               << " expected one of: " << Debug_menu::print_names;
+				                               << " expected one of: " << Debug_menu::print_names();
 		              });
 		_commands.add("show.all | Enables all debug UI elements", [&] {
 			for(auto& m : Debug_menu::all_debug_menus()) {
@@ -119,12 +116,12 @@ namespace mirrage::gui {
 				              _shown_debug_menus.erase(ui);
 			              else
 				              LOG(plog::error) << "Unknown ui menu " << ui
-				                               << " expected one of: " << Debug_menu::print_names;
+				                               << " expected one of: " << Debug_menu::print_names();
 		              });
 		_commands.add("hide.all | Disables all debug UI elements", [&] { _shown_debug_menus.clear(); });
 
 		_commands.add("list_uis | Lists all available debug UI elements",
-		              [&]() { LOG(plog::info) << "UI menus: " << Debug_menu::print_names; });
+		              [&]() { LOG(plog::info) << "UI menus: " << Debug_menu::print_names(); });
 
 		_mailbox.subscribe_to([&](input::Once_action& e) {
 			switch(e.id) {
@@ -348,5 +345,34 @@ namespace mirrage::gui {
 
 	Debug_menu::Debug_menu(std::string name) : _name(std::move(name)) { instances().emplace_back(this); }
 	Debug_menu::~Debug_menu() { util::erase_fast(instances(), this); }
+
+	void Debug_menu::draw_all(const std::string& name, Gui& gui)
+	{
+		for(auto dm : instances())
+			if(dm->_name == name)
+				dm->draw(gui);
+	}
+	auto Debug_menu::is_debug_menu(const std::string& name) -> bool
+	{
+		for(auto dm : instances())
+			if(dm->_name == name)
+				return true;
+
+		return false;
+	}
+	auto Debug_menu::print_names() -> std::string
+	{
+		auto stream = std::stringstream{};
+		auto first  = true;
+		for(auto dm : instances()) {
+			if(first)
+				first = false;
+			else
+				stream << ", ";
+
+			stream << dm->_name;
+		}
+		return stream.str();
+	}
 
 } // namespace mirrage::gui
