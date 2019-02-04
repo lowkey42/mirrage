@@ -27,8 +27,8 @@ ${ID}_size:
 	file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.cpp" CONTENT
 "#include <mirrage/asset/embedded_asset.hpp>
 
-extern const char ${ID}[];
-extern int ${ID}_size;
+extern \"C\" const char ${ID}[];
+extern \"C\" int ${ID}_size;
 
 static auto mirrage_asset_reg = mirrage::asset::Embedded_asset(\"${target}\",
 		gsl::span<const gsl::byte>{reinterpret_cast<const gsl::byte*>(&*${ID}), ${ID}_size});
