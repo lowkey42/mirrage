@@ -24,6 +24,7 @@ include(plog_interface.cmake)
 include(robin-map_interface.cmake)
 include(doctest_interface.cmake)
 
+add_subdirectory(SDL)
 add_subdirectory(sf2)
 
 

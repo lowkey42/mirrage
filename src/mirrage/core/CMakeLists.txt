@@ -4,8 +4,6 @@ project(mirrage)
 
 include(version_info.cmake)
 
-find_package(SDL2 REQUIRED)
-
 # need to be specified with the sources for correct syntax highlighting in some IDEs
 file(GLOB_RECURSE HEADER_FILES
 	RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -47,7 +45,7 @@ target_include_directories(mirrage PUBLIC
 target_link_libraries(mirrage
 	PUBLIC
 		mirrage::utils
-		SDL2::SDL2
+		SDL2-static
 		mirrage::asset
 		mirrage::ecs
 		mirrage::graphic

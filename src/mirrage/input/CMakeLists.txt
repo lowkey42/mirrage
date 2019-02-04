@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_input)
 
-find_package(SDL2 REQUIRED)
-
 # need to be specified with the sources for correct syntax highlighting in some IDEs
 file(GLOB_RECURSE HEADER_FILES
 	RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -32,7 +30,7 @@ target_link_libraries(mirrage_input
 		gsl
 		glm::glm
 		mirrage::asset
-		SDL2::SDL2
+		SDL2-static
 		sf2
 )
    

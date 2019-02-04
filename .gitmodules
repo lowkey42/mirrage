@@ -37,3 +37,6 @@
 [submodule "dependencies/doctest"]
 	path = dependencies/doctest
 	url = https://github.com/onqtam/doctest.git
+[submodule "dependencies/SDL"]
+	path = dependencies/SDL
+	url = https://github.com/SDL-mirror/SDL.git
