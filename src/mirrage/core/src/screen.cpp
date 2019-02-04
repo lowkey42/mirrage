@@ -34,11 +34,11 @@ namespace mirrage {
 		if(depth <= 0)
 			return;
 
-		if(_leave > 0) {
+		if(_leave_count > 0) {
 			LOG(plog::warning) << "multiple screen leaves per frame.";
 		}
 
-		_leave += depth;
+		_leave_count += depth;
 	}
 
 	auto Screen_manager::current() -> Screen& { return *_screen_stack.back(); }
@@ -75,13 +75,13 @@ namespace mirrage {
 	void Screen_manager::do_queued_actions()
 	{
 		// leave screen if requested
-		if(_leave > 0) {
+		if(_leave_count > 0) {
 			auto last = std::shared_ptr<Screen>{};
 			if(!_screen_stack.empty()) {
 				last = std::move(_screen_stack.back());
 			}
 
-			for(int32_t i = std::min(_leave, int32_t(_screen_stack.size())); i > 0; i--) {
+			for(int32_t i = std::min(_leave_count, int32_t(_screen_stack.size())); i > 0; i--) {
 				_screen_stack.pop_back();
 			}
 
@@ -96,7 +96,7 @@ namespace mirrage {
 				_screen_stack.back()->_on_enter(util::nothing);
 			}
 
-			_leave = 0;
+			_leave_count = 0;
 		}
 
 		// enter new screen if requested

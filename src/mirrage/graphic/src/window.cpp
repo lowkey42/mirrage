@@ -8,8 +8,8 @@
 #include <mirrage/utils/template_utils.hpp>
 #include <mirrage/utils/time.hpp>
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_vulkan.h>
+#include <SDL.h>
+#include <SDL_vulkan.h>
 #include <gsl/gsl>
 #include <sf2/sf2.hpp>
 

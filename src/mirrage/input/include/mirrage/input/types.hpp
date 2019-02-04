@@ -9,7 +9,7 @@
 
 #include <mirrage/utils/str_id.hpp>
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <glm/vec2.hpp>
 
 #include <memory>

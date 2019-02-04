@@ -117,11 +117,10 @@ namespace mirrage::renderer {
 		                     Render_pass_mask = Render_pass_mask{}) -> std::unique_ptr<Deferred_renderer>;
 
 		template <class... Passes>
-		auto create_renderer(util::maybe<ecs::Entity_manager&> ecs = util::nothing,
-		                     Render_pass_mask passes = Render_pass_mask{render_pass_id_of<Passes>()...})
+		auto create_renderer(util::maybe<ecs::Entity_manager&> ecs = util::nothing)
 		        -> std::unique_ptr<Deferred_renderer>
 		{
-			return create_renderer(ecs, passes);
+			return create_renderer(ecs, Render_pass_mask{render_pass_id_of<Passes>()...});
 		}
 
 		auto all_passes_mask() const noexcept -> auto& { return _all_passes_mask; }

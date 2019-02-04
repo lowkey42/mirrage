@@ -64,7 +64,7 @@ namespace mirrage::util {
 		}
 
 		template <std::uint64_t Value, bool SignRequired>
-		using compatible_type_t = decltype(compatible_type<Value, SignRequired>());
+		using compatible_type_t = std::invoke_result_t<decltype(compatible_type<Value, SignRequired>)>;
 
 		template <typename T>
 		struct Out_wrapper {

@@ -14,7 +14,7 @@
 #include <mirrage/utils/str_id.hpp>
 #include <mirrage/utils/units.hpp>
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <glm/vec2.hpp>
 #include <gsl/gsl>
 #include <memory>

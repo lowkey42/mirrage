@@ -8,7 +8,7 @@
 #include <glm/glm.hpp>
 #include <sf2/sf2.hpp>
 
-#include <SDL2/SDL_gesture.h>
+#include <SDL_gesture.h>
 
 #ifdef EMSCRIPTEN
 #include <emscripten/html5.h>

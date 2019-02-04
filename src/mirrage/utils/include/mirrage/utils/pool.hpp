@@ -184,7 +184,10 @@ namespace mirrage::util {
 
 		value_type& operator*() noexcept { return *get(); }
 		value_type* operator->() noexcept { return get(); }
-		value_type* get() noexcept;
+		const value_type& operator*() const noexcept { return *get(); }
+		const value_type* operator->() const noexcept { return get(); }
+		const value_type*       get() const noexcept;
+		value_type*       get() noexcept;
 
 		auto operator++() -> pool_iterator&;
 

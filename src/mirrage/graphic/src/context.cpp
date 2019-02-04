@@ -1,5 +1,5 @@
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_vulkan.h>
+#include <SDL.h>
+#include <SDL_vulkan.h>
 
 #include <sf2/sf2.hpp> // has to be first so he sf2_struct define is set
 
