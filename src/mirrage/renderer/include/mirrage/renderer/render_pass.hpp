@@ -13,6 +13,7 @@
 
 #include <functional>
 #include <variant>
+#include <type_traits>
 
 
 namespace mirrage {
@@ -168,12 +169,12 @@ namespace mirrage::renderer {
 	template <class T>
 	auto render_pass_id_of()
 	{
-		if constexpr(std::is_base_of_v<Render_pass_factory, T>)
+		if constexpr(std::is_base_of<Render_pass_factory, T>::value)
 			return util::type_uid_of<T>();
 		else {
-			static_assert(std::is_base_of_v<Render_pass_factory, T::Factory>,
+			static_assert(std::is_base_of<Render_pass_factory, typename T::Factory>::value,
 			              "T is not a renderpass, nor its factory.");
-			return util::type_uid_of<T::Factory>();
+			return util::type_uid_of<typename T::Factory>();
 		}
 	}
 

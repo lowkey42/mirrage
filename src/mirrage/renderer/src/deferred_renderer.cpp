@@ -38,7 +38,7 @@ namespace mirrage::renderer {
 	  : _engine(&engine)
 	  , _factory(&factory)
 	  , _entity_manager(ecs)
-	  , _descriptor_set_pool(device().create_descriptor_pool(128,
+	  , _descriptor_set_pool(*device().vk_device(), 128,
 	                                                         {vk::DescriptorType::eUniformBuffer,
 	                                                          vk::DescriptorType::eUniformBufferDynamic,
 	                                                          vk::DescriptorType::eCombinedImageSampler,
@@ -47,7 +47,7 @@ namespace mirrage::renderer {
 	                                                          vk::DescriptorType::eStorageTexelBuffer,
 	                                                          vk::DescriptorType::eStorageImage,
 	                                                          vk::DescriptorType::eSampledImage,
-	                                                          vk::DescriptorType::eSampler}))
+	                                                          vk::DescriptorType::eSampler})
 	  , _gbuffer(gbuffer_required(passes) ? std::make_unique<GBuffer>(device(),
 	                                                                  _descriptor_set_pool,
 	                                                                  factory._window.width(),

@@ -82,7 +82,7 @@ namespace mirrage::util {
 		{
 			add("set." + name + " <value> | Sets the value of the property", std::forward<FS>(setter));
 			add("get." + name + " | Gets the value of the property",
-			    [name = name, getter = std::forward<FG>(getter)] {
+			    [name = name, getter = std::forward<FG>(getter), this] {
 				    LOG(plog::info) << "Value of " << name << ": " << util::to_string(getter());
 			    });
 		}
