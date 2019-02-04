@@ -122,7 +122,7 @@ namespace mirrage::util {
                 std::piecewise_construct,
                 std::forward_as_tuple(name),
                 std::forward_as_tuple(name, api, [api, f = std::forward<F>(f), this](std::string_view cmd) {
-                    auto arg_iter = std::cregex_iterator(cmd.begin(), cmd.end(), split_args_regex);
+                    auto arg_iter = std::cregex_iterator(cmd.data(), cmd.data()+cmd.size(), split_args_regex);
                     auto arg_end  = std::cregex_iterator();
 
                     util::foreach_function_arg_call(
