@@ -34,16 +34,16 @@ target_link_libraries(demo
 		doctest
 )
 if (WIN32)
-	target_link_libraries(demo
-		PRIVATE
-			SDL2::SDL2main
-	)
 	if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
 		target_link_libraries(demo
 			PRIVATE
 				mingw32
 		)
 	endif()
+	target_link_libraries(demo
+		PRIVATE
+			SDL2main
+	)
 endif()
 
 option(MIRRAGE_EXPORT_EXECUTABLE "Export executable" OFF)
