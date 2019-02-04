@@ -34,8 +34,10 @@ static auto mirrage_asset_reg = mirrage::asset::Embedded_asset(\"${target}\",
 		gsl::span<const gsl::byte>{reinterpret_cast<const gsl::byte*>(&*${ID}), ${ID}_size});
 
 void ref_embedded_assets_${target}() {
-	volatile auto x = &mirrage_asset_reg;
+	volatile mirrage::asset::Embedded_asset* x = &mirrage_asset_reg;
+#ifndef _MSC_VER
 	asm volatile(\"\" : \"+r\" (x));
+#endif
 }
 ")
 	

@@ -83,7 +83,7 @@ namespace mirrage::renderer {
 			auto pcs = vk::PushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, sizeof(Push_constants)};
 
 			return renderer.device().vk_device()->createPipelineLayoutUnique(
-			        vk::PipelineLayoutCreateInfo{{}, dsl.size(), dsl.data(), 1, &pcs});
+			        vk::PipelineLayoutCreateInfo{{}, gsl::narrow<std::uint32_t>(dsl.size()), dsl.data(), 1, &pcs});
 		}
 		auto build_compute_pipeline(graphic::Device&      device,
 		                            asset::Asset_manager& assets,
@@ -106,7 +106,7 @@ namespace mirrage::renderer {
 			reinterpret_cast<float&>(spec_data[3 * 32])        = std::log(histogram_max);
 
 			auto spec_info = vk::SpecializationInfo{
-			        spec_entries.size(), spec_entries.data(), spec_data.size(), spec_data.data()};
+			        gsl::narrow<std::uint32_t>(spec_entries.size()), spec_entries.data(), gsl::narrow<std::uint32_t>(spec_data.size()), spec_data.data()};
 
 			auto stage = vk::PipelineShaderStageCreateInfo{
 			        {}, vk::ShaderStageFlagBits::eCompute, **module, "main", &spec_info};

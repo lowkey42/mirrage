@@ -28,17 +28,17 @@ namespace mirrage::util {
 	namespace details {
 		struct Type_uid_gen_base {
 		  protected:
-			static auto next_uid() noexcept
+			static type_uid_t next_uid() noexcept
 			{
-				static auto idc = type_uid_t(1);
+				static type_uid_t idc = type_uid_t(1);
 				return idc++;
 			}
 		};
 		template <typename T>
 		struct Type_uid_gen : Type_uid_gen_base {
-			static auto uid() noexcept
+			static type_uid_t uid() noexcept
 			{
-				static auto i = next_uid();
+				static type_uid_t i = next_uid();
 				return i;
 			}
 		};
@@ -47,7 +47,7 @@ namespace mirrage::util {
 	template <class T>
 	auto type_uid_of()
 	{
-		return details::Type_uid_gen<std::decay_t<std::remove_pointer_t<std::decay_t<T>>>>::uid();
+		return details::Type_uid_gen<T>::uid();
 	}
 	template <>
 	inline constexpr auto type_uid_of<void>()

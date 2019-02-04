@@ -129,11 +129,8 @@ namespace {
 		        "screen.print | Prints the currently open screens (=> update+draw next, D> only draw, S> "
 		        "don't update+draw)",
 		        [&]() {
-			        LOG(plog::info) << "Open Screens: " << [](std::ostream & out) -> auto&
-			        {
-				        engine->screens().print_stack(out);
-				        return out;
-			        };
+			        auto screen_list = engine->screens().print_stack();
+			        LOG(plog::info) << "Open Screens: " << screen_list;
 		        });
 
 		global_commands->add("screen.enter.test | Enters the test screen",

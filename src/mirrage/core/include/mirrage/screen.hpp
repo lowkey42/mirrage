@@ -71,9 +71,9 @@ namespace mirrage {
 		void do_queued_actions();
 		void clear();
 
-		template <class Stream>
-		auto print_stack(Stream& out) const -> auto&
+		auto print_stack() const -> std::string
 		{
+			auto out = std::stringstream();
 			for(auto& screen : util::range_reverse(_screen_stack)) {
 				out << screen->name();
 				switch(screen->_prev_screen_policy()) {
@@ -84,7 +84,7 @@ namespace mirrage {
 				}
 			}
 
-			return out;
+			return out.str();
 		}
 
 	  protected:
