@@ -82,7 +82,7 @@ namespace mirrage::util {
 		{
 			add("set." + name + " <value> | Sets the value of the property", std::forward<FS>(setter));
 			add("get." + name + " | Gets the value of the property",
-			    [name = name, getter = std::forward<FG>(getter), this] {
+			    [name = name, getter = std::forward<FG>(getter)] {
 				    LOG(plog::info) << "Value of " << name << ": " << util::to_string(getter());
 			    });
 		}
@@ -121,12 +121,12 @@ namespace mirrage::util {
 		auto c    = all_commands().emplace(
                 std::piecewise_construct,
                 std::forward_as_tuple(name),
-                std::forward_as_tuple(name, api, [api, f = std::forward<F>(f), this](std::string_view cmd) {
+                std::forward_as_tuple(name, api, [api, f = std::forward<F>(f)](std::string_view cmd) {
                     auto arg_iter = std::cregex_iterator(cmd.data(), cmd.data()+cmd.size(), split_args_regex);
                     auto arg_end  = std::cregex_iterator();
 
                     util::foreach_function_arg_call(
-                            f, [&, this](auto type) -> util::maybe<typename decltype(type)::type> {
+                            f, [&](auto type) -> util::maybe<typename decltype(type)::type> {
                                 if(arg_iter == arg_end) {
                                     LOG(plog::error) << "Not enough arguments.";
                                     return util::nothing;
