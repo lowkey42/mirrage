@@ -38,16 +38,17 @@ namespace mirrage::renderer {
 	  : _engine(&engine)
 	  , _factory(&factory)
 	  , _entity_manager(ecs)
-	  , _descriptor_set_pool(*device().vk_device(), 128,
-	                                                         {vk::DescriptorType::eUniformBuffer,
-	                                                          vk::DescriptorType::eUniformBufferDynamic,
-	                                                          vk::DescriptorType::eCombinedImageSampler,
-	                                                          vk::DescriptorType::eInputAttachment,
-	                                                          vk::DescriptorType::eStorageBuffer,
-	                                                          vk::DescriptorType::eStorageTexelBuffer,
-	                                                          vk::DescriptorType::eStorageImage,
-	                                                          vk::DescriptorType::eSampledImage,
-	                                                          vk::DescriptorType::eSampler})
+	  , _descriptor_set_pool(*device().vk_device(),
+	                         128,
+	                         {vk::DescriptorType::eUniformBuffer,
+	                          vk::DescriptorType::eUniformBufferDynamic,
+	                          vk::DescriptorType::eCombinedImageSampler,
+	                          vk::DescriptorType::eInputAttachment,
+	                          vk::DescriptorType::eStorageBuffer,
+	                          vk::DescriptorType::eStorageTexelBuffer,
+	                          vk::DescriptorType::eStorageImage,
+	                          vk::DescriptorType::eSampledImage,
+	                          vk::DescriptorType::eSampler})
 	  , _gbuffer(gbuffer_required(passes) ? std::make_unique<GBuffer>(device(),
 	                                                                  _descriptor_set_pool,
 	                                                                  factory._window.width(),
@@ -102,6 +103,7 @@ namespace mirrage::renderer {
 		device().wait_idle();
 		std::this_thread::sleep_for(std::chrono::milliseconds(250));
 		_passes.clear();
+		device().wait_idle(true);
 	}
 
 	void Deferred_renderer::recreate()
