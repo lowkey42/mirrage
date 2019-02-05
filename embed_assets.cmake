@@ -53,11 +53,8 @@ void ref_embedded_assets_${target}() {
 							COMMENT "Running AUX_ASSEMBLER ${AUX_ASSEMBLER} for embedded assets of target ${target}."
 							VERBATIM)
 		target_link_libraries(${target} PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s.obj")
-		target_sources(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s")
-		#add_dependencies(${target} "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s.obj")
-	else()
-		target_sources(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s")
 	endif()
+	target_sources(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s")
 	target_sources(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.cpp")
 	add_custom_target(mirrage_embedded_assets_${target} DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.zip" "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s") 
 	add_dependencies(${target} mirrage_embedded_assets_${target})
