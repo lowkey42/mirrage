@@ -1,8 +1,12 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
 if(MSVC)
-	find_program(AUX_ASSEMBLER as)
-	message(STATUS "Found AUX_ASSEMBLER: ${AUX_ASSEMBLER}")
+	find_program(MIRRAGE_AUX_ASSEMBLER as)
+	if(MIRRAGE_AUX_ASSEMBLER)
+		message(STATUS "Using MIRRAGE_AUX_ASSEMBLER for asset embedding: ${MIRRAGE_AUX_ASSEMBLER}")
+	else()
+		message(FATAL_ERROR "Can't find a binary for MIRRAGE_AUX_ASSEMBLER. The asset embedding mechanism of mirrage currently doesn't work natively with MSVC. To support MSVC despite this, MinGWs assembler is required to create embedded asset OBJs. However, this binary wasn't found using find_program().")
+	endif()
 endif()
 
 #optional: generated files to depend on
@@ -48,9 +52,9 @@ void ref_embedded_assets_${target}() {
 
 	if(MSVC)
 		add_custom_command(	OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s.obj" 
-							COMMAND ${AUX_ASSEMBLER} "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s" -o "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s.obj"
+							COMMAND ${MIRRAGE_AUX_ASSEMBLER} "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s" -o "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s.obj"
 							MAIN_DEPENDENCY "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s"
-							COMMENT "Running AUX_ASSEMBLER ${AUX_ASSEMBLER} for embedded assets of target ${target}."
+							COMMENT "Running MIRRAGE_AUX_ASSEMBLER (${MIRRAGE_AUX_ASSEMBLER}) for embedded assets of target ${target}."
 							VERBATIM)
 		target_link_libraries(${target} PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s.obj")
 	endif()
