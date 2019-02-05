@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
+if(MSVC)
+	find_program(AUX_ASSEMBLER as)
+	message(STATUS "Found AUX_ASSEMBLER: ${AUX_ASSEMBLER}")
+endif()
+
 #optional: generated files to depend on
 macro(mirrage_embed_asset target src_files)
 	string (REPLACE ";" "$<SEMICOLON>" src_files_str "${src_files}")
@@ -40,8 +45,19 @@ void ref_embedded_assets_${target}() {
 #endif
 }
 ")
-	
-	target_sources(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s")
+
+	if(MSVC)
+		add_custom_command(	OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s.obj" 
+							COMMAND ${AUX_ASSEMBLER} "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s" -o "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s.obj"
+							MAIN_DEPENDENCY "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s"
+							COMMENT "Running AUX_ASSEMBLER ${AUX_ASSEMBLER} for embedded assets of target ${target}."
+							VERBATIM)
+		target_link_libraries(${target} PUBLIC "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s.obj")
+		target_sources(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s")
+		#add_dependencies(${target} "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s.obj")
+	else()
+		target_sources(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s")
+	endif()
 	target_sources(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.cpp")
 	add_custom_target(mirrage_embedded_assets_${target} DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.zip" "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s") 
 	add_dependencies(${target} mirrage_embedded_assets_${target})
