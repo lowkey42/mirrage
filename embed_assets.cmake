@@ -13,7 +13,7 @@ endif()
 macro(mirrage_embed_asset target src_files)
 	string (REPLACE ";" "$<SEMICOLON>" src_files_str "${src_files}")
 
-	add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.zip" "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s"
+	add_custom_command(OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.zip"
 		COMMAND ${CMAKE_COMMAND} -DSRC_FILES=${src_files_str} -DDST_DIR=${CMAKE_CURRENT_BINARY_DIR} -P ${MIRRAGE_ROOT_DIR}/copy_recursive.cmake
 		COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s"
 		DEPENDS ${ARGN}
