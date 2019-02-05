@@ -25,3 +25,6 @@ endif()
 add_subdirectory(dependencies)
 add_subdirectory(src)
 
+if(MSVC)
+	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT demo)
+endif()
