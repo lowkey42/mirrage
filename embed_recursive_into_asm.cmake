@@ -31,3 +31,6 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E tar "cfv" "${DST_DIR}/embedded_asset
 	OUTPUT_QUIET
 )
 
+configure_file(${MIRRAGE_ROOT_DIR}/embedded_assets.s.in "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s")
+execute_process(COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s" OUTPUT_QUIET)
+
