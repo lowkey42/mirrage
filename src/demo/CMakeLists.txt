@@ -56,6 +56,6 @@ if(COMMAND cotire)
 	cotire(demo)
 endif()
 
-if(MSVC)
+if(MSVC_IDE)
 	set_property(TARGET demo PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${MIRRAGE_ROOT_DIR}/assets")
 endif()
