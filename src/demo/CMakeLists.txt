@@ -34,7 +34,7 @@ target_link_libraries(demo
 		doctest
 )
 if (WIN32)
-	if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
+	if(MINGW)
 		target_link_libraries(demo
 			PRIVATE
 				mingw32
