@@ -135,14 +135,14 @@ namespace mirrage::graphic {
 
 	Device::~Device()
 	{
-		wait_idle();
 		backup_caches();
 
+		_device_specific_asset_loaders.reset();
+
+		wait_idle(true);
+
 		print_memory_usage(std::cerr);
-
-		_delete_queue.clear();
 		_memory_allocator.shrink_to_fit();
-
 		print_memory_usage(std::cerr);
 	}
 	void Device::print_memory_usage(std::ostream& log) const
@@ -173,7 +173,11 @@ namespace mirrage::graphic {
 	void Device::backup_caches()
 	{
 		if(_pipeline_cache.ready()) {
-			_assets.save(_pipeline_cache);
+			try {
+				_assets.save(_pipeline_cache);
+			} catch(std::system_error& error) {
+				LOG(plog::error) << "Unable to save pipeline cache: " << error.what();
+			}
 		}
 	}
 

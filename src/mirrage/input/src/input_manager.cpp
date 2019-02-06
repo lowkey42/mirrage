@@ -181,7 +181,7 @@ namespace mirrage::input {
 			_pointer_world_pos[i] = _screen_to_world_coords(_pointer_screen_pos[i]);
 
 		for(auto& gp : _gamepads)
-			if(gp){
+			if(gp) {
 				gp->update(dt);
 			}
 

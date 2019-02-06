@@ -134,10 +134,11 @@ namespace mirrage::graphic {
 
 		auto context() -> auto& { return util::Registered<Device, Context>::parent(); }
 
-		void wait_idle()
+		void wait_idle(bool clear_delete_queue = false)
 		{
 			_device->waitIdle();
-			_delete_queue.clear();
+			if(clear_delete_queue)
+				_delete_queue.clear();
 		}
 
 		auto is_unified_memory_architecture() const noexcept

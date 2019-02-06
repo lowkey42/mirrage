@@ -1,0 +1,9 @@
+    .global ${ID}
+	.global ${ID}_size
+	.section .rodata
+${ID}:
+	.incbin "${DST_DIR}/embedded_assets.zip"
+1:
+${ID}_size:
+	.int 1b - ${ID}
+	

@@ -12,8 +12,8 @@
 #include <vulkan/vulkan.hpp>
 
 #include <functional>
-#include <variant>
 #include <type_traits>
+#include <variant>
 
 
 namespace mirrage {
