@@ -126,7 +126,7 @@ namespace mirrage {
 		if(headless) {
 #ifdef _WIN32
 			// TODO
-			(void) sigIntHandler;
+			(void) (&sigIntHandler);
 #else
 			struct sigaction action;
 			action.sa_handler = sigIntHandler;
