@@ -81,14 +81,14 @@ namespace mirrage::graphic {
 	template <Image_type Type>
 	class Texture : public detail::Base_texture {
 	  protected:
-		Texture(Device& device,
-		             Image_type type,
-		             Image_dimensions sim,
-		             std::int32_t mip_levels,
-		             vk::Format format,
-		             vk::ImageUsageFlags usage,
-		             vk::ImageAspectFlags aspect,
-		        bool dedicated)
+		Texture(Device&              device,
+		        Image_type           type,
+		        Image_dimensions     sim,
+		        std::int32_t         mip_levels,
+		        vk::Format           format,
+		        vk::ImageUsageFlags  usage,
+		        vk::ImageAspectFlags aspect,
+		        bool                 dedicated)
 		  : Base_texture(device, type, sim, mip_levels, format, usage, aspect, dedicated)
 		{
 		}
@@ -115,12 +115,12 @@ namespace mirrage::graphic {
 		        gsl::span<const std::uint8_t> data,
 		        std::uint32_t                 owner_qfamily)
 		  : Base_texture(device,
-		            Type,
-		            dim,
-		            generate_mipmaps,
-		            detail::format_from_channels(device, channels, srgb),
-		            data,
-		            owner_qfamily)
+		                 Type,
+		                 dim,
+		                 generate_mipmaps,
+		                 detail::format_from_channels(device, channels, srgb),
+		                 data,
+		                 owner_qfamily)
 		{
 		}
 	};

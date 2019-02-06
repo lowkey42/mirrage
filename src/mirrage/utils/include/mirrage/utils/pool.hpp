@@ -182,11 +182,11 @@ namespace mirrage::util {
 		/// The current index of the iterator into the pool-storage, as required by pool::get(...)
 		auto physical_index() const noexcept { return _physical_index; }
 
-		value_type& operator*() noexcept { return *get(); }
-		value_type* operator->() noexcept { return get(); }
+		value_type&       operator*() noexcept { return *get(); }
+		value_type*       operator->() noexcept { return get(); }
 		const value_type& operator*() const noexcept { return *get(); }
 		const value_type* operator->() const noexcept { return get(); }
-		const value_type*       get() const noexcept;
+		const value_type* get() const noexcept;
 		value_type*       get() noexcept;
 
 		auto operator++() -> pool_iterator&;

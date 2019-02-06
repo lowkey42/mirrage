@@ -193,7 +193,7 @@ namespace mirrage::util {
 			if constexpr(sizeof...(args) == 1 && std::is_same_v<T, first_arg_type>) {
 				// copy/move construction
 				auto&& first_arg = std::get<0>(std::forward_as_tuple(args...));
-				sort_key = first_arg.*(ValueTraits::sort_key);
+				sort_key         = first_arg.*(ValueTraits::sort_key);
 
 			} else {
 				// normal constructor call
