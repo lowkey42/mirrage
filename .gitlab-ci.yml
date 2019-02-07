@@ -14,6 +14,11 @@ variables:
     key: ${CI_COMMIT_REF_SLUG}-${CI_JOB_NAME}
     paths: *cache-paths
 
+.windows-cache-spec: &windows-cache-spec
+  cache:
+    paths: *cache-paths
+    key: "%CI_COMMIT_REF_SLUG%-%CI_JOB_NAME%-%CI_RUNNER_ID%"
+
 .artifact-spec: &artifact-spec
   artifacts:
     paths:
@@ -26,7 +31,7 @@ variables:
     - cmake -E make_directory build
     - cd build
     - cmake -E remove_directory src
-    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
+    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_ENABLE_COTIRE=OFF -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
     - cmake --build . --target test
 
@@ -61,4 +66,33 @@ build-scanbuild:
     expire_in: 1 week
     when: always
 
+build-mingw:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+  tags:
+    - windows
+  only:
+    variables:
+      - $WINDOWS_CI
+  <<: *build-ninja
+  <<: *windows-cache-spec
+  <<: *artifact-spec
 
+build-msvc:
+  stage: build
+  script:
+    - cmake -E make_directory build
+    - cd build
+    - cmake -E remove_directory src
+    - cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DMIRRAGE_EXPORT_EXECUTABLE=ON -DMIRRAGE_ENABLE_BACKWARD=OFF ..
+    - cmake --build . --config Release -- /m
+    - cmake --build . --config Release --target src/install
+    - cmake --build . --config Release --target test
+  tags:
+    - windows
+  only:
+    variables:
+      - $WINDOWS_CI
+  <<: *windows-cache-spec
+  <<: *artifact-spec
