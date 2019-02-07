@@ -34,7 +34,7 @@ target_link_libraries(demo
 		doctest
 )
 if (WIN32)
-	if(CMAKE_CXX_COMPILER_ID MATCHES GNU)
+	if(MINGW)
 		target_link_libraries(demo
 			PRIVATE
 				mingw32
@@ -56,6 +56,6 @@ if(COMMAND cotire)
 	cotire(demo)
 endif()
 
-if(MSVC)
+if(MSVC_IDE)
 	set_property(TARGET demo PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${MIRRAGE_ROOT_DIR}/assets")
 endif()
