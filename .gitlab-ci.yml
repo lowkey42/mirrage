@@ -19,6 +19,13 @@ variables:
     paths: *cache-paths
     key: "%CI_COMMIT_REF_SLUG%-%CI_JOB_NAME%-%CI_RUNNER_ID%"
 
+.windows-task: &windows-task
+  tags:
+    - windows
+  only:
+    variables:
+      - $WINDOWS_CI
+
 .artifact-spec: &artifact-spec
   artifacts:
     paths:
@@ -76,11 +83,7 @@ build-mingw:
   variables:
     CC: "gcc"
     CXX: "g++"
-  tags:
-    - windows
-  only:
-    variables:
-      - $WINDOWS_CI
+  <<: *windows-task
   <<: *windows-cache-spec
   <<: *artifact-spec
 
@@ -94,10 +97,6 @@ build-msvc:
     - cmake --build . --config Release -- /m
     - cmake --build . --config Release --target src/install
     - cmake --build . --config Release --target test
-  tags:
-    - windows
-  only:
-    variables:
-      - $WINDOWS_CI
+  <<: *windows-task
   <<: *windows-cache-spec
   <<: *artifact-spec
