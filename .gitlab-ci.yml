@@ -5,50 +5,48 @@ stages:
   
 variables:
   GIT_SUBMODULE_STRATEGY: recursive
-  
-build_gcc:
-  stage: build
-  script:
-    - export CC=gcc
-    - export CXX=g++
-    - mkdir -p build
-    - cd build
-    - mkdir -p bin
-    - rm -rf src
-    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
-    - cmake --build . --target src/install
-    - cmake --build . --target test
+
+.cache-paths-spec: &cache-paths
+  - build
+
+.linux-cache-spec: &linux-cache-spec
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}-${CI_JOB_NAME}
+    paths: *cache-paths
+
+.artifact-spec: &artifact-spec
   artifacts:
     paths:
-      - build/bin
+      - mirrage
     expire_in: 1 day
-  cache:
-    key: "gcc_${CI_COMMIT_REF_SLUG}"
-    paths:
-    - build
 
-build_clang:
+.build-ninja: &build-ninja
   stage: build
   script:
-    - export CC=clang
-    - export CXX=clang++
-    - mkdir -p build
+    - cmake -E make_directory build
     - cd build
-    - mkdir -p bin
-    - rm -rf src
-    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../bin -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
+    - cmake -E remove_directory src
+    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
     - cmake --build . --target test
-  artifacts:
-    paths:
-      - build/bin
-    expire_in: 1 week
-  cache:
-    key: "clang_${CI_COMMIT_REF_SLUG}"
-    paths:
-    - build
 
-build_scanbuild:
+build-gcc:
+  variables:
+    CC: "gcc"
+    CXX: "g++"
+  <<: *build-ninja
+  <<: *linux-cache-spec
+  <<: *artifact-spec
+
+build-clang:
+  variables:
+    CC: "clang"
+    CXX: "clang++"
+  <<: *build-ninja
+  <<: *linux-cache-spec
+  <<: *artifact-spec
+
+build-scanbuild:
   stage: build
   script: 
     - export CC=clang
