@@ -62,7 +62,7 @@ build-scanbuild:
   script: 
     - export CC=clang
     - export CXX=clang++
-    - export CMAKE_BUILD_PARALLEL_LEVEL=$(grep -c ^processor /proc/cpuinfo)
+    - export CMAKE_BUILD_PARALLEL_LEVEL=$(nproc --all)
     - echo "Build parallelism:" ${CMAKE_BUILD_PARALLEL_LEVEL}
     - mkdir -p build
     - cd build
