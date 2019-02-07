@@ -25,31 +25,29 @@ variables:
       - mirrage
     expire_in: 1 day
 
-.build-ninja: &build-ninja
+.build-ninja-linux: &build-ninja-linux
   stage: build
   script:
     - cmake -E make_directory build
     - cd build
     - cmake -E remove_directory src
-    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_ENABLE_COTIRE=OFF -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
+    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
     - cmake --build . --target src/install
     - cmake --build . --target test
+  <<: *linux-cache-spec
+  <<: *artifact-spec
 
 build-gcc:
   variables:
     CC: "gcc"
     CXX: "g++"
-  <<: *build-ninja
-  <<: *linux-cache-spec
-  <<: *artifact-spec
+  <<: *build-ninja-linux
 
 build-clang:
   variables:
     CC: "clang"
     CXX: "clang++"
-  <<: *build-ninja
-  <<: *linux-cache-spec
-  <<: *artifact-spec
+  <<: *build-ninja-linux
 
 build-scanbuild:
   stage: build
@@ -67,6 +65,14 @@ build-scanbuild:
     when: always
 
 build-mingw:
+  stage: build
+  script:
+    - cmake -E make_directory build
+    - cd build
+    - cmake -E remove_directory src
+    - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_ENABLE_COTIRE=OFF -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
+    - cmake --build . --target src/install
+    - cmake --build . --target test
   variables:
     CC: "gcc"
     CXX: "g++"
@@ -75,7 +81,6 @@ build-mingw:
   only:
     variables:
       - $WINDOWS_CI
-  <<: *build-ninja
   <<: *windows-cache-spec
   <<: *artifact-spec
 
