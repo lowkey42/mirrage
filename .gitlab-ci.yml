@@ -63,6 +63,7 @@ build-scanbuild:
     - export CC=clang
     - export CXX=clang++
     - export CMAKE_BUILD_PARALLEL_LEVEL=$(grep -c ^processor /proc/cpuinfo)
+    - echo "Build parallelism:" ${CMAKE_BUILD_PARALLEL_LEVEL}
     - mkdir -p build
     - cd build
     - scan-build --use-c++=clang++ --use-cc=clang cmake -DMIRRAGE_FORCE_LIBCPP=ON -DMIRRAGE_ENABLE_COTIRE=OFF -G "Unix Makefiles" ..
