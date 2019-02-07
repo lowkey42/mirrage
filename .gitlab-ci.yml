@@ -96,7 +96,7 @@ build-msvc:
     - cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DMIRRAGE_EXPORT_EXECUTABLE=ON -DMIRRAGE_ENABLE_BACKWARD=OFF ..
     - cmake --build . --config Release -- /m
     - cmake --build . --config Release --target src/install
-    - cmake --build . --config Release --target test
+    - cmake --build . --config Release --target RUN_TESTS
   <<: *windows-task
   <<: *windows-cache-spec
   <<: *artifact-spec
