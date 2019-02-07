@@ -28,6 +28,7 @@ variables:
 
 .artifact-spec: &artifact-spec
   artifacts:
+    name: "mirrage"
     paths:
       - mirrage
     expire_in: 1 day
