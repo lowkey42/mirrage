@@ -164,7 +164,7 @@ namespace mirrage::asset {
 	{
 		char cCurrentPath[FILENAME_MAX];
 
-#ifdef WINDOWS
+#ifdef _WIN32
 		_getcwd(cCurrentPath, sizeof(cCurrentPath));
 #else
 		if(getcwd(cCurrentPath, sizeof(cCurrentPath)) == nullptr) {
