@@ -42,7 +42,7 @@ if (WIN32)
 	endif()
 	target_link_libraries(demo
 		PRIVATE
-			SDL2main
+			mirrage::deps::SDL2main
 	)
 endif()
 

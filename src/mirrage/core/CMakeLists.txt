@@ -45,7 +45,7 @@ target_include_directories(mirrage PUBLIC
 target_link_libraries(mirrage
 	PUBLIC
 		mirrage::utils
-		SDL2-static
+		mirrage::deps::SDL2
 		mirrage::asset
 		mirrage::ecs
 		mirrage::graphic

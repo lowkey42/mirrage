@@ -100,7 +100,7 @@ namespace mirrage::ecs {
 				h.revision(static_cast<uint8_t>(rev & ~Entity_handle::free_rev)); // mark as used
 
 				auto success = true;
-				auto cas     = expected_rev;
+				auto cas     = uint8_t(0);
 				do {
 					cas     = expected_rev;
 					success = rev.compare_exchange_strong(cas, h.revision());

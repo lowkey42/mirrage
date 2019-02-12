@@ -30,7 +30,7 @@ target_link_libraries(mirrage_input
 		gsl
 		glm::glm
 		mirrage::asset
-		SDL2-static
+		mirrage::deps::SDL2
 		sf2
 )
    

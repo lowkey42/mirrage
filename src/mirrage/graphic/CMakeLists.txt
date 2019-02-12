@@ -47,7 +47,7 @@ target_link_libraries(mirrage_graphic
 		gsl
 		mirrage::asset
 		sf2
-		SDL2-static
+		mirrage::deps::SDL2
 		Vulkan::Vulkan
 )
 

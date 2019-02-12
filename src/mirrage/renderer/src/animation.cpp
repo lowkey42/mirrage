@@ -134,18 +134,17 @@ namespace mirrage::renderer {
 
 		void to_dualquat(Final_bone_transform& inout)
 		{
-			// TODO: optimize
-			auto m2 = glm::mat4();
+			auto m2 = glm::mat4(1.f);
 			m2[0]   = inout.lbs[0];
 			m2[1]   = inout.lbs[1];
 			m2[2]   = inout.lbs[2];
-			m2[3]   = glm::vec4(0, 0, 0, 1);
+			m2[3]   = glm::vec4(0.f, 0.f, 0.f, 1.f);
 
-			glm::vec3 scale;
-			glm::quat orientation;
-			glm::vec3 translation;
-			glm::vec3 skew;
-			glm::vec4 perspective;
+			auto scale       = glm::vec3(1.f, 1.f, 1.f);
+			auto orientation = glm::quat(1.f, 0.f, 0.f, 0.f);
+			auto translation = glm::vec3(0.f, 0.f, 0.f);
+			auto skew        = glm::vec3(0.f, 0.f, 0.f);
+			auto perspective = glm::vec4(0.f, 0.f, 0.f, 0.f);
 			glm::decompose(glm::transpose(m2), scale, orientation, translation, skew, perspective);
 
 			inout.dqs.dq    = glm::dualquat(orientation, translation);
