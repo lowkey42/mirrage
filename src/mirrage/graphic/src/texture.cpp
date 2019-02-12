@@ -39,7 +39,7 @@ namespace mirrage::graphic::detail {
 			mipmaps = 9999;
 
 		mipmaps = glm::clamp<std::int32_t>(
-		        mipmaps, 1.f, static_cast<std::int32_t>(std::floor(std::log2(std::min(width, height)))) + 1);
+		        mipmaps, 1, static_cast<std::int32_t>(std::floor(std::log2(std::min(width, height)))) + 1);
 		return mipmaps;
 	}
 

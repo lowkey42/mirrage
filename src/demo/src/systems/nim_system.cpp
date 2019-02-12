@@ -80,9 +80,9 @@ namespace mirrage::systems {
 					state.orientations.emplace_back(iter->second.orientation);
 					state.light_colors.emplace_back(iter->second.light_color);
 				} else if(state.positions.empty()) {
-					state.positions.emplace_back(0, 0, 0);
-					state.orientations.emplace_back(1, 0, 0, 0);
-					state.light_colors.emplace_back(1, 0.938374f, 0.88349f, 100.f);
+					state.positions.emplace_back(0.0f, 0.0f, 0.0f);
+					state.orientations.emplace_back(1.0f, 0.0f, 0.0f, 0.0f);
+					state.light_colors.emplace_back(1.0f, 0.938374f, 0.88349f, 100.f);
 				} else {
 					state.positions.emplace_back(glm::vec3(state.positions.back()));
 					state.orientations.emplace_back(glm::quat(state.orientations.back()));
