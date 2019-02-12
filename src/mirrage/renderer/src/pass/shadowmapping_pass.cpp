@@ -251,7 +251,7 @@ namespace mirrage::renderer {
                 *renderer.gbuffer().shadowmaps, 2, 0, 1, vk::DescriptorType::eSampler, &depth_sampler};
 
 		renderer.device().vk_device()->updateDescriptorSets(
-		        desc_writes.size(), desc_writes.data(), 0, nullptr);
+		        gsl::narrow<uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
 	}
 
 	void Shadowmapping_pass::update(util::Time) {}

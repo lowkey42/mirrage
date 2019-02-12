@@ -149,7 +149,7 @@ namespace mirrage::renderer {
                                                 nullptr,
                                                 &buffer_info};
 
-		device().vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
+		device().vk_device()->updateDescriptorSets(gsl::narrow<uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
 	}
 
 	void Deferred_renderer::update(util::Time dt)

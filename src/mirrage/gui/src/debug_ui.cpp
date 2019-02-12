@@ -153,7 +153,7 @@ namespace mirrage::gui {
 		            "debug_console",
 		            nk_rect(50, 0, float(width), float(_show_suggestions ? height + 14 * 5 : height)),
 		            NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_DYNAMIC)) {
-			nk_layout_row_dynamic(ctx, log_height + 15, 1);
+			nk_layout_row_dynamic(ctx, gsl::narrow<float>(log_height + 15), 1);
 
 			auto max_y_scroll = std::uint32_t(
 			        util::max(log_height, msg_height * debug_console_appender()._messages.size())

@@ -392,8 +392,8 @@ namespace mirrage::graphic {
 	                                         vk::DependencyFlags           flags) -> Render_pass_builder&
 	{
 
-		auto src_id = src.process(VK_SUBPASS_EXTERNAL, [](auto& s) { return s._index; });
-		auto dst_id = dst.process(VK_SUBPASS_EXTERNAL, [](auto& s) { return s._index; });
+		auto src_id = src.process(VK_SUBPASS_EXTERNAL, [](auto& s) { return gsl::narrow<uint32_t>(s._index); });
+		auto dst_id = dst.process(VK_SUBPASS_EXTERNAL, [](auto& s) { return gsl::narrow<uint32_t>(s._index); });
 
 		_dependencies.emplace_back(
 		        src_id, dst_id, srcStageMask, dstStageMask, srcAccessMask, dstAccessMask, flags);

@@ -70,7 +70,7 @@ namespace mirrage::renderer {
                                                 desc_images.data(),
                                                 nullptr};
 
-		device.vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
+		device.vk_device()->updateDescriptorSets(gsl::narrow<uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
 	}
 
 	void Material::bind(graphic::Render_pass& pass) const

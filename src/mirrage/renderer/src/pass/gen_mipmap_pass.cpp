@@ -173,8 +173,8 @@ namespace mirrage::renderer {
 				_mipmap_gen_renderpass.bind_descriptor_sets(0, descriptor_sets);
 
 				auto pcs        = Push_constants{};
-				pcs.arguments.r = i;
-				pcs.arguments.g = _renderer.gbuffer().mip_levels - 1;
+				pcs.arguments.r = gsl::narrow<float>(i);
+				pcs.arguments.g = gsl::narrow<float>(_renderer.gbuffer().mip_levels - 1);
 
 				_mipmap_gen_renderpass.push_constant("pcs"_strid, pcs);
 

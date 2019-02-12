@@ -632,7 +632,7 @@ namespace mirrage::graphic {
 				                   << ". Collapsed with previous queue!";
 			}
 
-			queue_mapping.emplace(tag, std::make_tuple(family, std::get<1>(entry).size() - 1));
+			queue_mapping.emplace(tag, std::make_tuple(family, gsl::narrow<uint32_t>(std::get<1>(entry).size() - 1)));
 		}
 
 		auto used_queues = std::vector<vk::DeviceQueueCreateInfo>{};

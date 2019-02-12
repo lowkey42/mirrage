@@ -354,7 +354,7 @@ namespace mirrage {
 			                                                  "Cornell Box"}};
 			_set_preset(nk_combo(ctx,
 			                     preset_options.data(),
-			                     preset_options.size(),
+			                     gsl::narrow<int>(preset_options.size()),
 			                     _selected_preset,
 			                     14,
 			                     nk_vec2(100.f, 200)));

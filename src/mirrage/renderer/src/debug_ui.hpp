@@ -102,14 +102,14 @@ namespace mirrage::renderer {
 #endif
 
 				constexpr auto rows = std::array<float, 5>{{0.4f, 0.15f, 0.15f, 0.15f, 0.15f}};
-				nk_layout_row(ctx, NK_DYNAMIC, 25, rows.size(), rows.data());
+				nk_layout_row(ctx, NK_DYNAMIC, 25, gsl::narrow<int>(rows.size()), rows.data());
 				nk_label(ctx, "RenderPass", NK_TEXT_CENTERED);
 				nk_label(ctx, "Curr (ms)", NK_TEXT_CENTERED);
 				nk_label(ctx, "Min (ms)", NK_TEXT_CENTERED);
 				nk_label(ctx, "Avg (ms)", NK_TEXT_CENTERED);
 				nk_label(ctx, "Max (ms)", NK_TEXT_CENTERED);
 
-				nk_layout_row(ctx, NK_DYNAMIC, 10, rows.size(), rows.data());
+				nk_layout_row(ctx, NK_DYNAMIC, 10, gsl::narrow<int>(rows.size()), rows.data());
 
 
 				auto print_entry = [&](auto&&                          printer,

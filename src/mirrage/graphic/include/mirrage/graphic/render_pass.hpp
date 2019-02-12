@@ -76,7 +76,7 @@ namespace mirrage::graphic {
 				binding = gsl::narrow<int>(vertex_bindings.size());
 
 			vertex_bindings.emplace_back(binding,
-			                             sizeof(T),
+			                             gsl::narrow<uint32_t>(sizeof(T)),
 			                             per_instance_data ? vk::VertexInputRate::eInstance
 			                                               : vk::VertexInputRate::eVertex);
 
@@ -384,91 +384,91 @@ namespace mirrage::graphic {
 	                                                               int         location,
 	                                                               std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32Sfloat, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32Sfloat, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<std::int32_t>(int         binding,
 	                                                                      int         location,
 	                                                                      std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32Sint, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32Sint, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<std::uint32_t>(int         binding,
 	                                                                       int         location,
 	                                                                       std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32Uint, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32Uint, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::vec2>(int         binding,
 	                                                                   int         location,
 	                                                                   std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32Sfloat, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32Sfloat, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::ivec2>(int         binding,
 	                                                                    int         location,
 	                                                                    std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32Sint, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32Sint, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::uvec2>(int         binding,
 	                                                                    int         location,
 	                                                                    std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32Uint, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32Uint, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::vec3>(int         binding,
 	                                                                   int         location,
 	                                                                   std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32Sfloat, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32Sfloat, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::ivec3>(int         binding,
 	                                                                    int         location,
 	                                                                    std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32Sint, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32Sint, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::uvec3>(int         binding,
 	                                                                    int         location,
 	                                                                    std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32Uint, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32Uint, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::vec4>(int         binding,
 	                                                                   int         location,
 	                                                                   std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32A32Sfloat, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32A32Sfloat, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::ivec4>(int         binding,
 	                                                                    int         location,
 	                                                                    std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32A32Sint, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32A32Sint, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<glm::uvec4>(int         binding,
 	                                                                    int         location,
 	                                                                    std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32A32Uint, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR32G32B32A32Uint, gsl::narrow<uint32_t>(offset));
 	}
 	template <>
 	inline void Pipeline_description::add_vertex_attributes<std::uint8_t (&)[4]>(int         binding,
 	                                                                             int         location,
 	                                                                             std::size_t offset)
 	{
-		vertex_attributes.emplace_back(location, binding, vk::Format::eR8G8B8A8Unorm, offset);
+		vertex_attributes.emplace_back(location, binding, vk::Format::eR8G8B8A8Unorm, gsl::narrow<uint32_t>(offset));
 	}
 } // namespace mirrage::graphic
 
