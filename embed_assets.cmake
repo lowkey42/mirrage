@@ -6,7 +6,7 @@ macro(mirrage_embed_asset target src_files)
 
 	set(ID "mirrage_embedded_asset_${target}")
 	if(MSVC)
-		set(EMBED_SRC_FILE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.rc")
+		set(EMBED_SRC_FILE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets_${target}.rc")
 		set(EMBED_MODE "MSVC")
 	elseif(APPLE)
 		set(EMBED_SRC_FILE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.s")
@@ -17,7 +17,7 @@ macro(mirrage_embed_asset target src_files)
 	endif()
 	
 	add_custom_command(OUTPUT ${EMBED_SRC_FILE}
-		COMMAND ${CMAKE_COMMAND} -DMIRRAGE_ROOT_DIR=${MIRRAGE_ROOT_DIR} -DEMBED_MODE=${EMBED_MODE} -DID=${ID} -DSRC_FILES=${src_files_str} -DDST_DIR=${CMAKE_CURRENT_BINARY_DIR} -P ${MIRRAGE_ROOT_DIR}/embed_recursive_into_asm.cmake
+		COMMAND ${CMAKE_COMMAND} -DMIRRAGE_ROOT_DIR=${MIRRAGE_ROOT_DIR} -DEMBED_MODE=${EMBED_MODE} -DID=${ID} -DSRC_FILES=${src_files_str} -DDST_DIR=${CMAKE_CURRENT_BINARY_DIR} -DEMBED_SRC_FILE=${EMBED_SRC_FILE} -P ${MIRRAGE_ROOT_DIR}/embed_recursive_into_asm.cmake
 		DEPENDS ${ARGN}
 		VERBATIM
 	)
@@ -64,9 +64,15 @@ void ref_embedded_assets_${target}() {
 }
 ")
 
-	target_sources(${target} PRIVATE ${EMBED_SRC_FILE})
+	if(NOT MSVC)
+		target_sources(${target} PRIVATE ${EMBED_SRC_FILE})
+	endif()
 	target_sources(${target} PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.cpp")
 	add_custom_target(mirrage_embedded_assets_${target} DEPENDS ${EMBED_SRC_FILE})
 	add_dependencies(${target} mirrage_embedded_assets_${target})
+	if(MSVC)
+		add_library(mirrage_embedded_assets_obj_${target} OBJECT "${EMBED_SRC_FILE}")
+		target_link_libraries(${target} PUBLIC $<TARGET_OBJECTS:mirrage_embedded_assets_obj_${target}>)
+	endif()
 endmacro()
 

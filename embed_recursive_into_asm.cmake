@@ -33,8 +33,8 @@ execute_process(COMMAND ${CMAKE_COMMAND} -E tar "cfv" "${DST_DIR}/embedded_asset
 
 if("${EMBED_MODE} " STREQUAL "MSVC ")
 	string(TOUPPER "${ID}" RES_ID)
-	configure_file(${MIRRAGE_ROOT_DIR}/embedded_assets.rc.in "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.rc")
-	execute_process(COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_CURRENT_BINARY_DIR}/embedded_assets.rc" OUTPUT_QUIET)
+	configure_file(${MIRRAGE_ROOT_DIR}/embedded_assets.rc.in "${EMBED_SRC_FILE}")
+	execute_process(COMMAND ${CMAKE_COMMAND} -E touch "${EMBED_SRC_FILE}" OUTPUT_QUIET)
 else()
 	if("${EMBED_MODE} " STREQUAL "APPLE ")
 		set(SECTION ".const_data")
