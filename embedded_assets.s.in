@@ -1,6 +1,7 @@
     .global ${ID}
 	.global ${ID}_size
-	.section .rodata
+	${SECTION}
+	.align ${CMAKE_SIZEOF_VOID_P}
 ${ID}:
 	.incbin "${DST_DIR}/embedded_assets.zip"
 1:
