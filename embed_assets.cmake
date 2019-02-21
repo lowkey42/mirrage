@@ -28,10 +28,15 @@ macro(mirrage_embed_asset target src_files)
 		string(TOUPPER "${ID}" RES_ID)
 		set(PLATFORM_EMBED_SRC
 "#include <windows.h>
+#include <stdexcept>
 
 static auto create_asset() -> mirrage::asset::Embedded_asset {
 	auto handle = GetModuleHandle(NULL);
 	auto res = FindResource(handle, \"${RES_ID}\", RT_RCDATA);
+
+	if(!res){
+		throw std::runtime_error(\"Couldn't find ressource ${RES_ID}.\");
+	}
 
 	return mirrage::asset::Embedded_asset(\"${target}\",
 		gsl::span<const gsl::byte>{reinterpret_cast<const gsl::byte*>(LockResource(LoadResource(handle, res))),
