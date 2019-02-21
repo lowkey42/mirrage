@@ -77,7 +77,8 @@ void ref_embedded_assets_${target}() {
 	add_dependencies(${target} mirrage_embedded_assets_${target})
 	if(MSVC)
 		add_library(mirrage_embedded_assets_obj_${target} OBJECT "${EMBED_SRC_FILE}")
-		target_link_libraries(${target} PUBLIC $<TARGET_OBJECTS:mirrage_embedded_assets_obj_${target}>)
+		target_link_libraries(${target} INTERFACE $<TARGET_OBJECTS:mirrage_embedded_assets_obj_${target}>)
+		add_dependencies(mirrage_embedded_assets_obj_${target} mirrage_embedded_assets_${target})
 	endif()
 endmacro()
 
