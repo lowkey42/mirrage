@@ -72,7 +72,11 @@ target_include_directories(enet PUBLIC
 	$<INSTALL_INTERFACE:include>)
 
 if(WIN32)
-    target_link_libraries(enet winmm ws2_32)
+    target_link_libraries(enet PUBLIC winmm ws2_32)
+endif()
+
+if(MSVC)
+	target_compile_definitions(enet PRIVATE _WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 install(TARGETS enet EXPORT enetTargets
