@@ -73,14 +73,23 @@ int main(int argc, char** argv, char** env)
 namespace {
 	constexpr auto org_name = "secondsystem";
 	constexpr auto app_name = "Mirrage";
-	int            argc;
-	char**         argv;
-	char**         env;
+	auto           base_dir() -> util::maybe<std::string>
+	{
+#ifndef NDEBUG
+		return mirrage::version_info::engine_root + "/assets";
+#else
+		return util::nothing;
+#endif
+	}
+
+	int    argc;
+	char** argv;
+	char** env;
 
 
 	void init_env(int argc, char** argv, char** env)
 	{
-		auto write_dir = asset::write_dir(argv[0], org_name, app_name);
+		auto write_dir = asset::write_dir(argv[0], org_name, app_name, base_dir());
 
 		static auto fileAppender = plog::RollingFileAppender<plog::TxtFormatter>(
 		        (write_dir + "/mirrage.log").c_str(), 1024L * 1024L, 4);
@@ -95,6 +104,7 @@ namespace {
 		::env  = env;
 
 		LOG(plog::debug) << "Game started from: " << argv[0] << "\n"
+		                 << "Base dir: " << base_dir().get_ref_or("<NONE>") << "\n"
 		                 << "Working dir: " << asset::pwd() << "\n"
 		                 << "Write dir: " << write_dir << "\n"
 		                 << "Version: " << version_info::name << "\n"
@@ -120,7 +130,7 @@ namespace {
 		}
 
 
-		engine = std::make_unique<Game_engine>(org_name, app_name, 0, 1, debug, argc, argv, env);
+		engine = std::make_unique<Game_engine>(org_name, app_name, base_dir(), 0, 1, debug, argc, argv, env);
 
 		global_commands = std::make_unique<util::Console_command_container>();
 		global_commands->add("screen.leave <count> | Pops the top <count> screens",

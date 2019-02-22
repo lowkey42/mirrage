@@ -15,4 +15,6 @@ namespace mirrage::version_info {
 	extern const std::string hash;
 	extern const std::string date;
 	extern const std::string subject;
+	extern const std::string project_root;
+	extern const std::string engine_root;
 } // namespace mirrage::version_info

@@ -44,9 +44,10 @@ namespace mirrage::asset {
 	}
 
 	extern std::string pwd();
-	extern std::string write_dir(const std::string& exe_name,
-	                             const std::string& org_name,
-	                             const std::string& app_name);
+	extern std::string write_dir(const std::string&       exe_name,
+	                             const std::string&       org_name,
+	                             const std::string&       app_name,
+	                             util::maybe<std::string> additional_search_path);
 
 
 	template <class R>
@@ -134,7 +135,10 @@ namespace mirrage::asset {
 
 	class Asset_manager {
 	  public:
-		Asset_manager(const std::string& exe_name, const std::string& org_name, const std::string& app_name);
+		Asset_manager(const std::string&       exe_name,
+		              const std::string&       org_name,
+		              const std::string&       app_name,
+		              util::maybe<std::string> additional_search_path);
 		~Asset_manager();
 
 		void reload();

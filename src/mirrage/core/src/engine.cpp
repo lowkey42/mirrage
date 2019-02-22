@@ -84,17 +84,18 @@ namespace mirrage {
 	Engine::Sdl_wrapper::~Sdl_wrapper() { SDL_Quit(); }
 
 
-	Engine::Engine(const std::string& org,
-	               const std::string& title,
-	               std::uint32_t      version_major,
-	               std::uint32_t      version_minor,
-	               bool               debug,
-	               bool               headless,
-	               int                argc,
-	               char**             argv,
+	Engine::Engine(const std::string&       org,
+	               const std::string&       title,
+	               util::maybe<std::string> base_dir,
+	               std::uint32_t            version_major,
+	               std::uint32_t            version_minor,
+	               bool                     debug,
+	               bool                     headless,
+	               int                      argc,
+	               char**                   argv,
 	               char**)
 	  : _screens(*this)
-	  , _asset_manager(std::make_unique<asset::Asset_manager>(argc > 0 ? argv[0] : "", org, title))
+	  , _asset_manager(std::make_unique<asset::Asset_manager>(argc > 0 ? argv[0] : "", org, title, base_dir))
 	  , _translator(std::make_unique<Translator>(*_asset_manager))
 	  , _sdl(headless)
 	  , _graphics_context(headless ? std::unique_ptr<graphic::Context>()

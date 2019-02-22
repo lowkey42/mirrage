@@ -19,15 +19,16 @@
 
 namespace mirrage {
 
-	Game_engine::Game_engine(const std::string& org,
-	                         const std::string& title,
-	                         std::uint32_t      version_major,
-	                         std::uint32_t      version_minor,
-	                         bool               debug,
-	                         int                argc,
-	                         char**             argv,
-	                         char**             env)
-	  : Engine(org, title, version_major, version_minor, debug, false, argc, argv, env)
+	Game_engine::Game_engine(const std::string&       org,
+	                         const std::string&       title,
+	                         util::maybe<std::string> base_dir,
+	                         std::uint32_t            version_major,
+	                         std::uint32_t            version_minor,
+	                         bool                     debug,
+	                         int                      argc,
+	                         char**                   argv,
+	                         char**                   env)
+	  : Engine(org, title, std::move(base_dir), version_major, version_minor, debug, false, argc, argv, env)
 	  , _debug_ui(assets(), gui(), bus())
 	  , _renderer_factory(std::make_unique<renderer::Deferred_renderer_factory>(
 	            *this,
