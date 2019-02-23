@@ -1,6 +1,6 @@
     .global ${ID}
 	.global ${ID}_size
-	.section .rodata
+	${SECTION}
 ${ID}:
 	.incbin "${DST_DIR}/embedded_assets.zip"
 1:

@@ -25,8 +25,13 @@ cfg:console_history = console_history.txt
 font: = fonts/
 font:default_font = fonts/default_font.ttf
 ")
-mirrage_embed_asset(mirrage_gui "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_gui.map;${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts"
-	"${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_gui.map")
+mirrage_embed_asset(TARGET mirrage_gui
+					EXPORT mirrage_gui_targets
+					SOURCES
+						"${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_gui.map"
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/fonts"
+					DEPENDS
+						"${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_gui.map")
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_gui PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})

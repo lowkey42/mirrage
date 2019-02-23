@@ -75,13 +75,17 @@ add_library(mirrage_renderer STATIC
 add_library(mirrage::renderer ALIAS mirrage_renderer)
 target_compile_features(mirrage_renderer PUBLIC cxx_std_17)
 
-set(EMBEDDED_ASSETS
-	"${CMAKE_CURRENT_BINARY_DIR}/shader"
-	"${CMAKE_CURRENT_SOURCE_DIR}/assets/textures"
-	"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_shader.map"
-	"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_textures.map"
-)
-mirrage_embed_asset(mirrage_renderer "${EMBEDDED_ASSETS}" ${SPIRV_BINARY_FILES})
+mirrage_embed_asset(TARGET mirrage_renderer
+					EXPORT mirrage_renderer_targets
+					SOURCES
+						"${CMAKE_CURRENT_BINARY_DIR}/shader"
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/textures"
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_shader.map"
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_textures.map"
+					DEPENDS
+						${SPIRV_BINARY_FILES}
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_shader.map"
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_textures.map")
 
 option(MIRRAGE_HISTOGRAM_DEBUG_VIEW "Enable debug view for tone mapping pass" OFF)
 if(MIRRAGE_HISTOGRAM_DEBUG_VIEW)
