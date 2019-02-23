@@ -32,7 +32,10 @@ cfg:gui = settings/gui.json
 loc: = loc/
 pl_cache: = pipeline_caches
 ")
-mirrage_embed_asset(TARGET mirrage EXPORT mirrage_targets SOURCES "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map")
+mirrage_embed_asset(TARGET mirrage
+					EXPORT mirrage_targets
+					SOURCES "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map"
+					DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map")
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})

@@ -83,7 +83,9 @@ mirrage_embed_asset(TARGET mirrage_renderer
 						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_shader.map"
 						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_textures.map"
 					DEPENDS
-						${SPIRV_BINARY_FILES})
+						${SPIRV_BINARY_FILES}
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_shader.map"
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_textures.map")
 
 option(MIRRAGE_HISTOGRAM_DEBUG_VIEW "Enable debug view for tone mapping pass" OFF)
 if(MIRRAGE_HISTOGRAM_DEBUG_VIEW)
