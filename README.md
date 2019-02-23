@@ -29,6 +29,7 @@ Required:
 
 Included in this repository:
 - Assimp 3.3.1 (only for mesh-converter)
+- crunch (only for mesh-converter): "Crunch Library Copyright (c) 2010-2016 Richard Geldreich, Jr., Tenacious Software, and Binomial LLC"
 - glm
 - gsl
 - moodycamel

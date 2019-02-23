@@ -1,5 +1,7 @@
 {
     "substance_id": "alphatest",
     "albedo_aid": "sponza_leaf_albedo.ktx",
-    "mat_data_aid": "sponza_leaf_mat_data.ktx"
+    "normal_aid": "sponza_leaf_normal.ktx",
+    "brdf_aid": "sponza_leaf_brdf.ktx",
+    "emission_aid": ""
 }

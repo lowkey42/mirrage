@@ -21,12 +21,13 @@ namespace mirrage::renderer {
 	struct Material_data {
 		util::Str_id substance_id = "default"_strid;
 		std::string  albedo_aid;
-		std::string  mat_data_aid;  // RG: normal, B:roughness, A:metallic
-		std::string  mat_data2_aid; // R:emissive intensity
+		std::string  normal_aid;   // RG: normal
+		std::string  brdf_aid;     // R:roughness, G:metallic
+		std::string  emission_aid; // R:emissive intensity
 	};
 
 #ifdef sf2_structDef
-	sf2_structDef(Material_data, substance_id, albedo_aid, mat_data_aid, mat_data2_aid);
+	sf2_structDef(Material_data, substance_id, albedo_aid, normal_aid, brdf_aid, emission_aid);
 #endif
 
 
@@ -37,19 +38,24 @@ namespace mirrage::renderer {
 		         graphic::DescriptorSet,
 		         vk::Sampler,
 		         graphic::Texture_ptr albedo,
-		         graphic::Texture_ptr mat_data,
-		         graphic::Texture_ptr mat_data2,
+		         graphic::Texture_ptr normal,
+		         graphic::Texture_ptr brdf,
+		         graphic::Texture_ptr emission,
+		         bool                 emissive,
 		         util::Str_id         substance_id);
 
 		void bind(graphic::Render_pass& pass) const;
 
 		auto substance_id() const noexcept { return _substance_id; }
+		auto emissive() const noexcept { return _emissive; }
 
 	  private:
 		graphic::DescriptorSet _descriptor_set;
 		graphic::Texture_ptr   _albedo;
-		graphic::Texture_ptr   _mat_data;
-		graphic::Texture_ptr   _mat_data2;
+		graphic::Texture_ptr   _normal;
+		graphic::Texture_ptr   _brdf;
+		graphic::Texture_ptr   _emission;
+		bool                   _emissive;
 		util::Str_id           _substance_id;
 	};
 	using Material_ptr = asset::Ptr<Material>;

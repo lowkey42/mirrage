@@ -113,10 +113,17 @@ namespace mirrage::graphic::detail {
 	            format,
 	            generate_mipmaps ? 0 : 1,
 	            gsl::narrow<std::int32_t>(data.size_bytes() + 4),
-	            [&](char* dest) {
-		            new(dest) std::uint32_t(gsl::narrow<std::uint32_t>(data.size_bytes()));
-		            dest += 4;
-		            std::memcpy(dest, data.data(), gsl::narrow<std::uint32_t>(data.size_bytes()));
+	            [&, idx = std::uint32_t(0)](char* dest, std::uint32_t size) mutable {
+		            if(idx == 0) {
+			            MIRRAGE_INVARIANT(size >= 4, "unexpected read of less than 4 byte");
+			            new(dest) std::uint32_t(gsl::narrow<std::uint32_t>(data.size_bytes()));
+			            dest += 4;
+			            idx += 4;
+			            size -= 4;
+		            }
+		            if(size >= 4) {
+			            std::memcpy(dest, data.data() + (idx - 4), size);
+		            }
 	            }))
 	  , _image_view(device.create_image_view(
 	            image(), format, 0, gsl::narrow<std::uint32_t>(_image.mip_level_count())))
@@ -155,13 +162,14 @@ namespace mirrage::graphic::detail {
 		                                   gsl::narrow<std::int32_t>(header.depth),
 		                                   gsl::narrow<std::int32_t>(header.layers));
 
-		auto image = device.transfer().upload_image(vk_type(header.type),
-		                                            owner_qfamily,
-		                                            dimensions,
-		                                            header.format,
-		                                            gsl::narrow<std::int32_t>(header.mip_levels),
-		                                            gsl::narrow<std::int32_t>(header.size),
-		                                            [&](char* dest) { in.read_direct(dest, header.size); });
+		auto image = device.transfer().upload_image(
+		        vk_type(header.type),
+		        owner_qfamily,
+		        dimensions,
+		        header.format,
+		        gsl::narrow<std::int32_t>(header.mip_levels),
+		        gsl::narrow<std::int32_t>(header.size),
+		        [&](char* dest, std::uint32_t size) { in.read_direct(dest, size); });
 
 		return {std::move(image), header.format, header.type};
 	}

@@ -1,0 +1,7 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "cornell_leftwall_albedo.ktx",
+    "normal_aid": "cornell_leftwall_normal.ktx",
+    "brdf_aid": "cornell_leftwall_brdf.ktx",
+    "emission_aid": ""
+}

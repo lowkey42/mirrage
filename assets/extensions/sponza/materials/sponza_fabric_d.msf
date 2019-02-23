@@ -1,5 +1,7 @@
 {
     "substance_id": "default",
     "albedo_aid": "sponza_fabric_d_albedo.ktx",
-    "mat_data_aid": "sponza_fabric_d_mat_data.ktx"
+    "normal_aid": "sponza_fabric_d_normal.ktx",
+    "brdf_aid": "sponza_fabric_d_brdf.ktx",
+    "emission_aid": ""
 }

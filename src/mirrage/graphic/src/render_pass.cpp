@@ -324,21 +324,23 @@ namespace mirrage::graphic {
 		        vk::AttachmentReference{attachment_idx, vk::ImageLayout::eDepthStencilAttachmentOptimal};
 		return *this;
 	}
-	auto Subpass_builder::preserve_attachment(Attachment_ref) -> Subpass_builder&
+	auto Subpass_builder::preserve_attachment(Attachment_ref attachment) -> Subpass_builder&
 	{
-		// TODO
-		MIRRAGE_FAIL("TODO");
+		auto attachment_idx = gsl::narrow_cast<uint32_t>(reinterpret_cast<std::intptr_t>(attachment));
+		_preserve_attachments.emplace_back(attachment_idx);
+
 		return *this;
 	}
 
 	auto Subpass_builder::build_description() -> vk::SubpassDescription
 	{
-		auto desc                 = vk::SubpassDescription{};
-		desc.colorAttachmentCount = gsl::narrow<std::uint32_t>(_color_attachments.size());
-		desc.pColorAttachments    = _color_attachments.data();
-		desc.inputAttachmentCount = gsl::narrow<std::uint32_t>(_input_attachments.size());
-		desc.pInputAttachments    = _input_attachments.data();
-		// TODO: preserve attachments
+		auto desc                    = vk::SubpassDescription{};
+		desc.colorAttachmentCount    = gsl::narrow<std::uint32_t>(_color_attachments.size());
+		desc.pColorAttachments       = _color_attachments.data();
+		desc.inputAttachmentCount    = gsl::narrow<std::uint32_t>(_input_attachments.size());
+		desc.pInputAttachments       = _input_attachments.data();
+		desc.preserveAttachmentCount = gsl::narrow<std::uint32_t>(_preserve_attachments.size());
+		desc.pPreserveAttachments    = _preserve_attachments.data();
 		_depth_stencil_attachment.process([&](auto& a) { desc.pDepthStencilAttachment = &a; });
 
 		return desc;
@@ -392,8 +394,10 @@ namespace mirrage::graphic {
 	                                         vk::DependencyFlags           flags) -> Render_pass_builder&
 	{
 
-		auto src_id = src.process(VK_SUBPASS_EXTERNAL, [](auto& s) { return gsl::narrow<uint32_t>(s._index); });
-		auto dst_id = dst.process(VK_SUBPASS_EXTERNAL, [](auto& s) { return gsl::narrow<uint32_t>(s._index); });
+		auto src_id =
+		        src.process(VK_SUBPASS_EXTERNAL, [](auto& s) { return gsl::narrow<uint32_t>(s._index); });
+		auto dst_id =
+		        dst.process(VK_SUBPASS_EXTERNAL, [](auto& s) { return gsl::narrow<uint32_t>(s._index); });
 
 		_dependencies.emplace_back(
 		        src_id, dst_id, srcStageMask, dstStageMask, srcAccessMask, dstAccessMask, flags);

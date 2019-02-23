@@ -36,12 +36,19 @@ namespace mirrage::renderer {
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 
-		pass.stage("emissive"_strid)
+		pass.stage("alphatest"_strid)
+		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
+	}
+	void Deferred_geometry_subpass::configure_emissive_subpass(Deferred_renderer&,
+	                                                           graphic::Subpass_builder& pass)
+	{
+		pass.stage("default"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("alphatest"_strid)
-		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
+		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 	}
 
@@ -65,15 +72,11 @@ namespace mirrage::renderer {
 		                              4,
 		                              &Model_rigged_vertex::bone_weights);
 	}
-	void Deferred_geometry_subpass::configure_animation_subpass(Deferred_renderer&        renderer,
+	void Deferred_geometry_subpass::configure_animation_subpass(Deferred_renderer&,
 	                                                            graphic::Subpass_builder& pass)
 	{
 		pass.stage("default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
-
-		pass.stage("emissive"_strid)
-		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("alphatest"_strid)
@@ -85,12 +88,28 @@ namespace mirrage::renderer {
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
 
-		pass.stage("dq_emissive"_strid)
+		pass.stage("dq_alphatest"_strid)
+		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+	}
+	void Deferred_geometry_subpass::configure_animation_emissive_subpass(Deferred_renderer&,
+	                                                                     graphic::Subpass_builder& pass)
+	{
+		pass.stage("default"_strid)
+		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
+
+		pass.stage("alphatest"_strid)
+		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
+
+
+		pass.stage("dq_default"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("dq_alphatest"_strid)
-		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
+		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
 	}
 
@@ -118,7 +137,7 @@ namespace mirrage::renderer {
 		auto last_material     = static_cast<const Material*>(nullptr);
 		auto last_model        = static_cast<const Model*>(nullptr);
 
-		auto prepare_draw = [&](auto& geo) {
+		auto prepare_draw = [&](auto& geo, bool emissive) {
 			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
 
 			if(geo.substance_id != last_substance_id) {
@@ -140,7 +159,7 @@ namespace mirrage::renderer {
 			dpc.model[3] = glm::vec4(geo.position, 1.f);
 			dpc.model    = _renderer.global_uniforms().view_mat * dpc.model;
 
-			if(sub_mesh.material->substance_id() == "emissive"_strid) {
+			if(emissive) {
 				auto emissive_color = glm::vec4(1, 1, 1, 1000);
 
 				if(auto entity = _ecs.get(geo.entity); entity.is_some()) {
@@ -154,34 +173,50 @@ namespace mirrage::renderer {
 		};
 
 
-		for(auto& geo : _geometry_range) {
-			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
-			prepare_draw(geo);
+		// draw all static models
+		for(auto emissive_pass : {false, true}) {
+			for(auto& geo : _geometry_range) {
+				auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
+				if(emissive_pass && !sub_mesh.material->emissive())
+					continue;
 
-			render_pass.push_constant("dpc"_strid, dpc);
+				prepare_draw(geo, emissive_pass);
+				render_pass.push_constant("dpc"_strid, dpc);
+				frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+			}
 
-			frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+			render_pass.next_subpass();
+			last_substance_id = ""_strid;
+			last_material     = static_cast<const Material*>(nullptr);
+			last_model        = static_cast<const Model*>(nullptr);
 		}
 
 		// draw all animated models in a new subpass
-		render_pass.next_subpass();
-		last_substance_id = ""_strid;
-		last_material     = static_cast<const Material*>(nullptr);
-		last_model        = static_cast<const Model*>(nullptr);
+		for(auto emissive_pass : {false, true}) {
+			for(auto& geo : _rigged_geometry_range) {
+				if(geo.animation_uniform_offset.is_nothing())
+					continue;
 
-		for(auto& geo : _rigged_geometry_range) {
-			if(geo.animation_uniform_offset.is_nothing())
-				continue;
+				auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
+				if(emissive_pass && !sub_mesh.material->emissive())
+					continue;
 
-			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
-			prepare_draw(geo);
+				prepare_draw(geo, emissive_pass);
 
-			render_pass.push_constant("dpc"_strid, dpc);
+				render_pass.push_constant("dpc"_strid, dpc);
 
-			auto uniform_offset = geo.animation_uniform_offset.get_or_throw();
-			render_pass.bind_descriptor_set(2, _renderer.gbuffer().animation_data, {&uniform_offset, 1u});
+				auto uniform_offset = geo.animation_uniform_offset.get_or_throw();
+				render_pass.bind_descriptor_set(2, _renderer.gbuffer().animation_data, {&uniform_offset, 1u});
 
-			frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+				frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+			}
+
+			if(!emissive_pass) {
+				render_pass.next_subpass();
+				last_substance_id = ""_strid;
+				last_material     = static_cast<const Material*>(nullptr);
+				last_model        = static_cast<const Model*>(nullptr);
+			}
 		}
 	}
 } // namespace mirrage::renderer

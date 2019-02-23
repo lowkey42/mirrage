@@ -1,5 +1,7 @@
 {
-    "substance_id": "emissive",
+    "substance_id": "alphatest",
     "albedo_aid": "cornell_light_albedo.ktx",
-    "mat_data2_aid": "cornell_light_mat_data2.ktx"
+    "normal_aid": "cornell_light_normal.ktx",
+    "brdf_aid": "cornell_light_brdf.ktx",
+    "emission_aid": "cornell_light_emission.ktx"
 }

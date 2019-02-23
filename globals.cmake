@@ -91,6 +91,11 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR MIRRAGE_FORCE_LIBCPP)
 	endif()
 endif()
 
+option(MIRRAGE_OPTIMIZE_NATIVE "Enable -march=native" OFF)
+if(${MIRRAGE_OPTIMIZE_NATIVE})
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+endif()
+
 option(MIRRAGE_ENABLE_COTIRE "Enable cotire" ON)
 if(MIRRAGE_ENABLE_COTIRE)
 	include(cotire OPTIONAL)

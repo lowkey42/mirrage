@@ -8,6 +8,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <sf2/sf2.hpp>
 
+#include <atomic>
 #include <iostream>
 #include <string>
 #include <type_traits>
@@ -16,6 +17,9 @@
 
 
 namespace mirrage {
+
+	extern std::atomic<std::size_t> parallel_tasks_started;
+	extern std::atomic<std::size_t> parallel_tasks_done;
 
 	sf2_enum(Texture_type, albedo, metalness, roughness, normal, emission);
 

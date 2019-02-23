@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_mesh_converter LANGUAGES CXX)
 
-
 add_executable(mesh_converter
 	animation_parser.cpp
 	animation_parser.hpp
+	common.cpp
 	common.hpp
 	filesystem.cpp
 	filesystem.hpp
@@ -32,5 +32,6 @@ target_link_libraries(mesh_converter
 		sf2
 		stb_image
 		doctest
+		crunch::crunch
+		Async++
 )
-

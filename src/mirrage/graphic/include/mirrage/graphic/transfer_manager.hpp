@@ -183,10 +183,10 @@ namespace mirrage::graphic {
 		                  std::uint32_t owner,
 		                  const Image_dimensions&,
 		                  vk::Format,
-		                  std::int32_t               mip_levels,
-		                  std::int32_t               size,
-		                  std::function<void(char*)> write_data,
-		                  bool                       dedicated = false) -> Static_image;
+		                  std::int32_t                              mip_levels,
+		                  std::int32_t                              size,
+		                  std::function<void(char*, std::uint32_t)> write_data,
+		                  bool                                      dedicated = false) -> Static_image;
 
 		auto upload_buffer(vk::BufferUsageFlags  usage,
 		                   std::uint32_t         owner,

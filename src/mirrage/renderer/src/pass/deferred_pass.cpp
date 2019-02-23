@@ -123,10 +123,23 @@ namespace mirrage::renderer {
 			                              .color_attachment(depth_sampleable)
 			                              .color_attachment(albedo_mat_id)
 			                              .color_attachment(mat_data)
-			                              .color_attachment(color)
-			                              .color_attachment(color_diffuse)
+			                              .preserve_attachment(color)
+			                              .preserve_attachment(color_diffuse)
 			                              .depth_stencil_attachment(depth);
 			gpass.configure_subpass(renderer, geometry_pass);
+
+			auto geometry_emissive_pipeline          = pipeline;
+			geometry_emissive_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
+			        vk::PipelineDepthStencilStateCreateFlags{}, true, true, vk::CompareOp::eEqual};
+			gpass.configure_pipeline(renderer, geometry_emissive_pipeline);
+			auto& geometry_emissive_pass = builder.add_subpass(geometry_emissive_pipeline)
+			                                       .color_attachment(color)
+			                                       .color_attachment(color_diffuse)
+			                                       .preserve_attachment(depth_sampleable)
+			                                       .preserve_attachment(albedo_mat_id)
+			                                       .preserve_attachment(mat_data)
+			                                       .depth_stencil_attachment(depth);
+			gpass.configure_emissive_subpass(renderer, geometry_emissive_pass);
 
 
 			auto animated_geometry_pipeline          = pipeline;
@@ -137,10 +150,23 @@ namespace mirrage::renderer {
 			                                       .color_attachment(depth_sampleable)
 			                                       .color_attachment(albedo_mat_id)
 			                                       .color_attachment(mat_data)
-			                                       .color_attachment(color)
-			                                       .color_attachment(color_diffuse)
+			                                       .preserve_attachment(color)
+			                                       .preserve_attachment(color_diffuse)
 			                                       .depth_stencil_attachment(depth);
 			gpass.configure_animation_subpass(renderer, animated_geometry_pass);
+
+			auto animated_geometry_emissive_pipeline          = pipeline;
+			animated_geometry_emissive_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
+			        vk::PipelineDepthStencilStateCreateFlags{}, true, true, vk::CompareOp::eEqual};
+			gpass.configure_animation_pipeline(renderer, animated_geometry_emissive_pipeline);
+			auto& animated_geometry_emissive_pass = builder.add_subpass(animated_geometry_emissive_pipeline)
+			                                                .color_attachment(color)
+			                                                .color_attachment(color_diffuse)
+			                                                .preserve_attachment(depth_sampleable)
+			                                                .preserve_attachment(albedo_mat_id)
+			                                                .preserve_attachment(mat_data)
+			                                                .depth_stencil_attachment(depth);
+			gpass.configure_animation_emissive_subpass(renderer, animated_geometry_emissive_pass);
 
 
 			auto light_pipeline    = pipeline;
@@ -163,6 +189,20 @@ namespace mirrage::renderer {
 			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
 			                       vk::AccessFlagBits::eColorAttachmentWrite
 			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       geometry_emissive_pass,
+			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+
+			builder.add_dependency(geometry_emissive_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
 			                       animated_geometry_pass,
 			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
 			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
@@ -172,6 +212,20 @@ namespace mirrage::renderer {
 			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
 			builder.add_dependency(animated_geometry_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       animated_geometry_emissive_pass,
+			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+
+			builder.add_dependency(animated_geometry_emissive_pass,
 			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
 			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
 			                               | vk::PipelineStageFlagBits::eLateFragmentTests,

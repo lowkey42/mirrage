@@ -1,5 +1,7 @@
 {
-    "substance_id": "default",
+    "substance_id": "alphatest",
     "albedo_aid": "monk_monkbody_albedo.ktx",
-    "mat_data_aid": "monk_monkbody_mat_data.ktx"
+    "normal_aid": "monk_monkbody_normal.ktx",
+    "brdf_aid": "monk_monkbody_brdf.ktx",
+    "emission_aid": ""
 }
