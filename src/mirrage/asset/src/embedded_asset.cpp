@@ -14,7 +14,6 @@ namespace mirrage::asset {
 	  : _name(std::move(name)), _data(std::move(data))
 	{
 		_instances().emplace_back(this);
-		puts("Registered embedded asset ");
 	}
 
 } // namespace mirrage::asset

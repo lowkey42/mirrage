@@ -79,4 +79,5 @@ if(MIRRAGE_BUILD_MESH_CONVERTER)
 	endif()
 
 	add_subdirectory(stb_image)
+	include(crunch_interface.cmake)
 endif()

@@ -13,11 +13,11 @@ layout(location = 2) in vec2 tex_coords;
 layout(location = 0) out vec4 depth_out;
 layout(location = 1) out vec4 albedo_mat_id_out;
 layout(location = 2) out vec4 mat_data_out;
-layout(location = 3) out vec4 color_out;
-layout(location = 4) out vec4 color_diffuse_out;
 
 layout(set=1, binding = 0) uniform sampler2D albedo_sampler;
-layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
+layout(set=1, binding = 1) uniform sampler2D normal_sampler;
+layout(set=1, binding = 2) uniform sampler2D brdf_sampler;
+layout(set=1, binding = 3) uniform sampler2D emission_sampler;
 
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
@@ -37,19 +37,16 @@ void main() {
 	if(albedo.a < 0.1)
 		discard;
 
-	vec4 mat_data = texture(mat_data_sampler, tex_coords);
+	vec3  N    = tangent_space_to_world(decode_tangent_normal(texture(normal_sampler, tex_coords).rg));
 
-	vec3  normal    = tangent_space_to_world(decode_tangent_normal(mat_data.rg));
-
-	float roughness = mat_data.b;
-	float metallic  = mat_data.a;
-
+	vec4 brdf = texture(brdf_sampler, tex_coords);
+	float roughness = brdf.r;
+	float metallic  = brdf.g;
 	roughness = mix(0.01, 0.99, roughness*roughness);
 
 	depth_out         = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
 	albedo_mat_id_out = vec4(albedo.rgb, 0.0);
 	mat_data_out      = vec4(encode_normal(normal), roughness, metallic);
-	color_diffuse_out = color_out = vec4(0,0,0,1);
 }
 
 vec3 decode_tangent_normal(vec2 tn) {

@@ -1,5 +1,7 @@
 {
     "substance_id": "default",
     "albedo_aid": "cornell_floor_albedo.ktx",
-    "mat_data_aid": "cornell_floor_mat_data.ktx"
+    "normal_aid": "cornell_floor_normal.ktx",
+    "brdf_aid": "cornell_floor_brdf.ktx",
+    "emission_aid": ""
 }

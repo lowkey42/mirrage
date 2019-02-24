@@ -23,9 +23,11 @@ namespace mirrage::renderer {
 
 		void configure_pipeline(Deferred_renderer&, graphic::Pipeline_description&);
 		void configure_subpass(Deferred_renderer&, graphic::Subpass_builder&);
+		void configure_emissive_subpass(Deferred_renderer&, graphic::Subpass_builder&);
 
 		void configure_animation_pipeline(Deferred_renderer&, graphic::Pipeline_description&);
 		void configure_animation_subpass(Deferred_renderer&, graphic::Subpass_builder&);
+		void configure_animation_emissive_subpass(Deferred_renderer&, graphic::Subpass_builder&);
 
 		void update(util::Time dt);
 		void pre_draw(Frame_data&);

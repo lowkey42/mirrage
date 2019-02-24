@@ -1,0 +1,7 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "sponza_material__298_albedo.ktx",
+    "normal_aid": "sponza_material__298_normal.ktx",
+    "brdf_aid": "sponza_material__298_brdf.ktx",
+    "emission_aid": ""
+}

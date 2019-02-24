@@ -40,3 +40,6 @@
 [submodule "dependencies/SDL"]
 	path = dependencies/SDL
 	url = https://github.com/SDL-mirror/SDL.git
+[submodule "dependencies/crunch"]
+	path = dependencies/crunch
+	url = https://github.com/lowkey42/crunch.git

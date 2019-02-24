@@ -12,7 +12,7 @@ using namespace mirrage::graphic;
 namespace mirrage::renderer {
 
 	namespace {
-		constexpr auto material_textures = std::uint32_t(3);
+		constexpr auto material_textures = std::uint32_t(4);
 	} // namespace
 
 	auto create_material_descriptor_set_layout(Device& device, vk::Sampler sampler)
@@ -42,35 +42,34 @@ namespace mirrage::renderer {
 	                   graphic::DescriptorSet descriptor_set,
 	                   vk::Sampler            sampler,
 	                   graphic::Texture_ptr   albedo,
-	                   graphic::Texture_ptr   mat_data,
-	                   graphic::Texture_ptr   mat_data2,
+	                   graphic::Texture_ptr   normal,
+	                   graphic::Texture_ptr   brdf,
+	                   graphic::Texture_ptr   emission,
+	                   bool                   emissive,
 	                   util::Str_id           substance_id)
 	  : _descriptor_set(std::move(descriptor_set))
 	  , _albedo(std::move(albedo))
-	  , _mat_data(std::move(mat_data))
-	  , _mat_data2(std::move(mat_data2))
+	  , _normal(std::move(normal))
+	  , _brdf(std::move(brdf))
+	  , _emission(std::move(emission))
+	  , _emissive(emissive)
 	  , _substance_id(substance_id ? substance_id : "default"_strid)
 	{
 
-		auto desc_images = std::array<vk::DescriptorImageInfo, material_textures>();
-		desc_images[0] =
-		        vk::DescriptorImageInfo{sampler, _albedo->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
-		desc_images[1] =
-		        vk::DescriptorImageInfo{sampler, _mat_data->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
-		desc_images[2] =
-		        vk::DescriptorImageInfo{sampler, _mat_data2->view(), vk::ImageLayout::eShaderReadOnlyOptimal};
+		auto desc_images = std::array<vk::DescriptorImageInfo, material_textures>{
+		        vk::DescriptorImageInfo{sampler, _albedo->view(), vk::ImageLayout::eShaderReadOnlyOptimal},
+		        vk::DescriptorImageInfo{sampler, _normal->view(), vk::ImageLayout::eShaderReadOnlyOptimal},
+		        vk::DescriptorImageInfo{sampler, _brdf->view(), vk::ImageLayout::eShaderReadOnlyOptimal},
+		        vk::DescriptorImageInfo{sampler, _emission->view(), vk::ImageLayout::eShaderReadOnlyOptimal}};
 
-
-		auto desc_writes = std::array<vk::WriteDescriptorSet, 1>();
-		desc_writes[0]   = vk::WriteDescriptorSet{*_descriptor_set,
-                                                0,
-                                                0,
-                                                material_textures,
-                                                vk::DescriptorType::eCombinedImageSampler,
-                                                desc_images.data(),
-                                                nullptr};
-
-		device.vk_device()->updateDescriptorSets(gsl::narrow<uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
+		auto desc_write = vk::WriteDescriptorSet{*_descriptor_set,
+		                                         0,
+		                                         0,
+		                                         material_textures,
+		                                         vk::DescriptorType::eCombinedImageSampler,
+		                                         desc_images.data(),
+		                                         nullptr};
+		device.vk_device()->updateDescriptorSets(1, &desc_write, 0, nullptr);
 	}
 
 	void Material::bind(graphic::Render_pass& pass) const
@@ -139,17 +138,27 @@ namespace mirrage::asset {
 		auto desc_set =
 		        _descriptor_set_pool.create_descriptor(_descriptor_set_layout, renderer::material_textures);
 
-		auto albedo    = load_tex(data.albedo_aid);
-		auto mat_data  = load_tex(data.mat_data_aid);
-		auto mat_data2 = !data.mat_data2_aid.empty() ? load_tex(data.mat_data2_aid) : mat_data;
+		auto albedo   = load_tex(data.albedo_aid);
+		auto normal   = load_tex(data.normal_aid);
+		auto brdf     = load_tex(data.brdf_aid);
+		auto emission = load_tex(data.emission_aid);
 
-		auto all_loaded =
-		        async::when_all(albedo.internal_task(), mat_data.internal_task(), mat_data2.internal_task());
+		auto all_loaded = async::when_all(albedo.internal_task(),
+		                                  normal.internal_task(),
+		                                  brdf.internal_task(),
+		                                  emission.internal_task());
 		using Task_type = decltype(all_loaded)::result_type;
 
 		return all_loaded.then([=, desc_set = std::move(desc_set)](const Task_type&) mutable {
-			return renderer::Material(
-			        _device, std::move(desc_set), _sampler, albedo, mat_data, mat_data2, sub_id);
+			return renderer::Material(_device,
+			                          std::move(desc_set),
+			                          _sampler,
+			                          albedo,
+			                          normal,
+			                          brdf,
+			                          emission,
+			                          !data.emission_aid.empty(),
+			                          sub_id);
 		});
 	}
 

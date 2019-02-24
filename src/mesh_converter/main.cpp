@@ -15,8 +15,15 @@
 #include <plog/Log.h>
 #include <gsl/gsl>
 
+#ifndef __clang_analyzer__
+#include <async++.h>
+#endif
+
+#include <chrono>
 #include <string>
+#include <thread>
 #include <tuple>
+
 
 using namespace mirrage;
 
@@ -26,30 +33,29 @@ auto load_config(const util::maybe<std::string>& config_arg,
                  const std::string&              working_dir,
                  const std::vector<std::string>& inputs) -> Mesh_converted_config;
 
+constexpr static auto usage_str = "Usage ./mesh_converter [--output=DIR] [--cfg=CFG_FILE] INPUT...";
+
 // ./mesh_converter sponza.obj
 // ./mesh_converter --output=/foo/bar sponza.obj
 int main(int argc, char** argv)
 {
-	doctest::Context context;
-	context.setOption("no-run", true);
-	context.applyCommandLine(argc, argv);
-	auto res = context.run();
-	if(context.shouldExit())
-		return res;
-
 	static auto fileAppender =
 	        plog::RollingFileAppender<plog::TxtFormatter>("mesh_converter.log", 4L * 1024L, 4);
 	static auto consoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>();
 	plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender);
 
-	if(argc < 1) {
-		LOG(plog::error) << "Too few arguments!\n"
-		                 << "Usage ./mesh_converter [--output=DIR] INPUT [...]";
+	if(argc <= 1) {
+		LOG(plog::error) << "Too few arguments!\n" << usage_str;
 		return 1;
 	}
 
 	auto args = std::vector<std::string>{const_cast<const char**>(argv + 1),
 	                                     const_cast<const char**>(argv + argc)};
+
+	if(args[0] == "--help" || args[0] == "-h") {
+		LOG(plog::info) << usage_str;
+		return 0;
+	}
 
 	auto output_arg = extract_arg(args, "--output");
 	auto config_arg = extract_arg(args, "--cfg");
@@ -69,7 +75,18 @@ int main(int argc, char** argv)
 			convert_model(input, output, config);
 	}
 
-	return res;
+	using namespace std::chrono_literals;
+
+	auto last_parallel_tasks_done = std::size_t(0);
+	while(parallel_tasks_started.load() > parallel_tasks_done.load()) {
+		if(last_parallel_tasks_done != parallel_tasks_done.load()) {
+			last_parallel_tasks_done = parallel_tasks_done.load();
+
+			LOG(plog::info) << "Waiting for background tasks: " << last_parallel_tasks_done << "/"
+			                << parallel_tasks_started.load();
+		}
+		std::this_thread::sleep_for(1s);
+	}
 }
 
 auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string>
