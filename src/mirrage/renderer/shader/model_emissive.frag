@@ -5,6 +5,8 @@
 #include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 
+layout(early_fragment_tests) in;
+
 layout(location = 0) in vec3 view_pos;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 tex_coords;
@@ -32,10 +34,6 @@ vec3 tangent_space_to_world(vec3 N);
 
 void main() {
 	vec4 albedo = texture(albedo_sampler, tex_coords);
-
-	if(albedo.a < 0.1)
-		discard;
-
 	vec3  N    = tangent_space_to_world(decode_tangent_normal(texture(normal_sampler, tex_coords).rg));
 
 	vec4 brdf = texture(brdf_sampler, tex_coords);
@@ -45,7 +43,7 @@ void main() {
 
 	float emissive_power = texture(emission_sampler, tex_coords).r;
 
-	color_out     = vec4(albedo.rgb *  model_uniforms.material_properties.rgb * emissive_power * model_uniforms.material_properties.a, 1.0);
+	color_out     = vec4(albedo.rgb *  model_uniforms.material_properties.rgb * emissive_power * model_uniforms.material_properties.a * albedo.a, 0.0);
 	color_diffuse_out = color_out;
 }
 

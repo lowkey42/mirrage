@@ -258,14 +258,14 @@ namespace mirrage::graphic {
 		add_present_extensions(required_extensions, _windows);
 		auto optional_extensions = std::vector<const char*>{};
 
+		required_extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
+		required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 		if(debug) {
 			_enabled_layers = check_layers({"VK_LAYER_LUNARG_standard_validation",
 			                                "VK_LAYER_LUNARG_parameter_validation",
 			                                "VK_LAYER_LUNARG_core_validation",
 			                                "VK_LAYER_GOOGLE_threading"});
-
-			required_extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		}
 
 		sort_and_unique(required_extensions);
@@ -301,6 +301,18 @@ namespace mirrage::graphic {
 			         vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::ePerformanceWarning
 			                 | vk::DebugReportFlagBitsEXT::eWarning,
 			         debugCallback});
+		}
+
+		_vkCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(
+		        vkGetInstanceProcAddr(*_instance, "vkCmdBeginDebugUtilsLabelEXT"));
+		_vkCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(
+		        vkGetInstanceProcAddr(*_instance, "vkCmdEndDebugUtilsLabelEXT"));
+
+		if(!_vkCmdBeginDebugUtilsLabelEXT || !_vkCmdEndDebugUtilsLabelEXT) {
+			_vkCmdBeginDebugUtilsLabelEXT = nullptr;
+			_vkCmdEndDebugUtilsLabelEXT   = nullptr;
+			LOG(plog::warning) << "vkCmdBeginDebugUtilsLabelEXT/vkCmdEndDebugUtilsLabelEXT extension "
+			                      "function not found.";
 		}
 
 		for(auto&& [_, window] : _windows) {
@@ -632,7 +644,8 @@ namespace mirrage::graphic {
 				                   << ". Collapsed with previous queue!";
 			}
 
-			queue_mapping.emplace(tag, std::make_tuple(family, gsl::narrow<uint32_t>(std::get<1>(entry).size() - 1)));
+			queue_mapping.emplace(
+			        tag, std::make_tuple(family, gsl::narrow<uint32_t>(std::get<1>(entry).size() - 1)));
 		}
 
 		auto used_queues = std::vector<vk::DeviceQueueCreateInfo>{};
@@ -662,4 +675,26 @@ namespace mirrage::graphic {
 		        std::move(swapchains),
 		        dedicated_alloc_supported);
 	}
+
+	void Context::vkCmdBeginDebugUtilsLabelEXT(VkCommandBuffer             commandBuffer,
+	                                           const VkDebugUtilsLabelEXT* pLabelInfo)
+	{
+		if(_vkCmdBeginDebugUtilsLabelEXT)
+			_vkCmdBeginDebugUtilsLabelEXT(commandBuffer, pLabelInfo);
+	}
+	void Context::vkCmdEndDebugUtilsLabelEXT(VkCommandBuffer commandBuffer)
+	{
+		if(_vkCmdEndDebugUtilsLabelEXT)
+			_vkCmdEndDebugUtilsLabelEXT(commandBuffer);
+	}
+
+	Queue_debug_label::Queue_debug_label(Context& ctx, vk::CommandBuffer cmds, const char* name)
+	  : _ctx(&ctx), _cmds(cmds)
+	{
+		auto label = VkDebugUtilsLabelEXT{
+		        VkStructureType::VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, nullptr, name, {0, 0, 0, 0}};
+		_ctx->vkCmdBeginDebugUtilsLabelEXT(cmds, &label);
+	}
+	Queue_debug_label::~Queue_debug_label() { _ctx->vkCmdEndDebugUtilsLabelEXT(_cmds); }
+
 } // namespace mirrage::graphic

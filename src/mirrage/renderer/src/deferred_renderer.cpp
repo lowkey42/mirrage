@@ -149,7 +149,8 @@ namespace mirrage::renderer {
                                                 nullptr,
                                                 &buffer_info};
 
-		device().vk_device()->updateDescriptorSets(gsl::narrow<uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
+		device().vk_device()->updateDescriptorSets(
+		        gsl::narrow<uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
 	}
 
 	void Deferred_renderer::update(util::Time dt)
@@ -197,6 +198,7 @@ namespace mirrage::renderer {
 		// draw subpasses
 		for(auto& pass : _passes) {
 			if(pass) {
+				auto q = graphic::Queue_debug_label(device().context(), main_command_buffer, pass->name());
 				auto _ = _profiler.push(pass->name());
 				pass->draw(_frame_data);
 			}

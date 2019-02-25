@@ -187,7 +187,6 @@ namespace mirrage {
 			comp_params.set_flag(cCRNCompFlagDXT1AForTransparency, format == Texture_format::s_rgba);
 			auto pContext = crn_create_block_compressor(comp_params);
 
-			// TODO: change header based on compression format
 			out.write(reinterpret_cast<const char*>(&type_tag), sizeof(type_tag));
 			auto header                  = ktx_header10{};
 			header.Endianness            = 0x04030201;

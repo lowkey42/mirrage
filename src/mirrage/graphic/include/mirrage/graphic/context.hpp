@@ -67,6 +67,10 @@ namespace mirrage {
 
 			auto asset_manager() -> auto& { return _assets; }
 
+			void vkCmdBeginDebugUtilsLabelEXT(VkCommandBuffer             commandBuffer,
+			                                  const VkDebugUtilsLabelEXT* pLabelInfo);
+			void vkCmdEndDebugUtilsLabelEXT(VkCommandBuffer commandBuffer);
+
 		  private:
 			asset::Asset_manager&         _assets;
 			std::string                   _name;
@@ -78,7 +82,21 @@ namespace mirrage {
 
 			std::unordered_map<std::string, Window_ptr> _windows;
 
+			PFN_vkCmdBeginDebugUtilsLabelEXT _vkCmdBeginDebugUtilsLabelEXT;
+			PFN_vkCmdEndDebugUtilsLabelEXT   _vkCmdEndDebugUtilsLabelEXT;
+
 			auto _find_window_settings(const std::string& name, int width, int height) -> Window_settings;
 		};
+
+		class Queue_debug_label {
+		  public:
+			Queue_debug_label(Context&, vk::CommandBuffer, const char* name);
+			~Queue_debug_label();
+
+		  private:
+			Context*          _ctx;
+			vk::CommandBuffer _cmds;
+		};
+
 	} // namespace graphic
 } // namespace mirrage

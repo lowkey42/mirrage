@@ -130,7 +130,7 @@ namespace mirrage::renderer {
 
 			auto geometry_emissive_pipeline          = pipeline;
 			geometry_emissive_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
-			        vk::PipelineDepthStencilStateCreateFlags{}, true, true, vk::CompareOp::eEqual};
+			        vk::PipelineDepthStencilStateCreateFlags{}, true, false, vk::CompareOp::eEqual};
 			gpass.configure_pipeline(renderer, geometry_emissive_pipeline);
 			auto& geometry_emissive_pass = builder.add_subpass(geometry_emissive_pipeline)
 			                                       .color_attachment(color)
@@ -157,7 +157,7 @@ namespace mirrage::renderer {
 
 			auto animated_geometry_emissive_pipeline          = pipeline;
 			animated_geometry_emissive_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
-			        vk::PipelineDepthStencilStateCreateFlags{}, true, true, vk::CompareOp::eEqual};
+			        vk::PipelineDepthStencilStateCreateFlags{}, true, false, vk::CompareOp::eEqual};
 			gpass.configure_animation_pipeline(renderer, animated_geometry_emissive_pipeline);
 			auto& animated_geometry_emissive_pass = builder.add_subpass(animated_geometry_emissive_pipeline)
 			                                                .color_attachment(color)
