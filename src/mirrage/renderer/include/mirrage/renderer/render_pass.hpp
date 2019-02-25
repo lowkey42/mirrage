@@ -1,5 +1,7 @@
 #pragma once
 
+#include <mirrage/renderer/billboard.hpp>
+
 #include <mirrage/ecs/entity_handle.hpp>
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/ranges.hpp>
@@ -118,6 +120,7 @@ namespace mirrage::renderer {
 		std::vector<Geometry>       geometry_queue;
 		std::vector<Light>          light_queue;
 		std::vector<Debug_geometry> debug_geometry_queue;
+		std::vector<Billboard>      billboard_queue;
 
 		auto partition_geometry(std::uint32_t mask) -> util::vector_range<Geometry>;
 	};

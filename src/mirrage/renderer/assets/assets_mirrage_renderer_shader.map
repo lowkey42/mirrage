@@ -1,5 +1,9 @@
 shader: = shader/
 
+vert_shader:billboard = shader/billboard.vert.spv
+frag_shader:billboard_lit = shader/billboard.frag.spv
+frag_shader:billboard_unlit = shader/billboard_unlit.frag.spv
+
 vert_shader:blit = shader/fullscreen.vert.spv
 frag_shader:blit = shader/blit.frag.spv
 

@@ -446,15 +446,45 @@ namespace mirrage {
 		return true;
 	}
 
-	void convert_texture(const std::string& input, const std::string& output_dir)
+	void convert_texture(const std::string& input,
+	                     const std::string& output_dir,
+	                     bool               normal_texture,
+	                     bool               srgb)
 	{
-		auto data = load_texture2d(input, true);
-		generate_mip_maps(data, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+		auto data = load_texture2d(input, srgb);
+		if(normal_texture) {
+			data.foreach([&](auto& pixel, auto level, auto x, auto y) {
+				// generate mip levels
+				if(level > 0) {
+					auto n_00 = data.pixel(level - 1, x * 2, y * 2);
+					auto n_10 = data.pixel(level - 1, x * 2 + 1, y * 2);
+					auto n_11 = data.pixel(level - 1, x * 2 + 1, y * 2 + 1);
+					auto n_01 = data.pixel(level - 1, x * 2, y * 2 + 1);
+
+					auto n = glm::normalize(glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
+					         + glm::normalize(glm::vec3(n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
+					         + glm::normalize(glm::vec3(n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
+					         + glm::normalize(glm::vec3(n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
+
+					n       = glm::normalize(n / 4.f);
+					pixel.r = n.x * 0.5f + 0.5f;
+					pixel.g = n.y * 0.5f + 0.5f;
+					pixel.b = n.z * 0.5f + 0.5f;
+					pixel.a = 1;
+				}
+			});
+
+		} else {
+			generate_mip_maps(data, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+		}
+
 
 		auto input_path = util::split_on_last(input, "/");
 		auto input_name = input_path.second.empty() ? input_path.first : input_path.second;
 		input_name      = util::split_on_last(input_name, ".").first;
 
-		store_texture(data, output_dir + "/" + input_name + ".ktx", Texture_format::s_rgba);
+		store_texture(data,
+		              output_dir + "/" + input_name + ".ktx",
+		              srgb ? Texture_format::s_rgba : Texture_format::rg);
 	}
 } // namespace mirrage

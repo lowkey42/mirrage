@@ -97,6 +97,12 @@ namespace mirrage {
 
 		_meta_system.entities().emplace("sponza");
 
+		auto billboard = _meta_system.entities().emplace("billboard");
+		billboard.get<Transform_comp>().process([](auto& transform) {
+			transform.position    = {-8, 1, 0.5f};
+			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
+		});
+
 		_sun = _meta_system.entities().emplace("sun");
 
 		_set_preset(1);

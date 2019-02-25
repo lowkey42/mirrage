@@ -3,4 +3,5 @@ blueprint:sponza = blueprints/sponza.json
 blueprint:cornell = blueprints/cornell.json
 blueprint:sun = blueprints/sun.json
 blueprint:cube = blueprints/cube.json
+blueprint:billboard = blueprints/billboard.json
 

@@ -29,6 +29,9 @@ namespace mirrage::renderer {
 		void configure_animation_subpass(Deferred_renderer&, graphic::Subpass_builder&);
 		void configure_animation_emissive_subpass(Deferred_renderer&, graphic::Subpass_builder&);
 
+		void configure_billboard_pipeline(Deferred_renderer&, graphic::Pipeline_description&);
+		void configure_billboard_subpass(Deferred_renderer&, graphic::Subpass_builder&);
+
 		void update(util::Time dt);
 		void pre_draw(Frame_data&);
 		void draw(Frame_data&, graphic::Render_pass&);

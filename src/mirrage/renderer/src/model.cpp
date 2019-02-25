@@ -129,19 +129,18 @@ namespace mirrage::asset {
 	{
 		auto data = Loader<renderer::Material_data>::load(std::move(in));
 
-		auto load_tex = [&](auto&& id) {
-			return _assets.load<graphic::Texture_2D>(id.empty() ? "tex:placeholder"_aid
-			                                                    : asset::AID("tex"_strid, id));
+		auto load_tex = [&](auto&& id, asset::AID placeholder) {
+			return _assets.load<graphic::Texture_2D>(id.empty() ? placeholder : asset::AID("tex"_strid, id));
 		};
 
 		auto sub_id = data.substance_id;
 		auto desc_set =
 		        _descriptor_set_pool.create_descriptor(_descriptor_set_layout, renderer::material_textures);
 
-		auto albedo   = load_tex(data.albedo_aid);
-		auto normal   = load_tex(data.normal_aid);
-		auto brdf     = load_tex(data.brdf_aid);
-		auto emission = load_tex(data.emission_aid);
+		auto albedo   = load_tex(data.albedo_aid, "tex:placeholder"_aid);
+		auto normal   = load_tex(data.normal_aid, "tex:default_normal"_aid);
+		auto brdf     = load_tex(data.brdf_aid, "tex:default_brdf"_aid);
+		auto emission = load_tex(data.emission_aid, "tex:placeholder"_aid);
 
 		auto all_loaded = async::when_all(albedo.internal_task(),
 		                                  normal.internal_task(),

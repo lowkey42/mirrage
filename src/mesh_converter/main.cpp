@@ -27,7 +27,8 @@
 
 using namespace mirrage;
 
-auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string>;
+auto extract_arg(std::vector<std::string>& args, const std::string& key, bool flag = false)
+        -> util::maybe<std::string>;
 auto load_config(const util::maybe<std::string>& config_arg,
                  const util::maybe<std::string>& out_arg,
                  const std::string&              working_dir,
@@ -60,6 +61,8 @@ int main(int argc, char** argv)
 	auto output_arg = extract_arg(args, "--output");
 	auto config_arg = extract_arg(args, "--cfg");
 	auto config     = load_config(extract_arg(args, "--cfg"), output_arg, argv[0], args);
+	auto normal     = extract_arg(args, "--normal", true).is_some();
+	auto srgb       = !extract_arg(args, "--rg", true).is_some();
 
 	auto output = output_arg.get_or(config.default_output_directory);
 
@@ -70,7 +73,7 @@ int main(int argc, char** argv)
 
 	for(auto&& input : args) {
 		if(util::ends_with(input, ".png"))
-			convert_texture(input, output);
+			convert_texture(input, output, normal, srgb);
 		else
 			convert_model(input, output, config);
 	}
@@ -89,13 +92,19 @@ int main(int argc, char** argv)
 	}
 }
 
-auto extract_arg(std::vector<std::string>& args, const std::string& key) -> util::maybe<std::string>
+auto extract_arg(std::vector<std::string>& args, const std::string& key, bool flag)
+        -> util::maybe<std::string>
 {
 	auto found =
 	        std::find_if(args.begin(), args.end(), [&](auto& str) { return util::starts_with(str, key); });
 
 	if(found == args.end())
 		return mirrage::util::nothing;
+
+	if(flag) {
+		args.erase(found);
+		return util::just(std::string());
+	}
 
 	// found contains the key and the value
 	if(util::contains(*found, '=') && found->back() != '=') {

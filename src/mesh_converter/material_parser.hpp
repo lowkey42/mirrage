@@ -14,6 +14,9 @@ namespace mirrage {
 	                             const std::string&           output,
 	                             const Mesh_converted_config& cfg);
 
-	extern void convert_texture(const std::string& input, const std::string& output_dir);
+	extern void convert_texture(const std::string& input,
+	                            const std::string& output_dir,
+	                            bool               normal_texture,
+	                            bool               srgb);
 
 } // namespace mirrage

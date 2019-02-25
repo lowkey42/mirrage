@@ -41,6 +41,7 @@ file(GLOB_RECURSE HEADER_FILES
 
 add_library(mirrage_renderer STATIC
 	src/pass/animation_pass.cpp
+	src/pass/billboard_pass.cpp
 	src/pass/blit_pass.cpp 
 	src/pass/bloom_pass.cpp
 	src/pass/debug_draw_pass.cpp
@@ -59,6 +60,7 @@ add_library(mirrage_renderer STATIC
 	
 	src/animation.cpp
 	src/animation_comp.cpp
+	src/billboard.cpp
 	src/camera_comp.cpp
 	src/debug_ui.hpp
 	src/deferred_renderer.cpp

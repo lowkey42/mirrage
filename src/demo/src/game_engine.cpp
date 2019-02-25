@@ -2,6 +2,7 @@
 
 #include <mirrage/renderer/deferred_renderer.hpp>
 #include <mirrage/renderer/pass/animation_pass.hpp>
+#include <mirrage/renderer/pass/billboard_pass.hpp>
 #include <mirrage/renderer/pass/blit_pass.hpp>
 #include <mirrage/renderer/pass/bloom_pass.hpp>
 #include <mirrage/renderer/pass/debug_draw_pass.hpp>
@@ -44,6 +45,7 @@ namespace mirrage {
 	                              renderer::make_pass_factory<renderer::Depth_of_field_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Bloom_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Tone_mapping_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Billboard_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Debug_draw_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Blit_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Gui_pass_factory>())))

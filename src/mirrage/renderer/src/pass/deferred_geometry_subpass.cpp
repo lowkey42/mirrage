@@ -17,6 +17,7 @@ namespace mirrage::renderer {
 	Deferred_geometry_subpass::Deferred_geometry_subpass(Deferred_renderer& r, ecs::Entity_manager& entities)
 	  : _ecs(entities), _renderer(r)
 	{
+		entities.register_component_type<Billboard_comp>();
 		entities.register_component_type<Model_comp>();
 		entities.register_component_type<Pose_comp>();
 		entities.register_component_type<Shared_pose_comp>();
@@ -111,6 +112,21 @@ namespace mirrage::renderer {
 		pass.stage("dq_alphatest"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+	}
+
+	void Deferred_geometry_subpass::configure_billboard_pipeline(Deferred_renderer&             renderer,
+	                                                             graphic::Pipeline_description& p)
+	{
+		p.rasterization.cullMode  = vk::CullModeFlagBits::eNone;
+		p.input_assembly.topology = vk::PrimitiveTopology::eTriangleStrip;
+		p.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
+	}
+	void Deferred_geometry_subpass::configure_billboard_subpass(Deferred_renderer&,
+	                                                            graphic::Subpass_builder& pass)
+	{
+		pass.stage("default"_strid)
+		        .shader("frag_shader:billboard_lit"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:billboard"_aid, graphic::Shader_stage::vertex);
 	}
 
 	void Deferred_geometry_subpass::update(util::Time) {}
@@ -211,12 +227,32 @@ namespace mirrage::renderer {
 				frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
 			}
 
-			if(!emissive_pass) {
-				render_pass.next_subpass();
-				last_substance_id = ""_strid;
-				last_material     = static_cast<const Material*>(nullptr);
-				last_model        = static_cast<const Model*>(nullptr);
+			render_pass.next_subpass();
+			last_substance_id = ""_strid;
+			last_material     = static_cast<const Material*>(nullptr);
+			last_model        = static_cast<const Model*>(nullptr);
+		}
+
+		// draw billboards
+		std::sort(frame.billboard_queue.begin(), frame.billboard_queue.end(), [](auto& lhs, auto& rhs) {
+			return std::make_pair(lhs.dynamic_lighting ? 0 : 1, &*lhs.material)
+			       < std::make_pair(rhs.dynamic_lighting ? 0 : 1, &*rhs.material);
+		});
+		render_pass.set_stage("default"_strid);
+		for(auto&& bb : frame.billboard_queue) {
+			if(!bb.dynamic_lighting)
+				break;
+
+			if(&*bb.material != last_material) {
+				last_material = &*bb.material;
+				last_material->bind(render_pass);
 			}
+
+			auto pcs = construct_push_constants(
+			        bb, _renderer.global_uniforms().view_mat, _renderer.window().viewport());
+
+			render_pass.push_constant("dpc"_strid, pcs);
+			frame.main_command_buffer.draw(4, 1, 0, 0);
 		}
 	}
 } // namespace mirrage::renderer

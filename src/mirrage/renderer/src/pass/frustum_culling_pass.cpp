@@ -94,6 +94,22 @@ namespace mirrage::renderer {
 			}
 		}
 
+		for(auto& [entity, billboard_comp, transform] :
+		    _ecs.list<ecs::Entity_handle, Billboard_comp, Transform_comp>()) {
+
+			for(auto&& bb : billboard_comp.billboards) {
+				if(bb.absolute_screen_space) {
+					frame.billboard_queue.emplace_back(bb);
+				} else {
+					auto position = transform.position + bb.offset;
+					if(bb.active && bb.material.ready()
+					   && is_visible(viewers.front(), position, bb.size.length())) {
+						frame.billboard_queue.emplace_back(bb);
+						frame.billboard_queue.back().offset = position;
+					}
+				}
+			}
+		}
 
 		for(auto& [entity, model, transform] : _ecs.list<ecs::Entity_facet, Model_comp, Transform_comp>()) {
 			auto entity_pos = transform.position;
