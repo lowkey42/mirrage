@@ -1,0 +1,14 @@
+{
+	"Transform":{
+	},
+	"Billboard": {
+		"billboards": [
+			{
+				"size": {"w":1, "h":1},
+				"material_aid": "mat:billboard_material.msf",
+				"clip_rect": {"x":0, "y":0, "z":1, "w":1},
+				"dynamic_lighting": true
+			}
+		]
+	}
+}

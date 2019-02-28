@@ -1,0 +1,7 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "sponza_ceiling_albedo.ktx",
+    "normal_aid": "sponza_ceiling_normal.ktx",
+    "brdf_aid": "sponza_ceiling_brdf.ktx",
+    "emission_aid": ""
+}

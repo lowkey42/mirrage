@@ -97,6 +97,15 @@ namespace mirrage {
 
 		_meta_system.entities().emplace("sponza");
 
+		auto billboard = _meta_system.entities().emplace("billboard");
+		billboard.get<Transform_comp>().process([](auto& transform) {
+			transform.position    = {-8, 1, 0.5f};
+			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
+		});
+
+		auto decal = _meta_system.entities().emplace("decal");
+		decal.get<Transform_comp>().process([](auto& transform) { transform.position = {-8, 0, -0.5f}; });
+
 		_sun = _meta_system.entities().emplace("sun");
 
 		_set_preset(1);
@@ -354,7 +363,7 @@ namespace mirrage {
 			                                                  "Cornell Box"}};
 			_set_preset(nk_combo(ctx,
 			                     preset_options.data(),
-			                     preset_options.size(),
+			                     gsl::narrow<int>(preset_options.size()),
 			                     _selected_preset,
 			                     14,
 			                     nk_vec2(100.f, 200)));

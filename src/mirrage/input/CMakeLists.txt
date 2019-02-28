@@ -1,12 +1,6 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_input)
-
-find_package(SDL2 REQUIRED)
-add_library(sdl2::sdl2 INTERFACE IMPORTED)
-set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_LINK_LIBRARIES ${SDL2_LIBRARY})
-set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${SDL2_INCLUDE_DIR})
-
 
 # need to be specified with the sources for correct syntax highlighting in some IDEs
 file(GLOB_RECURSE HEADER_FILES
@@ -20,6 +14,7 @@ add_library(mirrage_input STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::input ALIAS mirrage_input)
+target_compile_features(mirrage_input PUBLIC cxx_std_17)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_input PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
@@ -35,7 +30,7 @@ target_link_libraries(mirrage_input
 		gsl
 		glm::glm
 		mirrage::asset
-		sdl2::sdl2
+		mirrage::deps::SDL2
 		sf2
 )
    

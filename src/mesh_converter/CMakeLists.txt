@@ -1,11 +1,11 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_mesh_converter LANGUAGES CXX)
-
 
 add_executable(mesh_converter
 	animation_parser.cpp
 	animation_parser.hpp
+	common.cpp
 	common.hpp
 	filesystem.cpp
 	filesystem.hpp
@@ -18,8 +18,10 @@ add_executable(mesh_converter
 	skeleton_parser.hpp
 	${BACKWARD_ENABLE}
 )
-
-add_backward(mesh_converter)
+if(${MIRRAGE_ENABLE_BACKWARD})
+	add_backward(mesh_converter)
+endif()
+target_compile_features(mesh_converter PUBLIC cxx_std_17)
 
 target_link_libraries(mesh_converter
 	PRIVATE
@@ -30,5 +32,6 @@ target_link_libraries(mesh_converter
 		sf2
 		stb_image
 		doctest
+		crunch::crunch
+		Async++
 )
-

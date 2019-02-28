@@ -138,7 +138,7 @@ namespace {
 		}
 	}
 
-	void init_physicsfs(const std::string& exe_name)
+	void init_physicsfs(const std::string& exe_name, mirrage::util::maybe<std::string> additional_search_path)
 	{
 		if(PHYSFS_isInit())
 			return;
@@ -153,6 +153,8 @@ namespace {
 		   || !PHYSFS_mount(mirrage::asset::pwd().c_str(), nullptr, 1))
 			throw std::system_error(static_cast<mirrage::asset::Asset_error>(PHYSFS_getLastErrorCode()),
 			                        "Unable to setup default search path.");
+
+		additional_search_path.process([&](auto& dir) { PHYSFS_mount(dir.c_str(), nullptr, 1); });
 	}
 
 	constexpr auto default_source = {std::make_tuple("assets", false), std::make_tuple("assets.zip", true)};
@@ -164,7 +166,7 @@ namespace mirrage::asset {
 	{
 		char cCurrentPath[FILENAME_MAX];
 
-#ifdef WINDOWS
+#ifdef _WIN32
 		_getcwd(cCurrentPath, sizeof(cCurrentPath));
 #else
 		if(getcwd(cCurrentPath, sizeof(cCurrentPath)) == nullptr) {
@@ -174,11 +176,12 @@ namespace mirrage::asset {
 
 		return cCurrentPath;
 	}
-	std::string write_dir(const std::string& exe_name,
-	                      const std::string& org_name,
-	                      const std::string& app_name)
+	std::string write_dir(const std::string&       exe_name,
+	                      const std::string&       org_name,
+	                      const std::string&       app_name,
+	                      util::maybe<std::string> additional_search_path)
 	{
-		init_physicsfs(exe_name);
+		init_physicsfs(exe_name, additional_search_path);
 
 		if(exists_dir("write_dir")) {
 			return std::string(PHYSFS_getRealDir("write_dir")) + "/write_dir";
@@ -187,13 +190,14 @@ namespace mirrage::asset {
 		return PHYSFS_getPrefDir(org_name.c_str(), app_name.c_str());
 	}
 
-	Asset_manager::Asset_manager(const std::string& exe_name,
-	                             const std::string& org_name,
-	                             const std::string& app_name)
+	Asset_manager::Asset_manager(const std::string&       exe_name,
+	                             const std::string&       org_name,
+	                             const std::string&       app_name,
+	                             util::maybe<std::string> additional_search_path)
 	{
-		init_physicsfs(exe_name);
+		init_physicsfs(exe_name, additional_search_path);
 
-		auto write_dir = ::mirrage::asset::write_dir(exe_name, org_name, app_name);
+		auto write_dir = ::mirrage::asset::write_dir(exe_name, org_name, app_name, additional_search_path);
 		create_dir(write_dir);
 		LOG(plog::debug) << "Write dir: " << write_dir;
 
@@ -222,9 +226,14 @@ namespace mirrage::asset {
 			}
 		}
 
-		auto add_source = [](const char* path) {
+		auto add_source = [](std::string path) {
+			auto apath = PHYSFS_getRealDir(path.c_str());
+			if(apath) {
+				path = std::string(apath) + "/" + path;
+			}
+
 			LOG(plog::info) << "Added FS directory: " << path;
-			if(!PHYSFS_mount(path, nullptr, 1))
+			if(!PHYSFS_mount(path.c_str(), nullptr, 1))
 				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 				                        "Error adding custom archive: "s + path);
 		};
@@ -271,6 +280,7 @@ namespace mirrage::asset {
 		PHYSFS_unmount(PHYSFS_getBaseDir());
 		PHYSFS_unmount(append_file(PHYSFS_getBaseDir(), "..").c_str());
 		PHYSFS_unmount(mirrage::asset::pwd().c_str());
+		additional_search_path.process([&](auto& dir) { PHYSFS_unmount(dir.c_str()); });
 
 		_reload_dispatchers();
 	}

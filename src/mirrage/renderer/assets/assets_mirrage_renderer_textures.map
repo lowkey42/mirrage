@@ -1,8 +1,8 @@
 tex: = textures/
 
-tex:black = textures/default_black.png
 tex:white = textures/default_white.ktx
-tex:normal = textures/default_normal.png
+tex:default_normal = textures/default_normal.ktx
+tex:default_brdf = textures/default_brdf.ktx
 tex:placeholder = textures/default_placeholder.ktx
 tex:blue_noise = textures/blue_noise.ktx
 

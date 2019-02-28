@@ -7,7 +7,7 @@
 #include <mirrage/input/events.hpp>
 #include <mirrage/input/input_manager.hpp>
 
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 #include <sf2/sf2.hpp>
@@ -573,14 +573,14 @@ namespace mirrage::gui {
 		return _renderer->load_texture(aid);
 	}
 
-	auto Gui::centered(int width, int height) -> struct nk_rect {
+	auto Gui::centered(int width, int height) -> struct ::nk_rect {
 		return nk_rect(_impl->screen_size.x / 2.f - float(width) / 2.f,
 		               _impl->screen_size.y / 2.f - float(height) / 2.f,
 		               float(width),
 		               float(height));
-	} auto Gui::centered_left(int width, int height) -> struct nk_rect {
+	} auto Gui::centered_left(int width, int height) -> struct ::nk_rect {
 		return nk_rect(0, _impl->screen_size.y / 2.f - float(height) / 2.f, float(width), float(height));
-	} auto Gui::centered_right(int width, int height) -> struct nk_rect {
+	} auto Gui::centered_right(int width, int height) -> struct ::nk_rect {
 		return nk_rect(_impl->screen_size.x - float(width),
 		               _impl->screen_size.y / 2.f - float(height) / 2.f,
 		               float(width),

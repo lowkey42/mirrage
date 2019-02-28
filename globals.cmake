@@ -6,11 +6,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # required at top-level
 set(MIRRAGE_ROOT_DIR ${CMAKE_CURRENT_LIST_DIR})
+set(MIRRAGE_ROOT_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${MIRRAGE_ROOT_DIR}/modules")
 
-enable_language(C CXX ASM GLSL)
+enable_language(C CXX ASM)
 
 add_definitions(-DGSL_TERMINATE_ON_CONTRACT_VIOLATION)
+
+if (WIN32)
+	option(MIRRAGE_ENABLE_BACKWARD "Enable stacktraces through backward-cpp" OFF)
+else()
+	option(MIRRAGE_ENABLE_BACKWARD "Enable stacktraces through backward-cpp" ON)
+endif()
 
 # LTO
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
@@ -49,7 +56,9 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 		-Wno-missing-braces)
 
 elseif(MSVC)
-	set(MIRRAGE_DEFAULT_COMPILER_ARGS /Za)
+	set(MIRRAGE_DEFAULT_COMPILER_ARGS /DWIN32_LEAN_AND_MEAN /DNOMINMAX /MP /W3 /WX)
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /ignore:4221")
+	set(CMAKE_STATIC_LINKER_FLAGS "${CMAKE_STATIC_LINKER_FLAGS} /ignore:4221")
 endif()
 
 # Select optimal linker
@@ -82,13 +91,20 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang" OR MIRRAGE_FORCE_LIBCPP)
 	endif()
 endif()
 
+option(MIRRAGE_OPTIMIZE_NATIVE "Enable -march=native" OFF)
+if(${MIRRAGE_OPTIMIZE_NATIVE})
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+endif()
+
 option(MIRRAGE_ENABLE_COTIRE "Enable cotire" ON)
 if(MIRRAGE_ENABLE_COTIRE)
 	include(cotire OPTIONAL)
 
 	if(COMMAND cotire)
 		add_definitions(-DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ON -DGLM_ENABLE_EXPERIMENTAL -DGLM_FORCE_CXX14)
-		add_compile_options(-pthread)
+		if(NOT MSVC)
+			add_compile_options(-pthread)
+		endif()
 		set_property(GLOBAL PROPERTY COTIRE_PREFIX_HEADER_INCLUDE_PATH "${MIRRAGE_ROOT_DIR}/dependencies")
 		set_property(GLOBAL PROPERTY COTIRE_PREFIX_HEADER_IGNORE_PATH "${MIRRAGE_ROOT_DIR}/dependencies/nuklear;${MIRRAGE_ROOT_DIR}/src;${MIRRAGE_ROOT_DIR}/dependencies/moodycamel/concurrentqueue.h")
 		set_property(GLOBAL PROPERTY COTIRE_ADD_UNITY_BUILD FALSE)

@@ -38,16 +38,17 @@ namespace mirrage::renderer {
 	  : _engine(&engine)
 	  , _factory(&factory)
 	  , _entity_manager(ecs)
-	  , _descriptor_set_pool(device().create_descriptor_pool(128,
-	                                                         {vk::DescriptorType::eUniformBuffer,
-	                                                          vk::DescriptorType::eUniformBufferDynamic,
-	                                                          vk::DescriptorType::eCombinedImageSampler,
-	                                                          vk::DescriptorType::eInputAttachment,
-	                                                          vk::DescriptorType::eStorageBuffer,
-	                                                          vk::DescriptorType::eStorageTexelBuffer,
-	                                                          vk::DescriptorType::eStorageImage,
-	                                                          vk::DescriptorType::eSampledImage,
-	                                                          vk::DescriptorType::eSampler}))
+	  , _descriptor_set_pool(*device().vk_device(),
+	                         128,
+	                         {vk::DescriptorType::eUniformBuffer,
+	                          vk::DescriptorType::eUniformBufferDynamic,
+	                          vk::DescriptorType::eCombinedImageSampler,
+	                          vk::DescriptorType::eInputAttachment,
+	                          vk::DescriptorType::eStorageBuffer,
+	                          vk::DescriptorType::eStorageTexelBuffer,
+	                          vk::DescriptorType::eStorageImage,
+	                          vk::DescriptorType::eSampledImage,
+	                          vk::DescriptorType::eSampler})
 	  , _gbuffer(gbuffer_required(passes) ? std::make_unique<GBuffer>(device(),
 	                                                                  _descriptor_set_pool,
 	                                                                  factory._window.width(),
@@ -102,6 +103,7 @@ namespace mirrage::renderer {
 		device().wait_idle();
 		std::this_thread::sleep_for(std::chrono::milliseconds(250));
 		_passes.clear();
+		device().wait_idle(true);
 	}
 
 	void Deferred_renderer::recreate()
@@ -147,7 +149,8 @@ namespace mirrage::renderer {
                                                 nullptr,
                                                 &buffer_info};
 
-		device().vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
+		device().vk_device()->updateDescriptorSets(
+		        gsl::narrow<uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
 	}
 
 	void Deferred_renderer::update(util::Time dt)
@@ -195,6 +198,7 @@ namespace mirrage::renderer {
 		// draw subpasses
 		for(auto& pass : _passes) {
 			if(pass) {
+				auto q = graphic::Queue_debug_label(device().context(), main_command_buffer, pass->name());
 				auto _ = _profiler.push(pass->name());
 				pass->draw(_frame_data);
 			}
@@ -203,6 +207,8 @@ namespace mirrage::renderer {
 		_frame_data.geometry_queue.clear();
 		_frame_data.light_queue.clear();
 		_frame_data.debug_geometry_queue.clear();
+		_frame_data.billboard_queue.clear();
+		_frame_data.decal_queue.clear();
 
 		// reset cached camera state
 		_active_camera = util::nothing;

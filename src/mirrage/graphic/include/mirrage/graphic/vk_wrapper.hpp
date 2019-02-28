@@ -170,6 +170,7 @@ namespace mirrage::graphic {
 				_callback(e.data);
 				return true;
 			});
+			_callback(current());
 		}
 
 		auto start_new_frame() -> vk::Fence

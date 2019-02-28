@@ -37,8 +37,6 @@ CMakeLists.txt.user
 
 
 assets/*.log
-assets/assets_ext
-assets/extensions
 
 assets/ImageTool.jar
 

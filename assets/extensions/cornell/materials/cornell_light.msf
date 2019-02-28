@@ -1,0 +1,7 @@
+{
+    "substance_id": "alphatest",
+    "albedo_aid": "cornell_light_albedo.ktx",
+    "normal_aid": "cornell_light_normal.ktx",
+    "brdf_aid": "cornell_light_brdf.ktx",
+    "emission_aid": "cornell_light_emission.ktx"
+}

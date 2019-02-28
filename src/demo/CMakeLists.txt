@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_demo LANGUAGES CXX ASM)
 
@@ -16,7 +16,10 @@ add_executable(demo ${HEADER_FILES}
 	src/test_animation_screen.cpp
 	${BACKWARD_ENABLE}
 )
-add_backward(demo)
+if(${MIRRAGE_ENABLE_BACKWARD})
+	add_backward(demo)
+endif()
+target_compile_features(demo PUBLIC cxx_std_17)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(demo PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
@@ -30,6 +33,18 @@ target_link_libraries(demo
 		sf2
 		doctest
 )
+if (WIN32)
+	if(MINGW)
+		target_link_libraries(demo
+			PRIVATE
+				mingw32
+		)
+	endif()
+	target_link_libraries(demo
+		PRIVATE
+			mirrage::deps::SDL2main
+	)
+endif()
 
 option(MIRRAGE_EXPORT_EXECUTABLE "Export executable" OFF)
 if(MIRRAGE_EXPORT_EXECUTABLE)
@@ -39,4 +54,8 @@ endif()
 
 if(COMMAND cotire)
 	cotire(demo)
+endif()
+
+if(MSVC_IDE)
+	set_property(TARGET demo PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${MIRRAGE_ROOT_DIR}/assets")
 endif()

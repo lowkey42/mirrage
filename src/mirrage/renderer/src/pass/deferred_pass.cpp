@@ -123,8 +123,8 @@ namespace mirrage::renderer {
 			                              .color_attachment(depth_sampleable)
 			                              .color_attachment(albedo_mat_id)
 			                              .color_attachment(mat_data)
-			                              .color_attachment(color)
-			                              .color_attachment(color_diffuse)
+			                              .preserve_attachment(color)
+			                              .preserve_attachment(color_diffuse)
 			                              .depth_stencil_attachment(depth);
 			gpass.configure_subpass(renderer, geometry_pass);
 
@@ -137,10 +137,78 @@ namespace mirrage::renderer {
 			                                       .color_attachment(depth_sampleable)
 			                                       .color_attachment(albedo_mat_id)
 			                                       .color_attachment(mat_data)
-			                                       .color_attachment(color)
-			                                       .color_attachment(color_diffuse)
+			                                       .preserve_attachment(color)
+			                                       .preserve_attachment(color_diffuse)
 			                                       .depth_stencil_attachment(depth);
 			gpass.configure_animation_subpass(renderer, animated_geometry_pass);
+
+
+			auto geometry_emissive_pipeline          = pipeline;
+			geometry_emissive_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
+			        vk::PipelineDepthStencilStateCreateFlags{}, true, false, vk::CompareOp::eEqual};
+			gpass.configure_pipeline(renderer, geometry_emissive_pipeline);
+			auto& geometry_emissive_pass = builder.add_subpass(geometry_emissive_pipeline)
+			                                       .color_attachment(color)
+			                                       .color_attachment(color_diffuse)
+			                                       .preserve_attachment(depth_sampleable)
+			                                       .preserve_attachment(albedo_mat_id)
+			                                       .preserve_attachment(mat_data)
+			                                       .depth_stencil_attachment(depth);
+			gpass.configure_emissive_subpass(renderer, geometry_emissive_pass);
+
+			auto animated_geometry_emissive_pipeline          = pipeline;
+			animated_geometry_emissive_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
+			        vk::PipelineDepthStencilStateCreateFlags{}, true, false, vk::CompareOp::eEqual};
+			gpass.configure_animation_pipeline(renderer, animated_geometry_emissive_pipeline);
+			auto& animated_geometry_emissive_pass = builder.add_subpass(animated_geometry_emissive_pipeline)
+			                                                .color_attachment(color)
+			                                                .color_attachment(color_diffuse)
+			                                                .preserve_attachment(depth_sampleable)
+			                                                .preserve_attachment(albedo_mat_id)
+			                                                .preserve_attachment(mat_data)
+			                                                .depth_stencil_attachment(depth);
+			gpass.configure_animation_emissive_subpass(renderer, animated_geometry_emissive_pass);
+
+
+			auto decal_pipeline = pipeline;
+			gpass.configure_decal_pipeline(renderer, decal_pipeline);
+			auto constant_blend = renderer.device().physical_device_features().independentBlend
+			                              ? graphic::Attachment_blend{vk::BlendFactor::eConstantColor,
+			                                                          vk::BlendFactor::eOneMinusConstantColor,
+			                                                          vk::BlendOp::eAdd,
+			                                                          vk::BlendFactor::eConstantColor,
+			                                                          vk::BlendFactor::eOneMinusConstantColor,
+			                                                          vk::BlendOp::eAdd}
+			                              : graphic::blend_premultiplied_alpha;
+			auto& decal_pass =
+			        builder.add_subpass(decal_pipeline)
+			                .input_attachment(depth_sampleable)
+			                .color_attachment(albedo_mat_id,
+			                                  vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG
+			                                          | vk::ColorComponentFlagBits::eB,
+			                                  graphic::blend_premultiplied_alpha)
+			                .color_attachment(mat_data, graphic::all_color_components, constant_blend)
+			                .color_attachment(
+			                        color, graphic::all_color_components, graphic::blend_premultiplied_alpha)
+			                .color_attachment(color_diffuse,
+			                                  graphic::all_color_components,
+			                                  graphic::blend_premultiplied_alpha)
+			                .depth_stencil_attachment(depth);
+			gpass.configure_decal_subpass(renderer, decal_pass);
+
+
+			auto billboard_pipeline          = pipeline;
+			billboard_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
+			        vk::PipelineDepthStencilStateCreateFlags{}, true, true, vk::CompareOp::eLess};
+			gpass.configure_billboard_pipeline(renderer, billboard_pipeline);
+			auto& billboard_pass = builder.add_subpass(billboard_pipeline)
+			                               .color_attachment(depth_sampleable)
+			                               .color_attachment(albedo_mat_id)
+			                               .color_attachment(mat_data)
+			                               .color_attachment(color)
+			                               .color_attachment(color_diffuse)
+			                               .depth_stencil_attachment(depth);
+			gpass.configure_billboard_subpass(renderer, billboard_pass);
 
 
 			auto light_pipeline    = pipeline;
@@ -172,6 +240,62 @@ namespace mirrage::renderer {
 			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
 			builder.add_dependency(animated_geometry_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       geometry_emissive_pass,
+			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+
+			builder.add_dependency(geometry_emissive_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       animated_geometry_emissive_pass,
+			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+
+			builder.add_dependency(animated_geometry_emissive_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       decal_pass,
+			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+
+			builder.add_dependency(decal_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       billboard_pass,
+			                       vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput,
+			                       vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
+
+			builder.add_dependency(billboard_pass,
 			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
 			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
 			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
@@ -310,5 +434,12 @@ namespace mirrage::renderer {
 	                                             util::maybe<std::uint32_t>,
 	                                             graphic::Device_create_info& ci)
 	{
+		auto features = pd.getFeatures();
+		if(features.independentBlend) {
+			ci.features.independentBlend = true;
+		} else {
+			LOG(plog::warning) << "Feature independentBlend is not supported. Decals might not work "
+			                      "correctly";
+		}
 	}
 } // namespace mirrage::renderer

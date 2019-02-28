@@ -205,9 +205,9 @@ namespace mirrage::renderer {
 		        std::array<vk::DescriptorSet, 2>{frame.global_uniform_set, *_ssao_descriptor_set};
 
 		Push_constants pcs;
-		pcs.options.x = util::max(1, _renderer.gbuffer().mip_levels - ao_mip_level - 1);
+		pcs.options.x = gsl::narrow<float>(util::max(1, _renderer.gbuffer().mip_levels - ao_mip_level - 1));
 
-		float height  = _ao_result_buffer.height();
+		float height  = gsl::narrow<float>(_ao_result_buffer.height());
 		float v_fov   = _renderer.global_uniforms().proj_planes.w;
 		pcs.options.y = height / (-2.f * glm::tan(v_fov * 0.5f));
 

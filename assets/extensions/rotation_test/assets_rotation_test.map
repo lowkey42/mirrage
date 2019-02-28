@@ -1,0 +1,8 @@
+blueprint:rotation_test = blueprints/rotation_test.json
+skel:rotation_test = models/rotation.mbf
+
+blueprint:rotation_test_lbs = blueprints/rotation_test_lbs.json
+skel:rotation_test_lbs = models/rotation_lbs.mbf
+
+anim:rotation_test = animations/armaturearmatureaction.maf
+

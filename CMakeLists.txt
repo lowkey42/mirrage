@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.8 FATAL_ERROR)
 
 project(mirrage LANGUAGES C CXX)
 
@@ -25,3 +25,6 @@ endif()
 add_subdirectory(dependencies)
 add_subdirectory(src)
 
+if(MSVC_IDE)
+	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT demo)
+endif()

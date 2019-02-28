@@ -1,5 +1,8 @@
 #pragma once
 
+#include <mirrage/renderer/billboard.hpp>
+#include <mirrage/renderer/decal.hpp>
+
 #include <mirrage/ecs/entity_handle.hpp>
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/ranges.hpp>
@@ -12,6 +15,7 @@
 #include <vulkan/vulkan.hpp>
 
 #include <functional>
+#include <type_traits>
 #include <variant>
 
 
@@ -114,9 +118,11 @@ namespace mirrage::renderer {
 		vk::DescriptorSet global_uniform_set;
 		std::size_t       swapchain_image;
 
-		std::vector<Geometry>       geometry_queue;
-		std::vector<Light>          light_queue;
-		std::vector<Debug_geometry> debug_geometry_queue;
+		std::vector<Geometry>                     geometry_queue;
+		std::vector<Light>                        light_queue;
+		std::vector<Debug_geometry>               debug_geometry_queue;
+		std::vector<Billboard>                    billboard_queue;
+		std::vector<std::tuple<Decal, glm::mat4>> decal_queue;
 
 		auto partition_geometry(std::uint32_t mask) -> util::vector_range<Geometry>;
 	};
@@ -168,12 +174,12 @@ namespace mirrage::renderer {
 	template <class T>
 	auto render_pass_id_of()
 	{
-		if constexpr(std::is_base_of_v<Render_pass_factory, T>)
+		if constexpr(std::is_base_of<Render_pass_factory, T>::value)
 			return util::type_uid_of<T>();
 		else {
-			static_assert(std::is_base_of_v<Render_pass_factory, T::Factory>,
+			static_assert(std::is_base_of<Render_pass_factory, typename T::Factory>::value,
 			              "T is not a renderpass, nor its factory.");
-			return util::type_uid_of<T::Factory>();
+			return util::type_uid_of<typename T::Factory>();
 		}
 	}
 

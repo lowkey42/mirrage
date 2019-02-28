@@ -1,10 +1,17 @@
 shader: = shader/
 
+vert_shader:billboard = shader/billboard.vert.spv
+frag_shader:billboard_lit = shader/billboard.frag.spv
+frag_shader:billboard_unlit = shader/billboard_unlit.frag.spv
+
 vert_shader:blit = shader/fullscreen.vert.spv
 frag_shader:blit = shader/blit.frag.spv
 
 vert_shader:debug_draw = shader/debug_draw.vert.spv
 frag_shader:debug_draw = shader/debug_draw.frag.spv
+
+vert_shader:decal = shader/decal.vert.spv
+frag_shader:decal = shader/decal.frag.spv
 
 vert_shader:depth_of_field = shader/fullscreen.vert.spv
 frag_shader:depth_of_field_apply = shader/depth_of_field_apply.frag.spv

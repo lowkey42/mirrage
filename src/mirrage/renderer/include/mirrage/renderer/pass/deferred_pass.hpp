@@ -15,6 +15,7 @@ namespace mirrage::renderer {
 		glm::vec4 light_color; //< for light-subpass; A=intensity
 		glm::vec4 light_data;  //< for light-subpass; R=src_radius, GBA=direction
 		glm::vec4 light_data2; //< for light-subpass; R=shadowmapID
+		glm::vec4 placeholder;
 	};
 	static_assert(sizeof(Deferred_push_constants) <= 4096, "Too large for push constants!");
 

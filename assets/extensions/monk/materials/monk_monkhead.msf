@@ -1,0 +1,7 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "monk_monkhead_albedo.ktx",
+    "normal_aid": "monk_monkhead_normal.ktx",
+    "brdf_aid": "monk_monkhead_brdf.ktx",
+    "emission_aid": ""
+}

@@ -48,6 +48,10 @@ namespace mirrage::graphic {
 
 	class Descriptor_pool {
 	  public:
+		Descriptor_pool(vk::Device                                device,
+		                std::int32_t                              chunk_size,
+		                std::initializer_list<vk::DescriptorType> types);
+
 		// Allocates a descriptor from the pool
 		// \param bindings: The estimated number of bindings required by the layout
 		auto create_descriptor(vk::DescriptorSetLayout, std::int32_t bindings) -> DescriptorSet;
@@ -62,10 +66,6 @@ namespace mirrage::graphic {
 		std::vector<vk::UniqueDescriptorPool> _chunks;
 		std::vector<std::int32_t>             _chunks_free_count;
 		mutable std::mutex                    _mutex;
-
-		Descriptor_pool(vk::Device                                device,
-		                std::int32_t                              chunk_size,
-		                std::initializer_list<vk::DescriptorType> types);
 
 		Descriptor_pool(const Descriptor_pool&) = delete;
 		Descriptor_pool(Descriptor_pool&&)      = delete;

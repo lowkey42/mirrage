@@ -1,14 +1,8 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_graphic)
 
 find_package(Vulkan REQUIRED)
-
-find_package(SDL2 REQUIRED)
-add_library(sdl2::sdl2 INTERFACE IMPORTED)
-set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_LINK_LIBRARIES ${SDL2_LIBRARY})
-set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${SDL2_INCLUDE_DIR})
-
 
 # need to be specified with the sources for correct syntax highlighting in some IDEs
 file(GLOB_RECURSE HEADER_FILES
@@ -36,6 +30,7 @@ add_library(mirrage_graphic STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::graphic ALIAS mirrage_graphic)
+target_compile_features(mirrage_graphic PUBLIC cxx_std_17)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_graphic PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
@@ -52,7 +47,7 @@ target_link_libraries(mirrage_graphic
 		gsl
 		mirrage::asset
 		sf2
-		sdl2::sdl2
+		mirrage::deps::SDL2
 		Vulkan::Vulkan
 )
 

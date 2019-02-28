@@ -135,13 +135,13 @@ namespace mirrage::graphic {
 	Transfer_manager::~Transfer_manager() {}
 
 	auto Transfer_manager::upload_image(vk::ImageType,
-	                                    std::uint32_t              owner,
-	                                    const Image_dimensions&    dimensions,
-	                                    vk::Format                 format,
-	                                    std::int32_t               mip_levels,
-	                                    std::int32_t               size,
-	                                    std::function<void(char*)> write_data,
-	                                    bool                       dedicated) -> Static_image
+	                                    std::uint32_t                             owner,
+	                                    const Image_dimensions&                   dimensions,
+	                                    vk::Format                                format,
+	                                    std::int32_t                              mip_levels,
+	                                    std::int32_t                              size,
+	                                    std::function<void(char*, std::uint32_t)> write_data,
+	                                    bool                                      dedicated) -> Static_image
 	{
 
 		auto stored_mip_levels = std::max(1, mip_levels);
@@ -161,8 +161,6 @@ namespace mirrage::graphic {
 		auto ptr = staging_buffer.memory().mapped_addr().get_or_throw("Staging GPU memory is not mapped!");
 		auto begin_ptr = ptr;
 
-		write_data(ptr);
-
 		// extract sizes of mip levels
 		auto mip_image_sizes = std::vector<std::uint32_t>();
 		mip_image_sizes.reserve(gsl::narrow<std::size_t>(stored_mip_levels));
@@ -171,10 +169,10 @@ namespace mirrage::graphic {
 
 			MIRRAGE_INVARIANT(ptr - begin_ptr < size, "buffer overflow");
 
-			auto mip_size = *reinterpret_cast<std::uint32_t*>(ptr);
-			mip_size += 3 - ((mip_size + 3) % 4); // mipPadding
-			ptr += sizeof(std::uint32_t);         // imageSize
-			ptr += mip_size;                      // data
+			auto mip_size = std::uint32_t(0);
+			write_data(reinterpret_cast<char*>(&mip_size), sizeof(mip_size));
+			write_data(ptr, mip_size);
+			ptr += mip_size;
 
 			mip_image_sizes.emplace_back(mip_size);
 		}
@@ -477,7 +475,6 @@ namespace mirrage::graphic {
 
 		for(auto i : util::range(t.mip_count_loaded)) {
 			auto size = t.mip_image_sizes[std::size_t(i)];
-			offset += std::uint32_t((sizeof(std::uint32_t))); // imageSize
 
 			MIRRAGE_INVARIANT(offset + size <= t.size, "Overflow in _transfer_image");
 

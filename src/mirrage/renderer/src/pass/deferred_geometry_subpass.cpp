@@ -14,12 +14,43 @@ using mirrage::ecs::components::Transform_comp;
 
 namespace mirrage::renderer {
 
+	namespace {
+		auto create_input_attachment_descriptor_set_layout(graphic::Device& device)
+		        -> vk::UniqueDescriptorSetLayout
+		{
+			auto binding = vk::DescriptorSetLayoutBinding{
+			        0, vk::DescriptorType::eInputAttachment, 1, vk::ShaderStageFlagBits::eFragment};
+
+			return device.create_descriptor_set_layout(binding);
+		}
+
+	} // namespace
+
 	Deferred_geometry_subpass::Deferred_geometry_subpass(Deferred_renderer& r, ecs::Entity_manager& entities)
-	  : _ecs(entities), _renderer(r)
+	  : _ecs(entities)
+	  , _renderer(r)
+	  , _decal_input_attachment_descriptor_set_layout(
+	            create_input_attachment_descriptor_set_layout(r.device()))
+	  , _decal_input_attachment_descriptor_set(
+	            r.create_descriptor_set(*_decal_input_attachment_descriptor_set_layout, 1))
 	{
+		entities.register_component_type<Billboard_comp>();
+		entities.register_component_type<Decal_comp>();
 		entities.register_component_type<Model_comp>();
 		entities.register_component_type<Pose_comp>();
 		entities.register_component_type<Shared_pose_comp>();
+
+		auto depth_info = vk::DescriptorImageInfo(
+		        vk::Sampler{}, r.gbuffer().depth.view(0), vk::ImageLayout::eShaderReadOnlyOptimal);
+
+		auto desc_write = vk::WriteDescriptorSet{*_decal_input_attachment_descriptor_set,
+		                                         0,
+		                                         0,
+		                                         1,
+		                                         vk::DescriptorType::eInputAttachment,
+		                                         &depth_info};
+
+		r.device().vk_device()->updateDescriptorSets(1, &desc_write, 0, nullptr);
 	}
 
 	void Deferred_geometry_subpass::configure_pipeline(Deferred_renderer&             renderer,
@@ -36,12 +67,19 @@ namespace mirrage::renderer {
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 
-		pass.stage("emissive"_strid)
+		pass.stage("alphatest"_strid)
+		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
+	}
+	void Deferred_geometry_subpass::configure_emissive_subpass(Deferred_renderer&,
+	                                                           graphic::Subpass_builder& pass)
+	{
+		pass.stage("default"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("alphatest"_strid)
-		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
+		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model"_aid, graphic::Shader_stage::vertex);
 	}
 
@@ -65,15 +103,11 @@ namespace mirrage::renderer {
 		                              4,
 		                              &Model_rigged_vertex::bone_weights);
 	}
-	void Deferred_geometry_subpass::configure_animation_subpass(Deferred_renderer&        renderer,
+	void Deferred_geometry_subpass::configure_animation_subpass(Deferred_renderer&,
 	                                                            graphic::Subpass_builder& pass)
 	{
 		pass.stage("default"_strid)
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
-		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
-
-		pass.stage("emissive"_strid)
-		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("alphatest"_strid)
@@ -85,13 +119,62 @@ namespace mirrage::renderer {
 		        .shader("frag_shader:model"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
 
-		pass.stage("dq_emissive"_strid)
+		pass.stage("dq_alphatest"_strid)
+		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+	}
+	void Deferred_geometry_subpass::configure_animation_emissive_subpass(Deferred_renderer&,
+	                                                                     graphic::Subpass_builder& pass)
+	{
+		pass.stage("default"_strid)
+		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
+
+		pass.stage("alphatest"_strid)
+		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:model_animated"_aid, graphic::Shader_stage::vertex);
+
+
+		pass.stage("dq_default"_strid)
 		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
 
 		pass.stage("dq_alphatest"_strid)
-		        .shader("frag_shader:model_alphatest"_aid, graphic::Shader_stage::fragment)
+		        .shader("frag_shader:model_emissive"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:model_animated_dqs"_aid, graphic::Shader_stage::vertex);
+	}
+
+	void Deferred_geometry_subpass::configure_billboard_pipeline(Deferred_renderer&             renderer,
+	                                                             graphic::Pipeline_description& p)
+	{
+		p.rasterization.cullMode  = vk::CullModeFlagBits::eNone;
+		p.input_assembly.topology = vk::PrimitiveTopology::eTriangleStrip;
+		p.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
+	}
+	void Deferred_geometry_subpass::configure_billboard_subpass(Deferred_renderer&,
+	                                                            graphic::Subpass_builder& pass)
+	{
+		pass.stage("default"_strid)
+		        .shader("frag_shader:billboard_lit"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:billboard"_aid, graphic::Shader_stage::vertex);
+	}
+
+	void Deferred_geometry_subpass::configure_decal_pipeline(Deferred_renderer&             renderer,
+	                                                         graphic::Pipeline_description& p)
+	{
+		p.rasterization.cullMode  = vk::CullModeFlagBits::eBack;
+		p.input_assembly.topology = vk::PrimitiveTopology::eTriangleStrip;
+		p.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{
+                vk::PipelineDepthStencilStateCreateFlags{}, true, 0, vk::CompareOp::eGreaterOrEqual};
+		p.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
+		p.add_descriptor_set_layout(*_decal_input_attachment_descriptor_set_layout);
+	}
+	void Deferred_geometry_subpass::configure_decal_subpass(Deferred_renderer&,
+	                                                        graphic::Subpass_builder& pass)
+	{
+		pass.stage("default"_strid)
+		        .shader("frag_shader:decal"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:decal"_aid, graphic::Shader_stage::vertex);
 	}
 
 	void Deferred_geometry_subpass::update(util::Time) {}
@@ -118,7 +201,7 @@ namespace mirrage::renderer {
 		auto last_material     = static_cast<const Material*>(nullptr);
 		auto last_model        = static_cast<const Model*>(nullptr);
 
-		auto prepare_draw = [&](auto& geo) {
+		auto prepare_draw = [&](auto& geo, bool emissive) {
 			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
 
 			if(geo.substance_id != last_substance_id) {
@@ -140,7 +223,7 @@ namespace mirrage::renderer {
 			dpc.model[3] = glm::vec4(geo.position, 1.f);
 			dpc.model    = _renderer.global_uniforms().view_mat * dpc.model;
 
-			if(sub_mesh.material->substance_id() == "emissive"_strid) {
+			if(emissive) {
 				auto emissive_color = glm::vec4(1, 1, 1, 1000);
 
 				if(auto entity = _ecs.get(geo.entity); entity.is_some()) {
@@ -153,35 +236,97 @@ namespace mirrage::renderer {
 			}
 		};
 
+		auto next_sub_pass = [&] {
+			render_pass.next_subpass();
+			last_substance_id = ""_strid;
+			last_material     = static_cast<const Material*>(nullptr);
+			last_model        = static_cast<const Model*>(nullptr);
+		};
 
-		for(auto& geo : _geometry_range) {
-			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
-			prepare_draw(geo);
+		for(bool emissive_pass : {false, true}) {
+			// draw all static models
+			for(auto& geo : _geometry_range) {
+				auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
+				if(emissive_pass && !sub_mesh.material->has_emission())
+					continue;
 
-			render_pass.push_constant("dpc"_strid, dpc);
+				prepare_draw(geo, emissive_pass);
+				render_pass.push_constant("dpc"_strid, dpc);
+				frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+			}
 
-			frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+			next_sub_pass();
+
+			// draw all animated models in a new subpass
+			for(auto& geo : _rigged_geometry_range) {
+				if(geo.animation_uniform_offset.is_nothing())
+					continue;
+
+				auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
+				if(emissive_pass && !sub_mesh.material->has_emission())
+					continue;
+
+				prepare_draw(geo, emissive_pass);
+
+				render_pass.push_constant("dpc"_strid, dpc);
+
+				auto uniform_offset = geo.animation_uniform_offset.get_or_throw();
+				render_pass.bind_descriptor_set(2, _renderer.gbuffer().animation_data, {&uniform_offset, 1u});
+
+				frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+			}
+
+			next_sub_pass();
 		}
 
-		// draw all animated models in a new subpass
-		render_pass.next_subpass();
-		last_substance_id = ""_strid;
-		last_material     = static_cast<const Material*>(nullptr);
-		last_model        = static_cast<const Model*>(nullptr);
+		// draw decals
+		std::sort(frame.decal_queue.begin(), frame.decal_queue.end(), [](auto& lhs, auto& rhs) {
+			return &*std::get<0>(lhs).material < &*std::get<0>(rhs).material;
+		});
+		render_pass.set_stage("default"_strid);
+		render_pass.bind_descriptor_set(2, *_decal_input_attachment_descriptor_set);
+		for(auto&& [decal, model_mat] : frame.decal_queue) {
+			if(&*decal.material != last_material) {
+				last_material = &*decal.material;
+				last_material->bind(render_pass);
 
-		for(auto& geo : _rigged_geometry_range) {
-			if(geo.animation_uniform_offset.is_nothing())
-				continue;
+				auto blend = std::array<float, 4>{0, 0, 0, 0};
+				if(decal.material->has_normal())
+					blend[0] = blend[1] = decal.normal_alpha;
+				if(decal.material->has_brdf()) {
+					blend[2] = decal.roughness_alpha;
+					blend[3] = decal.metallic_alpha;
+				}
+				frame.main_command_buffer.setBlendConstants(blend.data());
+			}
 
-			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
-			prepare_draw(geo);
+			auto pcs = construct_push_constants(decal, _renderer.global_uniforms().view_mat * model_mat);
 
-			render_pass.push_constant("dpc"_strid, dpc);
+			render_pass.push_constant("dpc"_strid, pcs);
+			frame.main_command_buffer.draw(14, 1, 0, 0);
+		}
+		next_sub_pass();
 
-			auto uniform_offset = geo.animation_uniform_offset.get_or_throw();
-			render_pass.bind_descriptor_set(2, _renderer.gbuffer().animation_data, {&uniform_offset, 1u});
+		// draw billboards
+		std::sort(frame.billboard_queue.begin(), frame.billboard_queue.end(), [](auto& lhs, auto& rhs) {
+			return std::make_pair(lhs.dynamic_lighting ? 0 : 1, &*lhs.material)
+			       < std::make_pair(rhs.dynamic_lighting ? 0 : 1, &*rhs.material);
+		});
+		render_pass.set_stage("default"_strid);
+		for(auto&& bb : frame.billboard_queue) {
+			if(!bb.dynamic_lighting)
+				break;
 
-			frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+			if(&*bb.material != last_material) {
+				last_material = &*bb.material;
+				last_material->bind(render_pass);
+			}
+
+			auto pcs = construct_push_constants(
+			        bb, _renderer.global_uniforms().view_mat, _renderer.window().viewport());
+
+			render_pass.push_constant("dpc"_strid, pcs);
+			frame.main_command_buffer.draw(4, 1, 0, 0);
 		}
 	}
 } // namespace mirrage::renderer

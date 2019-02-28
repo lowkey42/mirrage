@@ -5,20 +5,20 @@
 #include "global_uniforms.glsl"
 #include "normal_encoding.glsl"
 
+layout(early_fragment_tests) in;
+
 layout(location = 0) in vec3 view_pos;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 tex_coords;
 
 
-layout(location = 0) out vec4 depth_out;
-layout(location = 1) out vec4 albedo_mat_id;
-layout(location = 2) out vec4 mat_data_out;
-layout(location = 3) out vec4 color_out;
-layout(location = 4) out vec4 color_diffuse_out;
+layout(location = 0) out vec4 color_out;
+layout(location = 1) out vec4 color_diffuse_out;
 
 layout(set=1, binding = 0) uniform sampler2D albedo_sampler;
-layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;
-layout(set=1, binding = 2) uniform sampler2D mat_data2_sampler;
+layout(set=1, binding = 1) uniform sampler2D normal_sampler;
+layout(set=1, binding = 2) uniform sampler2D brdf_sampler;
+layout(set=1, binding = 3) uniform sampler2D emission_sampler;
 
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
@@ -34,29 +34,16 @@ vec3 tangent_space_to_world(vec3 N);
 
 void main() {
 	vec4 albedo = texture(albedo_sampler, tex_coords);
+	vec3  N    = tangent_space_to_world(decode_tangent_normal(texture(normal_sampler, tex_coords).rg));
 
-	if(albedo.a < 0.1)
-		discard;
-
-	vec4 mat_data = texture(mat_data_sampler, tex_coords);
-
-	vec3  N    = tangent_space_to_world(decode_tangent_normal(mat_data.rg));
-	N = normalize(normal);
-
-	float roughness = mat_data.b;
-	float metallic  = mat_data.a;
-
+	vec4 brdf = texture(brdf_sampler, tex_coords);
+	float roughness = brdf.r;
+	float metallic  = brdf.g;
 	roughness = mix(0.01, 0.99, roughness*roughness);
 
-	float emissive_power = texture(mat_data2_sampler, tex_coords).r;
-	float emissive_only = step(0.1, emissive_power);
+	float emissive_power = texture(emission_sampler, tex_coords).r;
 
-	albedo.rgb *= mix(vec3(1), model_uniforms.material_properties.rgb, emissive_only);
-
-	depth_out     = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
-	albedo_mat_id = vec4(albedo.rgb, 1.0);
-	mat_data_out      = vec4(encode_normal(N), mix(roughness, 1, emissive_only), metallic);
-	color_out     = vec4(albedo.rgb * emissive_power * model_uniforms.material_properties.a, 1.0);
+	color_out     = vec4(albedo.rgb *  model_uniforms.material_properties.rgb * emissive_power * model_uniforms.material_properties.a * albedo.a, 0.0);
 	color_diffuse_out = color_out;
 }
 

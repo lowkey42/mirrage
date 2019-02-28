@@ -8,6 +8,8 @@ namespace mirrage {
 		const std::string hash = "@GIT_HASH@";
 		const std::string date = "@GIT_DATE@";
 		const std::string subject = "@GIT_SUBJECT@";
+		const std::string project_root = "@MIRRAGE_ROOT_PROJECT_DIR@";
+		const std::string engine_root = "@MIRRAGE_ROOT_DIR@";
 	}
 
 

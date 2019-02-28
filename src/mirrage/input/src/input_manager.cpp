@@ -8,7 +8,7 @@
 #include <glm/glm.hpp>
 #include <sf2/sf2.hpp>
 
-#include <SDL2/SDL_gesture.h>
+#include <SDL_gesture.h>
 
 #ifdef EMSCRIPTEN
 #include <emscripten/html5.h>
@@ -181,7 +181,7 @@ namespace mirrage::input {
 			_pointer_world_pos[i] = _screen_to_world_coords(_pointer_screen_pos[i]);
 
 		for(auto& gp : _gamepads)
-			if(gp){
+			if(gp) {
 				gp->update(dt);
 			}
 
@@ -339,7 +339,7 @@ namespace mirrage::input {
 		if(SDL_IsGameController(joystick_id)) {
 			SDL_GameController* controller = SDL_GameControllerOpen(joystick_id);
 			if(controller) {
-				_gamepads.emplace_back(std::make_unique<Gamepad>(_gamepads.size() + 1, controller, *_mapper));
+				_gamepads.emplace_back(std::make_unique<Gamepad>(gsl::narrow<Input_source>(_gamepads.size() + 1), controller, *_mapper));
 				_mailbox.send<Source_added>(Input_source(_gamepads.size()));
 			} else {
 				std::cerr << "Could not open gamecontroller " << joystick_id << ": " << SDL_GetError()

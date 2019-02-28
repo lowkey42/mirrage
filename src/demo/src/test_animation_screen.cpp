@@ -74,7 +74,7 @@ namespace mirrage {
 
 			auto new_idx = nk_combo(ctx,
 			                        animations_strs.data(),
-			                        animations_strs.size(),
+			                        gsl::narrow<int>(animations_strs.size()),
 			                        int(curr_idx),
 			                        14,
 			                        nk_vec2(100.f, 200));

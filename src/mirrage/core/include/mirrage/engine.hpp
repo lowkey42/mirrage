@@ -46,15 +46,16 @@ namespace mirrage {
 
 	class Engine {
 	  public:
-		Engine(const std::string& org,
-		       const std::string& title,
-		       std::uint32_t      version_major,
-		       std::uint32_t      version_minor,
-		       bool               debug,
-		       bool               headless,
-		       int                argc,
-		       char**             argv,
-		       char**             env);
+		Engine(const std::string&       org,
+		       const std::string&       title,
+		       util::maybe<std::string> base_dir,
+		       std::uint32_t            version_major,
+		       std::uint32_t            version_minor,
+		       bool                     debug,
+		       bool                     headless,
+		       int                      argc,
+		       char**                   argv,
+		       char**                   env);
 		virtual ~Engine() noexcept;
 
 		bool running() const noexcept { return !_quit; }

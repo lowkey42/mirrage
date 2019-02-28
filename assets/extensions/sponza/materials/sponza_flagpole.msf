@@ -1,0 +1,7 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "sponza_flagpole_albedo.ktx",
+    "normal_aid": "sponza_flagpole_normal.ktx",
+    "brdf_aid": "sponza_flagpole_brdf.ktx",
+    "emission_aid": ""
+}

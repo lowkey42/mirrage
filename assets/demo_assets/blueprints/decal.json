@@ -1,0 +1,15 @@
+{
+	"Transform":{
+	},
+	"Decal": {
+		"decals": [
+			{
+				"size": {"w":1, "h":1},
+				"material_aid": "mat:decal_material.msf",
+				"clip_rect": {"x":0, "y":0, "z":1, "w":1},
+				"thickness": 0.2,
+				"color": {"a":0.25}
+			}
+		]
+	}
+}

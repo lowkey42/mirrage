@@ -71,8 +71,12 @@ target_include_directories(enet PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:include>)
 
-if (MINGW)
-    target_link_libraries(enet winmm ws2_32)
+if(WIN32)
+    target_link_libraries(enet PUBLIC winmm ws2_32)
+endif()
+
+if(MSVC)
+	target_compile_definitions(enet PRIVATE _WINSOCK_DEPRECATED_NO_WARNINGS)
 endif()
 
 install(TARGETS enet EXPORT enetTargets

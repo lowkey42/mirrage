@@ -134,7 +134,7 @@ namespace mirrage::renderer {
 		                                        &mat_data_info};
 
 		renderer.device().vk_device()->updateDescriptorSets(
-		        desc_writes.size(), desc_writes.data(), 0, nullptr);
+		        gsl::narrow<uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
 	}
 
 	void Deferred_lighting_subpass::configure_pipeline(Deferred_renderer&             renderer,
@@ -198,7 +198,7 @@ namespace mirrage::renderer {
 				dpc.light_data.g  = dir.x / dir_len;
 				dpc.light_data.b  = dir.y / dir_len;
 				dpc.light_data.a  = dir.z / dir_len;
-				dpc.light_data2.r = _gbuffer.shadowmaps ? light_data.shadowmap_id() : -1;
+				dpc.light_data2.r = gsl::narrow<float>(_gbuffer.shadowmaps ? light_data.shadowmap_id() : -1);
 
 				render_pass.push_constant("dpc"_strid, dpc);
 
@@ -239,8 +239,8 @@ namespace mirrage::renderer {
 					dpc.light_data.g  = pos.x;
 					dpc.light_data.b  = pos.y;
 					dpc.light_data.a  = pos.z;
-					dpc.light_data2.g = _gbuffer.colorA.width();
-					dpc.light_data2.b = _gbuffer.colorA.height();
+					dpc.light_data2.g = gsl::narrow<float>(_gbuffer.colorA.width());
+					dpc.light_data2.b = gsl::narrow<float>(_gbuffer.colorA.height());
 					render_pass.push_constant("dpc"_strid, dpc);
 
 					frame.main_command_buffer.drawIndexed(_point_light_mesh.index_count(), 1, 0, 0, 0);

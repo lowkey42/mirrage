@@ -162,6 +162,9 @@ namespace mirrage::util {
 		        util::max(static_cast<std::size_t>(min_chunks), util::min(_chunks.size(), std::size_t(1))));
 	}
 
+	namespace detail {
+	}
+
 	MIRRAGE_POOL_HEADER
 	template <typename F, class... Args>
 	auto MIRRAGE_POOL::emplace(F&& relocation, Args&&... args) -> std::tuple<T&, IndexType>
@@ -182,20 +185,20 @@ namespace mirrage::util {
 		auto i = _used_elements;
 
 		if constexpr(ValueTraits::sorted) {
-			auto sort_key = [&] {
-				using first_arg_type =
-				        std::remove_cv_t<std::remove_reference_t<std::tuple_element_t<0, std::tuple<Args...>>>>;
+			auto sort_key = decltype(std::declval<T>().*(ValueTraits::sort_key)){};
 
-				if constexpr(sizeof...(args) == 1 && std::is_same_v<T, first_arg_type>) {
-					// copy/move construction
-					auto&& first_arg = std::get<0>(std::forward_as_tuple(args...));
-					return first_arg.*(ValueTraits::sort_key);
+			using first_arg_type =
+			        std::remove_cv_t<std::remove_reference_t<std::tuple_element_t<0, std::tuple<Args...>>>>;
 
-				} else {
-					// normal constructor call
-					return std::get<ValueTraits::sort_key_constructor_idx>(std::tie(args...));
-				}
-			}();
+			if constexpr(sizeof...(args) == 1 && std::is_same_v<T, first_arg_type>) {
+				// copy/move construction
+				auto&& first_arg = std::get<0>(std::forward_as_tuple(args...));
+				sort_key         = first_arg.*(ValueTraits::sort_key);
+
+			} else {
+				// normal constructor call
+				sort_key = std::get<ValueTraits::sort_key_constructor_idx>(std::tie(args...));
+			}
 
 
 			// find insert position
@@ -209,28 +212,29 @@ namespace mirrage::util {
 				i = iter.physical_index();
 
 				// find first free slot
-				auto first_empty = [&] {
-					if constexpr(max_free_slots > 0) {
-						auto min = std::lower_bound(_freelist.begin(), _freelist.end(), i);
-						if(min != _freelist.end()) {
-							auto min_v = *min;
-							_freelist.erase(min);
-							return min_v;
-						}
+				auto first_empty = util::maybe<IndexType>{};
+				if constexpr(max_free_slots > 0) {
+					auto min = std::lower_bound(_freelist.begin(), _freelist.end(), i);
+					if(min != _freelist.end()) {
+						auto min_v = *min;
+						_freelist.erase(min);
+						first_empty = min_v;
 					}
+				}
 
+				if(first_empty.is_nothing()) {
 					// create new slot if required
 					addr(_used_elements);
 					_used_elements++;
+					first_empty = _used_elements - 1;
+				}
 
-					return _used_elements - 1;
-				}();
+				MIRRAGE_INVARIANT(first_empty.get_or_throw() >= i,
+				                  "first_empty (" << first_empty.get_or_throw() << ") < i (" << i << ")");
 
-				MIRRAGE_INVARIANT(first_empty >= i, "first_empty (" << first_empty << ") < i (" << i << ")");
-
-				if(first_empty > i) {
+				if(first_empty.get_or_throw() > i) {
 					// shift to make room for new element
-					_move_elements(i, i + 1, relocation, first_empty - i, true);
+					_move_elements(i, i + 1, relocation, first_empty.get_or_throw() - i, true);
 					iter->~T();
 				}
 
@@ -448,6 +452,13 @@ namespace mirrage::util {
 
 	template <class Pool>
 	auto pool_iterator<Pool>::get() noexcept -> value_type*
+	{
+		MIRRAGE_INVARIANT(_element_iter, "access to invalid pool_iterator");
+		return std::launder(_element_iter);
+	}
+
+	template <class Pool>
+	auto pool_iterator<Pool>::get() const noexcept -> const value_type*
 	{
 		MIRRAGE_INVARIANT(_element_iter, "access to invalid pool_iterator");
 		return std::launder(_element_iter);

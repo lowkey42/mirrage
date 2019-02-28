@@ -82,8 +82,8 @@ namespace mirrage::renderer {
 			                                                  desc_set_layout};
 			auto pcs = vk::PushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, sizeof(Push_constants)};
 
-			return renderer.device().vk_device()->createPipelineLayoutUnique(
-			        vk::PipelineLayoutCreateInfo{{}, dsl.size(), dsl.data(), 1, &pcs});
+			return renderer.device().vk_device()->createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo{
+			        {}, gsl::narrow<std::uint32_t>(dsl.size()), dsl.data(), 1, &pcs});
 		}
 		auto build_compute_pipeline(graphic::Device&      device,
 		                            asset::Asset_manager& assets,
@@ -105,8 +105,10 @@ namespace mirrage::renderer {
 			reinterpret_cast<float&>(spec_data[2 * 32])        = std::log(histogram_min);
 			reinterpret_cast<float&>(spec_data[3 * 32])        = std::log(histogram_max);
 
-			auto spec_info = vk::SpecializationInfo{
-			        spec_entries.size(), spec_entries.data(), spec_data.size(), spec_data.data()};
+			auto spec_info = vk::SpecializationInfo{gsl::narrow<std::uint32_t>(spec_entries.size()),
+			                                        spec_entries.data(),
+			                                        gsl::narrow<std::uint32_t>(spec_data.size()),
+			                                        spec_data.data()};
 
 			auto stage = vk::PipelineShaderStageCreateInfo{
 			        {}, vk::ShaderStageFlagBits::eCompute, **module, "main", &spec_info};
@@ -300,7 +302,7 @@ namespace mirrage::renderer {
 			auto data = reinterpret_cast<std::uint32_t*>(data_addr);
 
 			for(auto i : util::range(_last_result_data.size())) {
-				_last_result_data[i] = data[i];
+				_last_result_data[i] = gsl::narrow<float>(data[i]);
 			}
 
 			for(auto i : util::range(1u, 2u)) {
@@ -378,7 +380,7 @@ namespace mirrage::renderer {
 		auto _ = _renderer.profiler().push("Foveal rescale");
 
 		auto foveal_mip_level =
-		        compute_foveal_mip_level(_src.height(), _renderer.global_uniforms().proj_planes.w);
+		        compute_foveal_mip_level(gsl::narrow<float>(_src.height()), _renderer.global_uniforms().proj_planes.w);
 		_last_max_histogram_size = _src.height(foveal_mip_level) * _src.width(foveal_mip_level);
 		if(foveal_mip_level > 0) {
 			graphic::generate_mipmaps(command_buffer,
@@ -430,7 +432,7 @@ namespace mirrage::renderer {
 		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
 		                                  *_compute_pipeline_layout,
 		                                  0,
-		                                  desc_sets.size(),
+		                                  gsl::narrow<uint32_t>(desc_sets.size()),
 		                                  desc_sets.data(),
 		                                  0,
 		                                  nullptr);
@@ -501,7 +503,7 @@ namespace mirrage::renderer {
 		command_buffer.bindDescriptorSets(vk::PipelineBindPoint::eCompute,
 		                                  *_compute_pipeline_layout,
 		                                  0,
-		                                  desc_sets.size(),
+		                                  gsl::narrow<uint32_t>(desc_sets.size()),
 		                                  desc_sets.data(),
 		                                  0,
 		                                  nullptr);

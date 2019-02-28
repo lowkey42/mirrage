@@ -1,0 +1,7 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "sponza_roof_albedo.ktx",
+    "normal_aid": "sponza_roof_normal.ktx",
+    "brdf_aid": "sponza_roof_brdf.ktx",
+    "emission_aid": ""
+}

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_utils)
 
@@ -22,6 +22,7 @@ add_library(mirrage_utils STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::utils ALIAS mirrage_utils)
+target_compile_features(mirrage_utils PUBLIC cxx_std_17)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_utils PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
@@ -36,7 +37,10 @@ target_include_directories(mirrage_utils PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
 	$<INSTALL_INTERFACE:include>)
 
-add_backward(mirrage_utils)
+if(${MIRRAGE_ENABLE_BACKWARD})
+	add_backward(mirrage_utils)
+	target_compile_definitions(mirrage_utils PUBLIC MIRRAGE_ENABLE_BACKWARD)
+endif()
 
 target_link_libraries(mirrage_utils
 	PUBLIC
@@ -57,7 +61,10 @@ if(MIRRAGE_ENABLE_TESTS)
 
 	add_executable(mirrage_utils_tests generated_test.cpp)
 	target_link_libraries(mirrage_utils_tests doctest mirrage_utils)
-	add_backward(mirrage_utils_tests)
+	
+	if(${MIRRAGE_ENABLE_BACKWARD})
+		add_backward(mirrage_utils_tests)
+	endif()
 
 	add_test (NAME mirrage_utils_tests COMMAND mirrage_utils_tests)
 endif(MIRRAGE_ENABLE_TESTS)

@@ -1,0 +1,7 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "sponza_vase_hanging_albedo.ktx",
+    "normal_aid": "sponza_vase_hanging_normal.ktx",
+    "brdf_aid": "sponza_vase_hanging_brdf.ktx",
+    "emission_aid": ""
+}

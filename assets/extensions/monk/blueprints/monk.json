@@ -1,0 +1,26 @@
+{
+	"Transform":{
+		"scale": {"x": 0.018, "y": 0.018, "z": 0.018}
+	},
+	"Model": {
+		"aid": "model:monk.mmf"
+	},
+	"Pose": {"skeleton": "skel:monk"},
+	"Animation": {},
+	"Simple_animation_controller": {
+		"animations": {
+			"attack": "anim:monk_attack",
+			"dance": "anim:monk_dance",
+			"die": "anim:monk_die",
+			"flee": "anim:monk_flee",
+			"idle": "anim:monk_idle",
+			"sad": "anim:monk_sad",
+			"sleep": "anim:monk_sleep",
+			"walk": "anim:monk_walk"
+		},
+		"current_animation": {
+			"id": "dance"
+		}
+	},
+	"Shadowcaster": {}
+}

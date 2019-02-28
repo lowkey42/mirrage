@@ -3,7 +3,7 @@
 	url = https://github.com/bombela/backward-cpp.git
 [submodule "dependencies/plog"]
 	path = dependencies/plog
-	url = https://github.com/SergiusTheBest/plog.git
+	url = https://github.com/lowkey42/plog.git
 [submodule "dependencies/assimp"]
 	path = dependencies/assimp
 	url = https://github.com/assimp/assimp.git
@@ -37,3 +37,9 @@
 [submodule "dependencies/doctest"]
 	path = dependencies/doctest
 	url = https://github.com/onqtam/doctest.git
+[submodule "dependencies/SDL"]
+	path = dependencies/SDL
+	url = https://github.com/SDL-mirror/SDL.git
+[submodule "dependencies/crunch"]
+	path = dependencies/crunch
+	url = https://github.com/lowkey42/crunch.git

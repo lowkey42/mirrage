@@ -35,7 +35,8 @@ namespace mirrage::graphic {
 		       Queue_tag            default_draw_queue,
 		       Queue_family_mapping queue_mapping,
 		       Swapchain_create_infos,
-		       bool dedicated_alloc_supported);
+		       bool                              dedicated_alloc_supported,
+		       const vk::PhysicalDeviceFeatures& features);
 		~Device();
 
 		auto get_queue(Queue_tag) -> vk::Queue;
@@ -111,6 +112,7 @@ namespace mirrage::graphic {
 
 		auto physical_device() const noexcept { return _gpu; }
 		auto physical_device_properties() const noexcept { return _gpu_properties; }
+		auto physical_device_features() const noexcept { return _features; }
 
 		auto transfer() -> auto& { return _transfer_manager; }
 
@@ -134,10 +136,11 @@ namespace mirrage::graphic {
 
 		auto context() -> auto& { return util::Registered<Device, Context>::parent(); }
 
-		void wait_idle()
+		void wait_idle(bool clear_delete_queue = false)
 		{
 			_device->waitIdle();
-			_delete_queue.clear();
+			if(clear_delete_queue)
+				_delete_queue.clear();
 		}
 
 		auto is_unified_memory_architecture() const noexcept
@@ -155,6 +158,7 @@ namespace mirrage::graphic {
 
 		vk::UniqueDevice                           _device;
 		vk::PhysicalDevice                         _gpu;
+		vk::PhysicalDeviceFeatures                 _features;
 		asset::Asset_manager&                      _assets;
 		vk::PhysicalDeviceProperties               _gpu_properties;
 		std::unordered_map<std::string, Swapchain> _swapchains;

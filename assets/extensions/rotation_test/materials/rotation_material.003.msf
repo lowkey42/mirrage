@@ -1,0 +1,7 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "rotation_material.003_albedo.ktx",
+    "normal_aid": "rotation_material.003_normal.ktx",
+    "brdf_aid": "rotation_material.003_brdf.ktx",
+    "emission_aid": ""
+}

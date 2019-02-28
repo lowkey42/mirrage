@@ -10,7 +10,6 @@
 #include <cstdint>
 
 #define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
 #define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
 #define NK_INCLUDE_FONT_BAKING
@@ -118,9 +117,9 @@ namespace mirrage::gui {
 
 		void viewport(glm::vec4 new_viewport);
 
-		auto centered(int width, int height) -> struct nk_rect;
-		auto centered_left(int width, int height) -> struct nk_rect;
-		auto centered_right(int width, int height) -> struct nk_rect;
+		struct ::nk_rect centered(int width, int height);
+		struct ::nk_rect centered_left(int width, int height);
+		struct ::nk_rect centered_right(int width, int height);
 
 		auto ready() const noexcept { return bool(_impl); }
 

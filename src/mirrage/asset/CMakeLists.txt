@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_asset)
 
@@ -17,6 +17,7 @@ add_library(mirrage_asset STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::asset ALIAS mirrage_asset)
+target_compile_features(mirrage_asset PUBLIC cxx_std_17)
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_asset PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage_renderer)
 
@@ -19,6 +19,7 @@ file(GLOB_RECURSE ALL_SHADERS
 
 add_custom_target(mirrage_renderer_shaders SOURCES ${ALL_SHADERS})
 
+set(MIRRAGE_GLSL_COMPILER "glslc" CACHE STRING "Path to glslc compiler")
 
 foreach(GLSL ${GLSL_SOURCE_FILES})
   get_filename_component(FILE_NAME ${GLSL} NAME)
@@ -26,7 +27,7 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
   add_custom_command(
     OUTPUT ${SPIRV}
     COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/shader/"
-    COMMAND ${CMAKE_GLSL_COMPILER} -o ${SPIRV} -c ${GLSL}
+    COMMAND ${MIRRAGE_GLSL_COMPILER} -o ${SPIRV} -c ${GLSL}
     DEPENDS ${ALL_SHADERS})
   list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 endforeach(GLSL)
@@ -40,6 +41,7 @@ file(GLOB_RECURSE HEADER_FILES
 
 add_library(mirrage_renderer STATIC
 	src/pass/animation_pass.cpp
+	src/pass/billboard_pass.cpp
 	src/pass/blit_pass.cpp 
 	src/pass/bloom_pass.cpp
 	src/pass/debug_draw_pass.cpp
@@ -59,8 +61,10 @@ add_library(mirrage_renderer STATIC
 	
 	src/animation.cpp
 	src/animation_comp.cpp
+	src/billboard.cpp
 	src/camera_comp.cpp
 	src/debug_ui.hpp
+	src/decal.cpp
 	src/deferred_renderer.cpp
 	src/gbuffer.cpp
 	src/light_comp.cpp
@@ -73,13 +77,19 @@ add_library(mirrage_renderer STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::renderer ALIAS mirrage_renderer)
-set(EMBEDDED_ASSETS
-	"${CMAKE_CURRENT_BINARY_DIR}/shader"
-	"${CMAKE_CURRENT_SOURCE_DIR}/assets/textures"
-	"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_shader.map"
-	"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_textures.map"
-)
-mirrage_embed_asset(mirrage_renderer "${EMBEDDED_ASSETS}" ${SPIRV_BINARY_FILES})
+target_compile_features(mirrage_renderer PUBLIC cxx_std_17)
+
+mirrage_embed_asset(TARGET mirrage_renderer
+					EXPORT mirrage_renderer_targets
+					SOURCES
+						"${CMAKE_CURRENT_BINARY_DIR}/shader"
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/textures"
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_shader.map"
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_textures.map"
+					DEPENDS
+						${SPIRV_BINARY_FILES}
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_shader.map"
+						"${CMAKE_CURRENT_SOURCE_DIR}/assets/assets_mirrage_renderer_textures.map")
 
 option(MIRRAGE_HISTOGRAM_DEBUG_VIEW "Enable debug view for tone mapping pass" OFF)
 if(MIRRAGE_HISTOGRAM_DEBUG_VIEW)

@@ -1,14 +1,8 @@
-cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage)
 
 include(version_info.cmake)
-
-find_package(SDL2 REQUIRED)
-add_library(sdl2::sdl2 INTERFACE IMPORTED)
-set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_LINK_LIBRARIES ${SDL2_LIBRARY})
-set_property(TARGET sdl2::sdl2 PROPERTY INTERFACE_INCLUDE_DIRECTORIES ${SDL2_INCLUDE_DIR})
-
 
 # need to be specified with the sources for correct syntax highlighting in some IDEs
 file(GLOB_RECURSE HEADER_FILES
@@ -24,6 +18,8 @@ add_library(mirrage STATIC
 	${HEADER_FILES}
 )
 add_library(mirrage::mirrage ALIAS mirrage)
+target_compile_features(mirrage PUBLIC cxx_std_17)
+
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map" CONTENT
 "cfg:input_mapping = settings/input_mapping.json
 cfg:graphics = graphics-cfg.json
@@ -36,7 +32,10 @@ cfg:gui = settings/gui.json
 loc: = loc/
 pl_cache: = pipeline_caches
 ")
-mirrage_embed_asset(mirrage "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map")
+mirrage_embed_asset(TARGET mirrage
+					EXPORT mirrage_targets
+					SOURCES "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map"
+					DEPENDS "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map")
 
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
@@ -49,7 +48,7 @@ target_include_directories(mirrage PUBLIC
 target_link_libraries(mirrage
 	PUBLIC
 		mirrage::utils
-		sdl2::sdl2
+		mirrage::deps::SDL2
 		mirrage::asset
 		mirrage::ecs
 		mirrage::graphic

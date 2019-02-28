@@ -46,18 +46,28 @@ namespace mirrage::graphic {
 		}
 	};
 
-	Device::Device(Context&               context,
-	               asset::Asset_manager&  assets,
-	               vk::UniqueDevice       device,
-	               vk::PhysicalDevice     gpu,
-	               Queue_tag              transfer_queue,
-	               Queue_tag              default_draw_queue,
-	               Queue_family_mapping   queue_mapping,
-	               Swapchain_create_infos swapchains,
-	               bool                   dedicated_alloc_supported)
+	namespace {
+		const auto default_image_usage =
+		        vk::FormatFeatureFlagBits::eBlitDst | vk::FormatFeatureFlagBits::eBlitSrc
+		        | vk::FormatFeatureFlagBits::eSampledImageFilterLinear
+		        | vk::FormatFeatureFlagBits::eColorAttachmentBlend
+		        | vk::FormatFeatureFlagBits::eColorAttachment | vk::FormatFeatureFlagBits::eTransferSrc
+		        | vk::FormatFeatureFlagBits::eTransferDst | vk::FormatFeatureFlagBits::eSampledImage;
+	}
+	Device::Device(Context&                          context,
+	               asset::Asset_manager&             assets,
+	               vk::UniqueDevice                  device,
+	               vk::PhysicalDevice                gpu,
+	               Queue_tag                         transfer_queue,
+	               Queue_tag                         default_draw_queue,
+	               Queue_family_mapping              queue_mapping,
+	               Swapchain_create_infos            swapchains,
+	               bool                              dedicated_alloc_supported,
+	               const vk::PhysicalDeviceFeatures& features)
 	  : util::Registered<Device, Context>(context)
 	  , _device(std::move(device))
 	  , _gpu(gpu)
+	  , _features(features)
 	  , _assets(assets)
 	  , _gpu_properties(gpu.getProperties())
 	  , _pipeline_cache(load_main_pipeline_cache(*this, assets))
@@ -82,47 +92,23 @@ namespace mirrage::graphic {
 	                                  .get_or_throw("No depth-stencil format "
 	                                                "supported by device"))
 
-	  , _r_format(get_supported_format({vk::Format::eR8Unorm},
-	                                   vk::FormatFeatureFlagBits::eBlitDst
-	                                           | vk::FormatFeatureFlagBits::eBlitSrc
-	                                           | vk::FormatFeatureFlagBits::eSampledImageFilterLinear,
-	                                   Format_usage::image_optimal))
-	  , _rg_format(get_supported_format({vk::Format::eR8G8Unorm},
-	                                    vk::FormatFeatureFlagBits::eBlitDst
-	                                            | vk::FormatFeatureFlagBits::eBlitSrc
-	                                            | vk::FormatFeatureFlagBits::eSampledImageFilterLinear,
-	                                    Format_usage::image_optimal))
-	  , _rgb_format(get_supported_format({vk::Format::eR8G8B8Unorm},
-	                                     vk::FormatFeatureFlagBits::eBlitDst
-	                                             | vk::FormatFeatureFlagBits::eBlitSrc
-	                                             | vk::FormatFeatureFlagBits::eSampledImageFilterLinear,
-	                                     Format_usage::image_optimal))
-	  , _rgba_format(get_supported_format({vk::Format::eR8G8B8A8Unorm},
-	                                      vk::FormatFeatureFlagBits::eBlitDst
-	                                              | vk::FormatFeatureFlagBits::eBlitSrc
-	                                              | vk::FormatFeatureFlagBits::eSampledImageFilterLinear,
-	                                      Format_usage::image_optimal))
+	  , _r_format(get_supported_format(
+	            {vk::Format::eR8Unorm}, default_image_usage, Format_usage::image_optimal))
+	  , _rg_format(get_supported_format(
+	            {vk::Format::eR8G8Unorm}, default_image_usage, Format_usage::image_optimal))
+	  , _rgb_format(get_supported_format(
+	            {vk::Format::eR8G8B8Unorm}, default_image_usage, Format_usage::image_optimal))
+	  , _rgba_format(get_supported_format(
+	            {vk::Format::eR8G8B8A8Unorm}, default_image_usage, Format_usage::image_optimal))
 
-	  , _sr_format(get_supported_format({vk::Format::eR8Srgb},
-	                                    vk::FormatFeatureFlagBits::eBlitDst
-	                                            | vk::FormatFeatureFlagBits::eBlitSrc
-	                                            | vk::FormatFeatureFlagBits::eSampledImageFilterLinear,
-	                                    Format_usage::image_optimal))
-	  , _srg_format(get_supported_format({vk::Format::eR8G8Srgb},
-	                                     vk::FormatFeatureFlagBits::eBlitDst
-	                                             | vk::FormatFeatureFlagBits::eBlitSrc
-	                                             | vk::FormatFeatureFlagBits::eSampledImageFilterLinear,
-	                                     Format_usage::image_optimal))
-	  , _srgb_format(get_supported_format({vk::Format::eR8G8B8Srgb},
-	                                      vk::FormatFeatureFlagBits::eBlitDst
-	                                              | vk::FormatFeatureFlagBits::eBlitSrc
-	                                              | vk::FormatFeatureFlagBits::eSampledImageFilterLinear,
-	                                      Format_usage::image_optimal))
-	  , _srgba_format(get_supported_format({vk::Format::eR8G8B8A8Srgb},
-	                                       vk::FormatFeatureFlagBits::eBlitDst
-	                                               | vk::FormatFeatureFlagBits::eBlitSrc
-	                                               | vk::FormatFeatureFlagBits::eSampledImageFilterLinear,
-	                                       Format_usage::image_optimal))
+	  , _sr_format(
+	            get_supported_format({vk::Format::eR8Srgb}, default_image_usage, Format_usage::image_optimal))
+	  , _srg_format(get_supported_format(
+	            {vk::Format::eR8G8Srgb}, default_image_usage, Format_usage::image_optimal))
+	  , _srgb_format(get_supported_format(
+	            {vk::Format::eR8G8B8Srgb}, default_image_usage, Format_usage::image_optimal))
+	  , _srgba_format(get_supported_format(
+	            {vk::Format::eR8G8B8A8Srgb}, default_image_usage, Format_usage::image_optimal))
 	  , _device_specific_asset_loaders(std::make_unique<Asset_loaders>(assets, *this, default_draw_queue))
 	{
 
@@ -135,14 +121,14 @@ namespace mirrage::graphic {
 
 	Device::~Device()
 	{
-		wait_idle();
 		backup_caches();
 
+		_device_specific_asset_loaders.reset();
+
+		wait_idle(true);
+
 		print_memory_usage(std::cerr);
-
-		_delete_queue.clear();
 		_memory_allocator.shrink_to_fit();
-
 		print_memory_usage(std::cerr);
 	}
 	void Device::print_memory_usage(std::ostream& log) const
@@ -173,7 +159,11 @@ namespace mirrage::graphic {
 	void Device::backup_caches()
 	{
 		if(_pipeline_cache.ready()) {
-			_assets.save(_pipeline_cache);
+			try {
+				_assets.save(_pipeline_cache);
+			} catch(std::system_error& error) {
+				LOG(plog::error) << "Unable to save pipeline cache: " << error.what();
+			}
 		}
 	}
 

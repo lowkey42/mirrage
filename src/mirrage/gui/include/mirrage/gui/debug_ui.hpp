@@ -11,6 +11,7 @@
 #include <mirrage/utils/console_command.hpp>
 #include <mirrage/utils/messagebus.hpp>
 
+#include <iostream>
 #include <unordered_set>
 
 
@@ -80,35 +81,9 @@ namespace mirrage::gui {
 
 		auto name() const noexcept -> auto& { return _name; }
 
-		static void draw_all(const std::string& name, Gui& gui)
-		{
-			for(auto dm : instances())
-				if(dm->_name == name)
-					dm->draw(gui);
-		}
-		static auto is_debug_menu(const std::string& name) -> bool
-		{
-			for(auto dm : instances())
-				if(dm->_name == name)
-					return true;
-
-			return false;
-		}
-		template <class Stream>
-		static Stream& print_names(Stream& stream)
-		{
-			auto first = true;
-			for(auto dm : instances()) {
-				if(first)
-					first = false;
-				else
-					stream << ", ";
-
-				stream << dm->_name;
-			}
-			return stream;
-		}
-
+		static void draw_all(const std::string& name, Gui& gui);
+		static auto is_debug_menu(const std::string& name) -> bool;
+		static auto print_names() -> std::string;
 		static auto all_debug_menus() -> const std::vector<Debug_menu*>& { return instances(); }
 
 	  private:

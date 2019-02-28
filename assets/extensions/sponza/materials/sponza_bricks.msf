@@ -1,0 +1,7 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "sponza_bricks_albedo.ktx",
+    "normal_aid": "sponza_bricks_normal.ktx",
+    "brdf_aid": "sponza_bricks_brdf.ktx",
+    "emission_aid": ""
+}

@@ -13,8 +13,8 @@ using mirrage::ecs::components::Transform_comp;
 namespace mirrage::renderer {
 
 	namespace {
-		constexpr auto shader_buffer_size         = 64 * 3 * 4 * int(sizeof(float));
-		constexpr auto initial_animation_capacity = 16 * shader_buffer_size;
+		constexpr auto shader_buffer_size = static_cast<vk::DeviceSize>(64 * 3 * 4 * int(sizeof(float)));
+		constexpr auto initial_animation_capacity = static_cast<vk::DeviceSize>(16 * shader_buffer_size);
 
 		auto animation_substance(util::Str_id substance_id, Skinning_type st)
 		{
@@ -47,7 +47,8 @@ namespace mirrage::renderer {
             return r.create_descriptor_set(*r.gbuffer().animation_data_layout, 1);
         });
 		auto anim_desc_buffer_writes = util::build_vector(buffers, [&](auto i) {
-			return vk::DescriptorBufferInfo{_animation_uniforms.buffer(i), 0, shader_buffer_size};
+			return vk::DescriptorBufferInfo{
+			        _animation_uniforms.buffer(i), static_cast<vk::DeviceSize>(0), shader_buffer_size};
 		});
 		auto anim_desc_writes        = util::build_vector(buffers, [&](auto i) {
             return vk::WriteDescriptorSet{*_animation_desc_sets.at(i),
