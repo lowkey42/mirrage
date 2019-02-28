@@ -54,7 +54,7 @@ void main() {
 	albedo_mat_id_out = vec4(albedo.rgb, 0.0);
 	mat_data_out      = vec4(encode_normal(N), roughness, metallic);
 	color_out         = vec4(albedo.rgb * model_uniforms.emissive_color.rgb
-	                         * emissive_power * model_uniforms.emissive_color.a * albedo.a, 0.0);
+	                         * emissive_power * model_uniforms.emissive_color.a * albedo.a, 1.0);
 	color_diffuse_out = color_out;
 }
 

@@ -26,7 +26,7 @@ namespace mirrage::renderer {
 		auto get_depth_format(graphic::Device& device)
 		{
 			auto format = device.get_supported_format(
-			        {vk::Format::eR16Unorm, vk::Format::eR16Sfloat, vk::Format::eR32Sfloat},
+			        {vk::Format::eR32Sfloat},
 			        vk::FormatFeatureFlagBits::eColorAttachment
 			                | vk::FormatFeatureFlagBits::eSampledImageFilterLinear);
 

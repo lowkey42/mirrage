@@ -45,15 +45,21 @@ namespace mirrage::renderer {
 	                   graphic::Texture_ptr   normal,
 	                   graphic::Texture_ptr   brdf,
 	                   graphic::Texture_ptr   emission,
-	                   bool                   emissive,
+	                   bool                   has_albedo,
+	                   bool                   has_normal,
+	                   bool                   has_brdf,
+	                   bool                   has_emission,
 	                   util::Str_id           substance_id)
 	  : _descriptor_set(std::move(descriptor_set))
 	  , _albedo(std::move(albedo))
 	  , _normal(std::move(normal))
 	  , _brdf(std::move(brdf))
 	  , _emission(std::move(emission))
-	  , _emissive(emissive)
 	  , _substance_id(substance_id ? substance_id : "default"_strid)
+	  , _has_albedo(has_albedo)
+	  , _has_normal(has_normal)
+	  , _has_brdf(has_brdf)
+	  , _has_emission(has_emission)
 	{
 
 		auto desc_images = std::array<vk::DescriptorImageInfo, material_textures>{
@@ -156,6 +162,9 @@ namespace mirrage::asset {
 			                          normal,
 			                          brdf,
 			                          emission,
+			                          !data.albedo_aid.empty(),
+			                          !data.normal_aid.empty(),
+			                          !data.brdf_aid.empty(),
 			                          !data.emission_aid.empty(),
 			                          sub_id);
 		});

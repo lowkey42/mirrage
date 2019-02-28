@@ -673,7 +673,8 @@ namespace mirrage::graphic {
 		        draw_queue_tag.get_or_throw("No draw or compute queue! That doesn't seem right."),
 		        std::move(queue_mapping),
 		        std::move(swapchains),
-		        dedicated_alloc_supported);
+		        dedicated_alloc_supported,
+		        create_info.features);
 	}
 
 	void Context::vkCmdBeginDebugUtilsLabelEXT(VkCommandBuffer             commandBuffer,

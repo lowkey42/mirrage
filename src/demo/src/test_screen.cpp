@@ -103,6 +103,9 @@ namespace mirrage {
 			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
 		});
 
+		auto decal = _meta_system.entities().emplace("decal");
+		decal.get<Transform_comp>().process([](auto& transform) { transform.position = {-8, 0, -0.5f}; });
+
 		_sun = _meta_system.entities().emplace("sun");
 
 		_set_preset(1);

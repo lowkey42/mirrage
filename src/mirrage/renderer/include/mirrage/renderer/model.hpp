@@ -41,13 +41,19 @@ namespace mirrage::renderer {
 		         graphic::Texture_ptr normal,
 		         graphic::Texture_ptr brdf,
 		         graphic::Texture_ptr emission,
-		         bool                 emissive,
+		         bool                 has_albedo,
+		         bool                 has_normal,
+		         bool                 has_brdf,
+		         bool                 has_emission,
 		         util::Str_id         substance_id);
 
 		void bind(graphic::Render_pass& pass) const;
 
 		auto substance_id() const noexcept { return _substance_id; }
-		auto emissive() const noexcept { return _emissive; }
+		auto has_albedo() const noexcept { return _has_albedo; }
+		auto has_normal() const noexcept { return _has_normal; }
+		auto has_brdf() const noexcept { return _has_brdf; }
+		auto has_emission() const noexcept { return _has_emission; }
 
 	  private:
 		graphic::DescriptorSet _descriptor_set;
@@ -55,8 +61,11 @@ namespace mirrage::renderer {
 		graphic::Texture_ptr   _normal;
 		graphic::Texture_ptr   _brdf;
 		graphic::Texture_ptr   _emission;
-		bool                   _emissive;
 		util::Str_id           _substance_id;
+		bool                   _has_albedo;
+		bool                   _has_normal;
+		bool                   _has_brdf;
+		bool                   _has_emission;
 	};
 	using Material_ptr = asset::Ptr<Material>;
 

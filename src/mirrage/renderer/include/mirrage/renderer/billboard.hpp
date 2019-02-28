@@ -65,7 +65,7 @@ namespace mirrage::renderer {
 		glm::vec4 clip_rect;
 		glm::vec4 color;
 		glm::vec4 emissive_color;
-		glm::vec4 placeholder[2];
+		glm::vec4 placeholder[3];
 	};
 	extern auto construct_push_constants(const Billboard&, const glm::mat4& view, const glm::vec4& viewport)
 	        -> Billboard_push_constants;

@@ -208,6 +208,7 @@ namespace mirrage::renderer {
 		_frame_data.light_queue.clear();
 		_frame_data.debug_geometry_queue.clear();
 		_frame_data.billboard_queue.clear();
+		_frame_data.decal_queue.clear();
 
 		// reset cached camera state
 		_active_camera = util::nothing;

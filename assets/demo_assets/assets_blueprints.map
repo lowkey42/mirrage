@@ -4,4 +4,5 @@ blueprint:cornell = blueprints/cornell.json
 blueprint:sun = blueprints/sun.json
 blueprint:cube = blueprints/cube.json
 blueprint:billboard = blueprints/billboard.json
+blueprint:decal = blueprints/decal.json
 

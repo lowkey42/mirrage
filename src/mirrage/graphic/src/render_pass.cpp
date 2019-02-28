@@ -129,10 +129,10 @@ namespace mirrage::graphic {
 		const auto default_viewport       = vk::Viewport{};
 		const auto default_viewport_state = vk::PipelineViewportStateCreateInfo{
 		        vk::PipelineViewportStateCreateFlags{}, 1, nullptr, 1, nullptr};
-		const vk::DynamicState default_dynamic_states[]{vk::DynamicState::eScissor,
-		                                                vk::DynamicState::eViewport};
-		const auto             default_dynamic_state = vk::PipelineDynamicStateCreateInfo{
-                vk::PipelineDynamicStateCreateFlags{}, 2, default_dynamic_states};
+		const vk::DynamicState default_dynamic_states[]{
+		        vk::DynamicState::eScissor, vk::DynamicState::eViewport, vk::DynamicState::eBlendConstants};
+		const auto default_dynamic_state = vk::PipelineDynamicStateCreateInfo{
+		        vk::PipelineDynamicStateCreateFlags{}, 3, default_dynamic_states};
 	} // namespace
 	void Pipeline_description::build_create_info(const vk::Device&               device,
 	                                             vk::GraphicsPipelineCreateInfo& cinfo,

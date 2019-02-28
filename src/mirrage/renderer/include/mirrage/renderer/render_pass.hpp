@@ -1,6 +1,7 @@
 #pragma once
 
 #include <mirrage/renderer/billboard.hpp>
+#include <mirrage/renderer/decal.hpp>
 
 #include <mirrage/ecs/entity_handle.hpp>
 #include <mirrage/utils/maybe.hpp>
@@ -117,10 +118,11 @@ namespace mirrage::renderer {
 		vk::DescriptorSet global_uniform_set;
 		std::size_t       swapchain_image;
 
-		std::vector<Geometry>       geometry_queue;
-		std::vector<Light>          light_queue;
-		std::vector<Debug_geometry> debug_geometry_queue;
-		std::vector<Billboard>      billboard_queue;
+		std::vector<Geometry>                     geometry_queue;
+		std::vector<Light>                        light_queue;
+		std::vector<Debug_geometry>               debug_geometry_queue;
+		std::vector<Billboard>                    billboard_queue;
+		std::vector<std::tuple<Decal, glm::mat4>> decal_queue;
 
 		auto partition_geometry(std::uint32_t mask) -> util::vector_range<Geometry>;
 	};
