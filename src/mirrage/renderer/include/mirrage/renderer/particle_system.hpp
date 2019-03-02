@@ -187,11 +187,17 @@ namespace mirrage::renderer {
 	  public:
 		explicit Particle_emitter(const Particle_emitter_config& cfg) : _cfg(&cfg) {}
 
+		void active(bool b) noexcept { _active = b; }
+		auto active() const noexcept { return _active; }
+
 		void position(glm::vec3 p) noexcept { _position = p; }
 		auto position() const noexcept { return _position; }
 
 		void rotation(glm::quat r) noexcept { _rotation = r; }
 		auto rotation() const noexcept { return _rotation; }
+
+		void absolute(bool b) noexcept { _absolute = b; }
+		auto absolute() const noexcept { return _absolute; }
 
 		void incr_time(float dt) { _time_accumulator += dt; }
 
@@ -201,28 +207,38 @@ namespace mirrage::renderer {
 		const Particle_emitter_config* _cfg;
 
 		// TODO: userdata?
+		bool      _active = true;
 		glm::vec3 _position{0, 0, 0};
 		glm::quat _rotation{1, 0, 0, 0};
+		bool      _absolute = false;
 
 		float _time_accumulator = 0.f;
 	};
 
 	class Particle_system : private std::enable_shared_from_this<Particle_system> {
 	  public:
-		using Emitter_list = util::small_vector<Particle_emitter, 1>;
+		using Emitter_list  = util::small_vector<Particle_emitter, 1>;
+		using Effector_list = std::vector<Particle_effector_config>;
 
 		Particle_system() = default;
 		Particle_system(asset::Ptr<Particle_system_config> cfg,
 		                glm::vec3                          position = {0, 0, 0},
 		                glm::quat                          rotation = {1, 0, 0, 0});
 
+		auto cfg() const noexcept { return _cfg; }
 		auto cfg_aid() const { return _cfg ? util::just(_cfg.aid()) : util::nothing; }
 
-		auto emitters() noexcept -> auto& { return _emitters; }
-		auto emitters() const noexcept -> auto& { return _emitters; }
+		auto emitters() noexcept -> auto&
+		{
+			_check_reload();
+			return _emitters;
+		}
 
-		auto effectors() noexcept -> auto& { return _effectors; }
-		auto effectors() const noexcept -> auto& { return _effectors; }
+		auto effectors() noexcept -> auto&
+		{
+			_check_reload();
+			return _effectors;
+		}
 
 		void position(glm::vec3 p) noexcept { _position = p; }
 		auto position() const noexcept { return _position; }
@@ -230,13 +246,26 @@ namespace mirrage::renderer {
 		void rotation(glm::quat r) noexcept { _rotation = r; }
 		auto rotation() const noexcept { return _rotation; }
 
+		auto emitter_position(const Particle_emitter& e) const noexcept
+		{
+			return e.absolute() ? e.position() : _position + e.position();
+		}
+
+		auto emitter_rotation(const Particle_emitter& e) const noexcept
+		{
+			return e.absolute() ? e.rotation() : _rotation * e.rotation();
+		}
+
 	  private:
-		asset::Ptr<Particle_system_config>    _cfg;
-		Emitter_list                          _emitters;
-		std::vector<Particle_effector_config> _effectors;
+		asset::Ptr<Particle_system_config> _cfg;
+		bool                               _loaded = false;
+		Emitter_list                       _emitters;
+		Effector_list                      _effectors;
 
 		glm::vec3 _position{0, 0, 0};
 		glm::quat _rotation{1, 0, 0, 0};
+
+		void _check_reload();
 	};
 
 

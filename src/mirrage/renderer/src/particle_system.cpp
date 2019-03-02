@@ -17,12 +17,27 @@ namespace mirrage::renderer {
 	                                 glm::vec3                          position,
 	                                 glm::quat                          rotation)
 	  : _cfg(std::move(cfg))
-	  , _emitters(util::build_vector(_cfg->emitters.size(),
+	  , _loaded(_cfg.ready())
+	  , _emitters(!_loaded ? Emitter_list{}
+	                       : util::build_vector(
+	                                 _cfg->emitters.size(),
 	                                 [&](auto idx) { return Particle_emitter(_cfg->emitters[idx]); }))
-	  , _effectors(_cfg->effectors)
+	  , _effectors(!_loaded ? Effector_list{} : _cfg->effectors)
 	  , _position(position)
 	  , _rotation(rotation)
 	{
+	}
+	void Particle_system::_check_reload()
+	{
+		MIRRAGE_INVARIANT(_cfg.ready(),
+		                  "Tried to access Particle_system emitters before the config was laoded!");
+
+		if(!_loaded) {
+			_loaded    = true;
+			_emitters  = util::build_vector(_cfg->emitters.size(),
+                                           [&](auto idx) { return Particle_emitter(_cfg->emitters[idx]); });
+			_effectors = _cfg->effectors;
+		}
 	}
 
 	namespace {
@@ -36,9 +51,8 @@ namespace mirrage::renderer {
 	{
 		auto aid = comp_cfg_aid(comp);
 
-		auto new_aid   = aid;
-		auto effectors = std::vector<Particle_effector_config>();
-		state.read_virtual(sf2::vmember("cfg", new_aid), sf2::vmember("effectors", effectors));
+		auto new_aid = aid;
+		state.read_virtual(sf2::vmember("cfg", new_aid));
 
 		if(new_aid != aid) {
 			comp.particle_system =
@@ -46,9 +60,6 @@ namespace mirrage::renderer {
 			                ? Particle_system{}
 			                : Particle_system{state.assets.load<Particle_system_config>(asset::AID(new_aid))};
 		}
-
-		if(!effectors.empty())
-			comp.particle_system.effectors() = std::move(effectors);
 	}
 	void save_component(ecs::Serializer& state, const Particle_system_comp& comp)
 	{
@@ -102,12 +113,15 @@ namespace mirrage::asset {
 		                      },
 		                      r);
 
-		auto loads = std::vector<async::shared_task<renderer::Particle_script>>();
-		loads.reserve(r.emitters.size());
+		auto loads = std::vector<async::task<void>>();
+		loads.reserve(r.emitters.size() * 2u);
 
 		for(auto& e : r.emitters) {
 			e.emit_script = in.manager().load<renderer::Particle_script>(e.emit_script_id);
-			loads.emplace_back(e.emit_script.internal_task());
+			e.type        = in.manager().load<renderer::Particle_type_config>(e.type_id);
+
+			loads.emplace_back(async::when_all(e.emit_script.internal_task(), e.type.internal_task())
+			                           .then([](auto&&...) {}));
 		}
 
 		return async::when_all(loads.begin(), loads.end()).then([r = std::move(r)](auto&&...) mutable {

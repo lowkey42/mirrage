@@ -30,6 +30,9 @@ namespace mirrage::renderer {
 	void Particle_pass::update(util::Time dt)
 	{
 		for(auto& [transform, ps] : _ecs.list<Transform_comp, Particle_system_comp>()) {
+			if(!ps.particle_system.cfg().ready())
+				continue;
+
 			ps.particle_system.position(transform.position);
 			ps.particle_system.rotation(transform.orientation);
 			for(auto& e : ps.particle_system.emitters())
