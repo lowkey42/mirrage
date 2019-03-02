@@ -1,5 +1,8 @@
 shader: = shader/
 
+comp_shader:particle_spawn_sphere = shader/particle/spawn_sphere.comp.spv
+comp_shader:particle_update_simple = shader/particle/update_simple.comp.spv
+
 vert_shader:billboard = shader/billboard.vert.spv
 frag_shader:billboard_lit = shader/billboard.frag.spv
 frag_shader:billboard_unlit = shader/billboard_unlit.frag.spv

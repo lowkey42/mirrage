@@ -129,6 +129,11 @@ namespace mirrage::graphic {
 
 		auto memory() -> auto& { return _memory; }
 
+		operator bool() const noexcept { return valid(); }
+
+		auto valid() const noexcept { return _instance.operator bool(); }
+
+
 	  private:
 		UniqueHandleType _instance;
 		Device_memory    _memory;

@@ -22,14 +22,16 @@ add_custom_target(mirrage_renderer_shaders SOURCES ${ALL_SHADERS})
 set(MIRRAGE_GLSL_COMPILER "glslc" CACHE STRING "Path to glslc compiler")
 
 foreach(GLSL ${GLSL_SOURCE_FILES})
-  get_filename_component(FILE_NAME ${GLSL} NAME)
-  set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/shader/${FILE_NAME}.spv")
-  add_custom_command(
-    OUTPUT ${SPIRV}
-    COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/shader/"
-    COMMAND ${MIRRAGE_GLSL_COMPILER} -o ${SPIRV} -c ${GLSL}
-    DEPENDS ${ALL_SHADERS})
-  list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+	get_filename_component(FILE_DIR ${GLSL} DIRECTORY)
+	string(REPLACE "${CMAKE_CURRENT_SOURCE_DIR}" "" FILE_DIR ${FILE_DIR})
+	get_filename_component(FILE_NAME ${GLSL} NAME)
+	set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/${FILE_DIR}/${FILE_NAME}.spv")
+	add_custom_command(
+         OUTPUT ${SPIRV}
+         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_CURRENT_BINARY_DIR}/${FILE_DIR}/"
+         COMMAND ${CMAKE_GLSL_COMPILER} -o ${SPIRV} -c ${GLSL}
+         DEPENDS ${ALL_SHADERS})
+	list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 endforeach(GLSL)
 
 

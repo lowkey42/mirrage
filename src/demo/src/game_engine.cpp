@@ -12,6 +12,7 @@
 #include <mirrage/renderer/pass/gen_mipmap_pass.hpp>
 #include <mirrage/renderer/pass/gi_pass.hpp>
 #include <mirrage/renderer/pass/gui_pass.hpp>
+#include <mirrage/renderer/pass/particle_pass.hpp>
 #include <mirrage/renderer/pass/shadowmapping_pass.hpp>
 #include <mirrage/renderer/pass/ssao_pass.hpp>
 #include <mirrage/renderer/pass/taa_pass.hpp>
@@ -35,6 +36,7 @@ namespace mirrage {
 	            *this,
 	            window(),
 	            util::make_vector(renderer::make_pass_factory<renderer::Frustum_culling_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Particle_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Animation_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Deferred_pass_factory>(),

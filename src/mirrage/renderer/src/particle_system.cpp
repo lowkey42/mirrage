@@ -16,52 +16,43 @@ namespace mirrage::renderer {
 	Particle_system::Particle_system(asset::Ptr<Particle_system_config> cfg,
 	                                 glm::vec3                          position,
 	                                 glm::quat                          rotation)
-	  : Particle_system(std::move(cfg))
+	  : _cfg(std::move(cfg))
+	  , _emitters(util::build_vector(_cfg->emitters.size(),
+	                                 [&](auto idx) { return Particle_emitter(_cfg->emitters[idx]); }))
+	  , _effectors(_cfg->effectors)
+	  , _position(position)
+	  , _rotation(rotation)
 	{
-		_position = position;
-		_rotation = rotation;
 	}
-	Particle_system::Particle_system(asset::Ptr<Particle_system_config> c, ecs::Entity_handle follow)
-	  : _cfg(std::move(c)), _follow(follow)
-	{
-		auto&& cfg = *_cfg;
 
-		_emitters.reserve(cfg.emitter.size());
-		for(auto& e : cfg.emitter) {
-			_emitters.emplace_back(e);
+	namespace {
+		auto comp_cfg_aid(const Particle_system_comp& comp)
+		{
+			return comp.particle_system.cfg_aid().process(std::string(), [](auto& aid) { return aid.str(); });
 		}
-
-		_effectors.reserve(cfg.effector.size());
-		for(auto& e : cfg.effector) {
-			_effectors.emplace_back(e);
-		}
-	}
-
-	auto Particle_system::emitter(int i) -> Particle_emitter_ref
-	{
-		MIRRAGE_INVARIANT(i >= 0 && i < int(_emitters.size()),
-		                  "particle emitter index out of bounds " << i << " >= " << _emitters.size());
-		return {std::shared_ptr<Particle_system::Emitter_list>(shared_from_this(), &_emitters), i};
-	}
+	} // namespace
 
 	void load_component(ecs::Deserializer& state, Particle_system_comp& comp)
 	{
-		auto aid = comp.particle_system ? comp.particle_system->cfg_aid().str() : std::string("");
+		auto aid = comp_cfg_aid(comp);
 
-		state.read_virtual(sf2::vmember("cfg", aid));
+		auto new_aid   = aid;
+		auto effectors = std::vector<Particle_effector_config>();
+		state.read_virtual(sf2::vmember("cfg", new_aid), sf2::vmember("effectors", effectors));
 
-		if(aid != comp.particle_system->cfg_aid().str()) {
-			if(aid.empty())
-				comp.particle_system = {};
-			else {
-				comp.particle_system = std::make_shared<Particle_system>(
-				        state.assets.load<Particle_system_config>(asset::AID(aid)), comp.owner_handle());
-			}
+		if(new_aid != aid) {
+			comp.particle_system =
+			        new_aid.empty()
+			                ? Particle_system{}
+			                : Particle_system{state.assets.load<Particle_system_config>(asset::AID(new_aid))};
 		}
+
+		if(!effectors.empty())
+			comp.particle_system.effectors() = std::move(effectors);
 	}
 	void save_component(ecs::Serializer& state, const Particle_system_comp& comp)
 	{
-		auto aid = comp.particle_system ? comp.particle_system->cfg_aid().str() : std::string("");
+		auto aid = comp_cfg_aid(comp);
 		state.write_virtual(sf2::vmember("cfg", aid));
 	}
 
@@ -70,11 +61,17 @@ namespace mirrage::renderer {
 namespace mirrage::asset {
 
 	Loader<renderer::Particle_script>::Loader(graphic::Device&        device,
-	                                          vk::DescriptorSetLayout desc_set_layout)
+	                                          vk::DescriptorSetLayout global_uniforms,
+	                                          vk::DescriptorSetLayout storage_buffer,
+	                                          vk::DescriptorSetLayout uniform_buffer)
 	  : _device(device)
-	  , _layout(device.vk_device()->createPipelineLayoutUnique(
-	            vk::PipelineLayoutCreateInfo{{}, 1, &desc_set_layout, 1, nullptr}))
 	{
+		auto desc_sets = std::array<vk::DescriptorSetLayout, 5>{
+		        global_uniforms, storage_buffer, storage_buffer, storage_buffer, uniform_buffer};
+		auto push_constants = vk::PushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, 4 * 4 * 4 * 2};
+
+		_layout = device.vk_device()->createPipelineLayoutUnique(
+		        vk::PipelineLayoutCreateInfo{{}, desc_sets.size(), desc_sets.data(), 1, &push_constants});
 	}
 
 	auto Loader<renderer::Particle_script>::load(istream in) -> renderer::Particle_script
@@ -105,42 +102,55 @@ namespace mirrage::asset {
 		                      },
 		                      r);
 
-		auto loads = std::vector<async::task<void>>();
-		loads.reserve(r.emitter.size() * 4);
+		auto loads = std::vector<async::shared_task<renderer::Particle_script>>();
+		loads.reserve(r.emitters.size());
 
-		for(auto& e : r.emitter) {
-			e.emit_script   = in.manager().load<renderer::Particle_script>(e.emit_script_id);
-			e.update_script = in.manager().load<renderer::Particle_script>(e.update_script_id);
-
-			if(!e.model_id.empty()) {
-				e.model = in.manager().load<renderer::Model>(e.model_id);
-				loads.emplace_back(async::when_all(e.model.internal_task(),
-				                                   e.emit_script.internal_task(),
-				                                   e.update_script.internal_task())
-				                           .then([](auto&&...) { return; }));
-
-			} else {
-				e.material = in.manager().load<renderer::Material>(e.material_id);
-				loads.emplace_back(async::when_all(e.material.internal_task(),
-				                                   e.emit_script.internal_task(),
-				                                   e.update_script.internal_task())
-				                           .then([](auto&&...) { return; }));
-			}
+		for(auto& e : r.emitters) {
+			e.emit_script = in.manager().load<renderer::Particle_script>(e.emit_script_id);
+			loads.emplace_back(e.emit_script.internal_task());
 		}
 
 		return async::when_all(loads.begin(), loads.end()).then([r = std::move(r)](auto&&...) mutable {
-			for(auto& e : r.emitter) {
-				if(e.model) {
-					MIRRAGE_INVARIANT(!e.model->rigged(), "Animations are not supported for particle-models");
-					MIRRAGE_INVARIANT(e.model->sub_meshes().size() == 1,
-					                  "Particle-models must have exacly one sub-mesh");
-
-					e.material = e.model->sub_meshes().at(0).material;
-				}
-			}
-
 			return std::move(r);
 		});
+	}
+
+	auto Loader<renderer::Particle_type_config>::load(istream in)
+	        -> async::task<renderer::Particle_type_config>
+	{
+		auto r = renderer::Particle_type_config();
+
+		sf2::deserialize_json(in,
+		                      [&](auto& msg, uint32_t row, uint32_t column) {
+			                      LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at "
+			                                       << row << ":" << column << ": " << msg;
+		                      },
+		                      r);
+
+		auto script     = in.manager().load<renderer::Particle_script>(r.update_script_id);
+		r.update_script = script;
+
+		if(!r.model_id.empty()) {
+			auto model = in.manager().load<renderer::Model>(r.model_id);
+			r.model    = model;
+
+			return async::when_all(script.internal_task(), model.internal_task())
+			        .then([r = std::move(r)](auto&&) mutable {
+				        MIRRAGE_INVARIANT(!r.model->rigged(),
+				                          "Animations are not supported for particle-models");
+				        MIRRAGE_INVARIANT(r.model->sub_meshes().size() == 1,
+				                          "Particle-models must have exacly one sub-mesh");
+				        r.material = r.model->sub_meshes().at(0).material;
+				        return std::move(r);
+			        });
+
+		} else {
+			auto material = in.manager().load<renderer::Material>(r.material_id);
+			r.material    = material;
+
+			return async::when_all(script.internal_task(), material.internal_task())
+			        .then([r = std::move(r)](auto&&) mutable { return std::move(r); });
+		}
 	}
 
 } // namespace mirrage::asset

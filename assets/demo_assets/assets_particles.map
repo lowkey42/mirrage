@@ -1,0 +1,5 @@
+particle: = particles/
+
+particle_def:test_particles = particles/test_particles.json
+particle_sys:test_particles = particles/test_particle_system.json
+

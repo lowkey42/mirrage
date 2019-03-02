@@ -416,6 +416,10 @@ namespace mirrage::asset {
 			return id.name();
 		}
 
+		LOG(plog::warning) << "Couldn't resove AID '" << id.str()
+		                   << "'. Dispatcher: " << (res != _dispatchers.end() ? res->second : "!NO-MATCH")
+		                   << "; Base: " << baseDir.get_or("!NO-MATCH");
+
 		return util::nothing;
 	}
 	auto Asset_manager::resolve_reverse(std::string_view path) -> util::maybe<AID>
@@ -441,8 +445,7 @@ namespace mirrage::asset {
 		if(dir == _dispatchers.end())
 			return util::nothing;
 
-		std::string bdir = dir->second;
-		return bdir;
+		return dir->second;
 	}
 
 	void Asset_manager::_reload_dispatchers()

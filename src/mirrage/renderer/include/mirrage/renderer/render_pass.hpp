@@ -2,6 +2,7 @@
 
 #include <mirrage/renderer/billboard.hpp>
 #include <mirrage/renderer/decal.hpp>
+#include <mirrage/renderer/particle_system.hpp>
 
 #include <mirrage/ecs/entity_handle.hpp>
 #include <mirrage/utils/maybe.hpp>
@@ -112,6 +113,12 @@ namespace mirrage::renderer {
 		}
 	};
 
+	struct Particle_draw {
+		Particle_emitter*                   emitter;
+		gsl::span<Particle_effector_config> effectors;
+		bool                                in_draw_range;
+	};
+
 	class Frame_data {
 	  public:
 		vk::CommandBuffer main_command_buffer;
@@ -123,8 +130,18 @@ namespace mirrage::renderer {
 		std::vector<Debug_geometry>               debug_geometry_queue;
 		std::vector<Billboard>                    billboard_queue;
 		std::vector<std::tuple<Decal, glm::mat4>> decal_queue;
+		std::vector<Particle_draw>                particle_queue;
 
 		auto partition_geometry(std::uint32_t mask) -> util::vector_range<Geometry>;
+		void clear_queues()
+		{
+			geometry_queue.clear();
+			light_queue.clear();
+			debug_geometry_queue.clear();
+			billboard_queue.clear();
+			decal_queue.clear();
+			particle_queue.clear();
+		}
 	};
 
 	class Render_pass {

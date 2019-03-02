@@ -78,7 +78,7 @@ namespace mirrage {
 			std::vector<const char*>      _enabled_layers;
 
 			vk::UniqueInstance               _instance;
-			vk::UniqueDebugReportCallbackEXT _debug_callback;
+			vk::UniqueDebugUtilsMessengerEXT _debug_callback;
 
 			std::unordered_map<std::string, Window_ptr> _windows;
 

@@ -20,28 +20,28 @@
 
 
 extern "C" {
-VkResult vkCreateDebugReportCallbackEXT(VkInstance                                instance,
-                                        const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
+VkResult vkCreateDebugUtilsMessengerEXT(VkInstance                                instance,
+                                        const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
                                         const VkAllocationCallbacks*              pAllocator,
-                                        VkDebugReportCallbackEXT*                 pCallback)
+                                        VkDebugUtilsMessengerEXT*                 pMessenger)
 {
-	auto func = reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>(
-	        vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT"));
+	auto func = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(
+	        vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
 	if(func != nullptr) {
-		return func(instance, pCreateInfo, pAllocator, pCallback);
+		return func(instance, pCreateInfo, pAllocator, pMessenger);
 	} else {
 		return VK_ERROR_EXTENSION_NOT_PRESENT;
 	}
 }
 
-void vkDestroyDebugReportCallbackEXT(VkInstance                   instance,
-                                     VkDebugReportCallbackEXT     callback,
+void vkDestroyDebugUtilsMessengerEXT(VkInstance                   instance,
+                                     VkDebugUtilsMessengerEXT     messenger,
                                      const VkAllocationCallbacks* pAllocator)
 {
-	auto func = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(
-	        vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"));
+	auto func = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
+	        vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
 	if(func != nullptr) {
-		func(instance, callback, pAllocator);
+		func(instance, messenger, pAllocator);
 	}
 }
 }
@@ -181,35 +181,45 @@ namespace mirrage::graphic {
 			return validation_layers;
 		}
 
-		VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugReportFlagsEXT      flags,
-		                                             VkDebugReportObjectTypeEXT objType,
-		                                             uint64_t                   obj,
-		                                             size_t                     location,
-		                                             int32_t                    code,
-		                                             const char*                layerPrefix,
-		                                             const char*                msg,
-		                                             void*                      userData)
+		VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+		                                             VkDebugUtilsMessageTypeFlagsEXT        messageType,
+		                                             const VkDebugUtilsMessengerCallbackDataEXT* data,
+		                                             void*)
 		{
-			(void) obj;
-			(void) location;
-			(void) code;
-			(void) userData;
+			auto level = [&] {
+				if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
+					return plog::verbose;
+				} else if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
+					return plog::info;
+				} else if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
+					return plog::warning;
+				} else {
+					return plog::error;
+				}
+			}();
 
-			// silences: DescriptorSet 0x3f previously bound as set #1 is incompatible with set
-			//             0x1cc99c0 newly bound as set #1 so set #2 and any subsequent sets were
-			//             disturbed by newly bound pipelineLayout (0x4f)
-			if(objType == VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT)
-				return VK_FALSE;
+			auto type = [&] {
+				if(messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT) {
+					return " GENERAL";
+				} else if(messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT) {
+					return " SPEC";
+				} else if(messageType & VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT) {
+					return " PERF";
+				} else {
+					return "";
+				}
+			}();
 
-
-			if(flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
-				LOG(plog::error) << "[VK | " << layerPrefix << "] " << msg;
-			} else if(flags & VK_DEBUG_REPORT_WARNING_BIT_EXT
-			          || flags & VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT) {
-				LOG(plog::warning) << "[VK | " << layerPrefix << "] " << msg;
-			} else {
-				LOG(plog::info) << "[VK | " << layerPrefix << "] " << msg;
+			auto details = std::stringstream();
+			if(data->objectCount > 0) {
+				// TODO
 			}
+			if(data->cmdBufLabelCount > 0) {
+				// TODO
+			}
+
+			LOG(level) << "[VK" << type << "|" << data->pMessageIdName << "] " << data->pMessage
+			           << details.str();
 
 			return VK_FALSE;
 		}
@@ -258,7 +268,6 @@ namespace mirrage::graphic {
 		add_present_extensions(required_extensions, _windows);
 		auto optional_extensions = std::vector<const char*>{};
 
-		required_extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 		required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
 		if(debug) {
@@ -296,11 +305,16 @@ namespace mirrage::graphic {
 		_instance = vk::createInstanceUnique(instanceCreateInfo);
 
 		if(debug) {
-			_debug_callback = _instance->createDebugReportCallbackEXTUnique(
-			        {/*	vk::DebugReportFlagBitsEXT::eDebug | vk::DebugReportFlagBitsEXT::eInformation | */
-			         vk::DebugReportFlagBitsEXT::eError | vk::DebugReportFlagBitsEXT::ePerformanceWarning
-			                 | vk::DebugReportFlagBitsEXT::eWarning,
-			         debugCallback});
+			auto create_info = vk::DebugUtilsMessengerCreateInfoEXT{
+			        vk::DebugUtilsMessengerCreateFlagsEXT{},
+			        vk::DebugUtilsMessageSeverityFlagBitsEXT::eInfo
+			                | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning
+			                | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+			        vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral
+			                | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation
+			                | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
+			        &debugCallback};
+			_debug_callback = _instance->createDebugUtilsMessengerEXTUnique(create_info);
 		}
 
 		_vkCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(

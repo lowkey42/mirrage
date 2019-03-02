@@ -31,6 +31,12 @@ namespace mirrage::renderer {
 		Deferred_renderer&   _renderer;
 		ecs::Entity_manager& _ecs;
 
+		bool                                _update_submitted = false;
+		graphic::Fence                      _update_fence;
+		util::maybe<graphic::Static_buffer> _feedback_buffer;
+		util::maybe<graphic::Static_buffer> _new_particle_buffer;
+		util::maybe<graphic::Static_buffer> _old_particle_buffer;
+
 		// TODO: feedback-buffer (dynamic storage-buffer)
 		// TODO: active_computation {fence, {weak_ptr<particle-emitter>, particel-buffer, feedback-offset}[] }
 	};

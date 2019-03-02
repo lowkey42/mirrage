@@ -56,15 +56,8 @@ namespace mirrage::renderer {
 	                                      : std::unique_ptr<GBuffer>())
 	  , _profiler(device(), 64)
 
-	  , _global_uniform_descriptor_set_layout(
-	            device().create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
-	                    0,
-	                    vk::DescriptorType::eUniformBuffer,
-	                    1,
-	                    vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
-	                            | vk::ShaderStageFlagBits::eCompute}))
 	  , _global_uniform_descriptor_set(
-	            _descriptor_set_pool.create_descriptor(*_global_uniform_descriptor_set_layout, 1))
+	            _descriptor_set_pool.create_descriptor(*factory._global_uniform_descriptor_set_layout, 1))
 	  , _global_uniform_buffer(
 	            device().transfer().create_dynamic_buffer(sizeof(Global_uniforms),
 	                                                      vk::BufferUsageFlagBits::eUniformBuffer,
@@ -204,11 +197,7 @@ namespace mirrage::renderer {
 			}
 		}
 
-		_frame_data.geometry_queue.clear();
-		_frame_data.light_queue.clear();
-		_frame_data.debug_geometry_queue.clear();
-		_frame_data.billboard_queue.clear();
-		_frame_data.decal_queue.clear();
+		_frame_data.clear_queues();
 
 		// reset cached camera state
 		_active_camera = util::nothing;
@@ -449,17 +438,23 @@ namespace mirrage::renderer {
 		              graphic::Device&        device,
 		              vk::Sampler             material_sampler,
 		              vk::DescriptorSetLayout material_layout,
-		              std::uint32_t           draw_queue)
+		              std::uint32_t           draw_queue,
+		              vk::DescriptorSetLayout global_uniforms,
+		              vk::DescriptorSetLayout storage_buffer,
+		              vk::DescriptorSetLayout uniform_buffer)
 		  : assets(assets)
 		{
 
 			assets.create_stateful_loader<Material>(device, assets, material_sampler, material_layout);
 			assets.create_stateful_loader<Model>(device, assets, draw_queue);
+			assets.create_stateful_loader<Particle_script>(
+			        device, global_uniforms, storage_buffer, uniform_buffer);
 		}
 		~Asset_loaders()
 		{
 			assets.remove_stateful_loader<Model>();
 			assets.remove_stateful_loader<Material>();
+			assets.remove_stateful_loader<Particle_script>();
 		}
 	};
 
@@ -482,8 +477,26 @@ namespace mirrage::renderer {
 	  , _compute_command_buffer_pool(_device->create_command_buffer_pool("compute"_strid, true, true))
 	  , _model_material_sampler(_device->create_sampler(12))
 	  , _model_desc_set_layout(create_material_descriptor_set_layout(*_device, *_model_material_sampler))
-	  , _asset_loaders(std::make_unique<Asset_loaders>(
-	            _assets, *_device, *_model_material_sampler, *_model_desc_set_layout, _draw_queue_family))
+	  , _global_uniform_descriptor_set_layout(
+	            _device->create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
+	                    0,
+	                    vk::DescriptorType::eUniformBuffer,
+	                    1,
+	                    vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment
+	                            | vk::ShaderStageFlagBits::eCompute}))
+
+	  , _compute_storage_buffer_layout(_device->create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
+	            0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute}))
+	  , _compute_uniform_buffer_layout(_device->create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
+	            0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eCompute}))
+	  , _asset_loaders(std::make_unique<Asset_loaders>(_assets,
+	                                                   *_device,
+	                                                   *_model_material_sampler,
+	                                                   *_model_desc_set_layout,
+	                                                   _draw_queue_family,
+	                                                   global_uniforms_layout(),
+	                                                   compute_storage_buffer_layout(),
+	                                                   compute_uniform_buffer_layout()))
 	  , _all_passes_mask(util::map(_pass_factories, [&](auto& f) { return f->id(); }))
 	  , _profiler_menu(std::make_unique<Profiler_menu>(_renderer_instances))
 	  , _settings_menu(std::make_unique<Settings_menu>(*this, _window))

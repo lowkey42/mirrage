@@ -141,6 +141,11 @@ namespace mirrage::renderer {
 		void settings(const Renderer_settings& s, bool apply = true);
 		void save_settings();
 
+		auto global_uniforms_layout() const noexcept { return *_global_uniform_descriptor_set_layout; }
+		auto compute_storage_buffer_layout() const { return *_compute_storage_buffer_layout; }
+		auto compute_uniform_buffer_layout() const { return *_compute_uniform_buffer_layout; }
+
+
 	  private:
 		friend class Deferred_renderer;
 		struct Asset_loaders;
@@ -168,6 +173,9 @@ namespace mirrage::renderer {
 		bool                            _recreation_pending = false;
 		vk::UniqueSampler               _model_material_sampler;
 		vk::UniqueDescriptorSetLayout   _model_desc_set_layout;
+		vk::UniqueDescriptorSetLayout   _global_uniform_descriptor_set_layout;
+		vk::UniqueDescriptorSetLayout   _compute_storage_buffer_layout;
+		vk::UniqueDescriptorSetLayout   _compute_uniform_buffer_layout;
 		std::unique_ptr<Asset_loaders>  _asset_loaders;
 		Render_pass_mask                _all_passes_mask;
 
@@ -205,7 +213,6 @@ namespace mirrage::renderer {
 		auto gbuffer() noexcept -> auto& { return *_gbuffer; }
 		auto gbuffer() const noexcept -> auto& { return *_gbuffer; }
 		auto global_uniforms() const noexcept -> auto& { return _global_uniforms; }
-		auto global_uniforms_layout() const noexcept { return *_global_uniform_descriptor_set_layout; }
 
 		auto asset_manager() noexcept -> auto& { return _factory->_assets; }
 		auto device() noexcept -> auto& { return *_factory->_device; }
@@ -225,6 +232,10 @@ namespace mirrage::renderer {
 
 		auto model_material_sampler() const noexcept { return _factory->model_material_sampler(); }
 		auto model_descriptor_set_layout() const noexcept { return _factory->model_descriptor_set_layout(); }
+
+		auto global_uniforms_layout() const noexcept { return _factory->global_uniforms_layout(); }
+		auto compute_storage_buffer_layout() const { return _factory->compute_storage_buffer_layout(); }
+		auto compute_uniform_buffer_layout() const { return _factory->compute_uniform_buffer_layout(); }
 
 		auto active_camera() noexcept -> util::maybe<Camera_state&>;
 
@@ -267,9 +278,8 @@ namespace mirrage::renderer {
 		float                    _delta_time    = 0.f;
 		std::uint32_t            _frame_counter = 0;
 
-		vk::UniqueDescriptorSetLayout _global_uniform_descriptor_set_layout;
-		graphic::DescriptorSet        _global_uniform_descriptor_set;
-		graphic::Dynamic_buffer       _global_uniform_buffer;
+		graphic::DescriptorSet  _global_uniform_descriptor_set;
+		graphic::Dynamic_buffer _global_uniform_buffer;
 
 		graphic::Texture_ptr                 _blue_noise;
 		vk::UniqueSampler                    _noise_sampler;

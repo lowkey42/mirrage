@@ -156,11 +156,15 @@ namespace mirrage::asset {
 	template <typename T>
 	auto Asset_manager::load(const AID& id, bool cache) -> Ptr<T>
 	{
-		auto a = load_maybe<T>(id, cache);
-		if(a.is_nothing())
+		auto path = resolve(id);
+		if(path.is_nothing())
 			throw std::system_error(Asset_error::resolve_failed, id.str());
 
-		return a.get_or_throw();
+		auto&& container = _find_container<T>();
+		if(container.is_nothing())
+			throw std::system_error(Asset_error::stateful_loader_not_initialized, util::type_name<T>());
+
+		return container.get_or_throw().load(id, path.get_or_throw(), cache);
 	}
 
 	template <typename T>

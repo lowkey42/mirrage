@@ -1,0 +1,120 @@
+#version 450
+#extension GL_ARB_separate_shader_objects : enable
+
+#include "../random.glsl"
+
+layout (local_size_x = 32, local_size_y = 1, local_size_z = 1 ) in;
+
+struct Particle {
+	vec3 position;
+	float ttl;
+	vec3 velocity;
+	float seed;
+};
+
+layout(std430, set=1, binding = 0) buffer ParticleDataIn {
+	int count;
+	Particle particles[];
+} pin;
+
+layout(std430, set=1, binding = 1) buffer ParticleDataOut {
+	int count;
+	Particle particles[];
+} pout;
+
+struct Effector {
+	vec3 force_dir;
+	float force;
+	vec3 position;
+	float distance_decay;
+};
+
+layout(std430, set=1, binding = 3) buffer EffectorData {
+	int count;
+	Effector effectors[];
+};
+
+struct Random_vec4 {
+	vec4 median_hsva;
+	vec4 stddev_hsva;
+};
+struct Random_float {
+	float median;
+	float stddev;
+};
+
+vec2 normal_rand(float seed, uint i, uint j) {
+	vec2 uv = vec2(floatConstruct(hash(uvec2(seed, i))), floatConstruct(hash(uvec2(seed, j))));
+	float x = 6.28318530718 * uv[1];
+	return sqrt(-2.0*log(uv[0])) * vec2(cos(x),sin(x));
+}
+float rand_float(Random_float range, float rand) {
+	return range.median + range.stddev*rand;
+}
+
+layout(std140, set=1, binding = 2) uniform Config {
+	Random_vec4 color; // hsva
+	Random_vec4 color_change;
+
+	Random_vec4 size;
+	Random_vec4 size_change;
+
+	Random_float sprite_rotation;
+	Random_float sprite_rotation_change;
+
+	Random_float ttl;
+
+	Random_float velocity;
+
+	float drag;
+	float parent_velocity;
+} config;
+// TODO:
+
+// TODO: required
+layout(push_constant) uniform Push_constants {
+	vec4 position;
+	vec4 rotation; // quat
+	int to_spawn;
+	uint base_seed;
+} pcs;
+
+#include "../global_uniforms.glsl"
+#include "../random.glsl"
+
+//shared float todo?;
+
+
+void main() {
+	// calculate constants and initialize shared memory
+	uint local_id = gl_LocalInvocationID.x + gl_LocalInvocationID.y*gl_WorkGroupSize.x;
+	uint local_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+
+	//memoryBarrierShared();
+	//barrier();
+
+	//atomicAdd(total, sub_total);
+	//barrier();
+
+	//if(local_id==0)
+
+
+	uint index = gl_GlobalInvocationID.x;
+
+	if(index < pcs.to_spawn) {
+		// TODO: spawn
+		/*
+		float seed = floatConstruct(hash(uvec2(pce.base_seed, index)));
+		pout.particles[index].seed = seed;
+		vec2 r01 = normal_rand(seed, 0, 1);
+
+		pout.particles[index].ttl = rand_float(config.ttl, 0, 1);
+		pout.particles[index].position = pcs.position + TODO_RAND_POS; // TODO
+		pout.particles[index].velocity = TODO_RAND_VEL; // TODO
+		*/
+	}
+
+	if(index==0) {
+		pout.count = pcs.to_spawn;
+	}
+}
