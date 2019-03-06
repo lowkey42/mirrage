@@ -33,15 +33,23 @@ void main() {
 		float rand_vel = rand_float(emitter_cfg.velocity, r01[1]);
 
 		pout.particles[index].position.w = uintBitsToFloat(emitter_cfg.feedback_buffer_id);
-		pout.particles[index].velocity.w = seed;
+		pout.particles[index].velocity.w = uintBitsToFloat(seed);
 		pout.particles[index].ttl = vec4(rand_ttl, rand_ttl, 0, 0);
 
 		vec3 dir = vec3(0,1,0); // TODO: random dir
 		dir = quaternion_rotate(dir, emitter_cfg.rotation_quat);
-		pout.particles[index].position.xyz = emitter_cfg.position.xyz + dir;
-		pout.particles[index].velocity.xyz = dir*rand_vel + emitter_cfg.parent_velocity.xyz;
+
+		vec3 pos = emitter_cfg.position.xyz + dir;
+		vec3 velocity = dir*rand_vel + emitter_cfg.parent_velocity.xyz;
+
+		pos += velocity * emitter_cfg.timestep*(float(invId)/float(emitter_cfg.to_spawn));
 
 		// TODO: take euler step of timestep*(float(invId)/float(emitter_cfg.to_spawn))
 		//			might distribute particles more evenly => test it first
+
+		pout.particles[index].position.xyz = pos;
+		pout.particles[index].velocity.xyz = velocity;
+
+
 	}
 }

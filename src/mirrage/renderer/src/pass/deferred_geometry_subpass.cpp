@@ -2,6 +2,7 @@
 
 #include <mirrage/renderer/animation_comp.hpp>
 #include <mirrage/renderer/model_comp.hpp>
+#include <mirrage/renderer/particle_system.hpp>
 #include <mirrage/renderer/pass/deferred_pass.hpp>
 
 #include <mirrage/ecs/components/transform_comp.hpp>
@@ -24,11 +25,29 @@ namespace mirrage::renderer {
 			return device.create_descriptor_set_layout(binding);
 		}
 
+		auto create_billboard_model(Deferred_renderer& r)
+		{
+			const auto vertices = std::array<Model_vertex, 4>{
+			        Model_vertex{glm::vec3(0, 0, 0), glm::vec3(0, 0, 1), glm::vec2(0, 1)},
+			        Model_vertex{glm::vec3(1, 0, 0), glm::vec3(0, 0, 1), glm::vec2(1, 1)},
+			        Model_vertex{glm::vec3(0, 1, 0), glm::vec3(0, 0, 1), glm::vec2(0, 0)},
+			        Model_vertex{glm::vec3(1, 1, 0), glm::vec3(0, 0, 1), glm::vec2(1, 0)}};
+			const auto indices = std::array<std::uint32_t, 6>{0, 1, 2, 2, 1, 3};
+
+			return Model{graphic::Mesh{r.device(), r.queue_family(), vertices, indices},
+			             {Sub_mesh{{}, 0u, 6u, glm::vec3(0, 0, 0), 1.f}},
+			             1.f,
+			             glm::vec3(0, 0, 0),
+			             false,
+			             0};
+		}
+
 	} // namespace
 
 	Deferred_geometry_subpass::Deferred_geometry_subpass(Deferred_renderer& r, ecs::Entity_manager& entities)
 	  : _ecs(entities)
 	  , _renderer(r)
+	  , _particle_billboard(create_billboard_model(r))
 	  , _decal_input_attachment_descriptor_set_layout(
 	            create_input_attachment_descriptor_set_layout(r.device()))
 	  , _decal_input_attachment_descriptor_set(
@@ -175,6 +194,25 @@ namespace mirrage::renderer {
 		pass.stage("default"_strid)
 		        .shader("frag_shader:decal"_aid, graphic::Shader_stage::fragment)
 		        .shader("vert_shader:decal"_aid, graphic::Shader_stage::vertex);
+	}
+
+	void Deferred_geometry_subpass::configure_particle_pipeline(Deferred_renderer&             renderer,
+	                                                            graphic::Pipeline_description& p)
+	{
+		p.rasterization.cullMode = vk::CullModeFlagBits::eNone;
+		p.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
+		p.add_descriptor_set_layout(renderer.compute_uniform_buffer_layout()); //< particle type data
+
+		p.vertex<Model_vertex>(
+		        0, false, 0, &Model_vertex::position, 1, &Model_vertex::normal, 2, &Model_vertex::tex_coords);
+		p.vertex<Particle>(1, true, 3, &Particle::position, 4, &Particle::velocity, 5, &Particle::ttl);
+	}
+	void Deferred_geometry_subpass::configure_particle_subpass(Deferred_renderer&,
+	                                                           graphic::Subpass_builder& pass)
+	{
+		pass.stage("default"_strid)
+		        .shader("frag_shader:particle_solid"_aid, graphic::Shader_stage::fragment)
+		        .shader("vert_shader:particle"_aid, graphic::Shader_stage::vertex);
 	}
 
 	void Deferred_geometry_subpass::update(util::Time) {}
@@ -327,6 +365,48 @@ namespace mirrage::renderer {
 
 			render_pass.push_constant("dpc"_strid, pcs);
 			frame.main_command_buffer.draw(4, 1, 0, 0);
+		}
+		next_sub_pass();
+
+		render_pass.set_stage("default"_strid);
+		if(_particle_billboard.ready()) {
+			for(auto&& particle : frame.particle_queue) {
+				if(particle.type_cfg->blend != Particle_blend_mode::solid || !particle.emitter->drawable())
+					break;
+
+				auto material = &*particle.type_cfg->material;
+				if(material != last_material) {
+					last_material = material;
+					last_material->bind(render_pass);
+				}
+
+				// bind emitter data
+				render_pass.bind_descriptor_set(2, particle.emitter->particle_uniforms());
+
+				// bind model
+				auto model = particle.type_cfg->model ? &*particle.type_cfg->model : &_particle_billboard;
+				if(model != last_model) {
+					last_model = model;
+					last_model->bind_mesh(frame.main_command_buffer, 0);
+				}
+
+				// bind particle data
+				frame.main_command_buffer.bindVertexBuffers(
+				        1,
+				        {particle.emitter->particle_buffer()},
+				        {std::uint32_t(particle.emitter->particle_offset())});
+
+				dpc.model = _renderer.global_uniforms().view_mat;
+				render_pass.push_constant("dpc"_strid, dpc);
+
+				// draw instanced
+				auto& sub_mesh = last_model->sub_meshes().at(0);
+				frame.main_command_buffer.drawIndexed(sub_mesh.index_count,
+				                                      std::uint32_t(particle.emitter->particle_count()),
+				                                      sub_mesh.index_offset,
+				                                      0,
+				                                      0);
+			}
 		}
 	}
 } // namespace mirrage::renderer

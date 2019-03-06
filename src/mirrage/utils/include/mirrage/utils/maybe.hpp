@@ -57,7 +57,12 @@ namespace mirrage::util {
 		}
 		/*implicit*/ maybe(T&& data) noexcept : _valid(true), _data(std::move(data)) {}
 		/*implicit*/ maybe(const T& data) noexcept : _valid(true), _data(data) {}
-		maybe(const maybe& o) noexcept : _valid(o._valid), _data(o._data) {}
+		maybe(const maybe& o) noexcept : _valid(o._valid)
+		{
+			if(o._valid) {
+				new(&_data) T(o._data);
+			}
+		}
 		maybe(maybe&& o) noexcept : _valid(o._valid)
 		{
 			if(o._valid) {

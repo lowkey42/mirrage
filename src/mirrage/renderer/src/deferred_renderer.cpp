@@ -485,7 +485,11 @@ namespace mirrage::renderer {
 	  , _compute_storage_buffer_layout(_device->create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
 	            0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute}))
 	  , _compute_uniform_buffer_layout(_device->create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
-	            0, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eCompute}))
+	            0,
+	            vk::DescriptorType::eUniformBuffer,
+	            1,
+	            vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eVertex
+	                    | vk::ShaderStageFlagBits::eFragment}))
 	  , _asset_loaders(std::make_unique<Asset_loaders>(_assets,
 	                                                   *_device,
 	                                                   *_model_material_sampler,
@@ -675,6 +679,10 @@ namespace mirrage::renderer {
 		MIRRAGE_INVARIANT(supported_features.samplerAnisotropy,
 		                  "Anisotropic filtering is not supported by device!");
 		ret_val.features.samplerAnisotropy = true;
+
+		MIRRAGE_INVARIANT(supported_features.textureCompressionBC,
+		                  "BC texture compression is not supported by device!");
+		ret_val.features.textureCompressionBC = true;
 
 		for(auto& pass : _pass_factories) {
 			pass->configure_device(gpu, gqueue, ret_val);

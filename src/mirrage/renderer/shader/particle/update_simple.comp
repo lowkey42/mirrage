@@ -20,8 +20,8 @@ layout(std140, set=1, binding = 0) uniform Config {
 	float drag;
 
 	float timestep;
-	uint particle_offset;
-	uint particle_count;
+	uint particle_read_offset;
+	uint particle_read_count;
 	int padding;
 
 	int effector_count;
@@ -34,8 +34,8 @@ layout(std140, set=1, binding = 0) uniform Config {
 void main() {
 	uint offset = gl_GlobalInvocationID.x;
 
-	if(offset < config.particle_count) {
-		uint index = offset + config.particle_offset;
+	if(offset < config.particle_read_count) {
+		uint index = offset + config.particle_read_offset;
 
 		vec2 ttl = pin.particles[index].ttl.xy;
 		ttl[0] -= config.timestep;

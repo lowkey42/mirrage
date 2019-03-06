@@ -81,10 +81,10 @@ namespace mirrage::renderer {
 		bool                        _first_frame   = true;
 
 		void _submit_update(Frame_data&);
-		void _sort_particles(Frame_data&);
 		auto _alloc_feedback_buffer(Frame_data&)
 		        -> std::tuple<gsl::span<Emitter_range>, gsl::span<std::uint32_t>>;
 		void _update_descriptor_set(Per_frame_data&, util::maybe<Per_frame_data&>);
+		void _dispatch_emits(Frame_data&, vk::CommandBuffer);
 		void _dispatch_updates(Frame_data&, vk::CommandBuffer, Per_frame_data&);
 	};
 

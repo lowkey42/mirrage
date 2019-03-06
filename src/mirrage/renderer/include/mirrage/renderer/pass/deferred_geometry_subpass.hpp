@@ -35,6 +35,9 @@ namespace mirrage::renderer {
 		void configure_decal_pipeline(Deferred_renderer&, graphic::Pipeline_description&);
 		void configure_decal_subpass(Deferred_renderer&, graphic::Subpass_builder&);
 
+		void configure_particle_pipeline(Deferred_renderer&, graphic::Pipeline_description&);
+		void configure_particle_subpass(Deferred_renderer&, graphic::Subpass_builder&);
+
 		void update(util::Time dt);
 		void pre_draw(Frame_data&);
 		void draw(Frame_data&, graphic::Render_pass&);
@@ -42,6 +45,8 @@ namespace mirrage::renderer {
 	  private:
 		ecs::Entity_manager& _ecs;
 		Deferred_renderer&   _renderer;
+
+		Model _particle_billboard;
 
 		util::iter_range<std::vector<Geometry>::iterator> _geometry_range;
 		util::iter_range<std::vector<Geometry>::iterator> _rigged_geometry_range;

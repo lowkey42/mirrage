@@ -15,16 +15,24 @@ namespace mirrage::renderer {
 
 	void Particle_emitter_gpu_data::set(const std::uint64_t* rev,
 	                                    vk::Buffer           buffer,
+	                                    vk::DescriptorSet    uniforms,
 	                                    std::int32_t         offset,
 	                                    std::int32_t         count,
 	                                    std::uint32_t        feedback_idx)
 	{
 		_buffer       = buffer;
+		_uniforms     = uniforms;
 		_live_rev     = rev;
 		_rev          = *rev;
 		_offset       = offset;
 		_count        = count;
 		_feedback_idx = feedback_idx;
+	}
+
+	void Particle_emitter::incr_time(float dt)
+	{
+		_time_accumulator += dt;
+		_spawn_entry_timer += dt;
 	}
 
 	auto Particle_emitter::spawn(util::default_rand& rand) -> std::int32_t
@@ -39,7 +47,6 @@ namespace mirrage::renderer {
 
 		auto& entry = _cfg->spawn[_spawn_idx];
 
-		_spawn_entry_timer += _time_accumulator;
 		if(_spawn_entry_timer + _time_accumulator > entry.time) {
 			_time_accumulator = util::max(1.f / 60, entry.time - _spawn_entry_timer);
 			_spawn_idx++;

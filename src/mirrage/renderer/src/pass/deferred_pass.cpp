@@ -210,6 +210,19 @@ namespace mirrage::renderer {
 			                               .depth_stencil_attachment(depth);
 			gpass.configure_billboard_subpass(renderer, billboard_pass);
 
+			auto particle_pipeline          = pipeline;
+			particle_pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{
+			        vk::PipelineDepthStencilStateCreateFlags{}, true, true, vk::CompareOp::eLessOrEqual};
+			gpass.configure_particle_pipeline(renderer, particle_pipeline);
+			auto& particle_pass = builder.add_subpass(particle_pipeline)
+			                              .color_attachment(depth_sampleable)
+			                              .color_attachment(albedo_mat_id)
+			                              .color_attachment(mat_data)
+			                              .color_attachment(color)
+			                              .color_attachment(color_diffuse)
+			                              .depth_stencil_attachment(depth);
+			gpass.configure_particle_subpass(renderer, particle_pass);
+
 
 			auto light_pipeline    = pipeline;
 			pipeline.depth_stencil = vk::PipelineDepthStencilStateCreateInfo{};
@@ -296,6 +309,21 @@ namespace mirrage::renderer {
 			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite);
 
 			builder.add_dependency(billboard_pass,
+			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
+			                               | vk::PipelineStageFlagBits::eLateFragmentTests,
+			                       vk::AccessFlagBits::eColorAttachmentWrite
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentWrite,
+			                       particle_pass,
+			                       vk::PipelineStageFlagBits::eFragmentShader
+			                               | vk::PipelineStageFlagBits::eColorAttachmentOutput
+			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests,
+			                       vk::AccessFlagBits::eInputAttachmentRead
+			                               | vk::AccessFlagBits::eDepthStencilAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentRead
+			                               | vk::AccessFlagBits::eColorAttachmentWrite);
+
+			builder.add_dependency(particle_pass,
 			                       vk::PipelineStageFlagBits::eColorAttachmentOutput
 			                               | vk::PipelineStageFlagBits::eEarlyFragmentTests
 			                               | vk::PipelineStageFlagBits::eLateFragmentTests,

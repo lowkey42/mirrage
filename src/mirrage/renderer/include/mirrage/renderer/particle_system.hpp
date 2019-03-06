@@ -19,6 +19,12 @@
 
 namespace mirrage::renderer {
 
+	struct Particle {
+		glm::vec4 position; // xyz + uintBitsToFloat(last_feedback_buffer_index)
+		glm::vec4 velocity; // xyz + seed
+		glm::vec4 ttl;      // ttl_left, ttl_initial, <empty>, <empty>
+	};
+
 	class Particle_script {
 	  public:
 		explicit Particle_script(vk::UniquePipeline pipeline) : _pipeline(std::move(pipeline)) {}
@@ -29,11 +35,11 @@ namespace mirrage::renderer {
 		vk::UniquePipeline _pipeline;
 	};
 
-	enum class Particle_blend_mode { solid, volume, transparent };
-	sf2_enumDef(Particle_blend_mode, solid, volume, transparent);
+	enum class Particle_blend_mode { solid, transparent };
+	sf2_enumDef(Particle_blend_mode, solid, transparent);
 
-	enum class Particle_geometry { billboard, ribbon, mesh };
-	sf2_enumDef(Particle_geometry, billboard, ribbon, mesh);
+	enum class Particle_geometry { billboard, mesh };
+	sf2_enumDef(Particle_geometry, billboard, mesh);
 
 	struct Particle_color {
 		float hue        = 0.f;
@@ -180,12 +186,18 @@ namespace mirrage::renderer {
 		auto valid() const noexcept { return _live_rev && *_live_rev == _rev; }
 		void set(const std::uint64_t* rev,
 		         vk::Buffer,
+		         vk::DescriptorSet,
 		         std::int32_t  offset,
 		         std::int32_t  count,
 		         std::uint32_t feedback_idx);
 
+		void next_uniforms(vk::DescriptorSet s) { _next_uniforms = s; }
+		auto next_uniforms() const noexcept { return _next_uniforms; }
+
 	  private:
 		vk::Buffer           _buffer;
+		vk::DescriptorSet    _uniforms;
+		vk::DescriptorSet    _next_uniforms;
 		const std::uint64_t* _live_rev     = nullptr;
 		std::uint64_t        _rev          = 0;
 		std::int32_t         _offset       = 0;
@@ -211,7 +223,7 @@ namespace mirrage::renderer {
 		void absolute(bool b) noexcept { _absolute = b; }
 		auto absolute() const noexcept { return _absolute; }
 
-		void incr_time(float dt) { _time_accumulator += dt; }
+		void incr_time(float dt);
 		auto spawn(util::default_rand&) -> std::int32_t;
 
 		auto drawable() const noexcept { return _gpu_data && _gpu_data->valid(); }
@@ -222,6 +234,10 @@ namespace mirrage::renderer {
 			return drawable() ? util::just(_gpu_data->_feedback_idx) : util::nothing;
 		}
 		auto particle_buffer() const noexcept { return drawable() ? _gpu_data->_buffer : vk::Buffer{}; }
+		auto particle_uniforms() const noexcept
+		{
+			return drawable() ? _gpu_data->_uniforms : vk::DescriptorSet{};
+		}
 		auto particles_to_spawn() const noexcept { return _particles_to_spawn; }
 		auto last_timestep() const noexcept { return _last_timestep; }
 

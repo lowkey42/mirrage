@@ -39,6 +39,9 @@ frag_shader:model = shader/model.frag.spv
 frag_shader:model_emissive = shader/model_emissive.frag.spv
 frag_shader:model_alphatest = shader/model_alphatest.frag.spv
 
+vert_shader:particle = shader/particle.vert.spv
+frag_shader:particle_solid = shader/particle_solid.frag.spv
+
 vert_shader:ui = shader/ui.vert.spv
 frag_shader:ui = shader/ui.frag.spv
 

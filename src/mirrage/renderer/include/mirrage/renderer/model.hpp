@@ -76,6 +76,10 @@ namespace mirrage::renderer {
 		glm::vec2 tex_coords;
 
 		Model_vertex() = default;
+		Model_vertex(glm::vec3 position, glm::vec3 normal, glm::vec2 tex_coords)
+		  : position(position), normal(normal), tex_coords(tex_coords)
+		{
+		}
 		Model_vertex(float px, float py, float pz, float nx, float ny, float nz, float u, float v)
 		  : position(px, py, pz), normal(nx, ny, nz), tex_coords(u, v)
 		{
@@ -233,6 +237,8 @@ namespace mirrage::renderer {
 		auto sub_meshes() const noexcept -> auto& { return _sub_meshes; }
 		auto rigged() const noexcept { return _rigged; }
 		auto bone_count() const noexcept { return _bone_count; }
+
+		auto ready() const { return _mesh.ready(); }
 
 	  private:
 		graphic::Mesh           _mesh;
