@@ -3,11 +3,10 @@
 #include <mirrage/renderer/deferred_renderer.hpp>
 
 #include <mirrage/graphic/render_pass.hpp>
+#include <mirrage/utils/random.hpp>
 
 
 namespace mirrage::renderer {
-
-	// TODO: everything
 
 	class Particle_pass_factory;
 
@@ -28,17 +27,65 @@ namespace mirrage::renderer {
 		auto name() const noexcept -> const char* override { return "Particle"; }
 
 	  private:
-		Deferred_renderer&   _renderer;
-		ecs::Entity_manager& _ecs;
+		struct Update_uniform_buffer {
+			graphic::Backed_buffer buffer;
+			graphic::DescriptorSet desc_set;
+			std::int32_t           capacity = -1;
 
-		bool                                _update_submitted = false;
-		graphic::Fence                      _update_fence;
-		util::maybe<graphic::Static_buffer> _feedback_buffer;
-		util::maybe<graphic::Static_buffer> _new_particle_buffer;
-		util::maybe<graphic::Static_buffer> _old_particle_buffer;
+			void reserve(Deferred_renderer& renderer, std::int32_t new_capacity);
+		};
+		struct Per_frame_data {
+			vk::UniqueCommandBuffer            commands;
+			graphic::Backed_buffer             particles;
+			graphic::Backed_buffer             shared_uniforms;
+			graphic::DescriptorSet             descriptor_set;
+			std::int32_t                       capacity          = -1;
+			std::int32_t                       effector_capacity = -1;
+			std::vector<Update_uniform_buffer> particle_type_data;
+			std::int32_t                       next_free_particle_type_data = 0;
 
-		// TODO: feedback-buffer (dynamic storage-buffer)
-		// TODO: active_computation {fence, {weak_ptr<particle-emitter>, particel-buffer, feedback-offset}[] }
+			void reserve(Deferred_renderer& renderer,
+			             std::int32_t       particle_count,
+			             std::int32_t       particle_type_count,
+			             std::int32_t       global_effector_count);
+
+			auto next_particle_type_data() -> Update_uniform_buffer&;
+		};
+
+		struct Emitter_range {
+			std::int32_t offset;
+			std::int32_t count;
+		};
+
+		using Emitter_gpu_data = std::vector<std::weak_ptr<Particle_emitter_gpu_data>>;
+
+		Deferred_renderer&            _renderer;
+		ecs::Entity_manager&          _ecs;
+		util::default_rand            _rand;
+		vk::DeviceSize                _storage_buffer_offset_alignment;
+		vk::UniqueDescriptorSetLayout _descriptor_set_layout;
+		vk::UniquePipelineLayout      _pipeline_layout;
+		std::uint64_t                 _rev = 0; //< used to invalidate data of old particle emitters
+
+		float _dt = 0.f;
+
+		bool                   _update_submitted = false;
+		graphic::Fence         _update_fence;
+		graphic::Backed_buffer _feedback_buffer;
+		graphic::Backed_buffer _feedback_buffer_host;
+		std::size_t            _feedback_buffer_size = 0;
+		Emitter_gpu_data       _emitter_gpu_data;
+
+		std::vector<Per_frame_data> _per_frame_data;
+		std::int32_t                _current_frame = 0;
+		bool                        _first_frame   = true;
+
+		void _submit_update(Frame_data&);
+		void _sort_particles(Frame_data&);
+		auto _alloc_feedback_buffer(Frame_data&)
+		        -> std::tuple<gsl::span<Emitter_range>, gsl::span<std::uint32_t>>;
+		void _update_descriptor_set(Per_frame_data&, util::maybe<Per_frame_data&>);
+		void _dispatch_updates(Frame_data&, vk::CommandBuffer, Per_frame_data&);
 	};
 
 	class Particle_pass_factory : public Render_pass_factory {

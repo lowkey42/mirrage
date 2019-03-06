@@ -71,7 +71,7 @@ namespace mirrage::util {
 	}
 
 
-	namespace {
+	namespace detail {
 		struct deref_join {
 			template <class... Iter>
 			[[maybe_unused]] auto operator()(Iter&&... iter) const
@@ -90,7 +90,7 @@ namespace mirrage::util {
 		  private:
 			T value;
 		};
-	} // namespace
+	} // namespace detail
 
 	template <class... Iter>
 	class join_iterator {
@@ -104,7 +104,7 @@ namespace mirrage::util {
 		auto operator==(const join_iterator& rhs) const { return _index == rhs._index; }
 		auto operator!=(const join_iterator& rhs) const { return !(*this == rhs); }
 
-		auto operator*() const { return std::apply(deref_join{}, _iters); }
+		auto operator*() const { return std::apply(detail::deref_join{}, _iters); }
 		auto operator-> () const { return proxy_holder(**this); }
 
 		auto operator++()
@@ -124,7 +124,7 @@ namespace mirrage::util {
 		std::size_t         _index;
 	};
 
-	namespace {
+	namespace detail {
 		struct get_join_begin {
 			template <class... Range>
 			[[maybe_unused]] auto operator()(Range&&... ranges) const
@@ -141,7 +141,7 @@ namespace mirrage::util {
 				        offset, (ranges.begin() + offset)...);
 			}
 		};
-	} // namespace
+	} // namespace detail
 
 	template <class... Range>
 	class join_range {
@@ -152,15 +152,15 @@ namespace mirrage::util {
 		{
 		}
 
-		auto begin() const noexcept { return std::apply(get_join_begin{}, _ranges); }
-		auto begin() noexcept { return std::apply(get_join_begin{}, _ranges); }
+		auto begin() const noexcept { return std::apply(detail::get_join_begin{}, _ranges); }
+		auto begin() noexcept { return std::apply(detail::get_join_begin{}, _ranges); }
 		auto end() const noexcept
 		{
-			return std::apply(get_join_iterator{}, std::tuple_cat(std::make_tuple(_size), _ranges));
+			return std::apply(detail::get_join_iterator{}, std::tuple_cat(std::make_tuple(_size), _ranges));
 		}
 		auto end() noexcept
 		{
-			return std::apply(get_join_iterator{}, std::tuple_cat(std::make_tuple(_size), _ranges));
+			return std::apply(detail::get_join_iterator{}, std::tuple_cat(std::make_tuple(_size), _ranges));
 		}
 
 		auto size() const noexcept { return _size; }
@@ -175,6 +175,107 @@ namespace mirrage::util {
 	{
 		return join_range<std::remove_reference_t<Range>...>(std::forward<Range>(range)...);
 	}
+
+
+	namespace detail {
+		template <class Arg>
+		auto construct_index_tuple(std::int64_t index, Arg arg)
+		{
+			return std::tuple<std::int64_t, Arg>(index, arg);
+		}
+		template <class, class... Args>
+		auto construct_index_tuple(std::int64_t index, std::tuple<Args...> arg)
+		{
+			return std::tuple<std::int64_t, Args...>(index, std::get<Args>(arg)...);
+		}
+
+
+		template <class BaseIter>
+		class indexing_range_iterator {
+		  public:
+			indexing_range_iterator(BaseIter&& iter, std::int64_t index) : iter(iter), index(index) {}
+
+			auto operator==(const indexing_range_iterator& rhs) const { return iter == rhs.iter; }
+			auto operator!=(const indexing_range_iterator& rhs) const { return !(*this == rhs); }
+
+			auto operator*() { return construct_index_tuple<decltype(*iter)>(index, *iter); }
+			auto operator-> () { return proxy_holder(**this); }
+
+			auto operator*() const { return construct_index_tuple<decltype(*iter)>(index, *iter); }
+			auto operator-> () const { return proxy_holder(**this); }
+
+			auto operator++()
+			{
+				++iter;
+				++index;
+			}
+			auto operator++(int)
+			{
+				auto v = *this;
+				++*this;
+				return v;
+			}
+
+		  private:
+			BaseIter     iter;
+			std::int64_t index;
+		};
+		template <class BaseIter>
+		auto make_indexing_range_iterator(BaseIter&& iter, std::int64_t index)
+		{
+			return indexing_range_iterator<std::remove_reference_t<BaseIter>>(std::forward<BaseIter>(iter),
+			                                                                  index);
+		}
+	} // namespace detail
+
+	template <class Range>
+	class indexing_range {
+	  public:
+		indexing_range(Range&& range) noexcept : range(std::move(range)) {}
+
+		bool operator==(const indexing_range& rhs) noexcept { return range == rhs.range; }
+
+		auto begin() noexcept { return detail::make_indexing_range_iterator(range.begin(), 0u); }
+		auto end() noexcept { return detail::make_indexing_range_iterator(range.end(), std::int64_t(-1)); }
+		auto begin() const noexcept { return detail::make_indexing_range_iterator(range.begin(), 0u); }
+		auto end() const noexcept
+		{
+			return detail::make_indexing_range_iterator(range.end(), std::int64_t(-1));
+		}
+
+	  private:
+		Range range;
+	};
+	template <class Range>
+	auto with_index(Range&& r) -> indexing_range<std::remove_reference_t<Range>>
+	{
+		return {std::move(r)};
+	}
+
+	template <class Range>
+	class indexing_range_view {
+	  public:
+		indexing_range_view(Range& range) noexcept : range(&range) {}
+
+		bool operator==(const indexing_range_view& rhs) noexcept { return *range == *rhs.range; }
+
+		auto begin() noexcept { return detail::make_indexing_range_iterator(range->begin(), 0u); }
+		auto end() noexcept { return detail::make_indexing_range_iterator(range->end(), std::int64_t(-1)); }
+		auto begin() const noexcept { return detail::make_indexing_range_iterator(range->begin(), 0u); }
+		auto end() const noexcept
+		{
+			return detail::make_indexing_range_iterator(range->end(), std::int64_t(-1));
+		}
+
+	  private:
+		Range* range;
+	};
+	template <class Range>
+	auto with_index(Range& r) -> indexing_range_view<std::remove_reference_t<Range>>
+	{
+		return {r};
+	}
+
 
 	template <class T>
 	class numeric_range {

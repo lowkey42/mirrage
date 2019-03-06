@@ -218,8 +218,10 @@ namespace mirrage::graphic {
 				// TODO
 			}
 
+			auto stacktrace = level == plog::error ? "\nAt:\n" + util::print_stacktrace() : "";
+
 			LOG(level) << "[VK" << type << "|" << data->pMessageIdName << "] " << data->pMessage
-			           << details.str();
+			           << details.str() << stacktrace;
 
 			return VK_FALSE;
 		}

@@ -1,49 +1,11 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+#include "base_particle_script.glsl"
 
-layout (local_size_x = 32, local_size_y = 1, local_size_z = 1 ) in;
+layout (local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
-struct Particle {
-	vec3 position;
-	float ttl;
-	vec3 velocity;
-	float seed;
-};
-
-layout(std430, set=1, binding = 0) buffer ParticleDataIn {
-	int count;
-	Particle particles[];
-} pin;
-
-layout(std430, set=1, binding = 1) buffer ParticleDataOut {
-	int count;
-	Particle particles[];
-} pout;
-
-struct Effector {
-	vec3 force_dir;
-	float force;
-	vec3 position;
-	float distance_decay;
-};
-
-layout(std430, set=2, binding = 0) buffer EffectorData {
-	int count;
-	Effector effectors[];
-};
-
-struct Random_vec4 {
-	vec4 median_hsva;
-	vec4 variance_hsva;
-};
-struct Random_float {
-	float median;
-	float variance;
-};
-
-
-layout(std140, set=1, binding = 1) uniform Config {
+layout(std140, set=1, binding = 0) uniform Config {
 	Random_vec4 color; // hsva
 	Random_vec4 color_change;
 
@@ -53,40 +15,51 @@ layout(std140, set=1, binding = 1) uniform Config {
 	Random_float sprite_rotation;
 	Random_float sprite_rotation_change;
 
-	Random_float ttl;
-
-	Random_float velocity;
-
+	float base_mass;
+	float density;
 	float drag;
-	float parent_velocity;
-} config;
-// TODO:
 
-// TODO: required
-layout(push_constant) uniform Push_constants {
-	vec4 position;
-	vec4 rotation; // quat
-	int  to_spawn;
-} pcs;
+	float timestep;
+	uint particle_offset;
+	uint particle_count;
+	int padding;
+
+	int effector_count;
+	Effector effectors[];
+} config;
 
 #include "../global_uniforms.glsl"
 
-//shared float todo?;
-
 
 void main() {
-	// calculate constants and initialize shared memory
-	uint local_id = gl_LocalInvocationID.x + gl_LocalInvocationID.y*gl_WorkGroupSize.x;
-	uint local_size = gl_WorkGroupSize.x * gl_WorkGroupSize.y;
+	uint offset = gl_GlobalInvocationID.x;
 
-	//memoryBarrierShared();
-	//barrier();
+	if(offset < config.particle_count) {
+		uint index = offset + config.particle_offset;
 
-	//atomicAdd(total, sub_total);
-	//barrier();
+		vec2 ttl = pin.particles[index].ttl.xy;
+		ttl[0] -= config.timestep;
 
-	//if(local_id==0)
+		if(ttl[0] <= 0) {
+			// dead => drop data
+		} else {
+			// incr count and get output index
+			uint old_feedback_index = floatBitsToUint(pin.particles[index].position.w);
+			uint feedback_index = feedback_mapping.new_feedback_index[old_feedback_index];
+			uint out_offset = atomicAdd(feedback.ranges[feedback_index].count, 1);
+			uint out_index = out_offset + feedback.ranges[feedback_index].offset;
 
+			// update position / velocity
+			vec3 velocity = pin.particles[index].velocity.xyz;
+			velocity *= (1.0 - config.drag*config.timestep);
+			// TODO: apply global and local effectors
 
-	// TODO
+			pout.particles[out_index].position.xyz = pin.particles[index].position.xyz + velocity * config.timestep;
+			pout.particles[out_index].velocity.xyz = velocity;
+
+			pout.particles[out_index].position.w = uintBitsToFloat(feedback_index);
+			pout.particles[out_index].velocity.w = pin.particles[index].velocity.w;
+			pout.particles[out_index].ttl = vec4(ttl.xy, 0, 0);
+		}
+	}
 }

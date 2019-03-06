@@ -8,9 +8,65 @@
 
 namespace mirrage::renderer {
 
-	void Particle_script::bind(vk::CommandBuffer cb)
+	void Particle_script::bind(vk::CommandBuffer cb) const
 	{
 		cb.bindPipeline(vk::PipelineBindPoint::eCompute, *_pipeline);
+	}
+
+	void Particle_emitter_gpu_data::set(const std::uint64_t* rev,
+	                                    vk::Buffer           buffer,
+	                                    std::int32_t         offset,
+	                                    std::int32_t         count,
+	                                    std::uint32_t        feedback_idx)
+	{
+		_buffer       = buffer;
+		_live_rev     = rev;
+		_rev          = *rev;
+		_offset       = offset;
+		_count        = count;
+		_feedback_idx = feedback_idx;
+	}
+
+	auto Particle_emitter::spawn(util::default_rand& rand) -> std::int32_t
+	{
+		if(_cfg->spawn.empty())
+			return 0;
+
+		if(_spawn_idx >= _cfg->spawn.size()) {
+			_spawn_idx         = 0;
+			_spawn_entry_timer = 0;
+		}
+
+		auto& entry = _cfg->spawn[_spawn_idx];
+
+		_spawn_entry_timer += _time_accumulator;
+		if(_spawn_entry_timer + _time_accumulator > entry.time) {
+			_time_accumulator = util::max(1.f / 60, entry.time - _spawn_entry_timer);
+			_spawn_idx++;
+			_spawn_entry_timer = 0;
+		}
+
+		auto pps = std::normal_distribution<float>(entry.particles_per_second, entry.stddev)(rand);
+
+		auto spawn = static_cast<std::int32_t>(_time_accumulator * pps);
+
+		if(pps > 0.f) {
+			_last_timestep = static_cast<float>(spawn) / pps;
+			_time_accumulator -= _last_timestep;
+		} else {
+			_last_timestep    = 1.f / 60.f;
+			_time_accumulator = 0;
+		}
+		_particles_to_spawn = spawn;
+
+		return spawn;
+	}
+	auto Particle_emitter::gpu_data() -> std::shared_ptr<Particle_emitter_gpu_data>
+	{
+		if(!_gpu_data)
+			_gpu_data = std::make_shared<Particle_emitter_gpu_data>();
+
+		return _gpu_data;
 	}
 
 	Particle_system::Particle_system(asset::Ptr<Particle_system_config> cfg,
@@ -67,22 +123,55 @@ namespace mirrage::renderer {
 		state.write_virtual(sf2::vmember("cfg", aid));
 	}
 
+	void load_component(ecs::Deserializer& state, Particle_effector_comp& comp) { state.read(comp.effector); }
+	void save_component(ecs::Serializer& state, const Particle_effector_comp& comp)
+	{
+		state.write(comp.effector);
+	}
+
+
+	auto create_particle_shared_desc_set_layout(graphic::Device& device) -> vk::UniqueDescriptorSetLayout
+	{
+		// global effectors, particles_old, particles_new, feedback_buffer feedback_mapping
+		const auto stage = vk::ShaderStageFlagBits::eCompute;
+
+		auto bindings = std::array<vk::DescriptorSetLayoutBinding, 5>{
+		        vk::DescriptorSetLayoutBinding{0, vk::DescriptorType::eUniformBuffer, 1, stage},
+		        vk::DescriptorSetLayoutBinding{1, vk::DescriptorType::eStorageBuffer, 1, stage},
+		        vk::DescriptorSetLayoutBinding{2, vk::DescriptorType::eStorageBuffer, 1, stage},
+		        vk::DescriptorSetLayoutBinding{3, vk::DescriptorType::eStorageBuffer, 1, stage},
+		        vk::DescriptorSetLayoutBinding{4, vk::DescriptorType::eStorageBuffer, 1, stage}};
+
+		// vk::DescriptorSetLayoutBinding{5, vk::DescriptorType::eSampledImage, 1, stage},
+
+		return device.create_descriptor_set_layout(bindings);
+	}
+	auto create_particle_script_pipeline_layout(graphic::Device&        device,
+	                                            vk::DescriptorSetLayout shared_desc_set,
+	                                            vk::DescriptorSetLayout,
+	                                            vk::DescriptorSetLayout uniform_buffer)
+	        -> vk::UniquePipelineLayout
+	{
+		// shared_data, emitter/particle_type data
+		auto desc_sets      = std::array<vk::DescriptorSetLayout, 2>{shared_desc_set, uniform_buffer};
+		auto push_constants = vk::PushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, 4 * 4 * 4 * 2};
+
+		return device.vk_device()->createPipelineLayoutUnique(
+		        vk::PipelineLayoutCreateInfo{{}, desc_sets.size(), desc_sets.data(), 1, &push_constants});
+	}
+
 } // namespace mirrage::renderer
 
 namespace mirrage::asset {
 
 	Loader<renderer::Particle_script>::Loader(graphic::Device&        device,
-	                                          vk::DescriptorSetLayout global_uniforms,
 	                                          vk::DescriptorSetLayout storage_buffer,
 	                                          vk::DescriptorSetLayout uniform_buffer)
 	  : _device(device)
+	  , _shared_desc_set(renderer::create_particle_shared_desc_set_layout(device))
+	  , _layout(renderer::create_particle_script_pipeline_layout(
+	            device, *_shared_desc_set, storage_buffer, uniform_buffer))
 	{
-		auto desc_sets = std::array<vk::DescriptorSetLayout, 5>{
-		        global_uniforms, storage_buffer, storage_buffer, storage_buffer, uniform_buffer};
-		auto push_constants = vk::PushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, 4 * 4 * 4 * 2};
-
-		_layout = device.vk_device()->createPipelineLayoutUnique(
-		        vk::PipelineLayoutCreateInfo{{}, desc_sets.size(), desc_sets.data(), 1, &push_constants});
 	}
 
 	auto Loader<renderer::Particle_script>::load(istream in) -> renderer::Particle_script

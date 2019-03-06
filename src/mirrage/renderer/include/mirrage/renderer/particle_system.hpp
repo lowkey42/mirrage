@@ -5,6 +5,7 @@
 #include <mirrage/asset/asset_manager.hpp>
 #include <mirrage/ecs/entity_manager.hpp>
 #include <mirrage/graphic/texture.hpp>
+#include <mirrage/utils/random.hpp>
 #include <mirrage/utils/sf2_glm.hpp>
 #include <mirrage/utils/small_vector.hpp>
 #include <mirrage/utils/units.hpp>
@@ -12,33 +13,24 @@
 #include <glm/vec3.hpp>
 #include <sf2/sf2.hpp>
 
-#include <random>
+#include <memory>
 #include <tuple>
 
 
 namespace mirrage::renderer {
 
-	// TODO: only for reference during IMPL, delete before merge
-	// emitter: {Particle_emitter_config, offset, relative-rotation, follow_entity, time-acc, toSpawn, particle-data, particle-cout, userdata?}
-	// affector: {position, rotation, relative/absolute, follow_entity, force:float, dir, decay:float}
-	//			gravity: {..., force=10, dir={0,-1,0}, decay=0}
-	//			point: {position=? dir={0,0,0}, decay=2}
-	//			flow: {position=? dir={1,0,0}, decay=2}
-	// particle_system: {shared_ptr<emitter>[], offset, relative-rotation, follow_entity, affector}
-
-
 	class Particle_script {
 	  public:
 		explicit Particle_script(vk::UniquePipeline pipeline) : _pipeline(std::move(pipeline)) {}
 
-		void bind(vk::CommandBuffer);
+		void bind(vk::CommandBuffer) const;
 
 	  private:
 		vk::UniquePipeline _pipeline;
 	};
 
-	enum class Particle_blend_mode { solid, volumn, transparent };
-	sf2_enumDef(Particle_blend_mode, solid, volumn, transparent);
+	enum class Particle_blend_mode { solid, volume, transparent };
+	sf2_enumDef(Particle_blend_mode, solid, volume, transparent);
 
 	enum class Particle_geometry { billboard, ribbon, mesh };
 	sf2_enumDef(Particle_geometry, billboard, ribbon, mesh);
@@ -67,15 +59,16 @@ namespace mirrage::renderer {
 	/// point: {position=? dir={0,0,0}, decay=2}
 	/// flow: {position=? dir={1,0,0}, decay=2}
 	struct Particle_effector_config {
-		glm::vec3 position{0, 0, 0};
 		glm::quat rotation{1, 0, 0, 0};
 
+		glm::vec3 position{0, 0, 0};
 		float     force = 0.f;
 		glm::vec3 force_dir{0, 0, 0};
 		float     distance_decay = 2.f;
-		bool      fixed_dir      = false;
 
+		bool fixed_dir       = false; //< ignore position of effector when calculating the force
 		bool scale_with_mass = true;
+		bool absolute        = false;
 	};
 	sf2_structDef(Particle_effector_config,
 	              position,
@@ -94,11 +87,12 @@ namespace mirrage::renderer {
 		Random_value<glm::vec4> size        = {{1.f, 1.f, 1.f, 0.f}};
 		Random_value<glm::vec4> size_change = {{0.f, 0.f, 0.f, 0.f}};
 
-		float base_mass = 1.f;
-		float density   = 0.f;
-
 		Random_value<float> sprite_rotation        = {0.0f};
 		Random_value<float> sprite_rotation_change = {0.0f};
+
+		float base_mass = 1.f;
+		float density   = 0.f;
+		float drag      = 0.f;
 
 		Particle_blend_mode blend    = Particle_blend_mode::transparent;
 		Particle_geometry   geometry = Particle_geometry::billboard;
@@ -112,8 +106,6 @@ namespace mirrage::renderer {
 
 		std::string                 model_id;
 		asset::Ptr<renderer::Model> model;
-
-		float drag = 0.f;
 
 		std::string                 update_script_id;
 		asset::Ptr<Particle_script> update_script;
@@ -140,16 +132,13 @@ namespace mirrage::renderer {
 
 	struct Particle_emitter_spawn {
 		float particles_per_second = 10.f;
-		float variance             = 0.f;
+		float stddev               = 0.f;
 		float time                 = -1.f;
 	};
-	sf2_structDef(Particle_emitter_spawn, particles_per_second, variance, time);
+	sf2_structDef(Particle_emitter_spawn, particles_per_second, stddev, time);
 
 	// describes how new particles are created
 	struct Particle_emitter_config {
-		util::small_vector<Particle_emitter_spawn, 4> spawn;
-		bool                                          spawn_loop = true;
-
 		Random_value<float> ttl = {1.f};
 
 		Random_value<float> velocity = {1.f};
@@ -158,6 +147,9 @@ namespace mirrage::renderer {
 
 		glm::vec3 offset{0, 0, 0};
 		glm::quat rotation{1, 0, 0, 0};
+
+		util::small_vector<Particle_emitter_spawn, 4> spawn;
+		bool                                          spawn_loop = true;
 
 		std::string                 emit_script_id;
 		asset::Ptr<Particle_script> emit_script;
@@ -183,6 +175,26 @@ namespace mirrage::renderer {
 	sf2_structDef(Particle_system_config, emitters, effectors);
 
 
+	class Particle_emitter_gpu_data {
+	  public:
+		auto valid() const noexcept { return _live_rev && *_live_rev == _rev; }
+		void set(const std::uint64_t* rev,
+		         vk::Buffer,
+		         std::int32_t  offset,
+		         std::int32_t  count,
+		         std::uint32_t feedback_idx);
+
+	  private:
+		vk::Buffer           _buffer;
+		const std::uint64_t* _live_rev     = nullptr;
+		std::uint64_t        _rev          = 0;
+		std::int32_t         _offset       = 0;
+		std::int32_t         _count        = 0;
+		std::uint32_t        _feedback_idx = 0;
+
+		friend class Particle_emitter;
+	};
+
 	class Particle_emitter {
 	  public:
 		explicit Particle_emitter(const Particle_emitter_config& cfg) : _cfg(&cfg) {}
@@ -200,6 +212,20 @@ namespace mirrage::renderer {
 		auto absolute() const noexcept { return _absolute; }
 
 		void incr_time(float dt) { _time_accumulator += dt; }
+		auto spawn(util::default_rand&) -> std::int32_t;
+
+		auto drawable() const noexcept { return _gpu_data && _gpu_data->valid(); }
+		auto particle_offset() const noexcept { return drawable() ? _gpu_data->_offset : 0; }
+		auto particle_count() const noexcept { return drawable() ? _gpu_data->_count : 0; }
+		auto particle_feedback_idx() const noexcept
+		{
+			return drawable() ? util::just(_gpu_data->_feedback_idx) : util::nothing;
+		}
+		auto particle_buffer() const noexcept { return drawable() ? _gpu_data->_buffer : vk::Buffer{}; }
+		auto particles_to_spawn() const noexcept { return _particles_to_spawn; }
+		auto last_timestep() const noexcept { return _last_timestep; }
+
+		auto gpu_data() -> std::shared_ptr<Particle_emitter_gpu_data>;
 
 		auto cfg() const noexcept -> auto& { return *_cfg; }
 
@@ -212,7 +238,15 @@ namespace mirrage::renderer {
 		glm::quat _rotation{1, 0, 0, 0};
 		bool      _absolute = false;
 
-		float _time_accumulator = 0.f;
+		float       _time_accumulator  = 0.f;
+		std::size_t _spawn_idx         = 0;
+		float       _spawn_entry_timer = 0;
+
+		std::int32_t _particles_to_spawn = 0;
+		float        _last_timestep      = 0;
+
+		// shared_ptr because its update after the async compute tasks finished
+		std::shared_ptr<Particle_emitter_gpu_data> _gpu_data;
 	};
 
 	class Particle_system : private std::enable_shared_from_this<Particle_system> {
@@ -253,16 +287,19 @@ namespace mirrage::renderer {
 
 		auto emitter_rotation(const Particle_emitter& e) const noexcept
 		{
-			return e.absolute() ? e.rotation() : _rotation * e.rotation();
+			return e.absolute() ? e.rotation() : glm::normalize(_rotation * e.rotation());
 		}
 
 	  private:
+		friend class Particle_pass;
+
 		asset::Ptr<Particle_system_config> _cfg;
 		bool                               _loaded = false;
 		Emitter_list                       _emitters;
 		Effector_list                      _effectors;
 
 		glm::vec3 _position{0, 0, 0};
+		glm::vec3 _last_position{0, 0, 0};
 		glm::quat _rotation{1, 0, 0, 0};
 
 		void _check_reload();
@@ -281,7 +318,7 @@ namespace mirrage::renderer {
 		Particle_system particle_system;
 	};
 
-	class Particle_effector_comp : public ecs::Component<Particle_system_comp> {
+	class Particle_effector_comp : public ecs::Component<Particle_effector_comp> {
 	  public:
 		static constexpr const char* name() { return "Particle_effector"; }
 		friend void                  load_component(ecs::Deserializer& state, Particle_effector_comp&);
@@ -293,6 +330,15 @@ namespace mirrage::renderer {
 		Particle_effector_config effector;
 	};
 
+
+	extern auto create_particle_shared_desc_set_layout(graphic::Device&) -> vk::UniqueDescriptorSetLayout;
+
+	extern auto create_particle_script_pipeline_layout(graphic::Device&        device,
+	                                                   vk::DescriptorSetLayout shared_desc_set,
+	                                                   vk::DescriptorSetLayout storage_buffer,
+	                                                   vk::DescriptorSetLayout uniform_buffer)
+	        -> vk::UniquePipelineLayout;
+
 } // namespace mirrage::renderer
 
 namespace mirrage::asset {
@@ -301,7 +347,6 @@ namespace mirrage::asset {
 	struct Loader<renderer::Particle_script> {
 	  public:
 		Loader(graphic::Device&        device,
-		       vk::DescriptorSetLayout global_uniforms,
 		       vk::DescriptorSetLayout storage_buffer,
 		       vk::DescriptorSetLayout uniform_buffer);
 
@@ -312,8 +357,9 @@ namespace mirrage::asset {
 		}
 
 	  private:
-		graphic::Device&         _device;
-		vk::UniquePipelineLayout _layout;
+		graphic::Device&              _device;
+		vk::UniqueDescriptorSetLayout _shared_desc_set;
+		vk::UniquePipelineLayout      _layout;
 	};
 
 	template <>

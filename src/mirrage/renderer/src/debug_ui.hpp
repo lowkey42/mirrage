@@ -9,7 +9,7 @@
 namespace mirrage::renderer {
 
 
-	namespace {
+	namespace detail {
 		template <typename T>
 		auto to_fixed_str(T num, int digits)
 		{
@@ -55,7 +55,7 @@ namespace mirrage::renderer {
 
 			return gsl::narrow<int>(std::distance(container.begin(), top_entry));
 		}
-	} // namespace
+	} // namespace detail
 
 
 	class Deferred_renderer_factory::Profiler_menu : public gui::Debug_menu {
@@ -124,22 +124,24 @@ namespace mirrage::renderer {
 						}
 					}();
 
-					nk_label_colored(ctx, pad_left(result.name(), depth * 4).c_str(), NK_TEXT_LEFT, color);
-					nk_label_colored(ctx, to_fixed_str(result.time_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
 					nk_label_colored(
-					        ctx, to_fixed_str(result.time_min_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
+					        ctx, detail::pad_left(result.name(), depth * 4).c_str(), NK_TEXT_LEFT, color);
 					nk_label_colored(
-					        ctx, to_fixed_str(result.time_avg_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
+					        ctx, detail::to_fixed_str(result.time_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
 					nk_label_colored(
-					        ctx, to_fixed_str(result.time_max_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
+					        ctx, detail::to_fixed_str(result.time_min_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
+					nk_label_colored(
+					        ctx, detail::to_fixed_str(result.time_avg_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
+					nk_label_colored(
+					        ctx, detail::to_fixed_str(result.time_max_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
 
 
-					auto worst_timings = top_n<2>(result, [](auto&& lhs, auto&& rhs) {
+					auto worst_timings = detail::top_n<2>(result, [](auto&& lhs, auto&& rhs) {
 						return lhs.time_avg_ms() < rhs.time_avg_ms();
 					});
 
 					for(auto iter = result.begin(); iter != result.end(); iter++) {
-						auto rank = index_of(worst_timings, iter);
+						auto rank = detail::index_of(worst_timings, iter);
 						printer(printer, *iter, depth + 1, rank);
 					}
 				};

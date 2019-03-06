@@ -92,7 +92,10 @@ namespace mirrage::ecs {
 
 			auto operator*() noexcept -> value_type& { return get(); }
 			auto operator-> () noexcept -> value_type* { return &get(); }
+			auto operator*() const noexcept -> const value_type& { return get(); }
+			auto operator-> () const noexcept -> const value_type* { return &get(); }
 			auto get() noexcept -> value_type&;
+			auto get() const noexcept -> const value_type&;
 			auto operator++() -> Entity_set_iterator&;
 			auto operator++(int) -> Entity_set_iterator
 			{
@@ -118,9 +121,9 @@ namespace mirrage::ecs {
 			SortedPools&           _sorted_pools;
 			UnsortedPools&         _unsorted_pools;
 
-			util::maybe<value_type> _last_value;
-			Entity_id               _entity;
-			Values                  _values;
+			mutable util::maybe<value_type> _last_value;
+			Entity_id                       _entity;
+			Values                          _values;
 
 			void _find_next_valid();
 		};

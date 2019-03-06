@@ -2,11 +2,11 @@
 	"emitters": [{
 		"spawn": [
 			{"particles_per_second": 100, "time": 1},
-			{"particles_per_second": 0, "time": 2}
+			{"particles_per_second": 0, "time": 200}
 		],
 		"spawn_loop": true,
 
-		"ttl": {"mean": 10, "stddev": 1},
+		"ttl": {"mean": 2, "stddev": 0.5},
 		
 		"velocity": {"mean": 2, "stddev": 0.5},
 

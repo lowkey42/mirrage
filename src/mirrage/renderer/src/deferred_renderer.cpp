@@ -439,16 +439,13 @@ namespace mirrage::renderer {
 		              vk::Sampler             material_sampler,
 		              vk::DescriptorSetLayout material_layout,
 		              std::uint32_t           draw_queue,
-		              vk::DescriptorSetLayout global_uniforms,
 		              vk::DescriptorSetLayout storage_buffer,
 		              vk::DescriptorSetLayout uniform_buffer)
 		  : assets(assets)
 		{
-
 			assets.create_stateful_loader<Material>(device, assets, material_sampler, material_layout);
 			assets.create_stateful_loader<Model>(device, assets, draw_queue);
-			assets.create_stateful_loader<Particle_script>(
-			        device, global_uniforms, storage_buffer, uniform_buffer);
+			assets.create_stateful_loader<Particle_script>(device, storage_buffer, uniform_buffer);
 		}
 		~Asset_loaders()
 		{
@@ -494,7 +491,6 @@ namespace mirrage::renderer {
 	                                                   *_model_material_sampler,
 	                                                   *_model_desc_set_layout,
 	                                                   _draw_queue_family,
-	                                                   global_uniforms_layout(),
 	                                                   compute_storage_buffer_layout(),
 	                                                   compute_uniform_buffer_layout()))
 	  , _all_passes_mask(util::map(_pass_factories, [&](auto& f) { return f->id(); }))

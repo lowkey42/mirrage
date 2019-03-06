@@ -152,8 +152,10 @@ namespace mirrage::renderer {
 					}
 
 					if(update || draw_mask) {
-						frame.particle_queue.emplace_back(
-						        emitter, particle_sys.particle_system.effectors(), draw_mask);
+						frame.particle_queue.emplace_back(emitter,
+						                                  particle_sys.particle_system,
+						                                  particle_sys.particle_system.effectors(),
+						                                  draw_mask);
 					}
 				}
 			}

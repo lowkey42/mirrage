@@ -32,6 +32,14 @@ namespace mirrage::ecs {
 			                    get_value<Cs>(_entities, _entity, _values)...);
 			return _last_value.get_or_throw();
 		}
+		template <class SortedPools, class UnsortedPools, class C1, class... Cs>
+		auto Entity_set_iterator<SortedPools, UnsortedPools, C1, Cs...>::get() const noexcept
+		        -> const value_type&
+		{
+			_last_value.emplace(get_value<C1>(_entities, _entity, _values),
+			                    get_value<Cs>(_entities, _entity, _values)...);
+			return _last_value.get_or_throw();
+		}
 
 		template <class... SortedPools, class... UnsortedPools>
 		auto build_pool_mask(std::tuple<SortedPools*...>&   sorted_pools,
