@@ -84,8 +84,9 @@ namespace mirrage::renderer {
 		auto _alloc_feedback_buffer(Frame_data&)
 		        -> std::tuple<gsl::span<Emitter_range>, gsl::span<std::uint32_t>>;
 		void _update_descriptor_set(Per_frame_data&, util::maybe<Per_frame_data&>);
+		void _update_type_uniforms(Frame_data&, Per_frame_data&);
 		void _dispatch_emits(Frame_data&, vk::CommandBuffer);
-		void _dispatch_updates(Frame_data&, vk::CommandBuffer, Per_frame_data&);
+		void _dispatch_updates(Frame_data&, vk::CommandBuffer);
 	};
 
 	class Particle_pass_factory : public Render_pass_factory {

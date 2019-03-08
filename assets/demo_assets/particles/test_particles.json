@@ -1,7 +1,10 @@
 {
-	"size": {"mean": {"x": 0.2, "y":0.2, "z":0.2}},
-
-	"drag": 0.1,
+	"keyframes": [
+		{
+			"size": {"mean": {"x": 0.2, "y":0.2, "z":0.2}},
+			"drag": 0.1
+		}
+	],
 
 	"blend": "solid",
 	"geometry": "mesh",

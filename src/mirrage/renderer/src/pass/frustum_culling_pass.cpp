@@ -124,38 +124,40 @@ namespace mirrage::renderer {
 			}
 		}
 
-		for(auto& particle_sys : _ecs.list<Particle_system_comp>()) {
-			if(!particle_sys.particle_system.cfg().ready())
-				continue;
+		if(_renderer.settings().particles) {
+			for(auto& particle_sys : _ecs.list<Particle_system_comp>()) {
+				if(!particle_sys.particle_system.cfg().ready())
+					continue;
 
-			for(auto&& emitter : particle_sys.particle_system.emitters()) {
-				if(emitter.active()) {
-					auto pos          = particle_sys.particle_system.emitter_position(emitter);
-					auto update_range = emitter.cfg().type->update_range;
-					auto draw_range   = emitter.cfg().type->draw_range;
-					auto shadowcaster = emitter.cfg().type->shadowcaster;
+				for(auto&& emitter : particle_sys.particle_system.emitters()) {
+					if(emitter.active()) {
+						auto pos          = particle_sys.particle_system.emitter_position(emitter);
+						auto update_range = emitter.cfg().type->update_range;
+						auto draw_range   = emitter.cfg().type->draw_range;
+						auto shadowcaster = emitter.cfg().type->shadowcaster;
 
-					auto draw_mask = draw_range < 0.f ? ~std::uint32_t(0) : std::uint32_t(0);
-					auto update    = update_range < 0.f;
+						auto draw_mask = draw_range < 0.f ? ~std::uint32_t(0) : std::uint32_t(0);
+						auto update    = update_range < 0.f;
 
-					if(!draw_mask) {
-						for(auto i = 0u; i < viewers.size(); i++) {
-							if(viewers[i].shadowmap && !shadowcaster)
-								continue;
+						if(!draw_mask) {
+							for(auto i = 0u; i < viewers.size(); i++) {
+								if(viewers[i].shadowmap && !shadowcaster)
+									continue;
 
-							if(is_visible(viewers[i], pos, draw_range)) {
-								draw_mask |= std::uint32_t(1) << i;
-							} else if(!update && is_visible(viewers[i], pos, update_range)) {
-								update = true;
+								if(is_visible(viewers[i], pos, draw_range)) {
+									draw_mask |= std::uint32_t(1) << i;
+								} else if(!update && is_visible(viewers[i], pos, update_range)) {
+									update = true;
+								}
 							}
 						}
-					}
 
-					if(update || draw_mask) {
-						frame.particle_queue.emplace_back(emitter,
-						                                  particle_sys.particle_system,
-						                                  particle_sys.particle_system.effectors(),
-						                                  draw_mask);
+						if(update || draw_mask) {
+							frame.particle_queue.emplace_back(emitter,
+							                                  particle_sys.particle_system,
+							                                  particle_sys.particle_system.effectors(),
+							                                  draw_mask);
+						}
 					}
 				}
 			}

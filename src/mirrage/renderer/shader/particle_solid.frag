@@ -26,28 +26,9 @@ layout(set=1, binding = 1) uniform sampler2D normal_sampler;
 layout(set=1, binding = 2) uniform sampler2D brdf_sampler;
 layout(set=1, binding = 3) uniform sampler2D emission_sampler;
 
-layout(std140, set=2, binding = 0) uniform Particle_config {
-	Random_vec4 color; // hsva
-	Random_vec4 color_change;
-
-	Random_vec4 size;
-	Random_vec4 size_change;
-
-	Random_float sprite_rotation;
-	Random_float sprite_rotation_change;
-
-	float base_mass;
-	float density;
-	float drag;
-
-	float timestep;
-	uint particle_offset;
-	uint particle_count;
-	int padding;
-
-	int effector_count;
-	Effector effectors[];
-} particle_config;
+layout(std140, set=2, binding = 0) uniform Particle_type_config_dummy {
+	Particle_type_config  particle_config;
+};
 
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;

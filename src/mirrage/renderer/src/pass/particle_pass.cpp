@@ -26,6 +26,7 @@ namespace mirrage::renderer {
 
 		struct Shared_uniform_data {
 			std::int32_t effector_count;
+			std::int32_t global_effector_count;
 			std::int32_t padding[3];
 			// + effector array
 		};
@@ -54,28 +55,22 @@ namespace mirrage::renderer {
 			out.fixed_dir      = effector.fixed_dir ? 1.f : 0.f;
 		}
 
-		struct Update_uniforms {
-			Random_value<Particle_color> color; // hsva
-			Random_value<Particle_color> color_change;
 
-			Random_value<glm::vec4> size;
-			Random_value<glm::vec4> size_change;
+		struct Type_uniforms {
+			std::uint32_t normal_distribution_flags;
+			std::uint32_t rotate_with_velocity;
+			std::uint32_t keyframe_count;
+			std::uint32_t padding;
+			// + keyframes
+		};
 
-			Random_value<float> sprite_rotation;
-			float               padding1[2];
-			Random_value<float> sprite_rotation_change;
-			float               padding2[2];
-
-			float base_mass;
-			float density;
-			float drag;
-			float timestep;
-
+		struct Update_push_constants {
+			float         timestep;
 			std::uint32_t particle_read_offset;
 			std::uint32_t particle_read_count;
-			std::int32_t  padding3;
-			std::int32_t  effector_count;
-			// + effectors
+
+			std::uint32_t effector_count;
+			std::uint32_t effector_offset;
 		};
 
 		auto align(vk::DeviceSize offset, vk::DeviceSize alignment)
@@ -138,13 +133,19 @@ namespace mirrage::renderer {
 		if(capacity < new_capacity) {
 			capacity = new_capacity;
 
-			auto size_bytes =
-			        vk::DeviceSize(capacity) * effector_size_bytes + vk::DeviceSize(sizeof(Update_uniforms));
+			auto allowed_queues =
+			        std::array<uint32_t, 2>{renderer.compute_queue_family(), renderer.queue_family()};
+
+			auto size_bytes = vk::DeviceSize(capacity) * vk::DeviceSize(sizeof(Particle_keyframe))
+			                  + vk::DeviceSize(sizeof(Type_uniforms));
 
 			auto create_info = vk::BufferCreateInfo{
 			        vk::BufferCreateFlags{},
 			        size_bytes,
-			        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer};
+			        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer,
+			        vk::SharingMode::eConcurrent,
+			        gsl::narrow<std::uint32_t>(allowed_queues.size()),
+			        allowed_queues.data()};
 			buffer = renderer.device().create_buffer(create_info, true, graphic::Memory_lifetime::normal);
 
 			if(!desc_set)
@@ -272,6 +273,8 @@ namespace mirrage::renderer {
 		MIRRAGE_INVARIANT(_emitter_gpu_data.empty(),
 		                  "_emitter_gpu_data is not empty at the start of the update process.");
 
+		const auto max_particles = _renderer.settings().max_particles;
+
 		auto& data = _per_frame_data.at(std::size_t(_current_frame));
 
 		data.commands = _renderer.create_compute_command_buffer();
@@ -281,14 +284,24 @@ namespace mirrage::renderer {
 		auto [feedback, feedback_mapping] = _alloc_feedback_buffer(frame);
 
 		// calc new particle count and assign the new range to each emitter
-		auto last_type           = static_cast<const Particle_type_config*>(nullptr);
-		auto particle_type_count = std::int32_t(0);
-		auto particle_count      = std::int32_t(0);
+		auto last_type             = static_cast<const Particle_type_config*>(nullptr);
+		auto particle_type_count   = std::int32_t(0);
+		auto particle_count        = std::int32_t(0);
+		auto global_effector_count = _ecs.list<Particle_effector_comp>().size();
+		auto effector_count        = global_effector_count;
+
 		_emitter_gpu_data.reserve(frame.particle_queue.size());
 		for(auto i = std::size_t(0); i < frame.particle_queue.size(); i++) {
-			auto& p     = frame.particle_queue[i];
-			auto  spawn = p.emitter->spawn(_rand);
-			auto  count = p.emitter->particle_count() + spawn;
+			auto& p = frame.particle_queue[i];
+
+			effector_count += p.effectors.size();
+
+			auto spawn = p.emitter->spawn(_rand);
+			if(particle_count + spawn >= max_particles) {
+				spawn = util::max(0, max_particles - particle_count);
+				p.emitter->override_spawn(spawn);
+			}
+			auto count = p.emitter->particle_count() + spawn;
 
 			feedback[std::int32_t(i)].offset = particle_count;
 			feedback[std::int32_t(i)].count  = spawn;
@@ -307,7 +320,6 @@ namespace mirrage::renderer {
 
 
 		// resize/create new particle_buffer
-		auto effector_count = _ecs.list<Particle_effector_comp>().size();
 		data.reserve(_renderer, particle_count, particle_type_count, effector_count);
 
 		// init feedback buffer
@@ -337,14 +349,21 @@ namespace mirrage::renderer {
 		auto shared_uniforms_ptr =
 		        reinterpret_cast<char*>(data.shared_uniforms.memory().mapped_addr().get_or_throw(
 		                "particle uniform buffer is not mapped"));
-		auto& shared_uniforms          = *reinterpret_cast<Shared_uniform_data*>(shared_uniforms_ptr);
-		shared_uniforms.effector_count = std::int32_t(effector_count);
-		auto uniform_effectors         = gsl::span<Uniform_Effector>(
+		auto& shared_uniforms                 = *reinterpret_cast<Shared_uniform_data*>(shared_uniforms_ptr);
+		shared_uniforms.effector_count        = std::int32_t(effector_count);
+		shared_uniforms.global_effector_count = std::int32_t(global_effector_count);
+		auto uniform_effectors                = gsl::span<Uniform_Effector>(
                 reinterpret_cast<Uniform_Effector*>(shared_uniforms_ptr + sizeof(Shared_uniform_data)),
                 effector_count);
+		auto i = 0;
 
-		for(auto [i, e, t] : util::with_index(_ecs.list<Particle_effector_comp, Transform_comp>())) {
-			effector_to_uniform(e.effector, t.position, t.orientation, uniform_effectors[i]);
+		for(auto [e, t] : _ecs.list<Particle_effector_comp, Transform_comp>()) {
+			effector_to_uniform(e.effector, t.position, t.orientation, uniform_effectors[i++]);
+		}
+		for(auto& p : frame.particle_queue) {
+			for(auto& e : p.effectors) {
+				effector_to_uniform(e, p.system->position(), p.system->rotation(), uniform_effectors[i++]);
+			}
 		}
 
 		if(_first_frame)
@@ -364,8 +383,9 @@ namespace mirrage::renderer {
 		                            0,
 		                            nullptr);
 
+		_update_type_uniforms(frame, data);
 		_dispatch_emits(frame, commands);
-		_dispatch_updates(frame, commands, data);
+		_dispatch_updates(frame, commands);
 
 		// barrier feedback shader_write -> transfer_read
 		commands.pipelineBarrier(
@@ -469,6 +489,72 @@ namespace mirrage::renderer {
 		        gsl::narrow<std::uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
 	}
 
+	void Particle_pass::_update_type_uniforms(Frame_data& frame, Per_frame_data& data)
+	{
+		data.next_free_particle_type_data = 0;
+
+		auto update_uniforms = [&](const Particle_type_config& cfg) {
+			// update uniforms
+			auto& type_data = data.next_particle_type_data();
+			type_data.reserve(_renderer, std::int32_t(cfg.keyframes.size()));
+
+			auto  uniforms_ptr = reinterpret_cast<char*>(type_data.buffer.memory().mapped_addr().get_or_throw(
+                    "particle type uniform buffer is not mapped"));
+			auto& uniforms     = *reinterpret_cast<Type_uniforms*>(uniforms_ptr);
+			auto  keyframes    = reinterpret_cast<char*>(uniforms_ptr + sizeof(Type_uniforms));
+
+			uniforms.keyframe_count       = gsl::narrow<std::uint32_t>(cfg.keyframes.size());
+			uniforms.rotate_with_velocity = cfg.rotate_with_velocity ? 1 : 0;
+
+			auto ndf = std::uint32_t(0);
+			auto i   = std::uint32_t(0);
+			// clang-format off
+			if(cfg.color_normal_distribution_h) ndf |= std::uint32_t(1) << (i++);
+			if(cfg.color_normal_distribution_s) ndf |= std::uint32_t(1) << (i++);
+			if(cfg.color_normal_distribution_v) ndf |= std::uint32_t(1) << (i++);
+			if(cfg.color_normal_distribution_a) ndf |= std::uint32_t(1) << (i++);
+
+			if(cfg.rotation_normal_distribution_x) ndf |= std::uint32_t(1) << (i++);
+			if(cfg.rotation_normal_distribution_y) ndf |= std::uint32_t(1) << (i++);
+			if(cfg.rotation_normal_distribution_z) ndf |= std::uint32_t(1) << (i++);
+
+			if(cfg.size_normal_distribution_x) ndf |= std::uint32_t(1) << (i++);
+			if(cfg.size_normal_distribution_y) ndf |= std::uint32_t(1) << (i++);
+			if(cfg.size_normal_distribution_z) ndf |= std::uint32_t(1) << (i++);
+			// clang-format on
+
+			uniforms.normal_distribution_flags = ndf;
+
+			static_assert(std::is_standard_layout_v<Particle_keyframe>);
+			std::memcpy(keyframes, cfg.keyframes.data(), cfg.keyframes.size_in_bytes());
+
+			return *type_data.desc_set;
+		};
+
+		auto submit_batch = [&](auto&& begin, auto&& end, const Particle_type_config& type) {
+			if(begin != frame.particle_queue.end()) {
+				auto desc_set = update_uniforms(type);
+				for(auto& p : util::range(begin, end))
+					p.emitter->gpu_data()->next_uniforms(desc_set);
+			}
+		};
+
+		auto batch_begin = frame.particle_queue.end();
+		auto batch_type  = static_cast<const Particle_type_config*>(nullptr);
+
+		for(auto iter = frame.particle_queue.begin(); iter != frame.particle_queue.end(); iter++) {
+			auto type = &*iter->emitter->cfg().type;
+
+			if(type != batch_type) {
+				submit_batch(batch_begin, iter - 1, *batch_type);
+				batch_type  = type;
+				batch_begin = iter;
+			}
+		}
+
+		submit_batch(batch_begin, frame.particle_queue.end(), *batch_type);
+	}
+
 	namespace {
 		struct Emitter_push_constants {
 			glm::vec4 parent_velocity;
@@ -534,52 +620,15 @@ namespace mirrage::renderer {
 			offset += std::uint32_t(p.emitter->particle_count() + p.emitter->particles_to_spawn());
 		}
 	}
-	void Particle_pass::_dispatch_updates(Frame_data& frame, vk::CommandBuffer commands, Per_frame_data& data)
+	void Particle_pass::_dispatch_updates(Frame_data& frame, vk::CommandBuffer commands)
 	{
-		const auto dt                     = _dt;
-		data.next_free_particle_type_data = 0;
-
-		auto update_uniforms = [&](std::int32_t begin, std::int32_t count, Particle_draw& p) {
-			const auto& cfg            = *p.emitter->cfg().type;
-			auto        effector_count = p.system->effectors().size();
-
-			// update uniforms
-			auto& type_data = data.next_particle_type_data();
-			type_data.reserve(_renderer, std::int32_t(effector_count));
-
-			auto  uniforms_ptr = reinterpret_cast<char*>(type_data.buffer.memory().mapped_addr().get_or_throw(
-                    "particle type uniform buffer is not mapped"));
-			auto& uniforms     = *reinterpret_cast<Update_uniforms*>(uniforms_ptr);
-
-			uniforms.color                  = cfg.color;
-			uniforms.color_change           = cfg.color_change;
-			uniforms.size                   = cfg.size;
-			uniforms.size_change            = cfg.size_change;
-			uniforms.sprite_rotation        = cfg.sprite_rotation;
-			uniforms.sprite_rotation_change = cfg.sprite_rotation_change;
-			uniforms.base_mass              = cfg.base_mass;
-			uniforms.density                = cfg.density;
-			uniforms.drag                   = cfg.drag;
-			uniforms.timestep               = dt;
-			uniforms.particle_read_offset   = std::uint32_t(begin);
-			uniforms.particle_read_count    = std::uint32_t(count);
-			uniforms.effector_count         = std::int32_t(effector_count);
-
-			auto uniform_effectors = gsl::span<Uniform_Effector>(
-			        reinterpret_cast<Uniform_Effector*>(uniforms_ptr + sizeof(Update_uniforms)),
-			        std::int32_t(effector_count));
-
-			for(auto [i, e] : util::with_index(p.system->effectors())) {
-				effector_to_uniform(e, p.system->position(), p.system->rotation(), uniform_effectors[i]);
-			}
-
-			auto desc_set = *type_data.desc_set;
-			p.emitter->gpu_data()->next_uniforms(desc_set);
-			return desc_set;
-		};
+		const auto dt = _dt;
 
 		auto submit_update = [&](const Particle_type_config& cfg,
+		                         std::int32_t                read_offset,
 		                         std::int32_t                count,
+		                         std::int32_t                effector_offset,
+		                         std::int32_t                effector_count,
 		                         vk::DescriptorSet           uniforms) {
 			if(count > 0) {
 				commands.bindDescriptorSets(
@@ -587,76 +636,83 @@ namespace mirrage::renderer {
 
 				cfg.update_script->bind(commands);
 
+				auto pcs                 = Update_push_constants{};
+				pcs.timestep             = dt;
+				pcs.effector_offset      = std::uint32_t(effector_offset);
+				pcs.effector_count       = std::uint32_t(effector_count);
+				pcs.particle_read_offset = std::uint32_t(read_offset);
+				pcs.particle_read_count  = std::uint32_t(count);
+
+				commands.pushConstants(*_pipeline_layout,
+				                       vk::ShaderStageFlagBits::eCompute,
+				                       0,
+				                       sizeof(Update_push_constants),
+				                       &pcs);
+
 				// dispatch update READ from old particle_buffer APPEND to new particle_buffer and feedback_buffer
 				auto groups = static_cast<std::uint32_t>(std::ceil(float(count) / update_workgroup_size));
 				commands.dispatch(groups, 1, 1);
 			}
 		};
 
-		auto batch_elem_begin  = frame.particle_queue.end();
-		auto batch_elem_end    = frame.particle_queue.end();
+		auto batch_any_elem    = static_cast<Particle_emitter*>(nullptr);
 		auto batch_type        = static_cast<const Particle_type_config*>(nullptr);
 		auto batch_range_begin = std::numeric_limits<std::int32_t>::max();
 		auto batch_range_end   = std::numeric_limits<std::int32_t>::min();
 
 		auto submit_batch = [&] {
-			if(batch_elem_begin == batch_elem_end) {
-				return; // empty batch => skip
-			}
-
-			// update uniforms and apply to each emitter in batch
-			auto count    = batch_range_end - batch_range_begin;
-			auto uniforms = update_uniforms(batch_range_begin, count, *batch_elem_begin);
-
-			for(auto& p : util::range(batch_elem_begin, batch_elem_end)) {
-				p.emitter->gpu_data()->next_uniforms(uniforms);
-			}
-
-			if(count <= 0)
+			auto count = batch_range_end - batch_range_begin;
+			if(!batch_type || count <= 0)
 				return; // no prev. particles in batch => skip
 
 			// submit
-			submit_update(*batch_type, count, uniforms);
+			submit_update(
+			        *batch_type, batch_range_begin, count, 0, 0, batch_any_elem->gpu_data()->next_uniforms());
 
 			// reset
-			batch_elem_begin  = frame.particle_queue.end();
-			batch_elem_end    = frame.particle_queue.end();
-			batch_type        = static_cast<const Particle_type_config*>(nullptr);
+			batch_any_elem    = nullptr;
+			batch_type        = nullptr;
 			batch_range_begin = std::numeric_limits<std::int32_t>::max();
 			batch_range_end   = std::numeric_limits<std::int32_t>::min();
 		};
-		auto add_to_batch = [&](auto iter) {
-			auto type  = &*iter->emitter->cfg().type;
-			auto begin = iter->emitter->particle_offset();
-			auto end   = iter->emitter->particle_offset() + iter->emitter->particle_count();
+		auto add_to_batch = [&](auto& p) {
+			auto type  = &*p.emitter->cfg().type;
+			auto begin = p.emitter->particle_offset();
+			auto end   = p.emitter->particle_offset() + p.emitter->particle_count();
 
-			if(type != batch_type || batch_elem_begin == frame.particle_queue.end()) {
+			if(type != batch_type) {
 				// start new batch
 				submit_batch();
-				batch_elem_begin  = iter;
+				batch_any_elem    = p.emitter;
 				batch_type        = type;
 				batch_range_begin = begin;
 				batch_range_end   = end;
-			} else if(iter->emitter->particle_count() > 0) {
+			} else if(p.emitter->particle_count() > 0) {
 				batch_range_begin = util::min(batch_range_begin, begin);
 				batch_range_end   = util::max(batch_range_end, end);
 			}
-
-			batch_elem_end = iter + 1;
 		};
 
-		for(auto iter = frame.particle_queue.begin(); iter != frame.particle_queue.end(); iter++) {
-			if(!iter->effectors.empty()) {
-				// don't batch => submit current batch (if any) and update emitter
+		auto effector_offset = std::int32_t(_ecs.list<Particle_effector_comp>().size());
+
+		for(auto& p : frame.particle_queue) {
+			auto& gpu_data = *p.emitter->gpu_data();
+			if(!gpu_data.batch_able() || !p.effectors.empty()) {
+				gpu_data.batch_able(false);
+
 				submit_batch();
-				auto count    = iter->emitter->particle_count();
-				auto uniforms = update_uniforms(
-				        iter->emitter->particle_offset(), iter->emitter->particle_count(), *iter);
-				if(count > 0)
-					submit_update(*iter->emitter->cfg().type, count, uniforms);
+
+				auto effector_count = std::int32_t(p.effectors.size());
+				submit_update(*p.emitter->cfg().type,
+				              p.emitter->particle_offset(),
+				              p.emitter->particle_count(),
+				              effector_offset,
+				              effector_count,
+				              gpu_data.next_uniforms());
+				effector_offset += effector_count;
 
 			} else {
-				add_to_batch(iter);
+				add_to_batch(p);
 			}
 		}
 		submit_batch();
@@ -668,7 +724,7 @@ namespace mirrage::renderer {
 	                                        Engine&,
 	                                        bool&) -> std::unique_ptr<Render_pass>
 	{
-		if(ecs.is_nothing())
+		if(ecs.is_nothing() || !renderer.settings().particles)
 			return {};
 
 		return std::make_unique<Particle_pass>(renderer, ecs.get_or_throw());

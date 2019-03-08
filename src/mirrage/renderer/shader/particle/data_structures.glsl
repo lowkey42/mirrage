@@ -37,7 +37,7 @@ struct Effector {
 struct Particle {
 	vec4 position; // xyz + uintBitsToFloat(last_feedback_buffer_index)
 	vec4 velocity; // xyz + seed
-	vec4 ttl;      // ttl_left, ttl_initial, <empty>, <empty>
+	vec4 ttl;      // ttl_left, ttl_initial, keyframe, keyframe_interpolation_factor
 	// seed: 0=ttl, 1=velocity, 2+3=direction, TODO: position?
 	//       10-13=color, 14-17=color_change
 	//       20-23=size,  24-27=size_change
@@ -49,6 +49,37 @@ struct Emitter_particle_range {
 	int count;
 };
 
+struct Particle_keyframe {
+	Random_vec4 color; // hsv + alpha
+	Random_vec4 rotation; // pitch, yaw, roll
+	Random_vec4 size; // xyz
+
+	float time;
+	float base_mass;
+	float density;
+	float drag;
+};
+
+struct Particle_type_config {
+	uint normal_distribution_flags;
+	// 1 <<  0	:	color[0] normal/uniform
+	// 1 <<  1	:	color[1] normal/uniform
+	// 1 <<  2	:	color[2] normal/uniform
+	// 1 <<  3	:	color[3] normal/uniform
+	// 1 <<  4	:	rotation[0] normal/uniform
+	// 1 <<  5	:	rotation[1] normal/uniform
+	// 1 <<  6	:	rotation[2] normal/uniform
+	// 1 <<  7	:	size[0] normal/uniform
+	// 1 <<  8	:	size[1] normal/uniform
+	// 1 <<  9	:	size[2] normal/uniform
+
+	uint rotate_with_velocity; // bool
+	uint keyframe_count;
+
+	uint padding;
+
+	Particle_keyframe keyframes;
+};
 
 vec3 quaternion_rotate(vec3 dir, vec4 q) {
 	return dir + 2.0 * cross(q.xyz, cross(q.xyz, dir) + q.w * dir);

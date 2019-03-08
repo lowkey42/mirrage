@@ -5,44 +5,35 @@
 
 layout (local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
-layout(std140, set=1, binding = 0) uniform Config {
-	Random_vec4 color; // hsva
-	Random_vec4 color_change;
+layout(std140, set=1, binding = 0) uniform Particle_type_config_dummy {
+	Particle_type_config  config;
+};
 
-	Random_vec4 size;
-	Random_vec4 size_change;
 
-	Random_float sprite_rotation;
-	Random_float sprite_rotation_change;
-
-	float base_mass;
-	float density;
-	float drag;
-
+layout(push_constant) uniform Push_constants {
 	float timestep;
 	uint particle_read_offset;
 	uint particle_read_count;
-	int padding;
 
-	int effector_count;
-	Effector effectors[];
-} config;
-
-#include "../global_uniforms.glsl"
+	uint effector_count;
+	uint effector_offset;
+} update_cfg;
 
 
 void main() {
 	uint offset = gl_GlobalInvocationID.x;
 
-	if(offset < config.particle_read_count) {
-		uint index = offset + config.particle_read_offset;
+	if(offset < update_cfg.particle_read_count) {
+		uint index = offset + update_cfg.particle_read_offset;
 
 		vec2 ttl = pin.particles[index].ttl.xy;
-		ttl[0] -= config.timestep;
+		ttl[0] -= update_cfg.timestep;
 
 		if(ttl[0] <= 0) {
 			// dead => drop data
 		} else {
+			const float dt = update_cfg.timestep;
+
 			// incr count and get output index
 			uint old_feedback_index = floatBitsToUint(pin.particles[index].position.w);
 			uint feedback_index = feedback_mapping.new_feedback_index[old_feedback_index];
@@ -51,10 +42,10 @@ void main() {
 
 			// update position / velocity
 			vec3 velocity = pin.particles[index].velocity.xyz;
-			velocity *= (1.0 - config.drag*config.timestep);
+			// TODO: velocity *= (1.0 - config.drag*dt);
 			// TODO: apply global and local effectors
 
-			pout.particles[out_index].position.xyz = pin.particles[index].position.xyz + velocity * config.timestep;
+			pout.particles[out_index].position.xyz = pin.particles[index].position.xyz + velocity * dt;
 			pout.particles[out_index].velocity.xyz = velocity;
 
 			pout.particles[out_index].position.w = uintBitsToFloat(feedback_index);

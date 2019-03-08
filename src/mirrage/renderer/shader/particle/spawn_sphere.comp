@@ -44,9 +44,6 @@ void main() {
 
 		pos += velocity * emitter_cfg.timestep*(float(invId)/float(emitter_cfg.to_spawn));
 
-		// TODO: take euler step of timestep*(float(invId)/float(emitter_cfg.to_spawn))
-		//			might distribute particles more evenly => test it first
-
 		pout.particles[index].position.xyz = pos;
 		pout.particles[index].velocity.xyz = velocity;
 

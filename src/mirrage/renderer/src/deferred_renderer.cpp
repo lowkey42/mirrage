@@ -54,7 +54,7 @@ namespace mirrage::renderer {
 	                                                                  factory._window.width(),
 	                                                                  factory._window.height())
 	                                      : std::unique_ptr<GBuffer>())
-	  , _profiler(device(), 64)
+	  , _profiler(device(), 128)
 
 	  , _global_uniform_descriptor_set(
 	            _descriptor_set_pool.create_descriptor(*factory._global_uniform_descriptor_set_layout, 1))

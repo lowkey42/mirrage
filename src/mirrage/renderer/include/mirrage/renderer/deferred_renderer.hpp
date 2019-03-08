@@ -50,11 +50,14 @@ namespace mirrage::renderer {
 		float scotopic_sim_weight         = 1.f;
 		float min_display_luminance       = 2.f;
 		float max_display_luminance       = 150.0f;
+		float amient_light_intensity      = 0.1f;
 
-		bool taa            = true;
-		bool ssao           = true;
-		bool bloom          = true;
-		bool depth_of_field = true;
+		bool         taa            = true;
+		bool         ssao           = true;
+		bool         bloom          = true;
+		bool         depth_of_field = true;
+		bool         particles      = true;
+		std::int32_t max_particles  = 1'000'000;
 
 		float background_intensity = 0.f;
 
@@ -75,10 +78,13 @@ namespace mirrage::renderer {
 	              gi_low_quality_mip_levels,
 	              min_display_luminance,
 	              max_display_luminance,
+	              amient_light_intensity,
 	              taa,
 	              ssao,
 	              bloom,
 	              depth_of_field,
+	              particles,
+	              max_particles,
 	              shadows,
 	              dynamic_lighting,
 	              debug_geometry);

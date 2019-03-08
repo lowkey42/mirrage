@@ -11,13 +11,17 @@ namespace mirrage::renderer {
 
 	void load_component(ecs::Deserializer& state, Directional_light_comp& comp)
 	{
-		auto src_radius  = comp._source_radius / 1_m;
-		auto temperature = -1.f;
+		auto src_radius         = comp._source_radius / 1_m;
+		auto temperature        = -1.f;
+		auto shadow_temperature = -1.f;
 
 		state.read_virtual(sf2::vmember("source_radius", src_radius),
 		                   sf2::vmember("intensity", comp._intensity),
 		                   sf2::vmember("color", comp._color),
 		                   sf2::vmember("temperature", temperature),
+		                   sf2::vmember("shadow_intensity", comp._shadow_intensity),
+		                   sf2::vmember("shadow_color", comp._shadow_color),
+		                   sf2::vmember("shadow_temperature", shadow_temperature),
 		                   sf2::vmember("shadow_size", comp._shadow_size),
 		                   sf2::vmember("near_plane", comp._shadow_near_plane),
 		                   sf2::vmember("far_plane", comp._shadow_far_plane),
@@ -27,6 +31,9 @@ namespace mirrage::renderer {
 		if(temperature >= 0.f) {
 			comp.temperature(temperature);
 		}
+		if(shadow_temperature >= 0.f) {
+			comp.shadow_temperature(shadow_temperature);
+		}
 	}
 
 	void save_component(ecs::Serializer& state, const Directional_light_comp& comp)
@@ -34,6 +41,8 @@ namespace mirrage::renderer {
 		state.write_virtual(sf2::vmember("source_radius", comp._source_radius / 1_m),
 		                    sf2::vmember("intensity", comp._intensity),
 		                    sf2::vmember("color", comp._color),
+		                    sf2::vmember("shadow_intensity", comp._shadow_intensity),
+		                    sf2::vmember("shadow_color", comp._shadow_color),
 		                    sf2::vmember("shadow_size", comp._shadow_size),
 		                    sf2::vmember("near_plane", comp._shadow_near_plane),
 		                    sf2::vmember("far_plane", comp._shadow_far_plane),
@@ -41,6 +50,10 @@ namespace mirrage::renderer {
 	}
 
 	void Directional_light_comp::temperature(float kelvin) { _color = temperature_to_color(kelvin); }
+	void Directional_light_comp::shadow_temperature(float kelvin)
+	{
+		_shadow_color = temperature_to_color(kelvin);
+	}
 
 	auto Directional_light_comp::calc_shadowmap_view_proj(ecs::components::Transform_comp& transform) const
 	        -> glm::mat4

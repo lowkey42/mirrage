@@ -22,7 +22,7 @@ namespace mirrage::renderer {
 	struct Particle {
 		glm::vec4 position; // xyz + uintBitsToFloat(last_feedback_buffer_index)
 		glm::vec4 velocity; // xyz + seed
-		glm::vec4 ttl;      // ttl_left, ttl_initial, <empty>, <empty>
+		glm::vec4 ttl;      // ttl_left, ttl_initial, keyframe, keyframe_interpolation_factor
 	};
 
 	class Particle_script {
@@ -56,6 +56,7 @@ namespace mirrage::renderer {
 	};
 	sf2_structDef(Random_value<float>, mean, stddev);
 	sf2_structDef(Random_value<glm::vec4>, mean, stddev);
+	sf2_structDef(Random_value<glm::quat>, mean, stddev);
 	sf2_structDef(Random_value<Particle_color>, mean, stddev);
 
 
@@ -85,20 +86,34 @@ namespace mirrage::renderer {
 	              fixed_dir,
 	              scale_with_mass);
 
+	struct Particle_keyframe {
+		Random_value<Particle_color> color    = {{1, 1, 1, 1}};
+		Random_value<glm::vec4>      rotation = {{0.f, 0.f, 0.f, 0.f}};
+		Random_value<glm::vec4>      size     = {{1.f, 1.f, 1.f, 0.f}};
+
+		float time      = 0;
+		float base_mass = 1;
+		float density   = 0;
+		float drag      = 0.f;
+	};
+	sf2_structDef(Particle_keyframe, color, rotation, size, time, base_mass, density, drag);
+
 	/// describes how living particles are updated and drawn
 	struct Particle_type_config {
-		Random_value<Particle_color> color        = {{1, 1, 1, 1}};
-		Random_value<Particle_color> color_change = {{0, 0, 0, 0}};
+		util::small_vector<Particle_keyframe, 3> keyframes;
 
-		Random_value<glm::vec4> size        = {{1.f, 1.f, 1.f, 0.f}};
-		Random_value<glm::vec4> size_change = {{0.f, 0.f, 0.f, 0.f}};
+		bool color_normal_distribution_h    = true;
+		bool color_normal_distribution_s    = true;
+		bool color_normal_distribution_v    = true;
+		bool color_normal_distribution_a    = true;
+		bool rotation_normal_distribution_x = true;
+		bool rotation_normal_distribution_y = true;
+		bool rotation_normal_distribution_z = true;
+		bool size_normal_distribution_x     = true;
+		bool size_normal_distribution_y     = true;
+		bool size_normal_distribution_z     = true;
 
-		Random_value<float> sprite_rotation        = {0.0f};
-		Random_value<float> sprite_rotation_change = {0.0f};
-
-		float base_mass = 1.f;
-		float density   = 0.f;
-		float drag      = 0.f;
+		bool rotate_with_velocity = false;
 
 		Particle_blend_mode blend    = Particle_blend_mode::transparent;
 		Particle_geometry   geometry = Particle_geometry::billboard;
@@ -117,14 +132,18 @@ namespace mirrage::renderer {
 		asset::Ptr<Particle_script> update_script;
 	};
 	sf2_structDef(Particle_type_config,
-	              color,
-	              color_change,
-	              size,
-	              size_change,
-	              base_mass,
-	              density,
-	              sprite_rotation,
-	              sprite_rotation_change,
+	              keyframes,
+	              color_normal_distribution_h,
+	              color_normal_distribution_s,
+	              color_normal_distribution_v,
+	              color_normal_distribution_a,
+	              rotation_normal_distribution_x,
+	              rotation_normal_distribution_y,
+	              rotation_normal_distribution_z,
+	              size_normal_distribution_x,
+	              size_normal_distribution_y,
+	              size_normal_distribution_z,
+	              rotate_with_velocity,
 	              blend,
 	              geometry,
 	              update_range,
@@ -132,7 +151,6 @@ namespace mirrage::renderer {
 	              shadowcaster,
 	              material_id,
 	              model_id,
-	              drag,
 	              update_script_id);
 
 
@@ -194,6 +212,9 @@ namespace mirrage::renderer {
 		void next_uniforms(vk::DescriptorSet s) { _next_uniforms = s; }
 		auto next_uniforms() const noexcept { return _next_uniforms; }
 
+		auto batch_able() const noexcept { return _batch_able; }
+		void batch_able(bool b) noexcept { _batch_able = b; }
+
 	  private:
 		vk::Buffer           _buffer;
 		vk::DescriptorSet    _uniforms;
@@ -203,6 +224,7 @@ namespace mirrage::renderer {
 		std::int32_t         _offset       = 0;
 		std::int32_t         _count        = 0;
 		std::uint32_t        _feedback_idx = 0;
+		bool                 _batch_able   = true;
 
 		friend class Particle_emitter;
 	};
@@ -225,6 +247,7 @@ namespace mirrage::renderer {
 
 		void incr_time(float dt);
 		auto spawn(util::default_rand&) -> std::int32_t;
+		void override_spawn(std::int32_t spawn) { _particles_to_spawn = spawn; }
 
 		auto drawable() const noexcept { return _gpu_data && _gpu_data->valid(); }
 		auto particle_offset() const noexcept { return drawable() ? _gpu_data->_offset : 0; }

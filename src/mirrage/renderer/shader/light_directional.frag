@@ -32,6 +32,7 @@ layout(push_constant) uniform Per_model_uniforms {
 	vec4 light_color;
 	vec4 light_data;  // R=src_radius, GBA=direction
 	vec4 light_data2; // R=shadowmapID
+	vec4 shadow_color;
 } model_uniforms;
 
 
@@ -47,6 +48,7 @@ void main() {
 
 	vec3 position = position_from_ldepth(vertex_out.tex_coords, depth);
 	vec3 V = -normalize(position);
+	vec3 L = model_uniforms.light_data.gba;
 	vec3 albedo = albedo_mat_id.rgb;
 	int  material = int(albedo_mat_id.a*255);
 
@@ -56,21 +58,26 @@ void main() {
 
 	vec3 F0 = mix(vec3(0.04), albedo.rgb, metallic);
 	albedo.rgb *= 1.0 - metallic;
+
 	vec3 radiance = model_uniforms.light_color.rgb * model_uniforms.light_color.a;
 
-
 	float shadow = sample_shadowmap(position + N*0.06);
+	float NdotL = max(dot(N, L), 0.0);
+	vec3 shadow_radiance = model_uniforms.shadow_color.rgb * model_uniforms.shadow_color.a;
 
-	out_color = vec4(0,0,0,0);
-	out_color_diff = vec4(0,0,0,0);
+	out_color = vec4(0,0,0,1.0);
+	out_color_diff = vec4(0,0,0,1.0);
+
+	shadow *= NdotL;
 
 	if(shadow>0.0) {
-		vec3 L = model_uniforms.light_data.gba;
-
 		vec3 diffuse;
 		out_color = vec4(brdf(albedo, F0, roughness, N, V, L, radiance, diffuse) * shadow, 1.0);
 		out_color_diff = vec4(diffuse * shadow, 1.0);
 	}
+
+	out_color.rgb += shadow_radiance * albedo / PI * (1.0 - shadow);
+	out_color_diff.rgb += shadow_radiance * albedo / PI * (1.0 - shadow);
 }
 
 

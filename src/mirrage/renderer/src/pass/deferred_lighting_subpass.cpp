@@ -184,6 +184,8 @@ namespace mirrage::renderer {
 
 		auto inv_view = _renderer.global_uniforms().inv_view_mat;
 
+		auto ambient_factor = _renderer.settings().amient_light_intensity;
+
 		// directional light
 		for(auto& light : frame.light_queue) {
 			if(auto ll = std::get_if<Directional_light_comp*>(&light.light); ll) {
@@ -191,6 +193,8 @@ namespace mirrage::renderer {
 
 				dpc.model        = light_data.calc_shadowmap_view_proj(*light.transform) * inv_view;
 				dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity() / 10000.0f);
+				dpc.shadow_color = glm::vec4(light_data.shadow_color(),
+				                             light_data.shadow_intensity() / 10000.0f * ambient_factor);
 				dpc.light_data.r = light_data.source_radius() / 1_m;
 				auto dir =
 				        _renderer.global_uniforms().view_mat * glm::vec4(-light.transform->direction(), 0.f);

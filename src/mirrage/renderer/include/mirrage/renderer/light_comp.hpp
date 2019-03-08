@@ -16,10 +16,13 @@ namespace mirrage::renderer {
 		using Component::Component;
 
 		void temperature(float kelvin);
+		void shadow_temperature(float kelvin);
 		auto shadowcaster(bool b) noexcept { _shadowcaster = b; }
 		void source_radius(util::Distance v) noexcept { _source_radius = v; }
 		void intensity(float v) noexcept { _intensity = v; }
+		void shadow_intensity(float v) noexcept { _shadow_intensity = v; }
 		void color(util::Rgb v) noexcept { _color = v; }
+		void shadow_color(util::Rgb v) noexcept { _shadow_color = v; }
 		void shadowmap_id(int id) noexcept { _shadowmap_id = id; }
 		void shadow_size(float v) noexcept { _shadow_size = v; }
 		void shadow_near_plane(float v) noexcept { _shadow_near_plane = v; }
@@ -28,7 +31,9 @@ namespace mirrage::renderer {
 		auto shadowcaster() const noexcept { return _shadowcaster; }
 		auto source_radius() const noexcept { return _source_radius; }
 		auto intensity() const noexcept { return _intensity; }
+		auto shadow_intensity() const noexcept { return _shadow_intensity; }
 		auto color() const noexcept { return _color; }
+		auto shadow_color() const noexcept { return _shadow_color; }
 		auto shadowmap_id() const noexcept { return _shadowmap_id; }
 
 		auto calc_shadowmap_view_proj(ecs::components::Transform_comp& transform) const -> glm::mat4;
@@ -49,6 +54,8 @@ namespace mirrage::renderer {
 		util::Distance _source_radius;
 		float          _intensity; // in lux
 		util::Rgb      _color;
+		float          _shadow_intensity        = 0; // in lux
+		util::Rgb      _shadow_color            = {0, 0, 0};
 		bool           _shadowcaster            = true;
 		int            _shadowmap_id            = -1;
 		float          _shadow_size             = 128;
