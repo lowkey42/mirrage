@@ -155,12 +155,11 @@ namespace mirrage::renderer {
 	}
 	auto create_particle_script_pipeline_layout(graphic::Device&        device,
 	                                            vk::DescriptorSetLayout shared_desc_set,
-	                                            vk::DescriptorSetLayout,
-	                                            vk::DescriptorSetLayout uniform_buffer)
-	        -> vk::UniquePipelineLayout
+	                                            vk::DescriptorSetLayout storage_buffer,
+	                                            vk::DescriptorSetLayout) -> vk::UniquePipelineLayout
 	{
 		// shared_data, emitter/particle_type data
-		auto desc_sets      = std::array<vk::DescriptorSetLayout, 2>{shared_desc_set, uniform_buffer};
+		auto desc_sets      = std::array<vk::DescriptorSetLayout, 2>{shared_desc_set, storage_buffer};
 		auto push_constants = vk::PushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, 4 * 4 * 4 * 2};
 
 		return device.vk_device()->createPipelineLayoutUnique(

@@ -59,8 +59,8 @@ namespace mirrage::renderer {
 		struct Type_uniforms {
 			std::uint32_t normal_distribution_flags;
 			std::uint32_t rotate_with_velocity;
+			std::uint32_t symmetric_scaling;
 			std::uint32_t keyframe_count;
-			std::uint32_t padding;
 			// + keyframes
 		};
 
@@ -142,19 +142,19 @@ namespace mirrage::renderer {
 			auto create_info = vk::BufferCreateInfo{
 			        vk::BufferCreateFlags{},
 			        size_bytes,
-			        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer,
+			        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
 			        vk::SharingMode::eConcurrent,
 			        gsl::narrow<std::uint32_t>(allowed_queues.size()),
 			        allowed_queues.data()};
 			buffer = renderer.device().create_buffer(create_info, true, graphic::Memory_lifetime::normal);
 
 			if(!desc_set)
-				desc_set = renderer.create_descriptor_set(renderer.compute_uniform_buffer_layout(), 1);
+				desc_set = renderer.create_descriptor_set(renderer.compute_storage_buffer_layout(), 1);
 
 			// update desc_set
 			auto bufferInfo = vk::DescriptorBufferInfo{*buffer, 0, VK_WHOLE_SIZE};
 			auto desc_write = vk::WriteDescriptorSet{
-			        *desc_set, 0, 0, 1, vk::DescriptorType::eUniformBuffer, nullptr, &bufferInfo};
+			        *desc_set, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &bufferInfo};
 
 			renderer.device().vk_device()->updateDescriptorSets(1u, &desc_write, 0, nullptr);
 		}
@@ -505,6 +505,7 @@ namespace mirrage::renderer {
 
 			uniforms.keyframe_count       = gsl::narrow<std::uint32_t>(cfg.keyframes.size());
 			uniforms.rotate_with_velocity = cfg.rotate_with_velocity ? 1 : 0;
+			uniforms.symmetric_scaling    = cfg.symmetric_scaling ? 1 : 0;
 
 			auto ndf = std::uint32_t(0);
 			auto i   = std::uint32_t(0);
@@ -561,10 +562,16 @@ namespace mirrage::renderer {
 			glm::vec4 position;
 			glm::quat rotation_quat;
 
+			Random_value<glm::vec4> direction;
+
+			glm::vec2 size;
+
 			float ttl_mean;
 			float ttl_stddev;
 			float velocity_mean;
 			float velocity_stddev;
+
+			std::uint32_t direction_flags;
 
 			std::uint32_t offset;
 			std::uint32_t to_spawn;
@@ -594,11 +601,17 @@ namespace mirrage::renderer {
 				        (p.system->position() - p.system->_last_position) / dt * cfg.parent_velocity, 0.f);
 				pcs.position      = glm::vec4(p.system->emitter_position(*p.emitter), 0.f);
 				pcs.rotation_quat = p.system->emitter_rotation(*p.emitter);
+				pcs.size          = glm::vec2(cfg.size.x, cfg.size.y);
+
+				pcs.direction = cfg.direction;
 
 				pcs.ttl_mean        = cfg.ttl.mean;
 				pcs.ttl_stddev      = cfg.ttl.stddev;
 				pcs.velocity_mean   = cfg.velocity.mean;
 				pcs.velocity_stddev = cfg.velocity.stddev;
+
+				pcs.direction_flags = std::uint32_t(cfg.independent_direction ? 1 : 0)
+				                      | std::uint32_t(cfg.direction_normal_distribution ? 2 : 0);
 
 				pcs.offset             = std::uint32_t(offset);
 				pcs.to_spawn           = std::uint32_t(p.emitter->particles_to_spawn());

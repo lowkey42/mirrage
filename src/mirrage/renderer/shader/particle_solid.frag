@@ -13,6 +13,7 @@ layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 tex_coords;
 layout(location = 3) in vec4 out_particle_velocity;
 layout(location = 4) in vec4 out_particle_ttl;
+layout(location = 5) in vec4 out_particle_color;
 
 
 layout(location = 0) out vec4 depth_out;
@@ -26,9 +27,9 @@ layout(set=1, binding = 1) uniform sampler2D normal_sampler;
 layout(set=1, binding = 2) uniform sampler2D brdf_sampler;
 layout(set=1, binding = 3) uniform sampler2D emission_sampler;
 
-layout(std140, set=2, binding = 0) uniform Particle_type_config_dummy {
-	Particle_type_config  particle_config;
-};
+layout(std140, set=2, binding = 0) readonly buffer Particle_type_config {
+	PARTICLE_TYPE_CONFIG
+} particle_config;
 
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
@@ -44,6 +45,7 @@ vec3 tangent_space_to_world(vec3 N);
 
 void main() {
 	vec4 albedo = texture(albedo_sampler, tex_coords);
+	albedo *= out_particle_color;
 
 	vec3  N    = tangent_space_to_world(decode_tangent_normal(texture(normal_sampler, tex_coords).rg));
 

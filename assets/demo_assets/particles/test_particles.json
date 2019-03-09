@@ -1,11 +1,20 @@
 {
 	"keyframes": [
 		{
-			"size": {"mean": {"x": 0.2, "y":0.2, "z":0.2}},
+			"time": 0,
+			"color": {"mean":{"hue":0}, "stddev":{"hue":0.5}},
+			"size": {"mean": {"x": 0.08, "y":0.08, "z":0.08}, "stddev":{"x": 0.04, "y":0.04, "z":0.04}},
 			"drag": 0.1
+		},
+		{
+			"time": 3,
+			"color": {"mean":{"hue":0}, "stddev":{"hue":0}},
+			"size": {"mean": {"x": 0.01, "y":0.01, "z":0.01}},
+			"drag": 1.0
 		}
 	],
 
+	"symmetric_scaling": true,
 	"blend": "solid",
 	"geometry": "mesh",
 

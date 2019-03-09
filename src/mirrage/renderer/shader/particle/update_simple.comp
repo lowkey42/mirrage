@@ -5,9 +5,9 @@
 
 layout (local_size_x = 32, local_size_y = 1, local_size_z = 1) in;
 
-layout(std140, set=1, binding = 0) uniform Particle_type_config_dummy {
-	Particle_type_config  config;
-};
+layout(std140, set=1, binding = 0) readonly buffer Particle_type_config {
+	PARTICLE_TYPE_CONFIG
+} particle_config;
 
 
 layout(push_constant) uniform Push_constants {
@@ -40,6 +40,20 @@ void main() {
 			uint out_offset = atomicAdd(feedback.ranges[feedback_index].count, 1);
 			uint out_index = out_offset + feedback.ranges[feedback_index].offset;
 
+			// update keyframe
+			float age = ttl[1] - ttl[0];
+			uint keyframe = 0;
+			for(; keyframe+1<particle_config.keyframe_count-1; keyframe++) {
+				if(particle_config.keyframes[keyframe].time >= age) {
+					keyframe--;
+					break;
+				}
+			}
+
+			float time_a = particle_config.keyframes[keyframe].time;
+			float time_b = particle_config.keyframes[min(keyframe+1, particle_config.keyframe_count-1)].time;
+			float keyframe_t = clamp(0, 1, time_b <= time_a ? 0.0 : (age - time_a) / (time_b - time_a));
+
 			// update position / velocity
 			vec3 velocity = pin.particles[index].velocity.xyz;
 			// TODO: velocity *= (1.0 - config.drag*dt);
@@ -50,7 +64,7 @@ void main() {
 
 			pout.particles[out_index].position.w = uintBitsToFloat(feedback_index);
 			pout.particles[out_index].velocity.w = pin.particles[index].velocity.w;
-			pout.particles[out_index].ttl = vec4(ttl.xy, 0, 0);
+			pout.particles[out_index].ttl = vec4(ttl.x, ttl.y, uintBitsToFloat(keyframe), keyframe_t);
 		}
 	}
 }

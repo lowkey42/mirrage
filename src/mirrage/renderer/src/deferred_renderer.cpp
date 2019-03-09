@@ -483,7 +483,11 @@ namespace mirrage::renderer {
 	                            | vk::ShaderStageFlagBits::eCompute}))
 
 	  , _compute_storage_buffer_layout(_device->create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
-	            0, vk::DescriptorType::eStorageBuffer, 1, vk::ShaderStageFlagBits::eCompute}))
+	            0,
+	            vk::DescriptorType::eStorageBuffer,
+	            1,
+	            vk::ShaderStageFlagBits::eCompute | vk::ShaderStageFlagBits::eVertex
+	                    | vk::ShaderStageFlagBits::eFragment}))
 	  , _compute_uniform_buffer_layout(_device->create_descriptor_set_layout(vk::DescriptorSetLayoutBinding{
 	            0,
 	            vk::DescriptorType::eUniformBuffer,

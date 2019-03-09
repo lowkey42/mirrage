@@ -9,9 +9,14 @@ layout(push_constant) uniform Push_constants {
 	vec4 parent_velocity;
 	vec4 position;
 	vec4 rotation_quat;
+	Random_vec4 direction;
+
+	vec2 size;
 
 	Random_float ttl;
 	Random_float velocity;
+
+	uint direction_flags; // 0x1 : independent; 0x2 : normal distribution
 
 	uint offset;
 	uint to_spawn;
@@ -36,12 +41,27 @@ void main() {
 		pout.particles[index].velocity.w = uintBitsToFloat(seed);
 		pout.particles[index].ttl = vec4(rand_ttl, rand_ttl, 0, 0);
 
-		vec3 dir = vec3(0,1,0); // TODO: random dir
-		dir = quaternion_rotate(dir, emitter_cfg.rotation_quat);
+		bool dir_normal_distr = (emitter_cfg.direction_flags & 2) != 0;
+		vec2 r23 = dir_normal_distr ? normal_rand(seed, 2, 3) : uniform_rand(seed, 2,3)*2-1;
+		vec3 dir = quaternion_rotate(rand_dir(emitter_cfg.direction.mean.xy,
+		                                      emitter_cfg.direction.stddev.xy,
+		                                      r23),
+		                             emitter_cfg.rotation_quat);
 
+		vec3 vel_dir = dir;
+		if((emitter_cfg.direction_flags & 1) != 0) {
+			vec2 r45 = dir_normal_distr ? normal_rand(seed, 4, 5) : uniform_rand(seed, 4, 5)*2-1;
+			vel_dir = quaternion_rotate(rand_dir(emitter_cfg.direction.mean.zw,
+			                                     emitter_cfg.direction.stddev.zw,
+			                                     r45),
+			                            emitter_cfg.rotation_quat);
+		}
+
+		float r = mix(emitter_cfg.size[0], emitter_cfg.size[1], uniform_rand(seed, 6));
 		vec3 pos = emitter_cfg.position.xyz + dir;
-		vec3 velocity = dir*rand_vel + emitter_cfg.parent_velocity.xyz;
+		vec3 velocity = vel_dir*rand_vel + emitter_cfg.parent_velocity.xyz;
 
+		// single euler step to distribute particles more evenly with bigger delta-times
 		pos += velocity * emitter_cfg.timestep*(float(invId)/float(emitter_cfg.to_spawn));
 
 		pout.particles[index].position.xyz = pos;

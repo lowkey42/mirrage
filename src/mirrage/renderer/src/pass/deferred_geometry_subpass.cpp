@@ -201,7 +201,7 @@ namespace mirrage::renderer {
 	{
 		p.rasterization.cullMode = vk::CullModeFlagBits::eNone;
 		p.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
-		p.add_descriptor_set_layout(renderer.compute_uniform_buffer_layout()); //< particle type data
+		p.add_descriptor_set_layout(renderer.compute_storage_buffer_layout()); //< particle type data
 
 		p.vertex<Model_vertex>(
 		        0, false, 0, &Model_vertex::position, 1, &Model_vertex::normal, 2, &Model_vertex::tex_coords);

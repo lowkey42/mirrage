@@ -97,23 +97,26 @@ namespace mirrage::renderer {
 		float drag      = 0.f;
 	};
 	sf2_structDef(Particle_keyframe, color, rotation, size, time, base_mass, density, drag);
+	static_assert(sizeof(Particle_keyframe) == sizeof(float) * (4 * 3 * 2 + 4),
+	              "Particle_keyframe contains padding");
 
 	/// describes how living particles are updated and drawn
 	struct Particle_type_config {
 		util::small_vector<Particle_keyframe, 3> keyframes;
 
-		bool color_normal_distribution_h    = true;
-		bool color_normal_distribution_s    = true;
-		bool color_normal_distribution_v    = true;
-		bool color_normal_distribution_a    = true;
-		bool rotation_normal_distribution_x = true;
-		bool rotation_normal_distribution_y = true;
-		bool rotation_normal_distribution_z = true;
-		bool size_normal_distribution_x     = true;
-		bool size_normal_distribution_y     = true;
-		bool size_normal_distribution_z     = true;
+		bool color_normal_distribution_h    = false;
+		bool color_normal_distribution_s    = false;
+		bool color_normal_distribution_v    = false;
+		bool color_normal_distribution_a    = false;
+		bool rotation_normal_distribution_x = false;
+		bool rotation_normal_distribution_y = false;
+		bool rotation_normal_distribution_z = false;
+		bool size_normal_distribution_x     = false;
+		bool size_normal_distribution_y     = false;
+		bool size_normal_distribution_z     = false;
 
 		bool rotate_with_velocity = false;
+		bool symmetric_scaling    = false; //< also use x size for y and z
 
 		Particle_blend_mode blend    = Particle_blend_mode::transparent;
 		Particle_geometry   geometry = Particle_geometry::billboard;
@@ -144,6 +147,7 @@ namespace mirrage::renderer {
 	              size_normal_distribution_y,
 	              size_normal_distribution_z,
 	              rotate_with_velocity,
+	              symmetric_scaling,
 	              blend,
 	              geometry,
 	              update_range,
@@ -167,6 +171,14 @@ namespace mirrage::renderer {
 
 		Random_value<float> velocity = {1.f};
 
+		glm::vec4 size = {0.f, 1.f, 0.f, 0.f}; // min_radius, max_radius, <ignored>, <ignored>
+
+		bool independent_direction = false; // initial velocity direction is independent of spawn position
+		Random_value<glm::vec4> direction = {
+		        glm::vec4{0},
+		        glm::vec4(glm::pi<float>())}; // elevation, azimuth, velocity-elevation, velocity-azimuth
+		bool direction_normal_distribution = false;
+
 		float parent_velocity = 0.f;
 
 		glm::vec3 offset{0, 0, 0};
@@ -186,6 +198,10 @@ namespace mirrage::renderer {
 	              spawn_loop,
 	              ttl,
 	              velocity,
+	              size,
+	              independent_direction,
+	              direction,
+	              direction_normal_distribution,
 	              parent_velocity,
 	              offset,
 	              rotation,
