@@ -1,14 +1,17 @@
 {
 	"emitters": [{
 		"spawn": [
-			{"particles_per_second": 2000, "stddev":0, "time": 1},
+			{"particles_per_second": 20000, "stddev":0, "time": 1},
 			{"particles_per_second": 0, "stddev":0, "time": 4}
 		],
 		"spawn_loop": true,
 
+		"size": {"x":0, "y":0},
+		"direction": {"mean":{"elevation":0.85, "azimuth":-0.25}, "stddev":{"elevation":0.1, "azimuth":0.1}},
+
 		"ttl": {"mean": 4, "stddev": 0.5},
 		
-		"velocity": {"mean": 1, "stddev": 0.0},
+		"velocity": {"mean": 3, "stddev": 0.6},
 
 		"emit_script_id": "comp_shader:particle_spawn_sphere",
 

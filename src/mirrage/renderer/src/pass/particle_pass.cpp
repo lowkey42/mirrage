@@ -563,7 +563,7 @@ namespace mirrage::renderer {
 			glm::vec4 position;
 			glm::quat rotation_quat;
 
-			Random_value<glm::vec4> direction;
+			Random_value<Particle_direction> direction;
 
 			glm::vec2 size;
 

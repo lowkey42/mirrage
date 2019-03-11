@@ -51,14 +51,22 @@ namespace mirrage::renderer {
 	sf2_structDef(Particle_color, hue, saturation, value, alpha);
 
 	/// angle + axis rotation with the axis expressed in spherical coordinates
-	/// elevation=0 and azimuth=0 is (0,0,1)
+	/// elevation=1 and azimuth=0 is (0,0,1) and the base-plane is XZ
 	struct Particle_rotation {
-		float elevation = 0.f; //< 0=0°, 1= 90°
+		float elevation = 1.f; //< 0=0°, 1= 90°
 		float azimuth   = 0.f; //< 0=0°, 1=360°
 		float angle     = 0.f; //< 0=0°, 1=360°
 		float padding;
 	};
 	sf2_structDef(Particle_rotation, elevation, azimuth, angle);
+
+	struct Particle_direction {
+		float elevation          = 1.f;
+		float azimuth            = 0.f;
+		float velocity_elevation = 1.f;
+		float velocity_azimuth   = 0.f;
+	};
+	sf2_structDef(Particle_direction, elevation, azimuth, velocity_elevation, velocity_azimuth);
 
 	template <typename T>
 	struct Random_value {
@@ -69,6 +77,7 @@ namespace mirrage::renderer {
 	sf2_structDef(Random_value<glm::vec4>, mean, stddev);
 	sf2_structDef(Random_value<Particle_rotation>, mean, stddev);
 	sf2_structDef(Random_value<Particle_color>, mean, stddev);
+	sf2_structDef(Random_value<Particle_direction>, mean, stddev);
 
 
 	/// modify velocities of living particles
@@ -185,10 +194,9 @@ namespace mirrage::renderer {
 		glm::vec4 size = {0.f, 1.f, 0.f, 0.f}; // min_radius, max_radius, <ignored>, <ignored>
 
 		bool independent_direction = false; // initial velocity direction is independent of spawn position
-		Random_value<glm::vec4> direction = {
-		        glm::vec4{0},
-		        glm::vec4(glm::pi<float>())}; // elevation, azimuth, velocity-elevation, velocity-azimuth
-		bool direction_normal_distribution = false;
+		Random_value<Particle_direction> direction                     = {Particle_direction{},
+                                                      Particle_direction{1.f, 0.5f, 1.f, 0.5f}};
+		bool                             direction_normal_distribution = false;
 
 		float parent_velocity = 0.f;
 
