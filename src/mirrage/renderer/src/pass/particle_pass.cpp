@@ -503,9 +503,10 @@ namespace mirrage::renderer {
 			auto& uniforms     = *reinterpret_cast<Type_uniforms*>(uniforms_ptr);
 			auto  keyframes    = reinterpret_cast<char*>(uniforms_ptr + sizeof(Type_uniforms));
 
-			uniforms.keyframe_count       = gsl::narrow<std::uint32_t>(cfg.keyframes.size());
-			uniforms.rotate_with_velocity = cfg.rotate_with_velocity ? 1 : 0;
-			uniforms.symmetric_scaling    = cfg.symmetric_scaling ? 1 : 0;
+			uniforms.keyframe_count = gsl::narrow<std::uint32_t>(cfg.keyframes.size());
+			uniforms.rotate_with_velocity =
+			        cfg.rotate_with_velocity ? (cfg.geometry == Particle_geometry::billboard ? 2 : 1) : 0;
+			uniforms.symmetric_scaling = cfg.symmetric_scaling ? 1 : 0;
 
 			auto ndf = std::uint32_t(0);
 			auto i   = std::uint32_t(0);

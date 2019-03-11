@@ -56,6 +56,8 @@ namespace mirrage {
 		glm::vec3 _move{};
 		bool      _mouse_look = false;
 
+		bool _paused = false;
+
 		float _cam_yaw   = 0;
 		float _cam_pitch = 0;
 

@@ -3,21 +3,27 @@
 		{
 			"time": 0,
 			"color": {"mean":{"hue":0}, "stddev":{"hue":0.5}},
-			"size": {"mean": {"x": 0.08, "y":0.08, "z":0.08}, "stddev":{"x": 0.04, "y":0.04, "z":0.04}},
+			"size": {"mean": {"x": 0.04, "y":0.15, "z":0.04}, "stddev":{"x": 0.02, "y":0.02, "z":0.02}},
+			"rotation": {"mean":{"angle":0}, "stddev":{"elevation":1, "azimuth":1, "angle": 1}},
 			"drag": 0.1
 		},
 		{
-			"time": 3,
+			"time": 4,
 			"color": {"mean":{"hue":0}, "stddev":{"hue":0}},
-			"size": {"mean": {"x": 0.01, "y":0.01, "z":0.01}},
+			"size": {"mean": {"x": 0.01, "y":0.1, "z":0.01}},
+			"rotation": {"mean":{"angle":1}, "stddev":{"elevation":1, "azimuth":1, "angle": 1}},
 			"drag": 1.0
 		}
 	],
 
-	"symmetric_scaling": true,
+	"symmetric_scaling": false,
+	"rotate_with_velocity": false,
 	"blend": "solid",
+/*
+	"geometry": "billboard",
+	"material_id": "mat:billboard_material.msf",
+*/
 	"geometry": "mesh",
-
 	"model_id": "model:cube",
 
 	"update_script_id": "comp_shader:particle_update_simple"

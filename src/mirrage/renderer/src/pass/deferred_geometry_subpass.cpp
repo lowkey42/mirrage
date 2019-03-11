@@ -28,10 +28,10 @@ namespace mirrage::renderer {
 		auto create_billboard_model(Deferred_renderer& r)
 		{
 			const auto vertices = std::array<Model_vertex, 4>{
-			        Model_vertex{glm::vec3(0, 0, 0), glm::vec3(0, 0, 1), glm::vec2(0, 1)},
-			        Model_vertex{glm::vec3(1, 0, 0), glm::vec3(0, 0, 1), glm::vec2(1, 1)},
-			        Model_vertex{glm::vec3(0, 1, 0), glm::vec3(0, 0, 1), glm::vec2(0, 0)},
-			        Model_vertex{glm::vec3(1, 1, 0), glm::vec3(0, 0, 1), glm::vec2(1, 0)}};
+			        Model_vertex{glm::vec3(-0.5f, -0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(0, 1)},
+			        Model_vertex{glm::vec3(0.5f, -0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(1, 1)},
+			        Model_vertex{glm::vec3(-0.5f, 0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(0, 0)},
+			        Model_vertex{glm::vec3(0.5f, 0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(1, 0)}};
 			const auto indices = std::array<std::uint32_t, 6>{0, 1, 2, 2, 1, 3};
 
 			return Model{graphic::Mesh{r.device(), r.queue_family(), vertices, indices},
@@ -396,7 +396,11 @@ namespace mirrage::renderer {
 				        {particle.emitter->particle_buffer()},
 				        {std::uint32_t(particle.emitter->particle_offset())});
 
-				dpc.model = _renderer.global_uniforms().view_mat;
+				dpc.model = glm::mat4(1);
+				if(particle.type_cfg->geometry == Particle_geometry::billboard) {
+					dpc.model    = glm::inverse(_renderer.global_uniforms().view_mat);
+					dpc.model[3] = glm::vec4(0, 0, 0, 1);
+				}
 				render_pass.push_constant("dpc"_strid, dpc);
 
 				// draw instanced

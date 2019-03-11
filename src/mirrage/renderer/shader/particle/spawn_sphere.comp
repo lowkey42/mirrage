@@ -37,9 +37,9 @@ void main() {
 		float rand_ttl = rand_float(emitter_cfg.ttl, r01[0]);
 		float rand_vel = rand_float(emitter_cfg.velocity, r01[1]);
 
-		pout.particles[index].position.w = uintBitsToFloat(emitter_cfg.feedback_buffer_id);
-		pout.particles[index].velocity.w = uintBitsToFloat(seed);
-		pout.particles[index].ttl = vec4(rand_ttl, rand_ttl, 0, 0);
+		pout.particles[index].position.w = rand_ttl;
+		pout.particles[index].velocity.w = rand_ttl;
+		pout.particles[index].data = uvec4(emitter_cfg.feedback_buffer_id, seed, 0, floatBitsToUint(0));
 
 		bool dir_normal_distr = (emitter_cfg.direction_flags & 2) != 0;
 		vec2 r23 = dir_normal_distr ? normal_rand(seed, 2, 3) : uniform_rand(seed, 2,3)*2-1;

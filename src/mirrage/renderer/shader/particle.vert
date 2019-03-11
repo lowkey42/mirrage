@@ -13,13 +13,13 @@ layout(location = 2) in vec2 tex_coords;
 
 layout(location = 3) in vec4 particle_position;
 layout(location = 4) in vec4 particle_velocity;
-layout(location = 5) in vec4 particle_ttl;
+layout(location = 5) in uvec4 particle_data;
 
 layout(location = 0) out vec3 out_view_pos;
 layout(location = 1) out vec3 out_normal;
 layout(location = 2) out vec2 out_tex_coords;
 layout(location = 3) out vec4 out_particle_velocity;
-layout(location = 4) out vec4 out_particle_ttl;
+layout(location = 4) out uvec4 out_particle_data;
 layout(location = 5) out vec4 out_particle_color;
 
 layout(std140, set=2, binding = 0) readonly buffer Particle_type_config {
@@ -40,6 +40,11 @@ vec3 calc_size(uint keyframe_a, uint keyframe_b, float t, vec3 rand) {
 	return mix(rand_xyz(particle_config.keyframes[keyframe_a].size, rand),
 	           rand_xyz(particle_config.keyframes[keyframe_b].size, rand),
 	           t);
+}
+vec4 calc_rotation(uint keyframe_a, uint keyframe_b, float t, vec3 rand) {
+	return normalize(mix(rand_quat(particle_config.keyframes[keyframe_a].rotation, rand),
+	                     rand_quat(particle_config.keyframes[keyframe_b].rotation, rand),
+	                     t));
 }
 vec4 calc_color(uint keyframe_a, uint keyframe_b, float t, vec4 rand) {
 	return mix(rand_vec4(particle_config.keyframes[keyframe_a].color, rand),
@@ -84,7 +89,7 @@ void calc_random(uint seed, out vec3 rotation, out vec3 size, out vec4 color) {
 }
 
 void main() {
-	uint seed = floatBitsToUint(particle_velocity.w);
+	uint seed = particle_data.y;
 
 	vec3 rand_rotation;
 	vec3 rand_size;
@@ -92,24 +97,66 @@ void main() {
 	calc_random(seed, rand_rotation, rand_size, rand_color);
 
 
-	uint keyframe_a = floatBitsToUint(particle_ttl[2]);
+	uint keyframe_a = particle_data.z;
 	uint keyframe_b = min(keyframe_a+1, particle_config.keyframe_count-1);
-	float keyframe_t = particle_ttl[3];
+	float keyframe_t = uintBitsToFloat(particle_data.w);
 
 	vec3 size = max(vec3(0,0,0), calc_size(keyframe_a, keyframe_b, keyframe_t, rand_size));
 	if(particle_config.symmetric_scaling!=0)
 		size.y = size.z = size.x;
 
-	vec3 p = position * size;
-	// TODO: rotation
+	vec4 p = vec4(position * size, 1.0);
+	vec4 n = vec4(normal, 0.0);
 
-	vec4 view_pos = model_uniforms.model_to_view * vec4(p + particle_position.xyz, 1.0);
+	vec4 rotation = calc_rotation(keyframe_a, keyframe_b, keyframe_t, rand_rotation);
+	p.xyz = quaternion_rotate(p.xyz, rotation);
+	n.xyz = quaternion_rotate(n.xyz, rotation);
+
+	if(particle_config.rotate_with_velocity==2) {
+		vec4 view_vel = (global_uniforms.view_mat * vec4(particle_velocity.xyz, 0.0));
+
+		float len_2d = length(view_vel.xy);
+
+		if(len_2d >= 0.001) {
+			view_vel.xy = view_vel.xy / len_2d;
+			float angle = (view_vel.y<0? -1.0 : 1.0) * acos(view_vel.x);
+			angle -= 3.1415926*0.5;
+
+			float sa = sin(angle);
+			float ca = cos(angle);
+			p.xy = vec2(p.x*ca - p.y*sa, p.x*sa + p.y*ca);
+			n.xy = vec2(n.x*ca - n.y*sa, n.x*sa + n.y*ca);
+		}
+
+	} else if(particle_config.rotate_with_velocity==1) {
+		vec3 dir      = particle_velocity.xyz;
+		float dir_len = length(dir);
+		if(dir_len > 0) {
+			dir /= dir_len;
+			if(dir.y <= -1.0) {
+				p.xyz = vec3(-p.x, -p.y, p.z);
+				n.xyz = vec3(-n.x, -n.y, n.z);
+			} else if(dir.y < 1.0) {
+				vec3 my = normalize(dir);
+				vec3 mz = normalize(cross(my, vec3(0,1,0)));
+				vec3 mx = normalize(cross(my, mz));
+				p.xyz = mat3(mx,my,mz) * p.xyz;
+				n.xyz = mat3(mx,my,mz) * n.xyz;
+			}
+		}
+	}
+
+
+	p = model_uniforms.model_to_view * p;
+	n = model_uniforms.model_to_view * n;
+
+	vec4 view_pos = global_uniforms.view_mat * vec4(p.xyz + particle_position.xyz, 1.0);
 
 	out_view_pos = view_pos.xyz / view_pos.w;
-	out_normal  = (model_uniforms.model_to_view *  vec4(normal, 0.0)).xyz;
+	out_normal  = (global_uniforms.view_mat * n).xyz;
 	out_tex_coords = tex_coords;
 	out_particle_velocity = particle_velocity;
-	out_particle_ttl = particle_ttl;
+	out_particle_data = particle_data;
 
 	vec4 color = calc_color(keyframe_a, keyframe_b, keyframe_t, rand_color);;
 	out_particle_color = vec4(hsv2rgb(color.xyz), color.a);

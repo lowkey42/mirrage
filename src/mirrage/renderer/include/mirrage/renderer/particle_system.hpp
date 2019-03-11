@@ -20,9 +20,10 @@
 namespace mirrage::renderer {
 
 	struct Particle {
-		glm::vec4 position; // xyz + uintBitsToFloat(last_feedback_buffer_index)
-		glm::vec4 velocity; // xyz + seed
-		glm::vec4 ttl;      // ttl_left, ttl_initial, keyframe, keyframe_interpolation_factor
+		glm::vec4 position; // xyz + ttl_left
+		glm::vec4 velocity; // xyz + ttl_initial
+		glm::uvec4
+		        ttl; // last_feedback_buffer_index, seed, keyframe, floatBitsToUint(keyframe_interpolation_factor)
 	};
 
 	class Particle_script {
@@ -49,6 +50,16 @@ namespace mirrage::renderer {
 	};
 	sf2_structDef(Particle_color, hue, saturation, value, alpha);
 
+	/// angle + axis rotation with the axis expressed in spherical coordinates
+	/// elevation=0 and azimuth=0 is (0,0,1)
+	struct Particle_rotation {
+		float elevation = 0.f; //< 0=0°, 1= 90°
+		float azimuth   = 0.f; //< 0=0°, 1=360°
+		float angle     = 0.f; //< 0=0°, 1=360°
+		float padding;
+	};
+	sf2_structDef(Particle_rotation, elevation, azimuth, angle);
+
 	template <typename T>
 	struct Random_value {
 		T mean{};
@@ -56,7 +67,7 @@ namespace mirrage::renderer {
 	};
 	sf2_structDef(Random_value<float>, mean, stddev);
 	sf2_structDef(Random_value<glm::vec4>, mean, stddev);
-	sf2_structDef(Random_value<glm::quat>, mean, stddev);
+	sf2_structDef(Random_value<Particle_rotation>, mean, stddev);
 	sf2_structDef(Random_value<Particle_color>, mean, stddev);
 
 
@@ -87,9 +98,9 @@ namespace mirrage::renderer {
 	              scale_with_mass);
 
 	struct Particle_keyframe {
-		Random_value<Particle_color> color    = {{1, 1, 1, 1}};
-		Random_value<glm::vec4>      rotation = {{0.f, 0.f, 0.f, 0.f}};
-		Random_value<glm::vec4>      size     = {{1.f, 1.f, 1.f, 0.f}};
+		Random_value<Particle_color>    color    = {{1, 1, 1, 1}};
+		Random_value<Particle_rotation> rotation = {{0.f, 0.f, 0.f, 0.f}};
+		Random_value<glm::vec4>         size     = {{1.f, 1.f, 1.f, 0.f}};
 
 		float time      = 0;
 		float base_mass = 1;

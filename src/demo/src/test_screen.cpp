@@ -173,6 +173,7 @@ namespace mirrage {
 				case "pause"_strid:
 					LOG(plog::debug) << "Pause/Unpause playback";
 					_meta_system.nims().toggle_pause();
+					_paused = !_paused;
 					break;
 
 				case "toggle_ui"_strid: _show_ui = !_show_ui; break;
@@ -295,7 +296,7 @@ namespace mirrage {
 		});
 		_look = {0.f, 0.f};
 
-		_meta_system.update(dt);
+		_meta_system.update(_paused ? util::Time(0.001f) : dt);
 
 		_performance_log.process([&](auto& log) {
 			_performance_log_delay_left -= dt;

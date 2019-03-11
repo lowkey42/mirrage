@@ -12,7 +12,7 @@ layout(location = 0) in vec3 view_pos;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 tex_coords;
 layout(location = 3) in vec4 out_particle_velocity;
-layout(location = 4) in vec4 out_particle_ttl;
+layout(location = 4) in flat uvec4 out_particle_data;
 layout(location = 5) in vec4 out_particle_color;
 
 

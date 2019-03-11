@@ -30,7 +30,6 @@ float rand_float(Random_float range, float rand) {
 	return range.mean + range.stddev*rand;
 }
 vec4 rand_vec4(Random_vec4 range, vec4 rand) {
-	// vec4 rand = vec4(normal_rand(seed, range_begin, range_begin+1), normal_rand(seed, range_begin+2, range_begin+4));
 	return range.mean + range.stddev*rand;
 }
 vec3 rand_xyz(Random_vec4 range, vec3 rand) {
@@ -41,6 +40,17 @@ vec3 rand_dir(vec2 mean_angles, vec2 stddev_angles, vec2 rand) {
 	return vec3(sin(angles.x)*cos(angles.y),
 	            sin(angles.x)*sin(angles.y),
 	            cos(angles.x));
+}
+vec4 rand_quat(Random_vec4 range, vec3 rand) {
+	range.mean   *= vec4(0.5, 1, 1, 1) * 3.14159265359;
+	range.stddev *= vec4(0.5, 1, 1, 1) * 3.14159265359;
+
+	vec3 axis = rand_dir(range.mean.xy, range.stddev.xy, rand.xy);
+	float angle = range.mean.z + range.stddev.z * rand.z;
+	float half_angle = angle/2.0;
+	float sha = sin(half_angle);
+
+	return vec4(axis * sha, cos(half_angle));
 }
 
 
@@ -55,9 +65,9 @@ struct Effector {
 };
 
 struct Particle {
-	vec4 position; // xyz + uintBitsToFloat(last_feedback_buffer_index)
-	vec4 velocity; // xyz + seed
-	vec4 ttl;      // ttl_left, ttl_initial, keyframe, keyframe_interpolation_factor
+	vec4 position; // xyz + ttl_left
+	vec4 velocity; // xyz + ttl_initial
+	uvec4 data;    // last_feedback_buffer_index, seed, keyframe, floatBitsToUint(keyframe_interpolation_factor)
 	// seed: 0=ttl, 1=velocity, 2+3=direction, 4+5=vel_direction, 6...=position
 	//       10-13=color
 	//       20-22=rotation, 23-25=size
@@ -70,7 +80,7 @@ struct Emitter_particle_range {
 
 struct Particle_keyframe {
 	Random_vec4 color; // hsv + alpha
-	Random_vec4 rotation; // pitch, yaw, roll
+	Random_vec4 rotation; // elevation, azimuth, angle
 	Random_vec4 size; // xyz
 
 	float time;
@@ -100,6 +110,6 @@ struct Particle_keyframe {
 	uint keyframe_count; \
 	Particle_keyframe[] keyframes;
 
-vec3 quaternion_rotate(vec3 dir, vec4 q) {
-	return dir + 2.0 * cross(q.xyz, cross(q.xyz, dir) + q.w * dir);
+vec3 quaternion_rotate(vec3 v, vec4 q) {
+	return v + 2.0 * cross(cross(v, q.xyz ) + q.w*v, q.xyz);
 }

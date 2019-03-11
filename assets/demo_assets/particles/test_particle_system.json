@@ -8,7 +8,7 @@
 
 		"ttl": {"mean": 4, "stddev": 0.5},
 		
-		"velocity": {"mean": 1, "stddev": 0.5},
+		"velocity": {"mean": 1, "stddev": 0.0},
 
 		"emit_script_id": "comp_shader:particle_spawn_sphere",
 

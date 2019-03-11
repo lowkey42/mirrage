@@ -26,7 +26,7 @@ void main() {
 	if(offset < update_cfg.particle_read_count) {
 		uint index = offset + update_cfg.particle_read_offset;
 
-		vec2 ttl = pin.particles[index].ttl.xy;
+		vec2 ttl = vec2(pin.particles[index].position.w, pin.particles[index].velocity.w);
 		ttl[0] -= update_cfg.timestep;
 
 		if(ttl[0] <= 0) {
@@ -35,36 +35,43 @@ void main() {
 			const float dt = update_cfg.timestep;
 
 			// incr count and get output index
-			uint old_feedback_index = floatBitsToUint(pin.particles[index].position.w);
+			uint old_feedback_index = pin.particles[index].data.x;
 			uint feedback_index = feedback_mapping.new_feedback_index[old_feedback_index];
 			uint out_offset = atomicAdd(feedback.ranges[feedback_index].count, 1);
 			uint out_index = out_offset + feedback.ranges[feedback_index].offset;
 
 			// update keyframe
 			float age = ttl[1] - ttl[0];
-			uint keyframe = 0;
-			for(; keyframe+1<particle_config.keyframe_count-1; keyframe++) {
-				if(particle_config.keyframes[keyframe].time >= age) {
-					keyframe--;
+			uint keyframe = pin.particles[index].data.z;
+			for(uint i=keyframe+1; i<particle_config.keyframe_count-1; i++) {
+				if(particle_config.keyframes[i].time > age) {
+					keyframe = i - 1;
 					break;
 				}
 			}
 
+			uint keyframe_b = min(keyframe+1, particle_config.keyframe_count-1);
+
 			float time_a = particle_config.keyframes[keyframe].time;
-			float time_b = particle_config.keyframes[min(keyframe+1, particle_config.keyframe_count-1)].time;
-			float keyframe_t = clamp(0, 1, time_b <= time_a ? 0.0 : (age - time_a) / (time_b - time_a));
+			float time_b = particle_config.keyframes[keyframe_b].time;
+
+			float time_diff = time_b - time_a;
+			float keyframe_t = time_diff>0.0 ? clamp((age - time_a) / time_diff, 0.0, 1.0) : 0.0;
 
 			// update position / velocity
 			vec3 velocity = pin.particles[index].velocity.xyz;
-			// TODO: velocity *= (1.0 - config.drag*dt);
+			velocity *= (1.0 - dt*mix(particle_config.keyframes[keyframe].drag,
+			                          particle_config.keyframes[keyframe_b].drag,
+			                          keyframe_t));
 			// TODO: apply global and local effectors
 
 			pout.particles[out_index].position.xyz = pin.particles[index].position.xyz + velocity * dt;
 			pout.particles[out_index].velocity.xyz = velocity;
 
-			pout.particles[out_index].position.w = uintBitsToFloat(feedback_index);
-			pout.particles[out_index].velocity.w = pin.particles[index].velocity.w;
-			pout.particles[out_index].ttl = vec4(ttl.x, ttl.y, uintBitsToFloat(keyframe), keyframe_t);
+			pout.particles[out_index].position.w = ttl.x;
+			pout.particles[out_index].velocity.w = ttl.y;
+			pout.particles[out_index].data = uvec4(feedback_index, pin.particles[index].data.y,
+			                                       keyframe, floatBitsToUint(keyframe_t));
 		}
 	}
 }
