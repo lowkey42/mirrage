@@ -2,7 +2,7 @@
 	"emitters": [{
 		"spawn": [
 			{"particles_per_second": 20000, "stddev":0, "time": 1},
-			{"particles_per_second": 0, "stddev":0, "time": 4}
+			{"particles_per_second": 0, "stddev":0, "time": 20}
 		],
 		"spawn_loop": true,
 
@@ -11,10 +11,19 @@
 
 		"ttl": {"mean": 4, "stddev": 0.5},
 		
-		"velocity": {"mean": 3, "stddev": 0.6},
+		"velocity": {"mean": 32, "stddev": 8.0},
 
 		"emit_script_id": "comp_shader:particle_spawn_sphere",
 
 		"type_id": "particle_def:test_particles"
-	}]
+	}],
+
+	"effectors": [
+		{
+			"force": 10,
+			"force_dir": {"y":-1},
+			"distance_decay": 0,
+			"scale_with_mass": false
+		}
+	]
 }

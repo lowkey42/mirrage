@@ -1,0 +1,27 @@
+{
+	"keyframes": [
+		{
+			"time": 0,
+			"color": {"mean":{"value":0.5}, "stddev":{"value":0.3}},
+			"size": {"mean": {"x": 0.08}, "stddev":{"x": 0.04}},
+			"rotation": {"mean":{"angle":0}, "stddev":{"angle": 1}},
+			"drag": 0.5
+		},
+		{
+			"time": 4,
+			"color": {"mean":{"value":0.5}, "stddev":{"value":0.3}},
+			"size": {"mean": {"x": 0.1}, "stddev":{"x": 0.04}},
+			"rotation": {"mean":{"angle":1}, "stddev":{"angle": 1}},
+			"drag": 0.5
+		}
+	],
+
+	"symmetric_scaling": true,
+	"rotate_with_velocity": false,
+	"blend": "solid",
+
+	"geometry": "billboard",
+	"material_id": "mat:billboard_material.msf",
+
+	"update_script_id": "comp_shader:particle_update_simple"
+}

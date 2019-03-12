@@ -20,6 +20,37 @@ layout(push_constant) uniform Push_constants {
 } update_cfg;
 
 
+vec3 calc_size(uint keyframe_a, uint keyframe_b, float t, vec3 rand) {
+	return mix(rand_xyz(particle_config.keyframes[keyframe_a].size, rand),
+	           rand_xyz(particle_config.keyframes[keyframe_b].size, rand),
+	           t);
+}
+
+vec3 calc_effector_force(uint effector_idx, vec3 p, float inv_mass, float mass_sign) {
+	vec3  p_diff = shared_uniforms.effectors[effector_idx].position.xyz - p;
+	float dist   = length(p_diff);
+
+	vec3 dir = shared_uniforms.effectors[effector_idx].force_dir.xyz;
+	if(dot(dir,dir) < 0.000001 && dist>0.000001) {
+		dir = p_diff / dist;
+	} else {
+		dir = normalize(dir);
+	}
+
+	float force = shared_uniforms.effectors[effector_idx].force;
+
+	// distance decay
+	if(shared_uniforms.effectors[effector_idx].distance_decay > 0)
+		force /= pow(dist, shared_uniforms.effectors[effector_idx].distance_decay);
+
+	float accel = mix(force, force*inv_mass, shared_uniforms.effectors[effector_idx].mass_scale);
+	if(mass_sign<0) {
+		accel *= mass_sign * shared_uniforms.effectors[effector_idx].negative_mass_scale;
+	}
+
+	return clamp(accel, -30, 30) * dir;
+}
+
 void main() {
 	uint offset = gl_GlobalInvocationID.x;
 
@@ -33,6 +64,8 @@ void main() {
 			// dead => drop data
 		} else {
 			const float dt = update_cfg.timestep;
+
+			uint seed = pin.particles[index].data.y;
 
 			// incr count and get output index
 			uint old_feedback_index = pin.particles[index].data.x;
@@ -59,18 +92,53 @@ void main() {
 			float keyframe_t = time_diff>0.0 ? clamp((age - time_a) / time_diff, 0.0, 1.0) : 0.0;
 
 			// update position / velocity
+			vec3 position = pin.particles[index].position.xyz;
 			vec3 velocity = pin.particles[index].velocity.xyz;
 			velocity *= (1.0 - dt*mix(particle_config.keyframes[keyframe].drag,
 			                          particle_config.keyframes[keyframe_b].drag,
 			                          keyframe_t));
-			// TODO: apply global and local effectors
 
-			pout.particles[out_index].position.xyz = pin.particles[index].position.xyz + velocity * dt;
+			// apply effectors
+			vec2 uniform_shared = uniform_rand(seed, 22, 23);
+			vec2 uniform_size   = uniform_rand(seed, 24, 25);
+			vec2 normal_shared  = uniform_to_normal_rand(uniform_shared);
+			vec2 normal_size    = uniform_to_normal_rand(uniform_size);
+
+			vec3 size_rand;
+			size_rand.x = (particle_config.normal_distribution_flags & 16)!=0 ? normal_shared.y
+			                                                                  : uniform_shared.y*2-1;
+			size_rand.y = (particle_config.normal_distribution_flags & 32)!=0 ? normal_size.x
+			                                                                  : uniform_size.x*2-1;
+			size_rand.z = (particle_config.normal_distribution_flags & 64)!=0 ? normal_size.x
+			                                                                  : uniform_size.x*2-1;
+
+			vec3 size = calc_size(keyframe, keyframe_b, keyframe_t, size_rand);
+			float volumn = size.x * size.y * size.z;
+
+			float mass = mix(particle_config.keyframes[keyframe].base_mass,
+			                 particle_config.keyframes[keyframe_b].base_mass,
+			                 keyframe_t);
+
+			mass += volumn * mix(particle_config.keyframes[keyframe].density,
+			                     particle_config.keyframes[keyframe_b].density,
+			                     keyframe_t);
+
+			float inv_mass = mass>0.0000001 ? abs(1.0/mass) : 0.0;
+			float mass_sign = mass<0 ? -1.0 : 1.0;
+
+			for(uint i=0; i<shared_uniforms.global_effector_count; i++) {
+				velocity += dt * calc_effector_force(i, position, inv_mass, mass_sign);
+			}
+			for(uint i=0; i<update_cfg.effector_count; i++) {
+				velocity += dt * calc_effector_force(i+update_cfg.effector_offset, position, inv_mass, mass_sign);
+			}
+
+			pout.particles[out_index].position.xyz = position + velocity * dt;
 			pout.particles[out_index].velocity.xyz = velocity;
 
 			pout.particles[out_index].position.w = ttl.x;
 			pout.particles[out_index].velocity.w = ttl.y;
-			pout.particles[out_index].data = uvec4(feedback_index, pin.particles[index].data.y,
+			pout.particles[out_index].data = uvec4(feedback_index, seed,
 			                                       keyframe, floatBitsToUint(keyframe_t));
 		}
 	}

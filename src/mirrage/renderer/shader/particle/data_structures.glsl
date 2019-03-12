@@ -40,10 +40,11 @@ vec3 rand_xyz(Random_vec4 range, vec3 rand) {
 	return range.mean.xyz + range.stddev.xyz*rand;
 }
 vec4 rand_quat(Random_vec4 range, vec3 rand) {
-	range.mean   *= vec4(0.5, 1, 1, 1) * 3.14159265359;
-	range.stddev *= vec4(0.5, 1, 1, 1) * 3.14159265359;
+	range.mean   *= vec4(0.5, 1, 1, 1) * 2 * 3.14159265359;
+	range.stddev *= vec4(0.5, 1, 1, 1) * 2 * 3.14159265359;
 
 	vec2 angles = range.mean.xy + range.stddev.xy * rand.xy;
+	angles.y += 3.14159265359 * 0.5;
 	vec3 axis = vec3(cos(angles.x)*cos(angles.y),
 	                 cos(angles.x)*sin(angles.y),
 	                 sin(angles.x)).xzy;
@@ -69,8 +70,8 @@ vec3 rand_dir(vec2 mean_angles, vec2 stddev_angles, vec2 rand) {
 
 	} else if(base_dir.x < 1.0) {
 		vec3 mx = normalize(base_dir);
-		vec3 my = normalize(cross(mx, vec3(1,0,0)));
-		vec3 mz = normalize(cross(mx, my));
+		vec3 mz = normalize(cross(mx, vec3(1,0,0)));
+		vec3 my = normalize(cross(mx, mz));
 		rand_dir = mat3(mx,my,mz) * rand_dir;
 	}
 
@@ -85,7 +86,7 @@ struct Effector {
 	float force;
 	float distance_decay;
 	float mass_scale; // used as a=mix(F/m, F, mass_scale)
-	float fixed_dir;
+	float negative_mass_scale;
 };
 
 struct Particle {
@@ -133,5 +134,4 @@ struct Particle_keyframe {
 	uint symmetric_scaling; \
 	uint keyframe_count; \
 	Particle_keyframe[] keyframes;
-
 

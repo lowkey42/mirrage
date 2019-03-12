@@ -1,0 +1,19 @@
+{
+	"emitters": [{
+		"spawn": [
+			{"particles_per_second": 200, "stddev":5, "time": 1}
+		],
+		"spawn_loop": true,
+
+		"size": {"x":0, "y":0},
+		"direction": {"mean":{"elevation":-1, "azimuth":0}, "stddev":{"elevation":0.4, "azimuth":0.4}},
+
+		"ttl": {"mean": 20, "stddev": 4},
+		
+		"velocity": {"mean": 0.5, "stddev": 0.3},
+
+		"emit_script_id": "comp_shader:particle_spawn_sphere",
+
+		"type_id": "particle_def:test_smoke_particles"
+	}]
+}

@@ -1,6 +1,6 @@
 #include "data_structures.glsl"
 
-layout(std140, set=0, binding = 0) uniform Shared_uniforms {
+layout(std140, set=0, binding = 0) readonly buffer Shared_uniforms {
 	int effector_count;
 	int global_effector_count;
 

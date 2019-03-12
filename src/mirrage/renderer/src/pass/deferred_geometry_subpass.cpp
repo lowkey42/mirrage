@@ -205,7 +205,7 @@ namespace mirrage::renderer {
 
 		p.vertex<Model_vertex>(
 		        0, false, 0, &Model_vertex::position, 1, &Model_vertex::normal, 2, &Model_vertex::tex_coords);
-		p.vertex<Particle>(1, true, 3, &Particle::position, 4, &Particle::velocity, 5, &Particle::ttl);
+		p.vertex<Particle>(1, true, 3, &Particle::position, 4, &Particle::velocity, 5, &Particle::data);
 	}
 	void Deferred_geometry_subpass::configure_particle_subpass(Deferred_renderer&,
 	                                                           graphic::Subpass_builder& pass)
@@ -394,7 +394,8 @@ namespace mirrage::renderer {
 				frame.main_command_buffer.bindVertexBuffers(
 				        1,
 				        {particle.emitter->particle_buffer()},
-				        {std::uint32_t(particle.emitter->particle_offset())});
+				        {vk::DeviceSize(particle.emitter->particle_offset())
+				         * vk::DeviceSize(sizeof(Particle))});
 
 				dpc.model = glm::mat4(1);
 				if(particle.type_cfg->geometry == Particle_geometry::billboard) {

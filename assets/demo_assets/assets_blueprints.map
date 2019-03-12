@@ -6,3 +6,4 @@ blueprint:cube = blueprints/cube.json
 blueprint:billboard = blueprints/billboard.json
 blueprint:decal = blueprints/decal.json
 blueprint:test_particle_emitter = blueprints/test_particle_emitter.json
+blueprint:test_smoke_emitter = blueprints/test_smoke_emitter.json

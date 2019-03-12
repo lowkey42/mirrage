@@ -27,7 +27,7 @@ namespace mirrage::renderer {
 		struct Shared_uniform_data {
 			std::int32_t effector_count;
 			std::int32_t global_effector_count;
-			std::int32_t padding[3];
+			std::int32_t padding[2];
 			// + effector array
 		};
 		struct Uniform_Effector {
@@ -37,7 +37,7 @@ namespace mirrage::renderer {
 			float force;
 			float distance_decay;
 			float mass_scale; // used as a=mix(F/m, F, mass_scale)
-			float fixed_dir;
+			float negative_mass_scale;
 		};
 		void effector_to_uniform(const Particle_effector_config& effector,
 		                         const glm::vec3&                parent_position,
@@ -49,10 +49,10 @@ namespace mirrage::renderer {
 			out.force_dir = orientation * glm::vec4(effector.force_dir, 0.f);
 			out.position  = glm::vec4(
                     effector.absolute ? effector.position : parent_position + effector.position, 1.f);
-			out.force          = effector.force;
-			out.distance_decay = effector.distance_decay;
-			out.mass_scale     = effector.scale_with_mass ? 1.f : 0.f;
-			out.fixed_dir      = effector.fixed_dir ? 1.f : 0.f;
+			out.force               = effector.force;
+			out.distance_decay      = effector.distance_decay;
+			out.mass_scale          = effector.scale_with_mass ? 1.f : 0.f;
+			out.negative_mass_scale = effector.negative_mass_scale;
 		}
 
 
@@ -100,8 +100,7 @@ namespace mirrage::renderer {
 			                                        vk::SharingMode::eConcurrent,
 			                                        gsl::narrow<std::uint32_t>(allowed_queues.size()),
 			                                        allowed_queues.data()};
-			particles =
-			        renderer.device().create_buffer(create_info, false, graphic::Memory_lifetime::temporary);
+			particles = renderer.device().create_buffer(create_info, false, graphic::Memory_lifetime::normal);
 		}
 
 		if(effector_capacity < global_effector_count) {
@@ -112,7 +111,7 @@ namespace mirrage::renderer {
 			auto create_info = vk::BufferCreateInfo{
 			        vk::BufferCreateFlags{},
 			        size_bytes,
-			        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eUniformBuffer};
+			        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer};
 			shared_uniforms =
 			        renderer.device().create_buffer(create_info, true, graphic::Memory_lifetime::normal);
 		}
@@ -463,7 +462,7 @@ namespace mirrage::renderer {
 		});
 
 		auto shared_uniforms          = vk::DescriptorBufferInfo{*data.shared_uniforms, 0, VK_WHOLE_SIZE};
-		desc_writes[0].descriptorType = vk::DescriptorType::eUniformBuffer;
+		desc_writes[0].descriptorType = vk::DescriptorType::eStorageBuffer;
 		desc_writes[0].pBufferInfo    = &shared_uniforms;
 
 		auto particles_old_buffer = prev_data.process(*data.particles, [](auto& d) { return *d.particles; });
@@ -548,13 +547,19 @@ namespace mirrage::renderer {
 			auto type = &*iter->emitter->cfg().type;
 
 			if(type != batch_type) {
-				submit_batch(batch_begin, iter - 1, *batch_type);
+				if(batch_type)
+					submit_batch(batch_begin, iter, *batch_type);
+
 				batch_type  = type;
 				batch_begin = iter;
 			}
 		}
 
 		submit_batch(batch_begin, frame.particle_queue.end(), *batch_type);
+
+		for(auto& p : frame.particle_queue) {
+			MIRRAGE_INVARIANT(p.emitter->gpu_data()->next_uniforms(), "no particle uniform set");
+		}
 	}
 
 	namespace {

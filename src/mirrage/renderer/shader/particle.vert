@@ -75,8 +75,8 @@ void calc_random(uint seed, out vec3 rotation, out vec3 size, out vec4 color) {
 
 	size.x = (particle_config.normal_distribution_flags & 16)!=0 ? normal_shared.y
 	                                                             : uniform_shared.y*2-1;
-	size.y = (particle_config.normal_distribution_flags & 32)!=0 ? normal_rotation.x
-	                                                             : uniform_rotation.x*2-1;
+	size.y = (particle_config.normal_distribution_flags & 32)!=0 ? normal_size.x
+	                                                             : uniform_size.x*2-1;
 	size.z = (particle_config.normal_distribution_flags & 64)!=0 ? normal_size.x
 	                                                             : uniform_size.x*2-1;
 

@@ -23,7 +23,7 @@ namespace mirrage::renderer {
 		glm::vec4 position; // xyz + ttl_left
 		glm::vec4 velocity; // xyz + ttl_initial
 		glm::uvec4
-		        ttl; // last_feedback_buffer_index, seed, keyframe, floatBitsToUint(keyframe_interpolation_factor)
+		        data; // last_feedback_buffer_index, seed, keyframe, floatBitsToUint(keyframe_interpolation_factor)
 	};
 
 	class Particle_script {
@@ -51,9 +51,9 @@ namespace mirrage::renderer {
 	sf2_structDef(Particle_color, hue, saturation, value, alpha);
 
 	/// angle + axis rotation with the axis expressed in spherical coordinates
-	/// elevation=1 and azimuth=0 is (0,0,1) and the base-plane is XZ
+	/// elevation=0 and azimuth=0 is (0,0,1) and the base-plane is XZ
 	struct Particle_rotation {
-		float elevation = 1.f; //< 0=0°, 1= 90°
+		float elevation = 0.f; //< 0=0°, 1= 90°
 		float azimuth   = 0.f; //< 0=0°, 1=360°
 		float angle     = 0.f; //< 0=0°, 1=360°
 		float padding;
@@ -82,33 +82,34 @@ namespace mirrage::renderer {
 
 	/// modify velocities of living particles
 	/// e.g.
-	/// gravity: {..., force=10, dir={0,-1,0}, decay=0, fixed_dir=true}
+	/// gravity: {..., force=10, dir={0,-1,0}, decay=0}
 	/// point: {position=? dir={0,0,0}, decay=2}
 	/// flow: {position=? dir={1,0,0}, decay=2}
 	struct Particle_effector_config {
 		glm::quat rotation{1, 0, 0, 0};
-
 		glm::vec3 position{0, 0, 0};
+		bool      absolute = false;
+
 		float     force = 0.f;
 		glm::vec3 force_dir{0, 0, 0};
 		float     distance_decay = 2.f;
 
-		bool fixed_dir       = false; //< ignore position of effector when calculating the force
-		bool scale_with_mass = true;
-		bool absolute        = false;
+		bool  scale_with_mass     = true;
+		float negative_mass_scale = 0.f; //< 0: clamp mass to >=0; >0: inverte direction; 0.5: force/2
 	};
 	sf2_structDef(Particle_effector_config,
 	              position,
 	              rotation,
+	              absolute,
 	              force,
 	              force_dir,
 	              distance_decay,
-	              fixed_dir,
-	              scale_with_mass);
+	              scale_with_mass,
+	              negative_mass_scale);
 
 	struct Particle_keyframe {
 		Random_value<Particle_color>    color    = {{1, 1, 1, 1}};
-		Random_value<Particle_rotation> rotation = {{0.f, 0.f, 0.f, 0.f}};
+		Random_value<Particle_rotation> rotation = {};
 		Random_value<glm::vec4>         size     = {{1.f, 1.f, 1.f, 0.f}};
 
 		float time      = 0;

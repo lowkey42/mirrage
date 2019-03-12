@@ -100,6 +100,9 @@ namespace mirrage {
 		_meta_system.entities().emplace("test_particle_emitter").process<Transform_comp>([&](auto& transform) {
 			transform.position = {-6, 2, 1};
 		});
+		_meta_system.entities().emplace("test_smoke_emitter").process<Transform_comp>([&](auto& transform) {
+			transform.position = {-6, 1, -1};
+		});
 
 		auto billboard = _meta_system.entities().emplace("billboard");
 		billboard.get<Transform_comp>().process([](auto& transform) {

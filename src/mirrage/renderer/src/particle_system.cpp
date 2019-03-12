@@ -143,7 +143,7 @@ namespace mirrage::renderer {
 		const auto stage = vk::ShaderStageFlagBits::eCompute;
 
 		auto bindings = std::array<vk::DescriptorSetLayoutBinding, 5>{
-		        vk::DescriptorSetLayoutBinding{0, vk::DescriptorType::eUniformBuffer, 1, stage},
+		        vk::DescriptorSetLayoutBinding{0, vk::DescriptorType::eStorageBuffer, 1, stage},
 		        vk::DescriptorSetLayoutBinding{1, vk::DescriptorType::eStorageBuffer, 1, stage},
 		        vk::DescriptorSetLayoutBinding{2, vk::DescriptorType::eStorageBuffer, 1, stage},
 		        vk::DescriptorSetLayoutBinding{3, vk::DescriptorType::eStorageBuffer, 1, stage},
