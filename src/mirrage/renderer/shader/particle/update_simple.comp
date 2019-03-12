@@ -74,8 +74,14 @@ void main() {
 			uint out_index = out_offset + feedback.ranges[feedback_index].offset;
 
 			// update keyframe
+			// TODO: particle_config.loop_keyframe_time
 			float age = ttl[1] - ttl[0];
 			uint keyframe = pin.particles[index].data.z;
+			if(particle_config.loop_keyframe_time>0) {
+				keyframe = 0;
+				age = mod(age, particle_config.loop_keyframe_time);
+			}
+
 			for(uint i=keyframe+1; i<particle_config.keyframe_count-1; i++) {
 				if(particle_config.keyframes[i].time > age) {
 					keyframe = i - 1;
@@ -113,6 +119,8 @@ void main() {
 			                                                                  : uniform_size.x*2-1;
 
 			vec3 size = calc_size(keyframe, keyframe_b, keyframe_t, size_rand);
+			if((particle_config.flags&4)!=0)
+				size.y = size.z = size.x;
 			float volumn = size.x * size.y * size.z;
 
 			float mass = mix(particle_config.keyframes[keyframe].base_mass,

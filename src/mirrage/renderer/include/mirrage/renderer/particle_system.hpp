@@ -108,17 +108,18 @@ namespace mirrage::renderer {
 	              negative_mass_scale);
 
 	struct Particle_keyframe {
-		Random_value<Particle_color>    color    = {{1, 1, 1, 1}};
-		Random_value<Particle_rotation> rotation = {};
-		Random_value<glm::vec4>         size     = {{1.f, 1.f, 1.f, 0.f}};
+		Random_value<Particle_color>    color     = {{1, 0, 1, 1}};
+		Random_value<Particle_rotation> rotation  = {};
+		Random_value<glm::vec4>         size      = {{1.f, 1.f, 1.f, 0.f}};
+		glm::vec4                       clip_rect = {0, 0, 1, 1};
 
 		float time      = 0;
 		float base_mass = 1;
 		float density   = 0;
 		float drag      = 0.f;
 	};
-	sf2_structDef(Particle_keyframe, color, rotation, size, time, base_mass, density, drag);
-	static_assert(sizeof(Particle_keyframe) == sizeof(float) * (4 * 3 * 2 + 4),
+	sf2_structDef(Particle_keyframe, color, rotation, size, clip_rect, time, base_mass, density, drag);
+	static_assert(sizeof(Particle_keyframe) == sizeof(float) * (4 * 3 * 2 + 4 + 4),
 	              "Particle_keyframe contains padding");
 
 	/// describes how living particles are updated and drawn
@@ -136,8 +137,9 @@ namespace mirrage::renderer {
 		bool size_normal_distribution_y     = false;
 		bool size_normal_distribution_z     = false;
 
-		bool rotate_with_velocity = false;
-		bool symmetric_scaling    = false; //< also use x size for y and z
+		bool  rotate_with_velocity = false;
+		bool  symmetric_scaling    = false; //< also use x size for y and z
+		float loop_keyframe_time   = 0.f;
 
 		Particle_blend_mode blend    = Particle_blend_mode::transparent;
 		Particle_geometry   geometry = Particle_geometry::billboard;
@@ -169,6 +171,7 @@ namespace mirrage::renderer {
 	              size_normal_distribution_z,
 	              rotate_with_velocity,
 	              symmetric_scaling,
+	              loop_keyframe_time,
 	              blend,
 	              geometry,
 	              update_range,

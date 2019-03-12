@@ -18,9 +18,7 @@ layout(location = 5) in uvec4 particle_data;
 layout(location = 0) out vec3 out_view_pos;
 layout(location = 1) out vec3 out_normal;
 layout(location = 2) out vec2 out_tex_coords;
-layout(location = 3) out vec4 out_particle_velocity;
-layout(location = 4) out uvec4 out_particle_data;
-layout(location = 5) out vec4 out_particle_color;
+layout(location = 3) out vec4 out_particle_color;
 
 layout(std140, set=2, binding = 0) readonly buffer Particle_type_config {
 	PARTICLE_TYPE_CONFIG
@@ -102,7 +100,7 @@ void main() {
 	float keyframe_t = uintBitsToFloat(particle_data.w);
 
 	vec3 size = max(vec3(0,0,0), calc_size(keyframe_a, keyframe_b, keyframe_t, rand_size));
-	if(particle_config.symmetric_scaling!=0)
+	if((particle_config.flags&4)!=0)
 		size.y = size.z = size.x;
 
 	vec4 p = vec4(position * size, 1.0);
@@ -112,7 +110,9 @@ void main() {
 	p.xyz = quaternion_rotate(p.xyz, rotation);
 	n.xyz = quaternion_rotate(n.xyz, rotation);
 
-	if(particle_config.rotate_with_velocity==2) {
+	uint rotate_with_velocity = particle_config.flags & 3;
+
+	if(rotate_with_velocity==2) {
 		vec4 view_vel = (global_uniforms.view_mat * vec4(particle_velocity.xyz, 0.0));
 
 		float len_2d = length(view_vel.xy);
@@ -128,7 +128,7 @@ void main() {
 			n.xy = vec2(n.x*ca - n.y*sa, n.x*sa + n.y*ca);
 		}
 
-	} else if(particle_config.rotate_with_velocity==1) {
+	} else if(rotate_with_velocity==1) {
 		vec3 dir      = particle_velocity.xyz;
 		float dir_len = length(dir);
 		if(dir_len > 0) {
@@ -155,8 +155,10 @@ void main() {
 	out_view_pos = view_pos.xyz / view_pos.w;
 	out_normal  = (global_uniforms.view_mat * n).xyz;
 	out_tex_coords = tex_coords;
-	out_particle_velocity = particle_velocity;
-	out_particle_data = particle_data;
+	vec4 clip_rect = particle_config.keyframes[keyframe_t<0.5 ? keyframe_a : keyframe_b].clip_rect;
+	out_tex_coords.y = 1-out_tex_coords.y;
+	out_tex_coords = clip_rect.xy + out_tex_coords * clip_rect.zw;
+	out_tex_coords.y = 1-out_tex_coords.y;
 
 	vec4 color = calc_color(keyframe_a, keyframe_b, keyframe_t, rand_color);;
 	out_particle_color = vec4(hsv2rgb(color.xyz), color.a);

@@ -58,8 +58,8 @@ namespace mirrage::renderer {
 
 		struct Type_uniforms {
 			std::uint32_t normal_distribution_flags;
-			std::uint32_t rotate_with_velocity;
-			std::uint32_t symmetric_scaling;
+			std::uint32_t flags; // 0b1: rotate_with_velocity; 0b10: symmetric_scaling
+			float         loop_keyframe_time;
 			std::uint32_t keyframe_count;
 			// + keyframes
 		};
@@ -503,9 +503,10 @@ namespace mirrage::renderer {
 			auto  keyframes    = reinterpret_cast<char*>(uniforms_ptr + sizeof(Type_uniforms));
 
 			uniforms.keyframe_count = gsl::narrow<std::uint32_t>(cfg.keyframes.size());
-			uniforms.rotate_with_velocity =
-			        cfg.rotate_with_velocity ? (cfg.geometry == Particle_geometry::billboard ? 2 : 1) : 0;
-			uniforms.symmetric_scaling = cfg.symmetric_scaling ? 1 : 0;
+			auto rotate_with_velocity =
+			        cfg.rotate_with_velocity ? (cfg.geometry == Particle_geometry::billboard ? 2u : 1u) : 0u;
+			uniforms.flags              = (cfg.symmetric_scaling ? 1u : 0u) << 2 | rotate_with_velocity;
+			uniforms.loop_keyframe_time = cfg.loop_keyframe_time;
 
 			auto ndf = std::uint32_t(0);
 			auto i   = std::uint32_t(0);

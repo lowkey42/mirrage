@@ -222,6 +222,24 @@ namespace mirrage::asset {
 	}
 
 	template <typename T>
+	auto Asset_manager::load_stream(asset::istream stream) -> Ptr<T>
+	{
+		auto container = _find_container<T>();
+		if(container.is_nothing())
+			throw std::system_error(Asset_error::stateful_loader_not_initialized, util::type_name<T>());
+
+
+		auto new_value = container.get_or_throw().load(std::move(stream));
+
+		if constexpr(std::is_same_v<decltype(new_value), async::task<T>>)
+			return Ptr<T>(stream.aid(), new_value.share());
+		else if constexpr(std::is_same_v<decltype(new_value), async::shared_task<T>>)
+			return Ptr<T>(stream.aid(), std::move(new_value));
+		else
+			return Ptr<T>(stream.aid(), async::make_task(std::move(new_value)).share());
+	}
+
+	template <typename T>
 	auto Asset_manager::_find_container() -> util::maybe<detail::Asset_container<T>&>
 	{
 		auto key = util::type_uid_of<T>();

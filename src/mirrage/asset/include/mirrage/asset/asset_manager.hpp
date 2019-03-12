@@ -176,6 +176,9 @@ namespace mirrage::asset {
 		template <typename T>
 		void remove_stateful_loader();
 
+		template <typename T>
+		auto load_stream(asset::istream) -> Ptr<T>;
+
 	  private:
 		friend class ostream;
 

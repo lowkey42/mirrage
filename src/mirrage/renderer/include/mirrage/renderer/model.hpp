@@ -69,7 +69,6 @@ namespace mirrage::renderer {
 	};
 	using Material_ptr = asset::Ptr<Material>;
 
-
 	struct Model_vertex {
 		glm::vec3 position;
 		glm::vec3 normal;

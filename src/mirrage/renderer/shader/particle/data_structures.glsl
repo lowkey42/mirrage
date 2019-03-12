@@ -108,6 +108,8 @@ struct Particle_keyframe {
 	Random_vec4 rotation; // elevation, azimuth, angle
 	Random_vec4 size; // xyz
 
+	vec4 clip_rect;
+
 	float time;
 	float base_mass;
 	float density;
@@ -127,11 +129,15 @@ struct Particle_keyframe {
 	1 <<  7 = 128	:	size[0] normal/uniform
 	1 <<  8 = 256	:	size[1] normal/uniform
 	1 <<  9 = 512	:	size[2] normal/uniform
+
+  flags:
+    0b011: rotate_with_velocity
+    0b100: symmetric_scaling
 */
 #define PARTICLE_TYPE_CONFIG \
 	uint normal_distribution_flags;\
-	uint rotate_with_velocity; \
-	uint symmetric_scaling; \
+	uint flags; \
+	float loop_keyframe_time; \
 	uint keyframe_count; \
 	Particle_keyframe[] keyframes;
 

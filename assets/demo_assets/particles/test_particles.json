@@ -2,14 +2,14 @@
 	"keyframes": [
 		{
 			"time": 0,
-			"color": {"mean":{"hue":0}, "stddev":{"hue":0.5}},
+			"color": {"mean":{"hue":0, "saturation":1}, "stddev":{"hue":0.5}},
 			"size": {"mean": {"x": 0.05, "y":0.15, "z":0.04}, "stddev":{"x": 0.04, "y":0.02, "z":0.02}},
 			"rotation": {"mean":{"angle":0}, "stddev":{"elevation":1, "azimuth":1, "angle": 1}},
 			"drag": 0.1
 		},
 		{
 			"time": 4,
-			"color": {"mean":{"hue":0}, "stddev":{"hue":0}},
+			"color": {"mean":{"hue":0, "saturation":1}, "stddev":{"hue":1}},
 			"size": {"mean": {"x": 0.01, "y":0.1, "z":0.01}},
 			"rotation": {"mean":{"angle":1}, "stddev":{"elevation":1, "azimuth":1, "angle": 1}},
 			"drag": 1.0
