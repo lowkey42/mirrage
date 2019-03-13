@@ -46,8 +46,6 @@ namespace mirrage::renderer {
 		ecs::Entity_manager& _ecs;
 		Deferred_renderer&   _renderer;
 
-		Model _particle_billboard;
-
 		util::iter_range<std::vector<Geometry>::iterator> _geometry_range;
 		util::iter_range<std::vector<Geometry>::iterator> _rigged_geometry_range;
 

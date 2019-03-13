@@ -41,6 +41,11 @@ frag_shader:model_alphatest = shader/model_alphatest.frag.spv
 
 vert_shader:particle = shader/particle.vert.spv
 frag_shader:particle_solid = shader/particle_solid.frag.spv
+frag_shader:particle_transparent_lit = shader/particle_transparent_lit.frag.spv
+frag_shader:particle_transparent_unlit = shader/particle_transparent_unlit.frag.spv
+
+vert_shader:transparent_compose = shader/fullscreen.vert.spv
+frag_shader:transparent_compose = shader/transparent_compose.frag.spv
 
 vert_shader:ui = shader/ui.vert.spv
 frag_shader:ui = shader/ui.frag.spv

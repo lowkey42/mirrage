@@ -60,6 +60,7 @@ add_library(mirrage_renderer STATIC
 	src/pass/ssao_pass.cpp
 	src/pass/taa_pass.cpp
 	src/pass/tone_mapping_pass.cpp
+	src/pass/transparent_pass.cpp
 	
 	src/animation.cpp
 	src/animation_comp.cpp

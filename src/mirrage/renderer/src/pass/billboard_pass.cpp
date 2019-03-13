@@ -20,8 +20,8 @@ namespace mirrage::renderer {
 			                                  vk::AttachmentStoreOp::eStore,
 			                                  vk::AttachmentLoadOp::eDontCare,
 			                                  vk::AttachmentStoreOp::eDontCare,
-			                                  vk::ImageLayout::eShaderReadOnlyOptimal,
-			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+			                                  vk::ImageLayout::eDepthStencilAttachmentOptimal,
+			                                  vk::ImageLayout::eDepthStencilAttachmentOptimal});
 
 			auto screen = builder.add_attachment(
 			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},

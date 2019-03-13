@@ -28,6 +28,23 @@ namespace mirrage::renderer {
 		{
 			return std::any_of(passes.begin(), passes.end(), [&](auto& p) { return p->requires_gbuffer(); });
 		}
+
+		auto create_billboard_model(Deferred_renderer& r)
+		{
+			const auto vertices = std::array<Model_vertex, 4>{
+			        Model_vertex{glm::vec3(-0.5f, -0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(0, 1)},
+			        Model_vertex{glm::vec3(0.5f, -0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(1, 1)},
+			        Model_vertex{glm::vec3(-0.5f, 0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(0, 0)},
+			        Model_vertex{glm::vec3(0.5f, 0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(1, 0)}};
+			const auto indices = std::array<std::uint32_t, 6>{0, 1, 2, 2, 1, 3};
+
+			return Model{graphic::Mesh{r.device(), r.queue_family(), vertices, indices},
+			             {Sub_mesh{{}, 0u, 6u, glm::vec3(0, 0, 0), 1.f}},
+			             1.f,
+			             glm::vec3(0, 0, 0),
+			             false,
+			             0};
+		}
 	} // namespace
 
 
@@ -72,6 +89,7 @@ namespace mirrage::renderer {
 	                                           vk::Filter::eNearest,
 	                                           vk::SamplerMipmapMode::eNearest))
 	  , _noise_descriptor_set_layout(device(), *_noise_sampler, 1, vk::ShaderStageFlagBits::eFragment)
+	  , _billboard_model(create_billboard_model(*this))
 	  , _pass_factories(std::move(passes))
 	  , _passes(util::map(_pass_factories,
 	                      [&, write_first_pp_buffer = true](auto& factory) mutable {

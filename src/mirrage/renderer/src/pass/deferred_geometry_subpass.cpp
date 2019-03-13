@@ -24,30 +24,11 @@ namespace mirrage::renderer {
 
 			return device.create_descriptor_set_layout(binding);
 		}
-
-		auto create_billboard_model(Deferred_renderer& r)
-		{
-			const auto vertices = std::array<Model_vertex, 4>{
-			        Model_vertex{glm::vec3(-0.5f, -0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(0, 1)},
-			        Model_vertex{glm::vec3(0.5f, -0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(1, 1)},
-			        Model_vertex{glm::vec3(-0.5f, 0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(0, 0)},
-			        Model_vertex{glm::vec3(0.5f, 0.5f, 0), glm::vec3(0, 0, 1), glm::vec2(1, 0)}};
-			const auto indices = std::array<std::uint32_t, 6>{0, 1, 2, 2, 1, 3};
-
-			return Model{graphic::Mesh{r.device(), r.queue_family(), vertices, indices},
-			             {Sub_mesh{{}, 0u, 6u, glm::vec3(0, 0, 0), 1.f}},
-			             1.f,
-			             glm::vec3(0, 0, 0),
-			             false,
-			             0};
-		}
-
 	} // namespace
 
 	Deferred_geometry_subpass::Deferred_geometry_subpass(Deferred_renderer& r, ecs::Entity_manager& entities)
 	  : _ecs(entities)
 	  , _renderer(r)
-	  , _particle_billboard(create_billboard_model(r))
 	  , _decal_input_attachment_descriptor_set_layout(
 	            create_input_attachment_descriptor_set_layout(r.device()))
 	  , _decal_input_attachment_descriptor_set(
@@ -369,7 +350,7 @@ namespace mirrage::renderer {
 		next_sub_pass();
 
 		render_pass.set_stage("default"_strid);
-		if(_particle_billboard.ready()) {
+		if(_renderer.billboard_model().ready()) {
 			for(auto&& particle : frame.particle_queue) {
 				if(particle.type_cfg->blend != Particle_blend_mode::solid || !particle.emitter->drawable())
 					break;
@@ -384,7 +365,8 @@ namespace mirrage::renderer {
 				render_pass.bind_descriptor_set(2, particle.emitter->particle_uniforms());
 
 				// bind model
-				auto model = particle.type_cfg->model ? &*particle.type_cfg->model : &_particle_billboard;
+				auto model =
+				        particle.type_cfg->model ? &*particle.type_cfg->model : &_renderer.billboard_model();
 				if(model != last_model) {
 					last_model = model;
 					last_model->bind_mesh(frame.main_command_buffer, 0);

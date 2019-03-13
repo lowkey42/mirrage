@@ -52,6 +52,8 @@ namespace mirrage::renderer {
 		float max_display_luminance       = 150.0f;
 		float amient_light_intensity      = 0.1f;
 
+		int transparent_particle_mip_level = 1;
+
 		bool         taa            = true;
 		bool         ssao           = true;
 		bool         bloom          = true;
@@ -79,6 +81,7 @@ namespace mirrage::renderer {
 	              min_display_luminance,
 	              max_display_luminance,
 	              amient_light_intensity,
+	              transparent_particle_mip_level,
 	              taa,
 	              ssao,
 	              bloom,
@@ -236,6 +239,8 @@ namespace mirrage::renderer {
 		auto noise_descriptor_set_layout() const noexcept { return *_noise_descriptor_set_layout; }
 		auto noise_descriptor_set() const noexcept { return *_noise_descriptor_set; }
 
+		auto billboard_model() const noexcept -> auto& { return _billboard_model; }
+
 		auto model_material_sampler() const noexcept { return _factory->model_material_sampler(); }
 		auto model_descriptor_set_layout() const noexcept { return _factory->model_descriptor_set_layout(); }
 
@@ -291,6 +296,8 @@ namespace mirrage::renderer {
 		vk::UniqueSampler                    _noise_sampler;
 		graphic::Image_descriptor_set_layout _noise_descriptor_set_layout;
 		graphic::DescriptorSet               _noise_descriptor_set;
+
+		Model _billboard_model;
 
 		std::vector<Render_pass_factory*>         _pass_factories;
 		std::vector<std::unique_ptr<Render_pass>> _passes;

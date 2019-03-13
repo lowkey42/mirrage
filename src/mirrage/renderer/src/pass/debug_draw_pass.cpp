@@ -34,8 +34,8 @@ namespace mirrage::renderer {
 			                                  vk::AttachmentStoreOp::eStore,
 			                                  vk::AttachmentLoadOp::eDontCare,
 			                                  vk::AttachmentStoreOp::eDontCare,
-			                                  vk::ImageLayout::eShaderReadOnlyOptimal,
-			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+			                                  vk::ImageLayout::eDepthStencilAttachmentOptimal,
+			                                  vk::ImageLayout::eDepthStencilAttachmentOptimal});
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eLineList;

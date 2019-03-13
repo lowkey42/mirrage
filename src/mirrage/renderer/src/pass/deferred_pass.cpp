@@ -46,7 +46,7 @@ namespace mirrage::renderer {
 			                                  vk::AttachmentLoadOp::eDontCare,
 			                                  vk::AttachmentStoreOp::eDontCare,
 			                                  vk::ImageLayout::eUndefined,
-			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+			                                  vk::ImageLayout::eDepthStencilAttachmentOptimal});
 
 			auto depth_sampleable = builder.add_attachment(
 			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},

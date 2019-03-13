@@ -17,6 +17,7 @@
 #include <mirrage/renderer/pass/ssao_pass.hpp>
 #include <mirrage/renderer/pass/taa_pass.hpp>
 #include <mirrage/renderer/pass/tone_mapping_pass.hpp>
+#include <mirrage/renderer/pass/transparent_pass.hpp>
 
 
 namespace mirrage {
@@ -43,6 +44,7 @@ namespace mirrage {
 	                              renderer::make_pass_factory<renderer::Gen_mipmap_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Ssao_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Gi_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Transparent_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Taa_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Depth_of_field_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Bloom_pass_factory>(),
