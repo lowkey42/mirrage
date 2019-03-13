@@ -19,6 +19,7 @@ layout(location = 0) out vec3 out_view_pos;
 layout(location = 1) out vec3 out_normal;
 layout(location = 2) out vec2 out_tex_coords;
 layout(location = 3) out vec4 out_particle_color;
+layout(location = 4) out vec4 out_screen_pos;
 
 layout(std140, set=2, binding = 0) readonly buffer Particle_type_config {
 	PARTICLE_TYPE_CONFIG
@@ -163,5 +164,7 @@ void main() {
 	vec4 color = calc_color(keyframe_a, keyframe_b, keyframe_t, rand_color);;
 	out_particle_color = vec4(hsv2rgb(color.xyz), color.a);
 
-	gl_Position = global_uniforms.proj_mat * view_pos;
+	vec4 screen_pos = global_uniforms.proj_mat * view_pos;
+	out_screen_pos = screen_pos;
+	gl_Position = screen_pos;
 }

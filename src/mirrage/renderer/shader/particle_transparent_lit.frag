@@ -12,6 +12,7 @@ layout(location = 0) in vec3 view_pos;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 tex_coords;
 layout(location = 3) in vec4 out_particle_color;
+layout(location = 4) in vec4 out_screen_pos;
 
 layout(location = 0) out vec4 accum_out;
 layout(location = 1) out vec4 revealage_out;
@@ -25,10 +26,13 @@ layout(std140, set=2, binding = 0) readonly buffer Particle_type_config {
 	PARTICLE_TYPE_CONFIG
 } particle_config;
 
+layout(set=3, binding = 0) uniform sampler2D depth_sampler;
+
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
 	vec4 light_color;
 	vec4 options;
+	vec4 light_data2; // R=shadowmapID
 } model_uniforms;
 
 const float PI = 3.14159265359;
@@ -38,8 +42,14 @@ vec3 decode_tangent_normal(vec2 tn);
 vec3 tangent_space_to_world(vec3 N);
 
 void main() {
+	int mip = int(model_uniforms.light_data2.w);
+
 	vec4 albedo = texture(albedo_sampler, tex_coords);
 	albedo *= out_particle_color;
+
+	vec2 screen_uv = out_screen_pos.xy/out_screen_pos.w*0.5+0.5;
+	float background_depth = textureLod(depth_sampler, screen_uv, mip).r * -global_uniforms.proj_planes.y;
+	albedo.a *= smoothstep(0, 0.5, abs(background_depth-view_pos.z));
 
 	if(albedo.a<0.001) {
 		discard;
