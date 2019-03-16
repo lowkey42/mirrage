@@ -245,8 +245,8 @@ namespace mirrage::renderer {
 
 		// sort for draw
 		std::sort(frame.particle_queue.begin(), frame.particle_queue.end(), [&](auto& lhs, auto& rhs) {
-			auto lhs_draw = lhs.culling_mask != 0 && lhs.emitter->drawable();
-			auto rhs_draw = lhs.culling_mask != 0 && rhs.emitter->drawable();
+			auto lhs_draw = (lhs.culling_mask & 1) != 0 && lhs.emitter->drawable();
+			auto rhs_draw = (lhs.culling_mask & 1) != 0 && rhs.emitter->drawable();
 			if(lhs_draw != rhs_draw)
 				return lhs_draw;
 

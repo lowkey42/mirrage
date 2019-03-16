@@ -72,7 +72,7 @@ void main() {
 
 	if(shadow>0.0) {
 		vec3 diffuse;
-		out_color = vec4(brdf(albedo, F0, roughness, N, V, L, radiance, diffuse) * shadow, 1.0);
+		out_color = vec4(brdf_without_NdotL(albedo, F0, roughness, N, V, L, radiance, diffuse) * shadow, 1.0);
 		out_color_diff = vec4(diffuse * shadow, 1.0);
 	}
 

@@ -78,9 +78,9 @@ namespace mirrage::renderer {
 		device.vk_device()->updateDescriptorSets(1, &desc_write, 0, nullptr);
 	}
 
-	void Material::bind(graphic::Render_pass& pass) const
+	void Material::bind(graphic::Render_pass& pass, int bind_point) const
 	{
-		pass.bind_descriptor_sets(1, {_descriptor_set.get_ptr(), 1});
+		pass.bind_descriptor_sets(gsl::narrow<std::uint32_t>(bind_point), {_descriptor_set.get_ptr(), 1});
 	}
 
 

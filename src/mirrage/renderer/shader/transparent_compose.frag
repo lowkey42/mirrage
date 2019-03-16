@@ -15,8 +15,8 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 out_color;
 
-layout(set=1, binding = 0) uniform sampler2D accum_sampler;
-layout(set=1, binding = 1) uniform sampler2D revealage_sampler;
+layout(set=1, binding = 1) uniform sampler2D accum_sampler;
+layout(set=1, binding = 2) uniform sampler2D revealage_sampler;
 
 void main() {
 	float revealage = textureLod(revealage_sampler, vertex_out.tex_coords, 0).r;

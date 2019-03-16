@@ -36,6 +36,9 @@ namespace mirrage::renderer {
 		auto shadow_color() const noexcept { return _shadow_color; }
 		auto shadowmap_id() const noexcept { return _shadowmap_id; }
 
+		void light_particles(bool b) noexcept { _light_particles = b; }
+		auto light_particles() const noexcept { return _light_particles; }
+
 		auto calc_shadowmap_view_proj(ecs::components::Transform_comp& transform) const -> glm::mat4;
 
 		auto needs_update() { return _shadow_last_update >= _shadow_update_frequency; }
@@ -54,6 +57,7 @@ namespace mirrage::renderer {
 		util::Distance _source_radius;
 		float          _intensity; // in lux
 		util::Rgb      _color;
+		bool           _light_particles         = false;
 		float          _shadow_intensity        = 0; // in lux
 		util::Rgb      _shadow_color            = {0, 0, 0};
 		bool           _shadowcaster            = true;

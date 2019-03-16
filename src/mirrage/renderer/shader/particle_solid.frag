@@ -8,10 +8,11 @@
 
 layout(early_fragment_tests) in;
 
-layout(location = 0) in vec3 view_pos;
+layout(location = 0) in vec4 view_pos;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec2 tex_coords;
 layout(location = 3) in vec4 out_particle_color;
+layout(location = 4) in vec4 out_screen_pos;
 
 
 layout(location = 0) out vec4 depth_out;
@@ -52,7 +53,7 @@ void main() {
 	float metallic  = brdf.g;
 	roughness = mix(0.01, 0.99, roughness*roughness);
 
-	depth_out         = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
+	depth_out         = vec4(-view_pos.z/view_pos.w / global_uniforms.proj_planes.y, 0,0,1);
 	albedo_mat_id_out = vec4(albedo.rgb, 0.0);
 	mat_data_out      = vec4(encode_normal(N), roughness, metallic);
 
@@ -74,9 +75,11 @@ vec3 decode_tangent_normal(vec2 tn) {
 vec3 tangent_space_to_world(vec3 N) {
 	vec3 VN = normalize(normal);
 
+	vec3 vp = view_pos.xyz / view_pos.w;
+
 	// calculate tangent
-	vec3 p_dx = dFdx(view_pos);
-	vec3 p_dy = dFdy(view_pos);
+	vec3 p_dx = dFdx(vp);
+	vec3 p_dy = dFdy(vp);
 
 	vec2 tc_dx = dFdx(tex_coords);
 	vec2 tc_dy = dFdy(tex_coords);

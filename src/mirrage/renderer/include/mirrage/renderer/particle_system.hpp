@@ -36,8 +36,8 @@ namespace mirrage::renderer {
 		vk::UniquePipeline _pipeline;
 	};
 
-	enum class Particle_blend_mode { solid, transparent };
-	sf2_enumDef(Particle_blend_mode, solid, transparent);
+	enum class Particle_blend_mode { solid, transparent, transparent_unlit };
+	sf2_enumDef(Particle_blend_mode, solid, transparent, transparent_unlit);
 
 	enum class Particle_geometry { billboard, mesh };
 	sf2_enumDef(Particle_geometry, billboard, mesh);

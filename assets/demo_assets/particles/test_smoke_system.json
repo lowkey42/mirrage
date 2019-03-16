@@ -8,7 +8,7 @@
 		"size": {"x":0, "y":0},
 		"direction": {"mean":{"elevation":-1, "azimuth":0}, "stddev":{"elevation":0.4, "azimuth":0.4}},
 
-		"ttl": {"mean": 20, "stddev": 4},
+		"ttl": {"mean": 30, "stddev": 0},
 		
 		"velocity": {"mean": 0.01, "stddev": 0.008},
 

@@ -25,11 +25,16 @@ namespace mirrage::graphic {
 		auto update(std::int32_t dest_offset, gsl::span<const char> data) -> bool;
 
 		template <class T>
-		auto update_objs(std::int32_t dest_offset, gsl::span<T> obj) -> bool
+		auto update_objs(std::int32_t dest_offset, gsl::span<const T> obj) -> bool
 		{
 			static_assert(std::is_standard_layout<T>::value, "");
 			return update(dest_offset,
 			              gsl::span<const char>(reinterpret_cast<const char*>(obj.data()), obj.size_bytes()));
+		}
+		template <class T>
+		auto update_objs(std::int32_t dest_offset, const std::initializer_list<T>& obj) -> bool
+		{
+			return update_objs(dest_offset, gsl::span<const T>(obj));
 		}
 
 		template <class T, class F>

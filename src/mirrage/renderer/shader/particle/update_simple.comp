@@ -74,7 +74,6 @@ void main() {
 			uint out_index = out_offset + feedback.ranges[feedback_index].offset;
 
 			// update keyframe
-			// TODO: particle_config.loop_keyframe_time
 			float age = ttl[1] - ttl[0];
 			uint keyframe = pin.particles[index].data.z;
 			if(particle_config.loop_keyframe_time>0) {

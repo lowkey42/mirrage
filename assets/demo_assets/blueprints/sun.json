@@ -10,7 +10,8 @@
 		"shadow_size": 24,
 		"near_plane": 1.0,
 		"far_plane": 80,
-		"update_frequency": 1
+		"update_frequency": 1,
+		"light_particles": true
 	},
 	"Shadowcaster": {
 	},

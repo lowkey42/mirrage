@@ -114,6 +114,7 @@ namespace mirrage::renderer {
 	};
 
 	struct Particle_draw {
+		ecs::Entity_handle                  entity;
 		Particle_emitter*                   emitter;
 		Particle_system*                    system;
 		const Particle_type_config*         type_cfg;
@@ -121,11 +122,13 @@ namespace mirrage::renderer {
 		std::uint32_t                       culling_mask;
 
 		Particle_draw() = default;
-		Particle_draw(Particle_emitter&                   emitter,
+		Particle_draw(ecs::Entity_handle                  entity,
+		              Particle_emitter&                   emitter,
 		              Particle_system&                    system,
 		              gsl::span<Particle_effector_config> effectors,
 		              std::uint32_t                       culling_mask)
-		  : emitter(&emitter)
+		  : entity(entity)
+		  , emitter(&emitter)
 		  , system(&system)
 		  , type_cfg(&*emitter.cfg().type)
 		  , effectors(effectors)

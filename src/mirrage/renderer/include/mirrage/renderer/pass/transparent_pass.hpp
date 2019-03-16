@@ -3,6 +3,7 @@
 #include <mirrage/renderer/deferred_renderer.hpp>
 
 #include <mirrage/graphic/render_pass.hpp>
+#include <mirrage/graphic/streamed_buffer.hpp>
 
 
 namespace mirrage::renderer {
@@ -13,7 +14,7 @@ namespace mirrage::renderer {
 	  public:
 		using Factory = Transparent_pass_factory;
 
-		Transparent_pass(Deferred_renderer&, graphic::Render_target_2D& target);
+		Transparent_pass(Deferred_renderer&, ecs::Entity_manager& ecs, graphic::Render_target_2D& target);
 
 		void update(util::Time dt) override;
 		void draw(Frame_data&) override;
@@ -22,20 +23,24 @@ namespace mirrage::renderer {
 
 	  private:
 		Deferred_renderer&        _renderer;
+		ecs::Entity_manager&      _ecs;
 		vk::Format                _revealage_format;
 		graphic::Render_target_2D _accum;
 		graphic::Render_target_2D _revealage;
 
-		vk::UniqueSampler                    _sampler;
-		graphic::Image_descriptor_set_layout _desc_set_layout;
-		graphic::DescriptorSet               _accum_descriptor_set;
-		std::vector<graphic::DescriptorSet>  _compose_descriptor_sets;
+		vk::UniqueSampler                   _sampler;
+		vk::UniqueDescriptorSetLayout       _desc_set_layout;
+		graphic::DescriptorSet              _accum_descriptor_set;
+		std::vector<graphic::DescriptorSet> _compose_descriptor_sets;
 
 		std::vector<graphic::Framebuffer> _accum_framebuffers;
 		graphic::Render_pass              _accum_render_pass;
 
 		graphic::Framebuffer _compose_framebuffer;
 		graphic::Render_pass _compose_render_pass;
+
+		graphic::Dynamic_buffer _light_uniforms;
+		std::vector<char>       _light_uniforms_tmp;
 	};
 
 	class Transparent_pass_factory : public Render_pass_factory {

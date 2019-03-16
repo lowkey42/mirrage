@@ -52,7 +52,8 @@ namespace mirrage::renderer {
 		float max_display_luminance       = 150.0f;
 		float amient_light_intensity      = 0.1f;
 
-		int transparent_particle_mip_level = 1;
+		int  transparent_particle_mip_level = 1;
+		bool particle_fragment_shadows      = true;
 
 		bool         taa            = true;
 		bool         ssao           = true;
@@ -82,6 +83,7 @@ namespace mirrage::renderer {
 	              max_display_luminance,
 	              amient_light_intensity,
 	              transparent_particle_mip_level,
+	              particle_fragment_shadows,
 	              taa,
 	              ssao,
 	              bloom,

@@ -1,5 +1,9 @@
 #include <mirrage/renderer/pass/transparent_pass.hpp>
 
+#include <mirrage/renderer/light_comp.hpp>
+#include <mirrage/renderer/model_comp.hpp>
+
+#include <mirrage/ecs/entity_set_view.hpp>
 #include <mirrage/graphic/window.hpp>
 #include <mirrage/utils/min_max.hpp>
 
@@ -11,6 +15,13 @@ namespace mirrage::renderer {
 	using namespace util::unit_literals;
 
 	namespace {
+		struct Directional_light_uniforms {
+			glm::mat4 light_space;
+			glm::vec4 radiance;
+			glm::vec4 shadow_radiance;
+			glm::vec4 dir; // + int shadowmap;
+		};
+
 		struct Push_constants {
 			glm::mat4 model;
 			glm::vec4 light_color; //< for light-subpass; A=intensity
@@ -70,6 +81,8 @@ namespace mirrage::renderer {
                     vk::PipelineDepthStencilStateCreateFlags{}, true, false, vk::CompareOp::eLess};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+			pipeline.add_descriptor_set_layout(*renderer.gbuffer().shadowmaps_layout);
 
 			pipeline.add_push_constant("dpc"_strid,
 			                           sizeof(Push_constants),
@@ -92,7 +105,6 @@ namespace mirrage::renderer {
 			auto particle_accum_pipeline = pipeline;
 			particle_accum_pipeline.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 			particle_accum_pipeline.add_descriptor_set_layout(renderer.compute_storage_buffer_layout());
-			particle_accum_pipeline.add_descriptor_set_layout(desc_set_layout);
 			particle_accum_pipeline.vertex<Model_vertex>(0,
 			                                             false,
 			                                             0,
@@ -110,9 +122,22 @@ namespace mirrage::renderer {
 			                .color_attachment(revealage, graphic::all_color_components, blend_revealage)
 			                .depth_stencil_attachment(depth);
 
+			auto frag_shadows = renderer.settings().particle_fragment_shadows ? 1 : 0;
 			particle_accum_pass.stage("particle_lit"_strid)
-			        .shader("frag_shader:particle_transparent_lit"_aid, graphic::Shader_stage::fragment)
-			        .shader("vert_shader:particle"_aid, graphic::Shader_stage::vertex);
+			        .shader("frag_shader:particle_transparent_lit"_aid,
+			                graphic::Shader_stage::fragment,
+			                "main",
+			                0,
+			                frag_shadows)
+			        .shader("vert_shader:particle_transparent_lit"_aid,
+			                graphic::Shader_stage::vertex,
+			                "main",
+			                0,
+			                frag_shadows);
+
+			particle_accum_pass.stage("particle"_strid)
+			        .shader("frag_shader:particle_transparent_unlit"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:particle_transparent"_aid, graphic::Shader_stage::vertex);
 
 			auto render_pass = builder.build();
 
@@ -257,6 +282,17 @@ namespace mirrage::renderer {
 			                        mip_count - start_mip_level);
 		}
 
+		auto create_descriptor_set_layout(graphic::Device& device) -> vk::UniqueDescriptorSetLayout
+		{
+			auto stages   = vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex;
+			auto bindings = std::array<vk::DescriptorSetLayoutBinding, 3>{
+			        vk::DescriptorSetLayoutBinding{0, vk::DescriptorType::eStorageBuffer, 1, stages},
+			        vk::DescriptorSetLayoutBinding{1, vk::DescriptorType::eCombinedImageSampler, 1, stages},
+			        vk::DescriptorSetLayoutBinding{2, vk::DescriptorType::eCombinedImageSampler, 1, stages}};
+
+			return device.create_descriptor_set_layout(bindings);
+		}
+
 		auto get_revealage_format(graphic::Device& device)
 		{
 			auto format = device.get_supported_format(
@@ -271,8 +307,11 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	Transparent_pass::Transparent_pass(Deferred_renderer& renderer, graphic::Render_target_2D& target)
+	Transparent_pass::Transparent_pass(Deferred_renderer&         renderer,
+	                                   ecs::Entity_manager&       ecs,
+	                                   graphic::Render_target_2D& target)
 	  : _renderer(renderer)
+	  , _ecs(ecs)
 	  , _revealage_format(get_revealage_format(renderer.device()))
 	  , _accum(renderer.device(),
 	           {renderer.gbuffer().depth.width(), renderer.gbuffer().depth.height()},
@@ -292,17 +331,70 @@ namespace mirrage::renderer {
 	                                              vk::BorderColor::eIntOpaqueBlack,
 	                                              vk::Filter::eLinear,
 	                                              vk::SamplerMipmapMode::eNearest))
-	  , _desc_set_layout(renderer.device(), *_sampler, 2)
-	  , _accum_descriptor_set(
-	            _desc_set_layout.create_set(renderer.descriptor_pool(), {renderer.gbuffer().depth.view()}))
+	  , _desc_set_layout(create_descriptor_set_layout(renderer.device()))
+	  , _accum_descriptor_set(renderer.create_descriptor_set(*_desc_set_layout, 3))
 	  , _accum_render_pass(build_accum_render_pass(
 	            renderer, *_desc_set_layout, _revealage_format, _accum, _revealage, _accum_framebuffers))
 	  , _compose_render_pass(
 	            build_compose_render_pass(renderer, *_desc_set_layout, target, _compose_framebuffer))
+	  , _light_uniforms(renderer.device().transfer().create_dynamic_buffer(
+	            std::int32_t(sizeof(Directional_light_uniforms) * 4 + 4 * 4),
+	            vk::BufferUsageFlagBits::eStorageBuffer | vk::BufferUsageFlagBits::eTransferDst,
+	            vk::PipelineStageFlagBits::eVertexShader,
+	            vk::AccessFlagBits::eShaderRead,
+	            vk::PipelineStageFlagBits::eFragmentShader,
+	            vk::AccessFlagBits::eShaderRead))
+	  , _light_uniforms_tmp(sizeof(Directional_light_uniforms) * 4 + 4 * 4)
 	{
+		auto light_data_info = vk::DescriptorBufferInfo(_light_uniforms.buffer(), 0, VK_WHOLE_SIZE);
+		auto depth_info      = vk::DescriptorImageInfo(
+                *_sampler, renderer.gbuffer().depth.view(0), vk::ImageLayout::eShaderReadOnlyOptimal);
+
+		auto desc_writes = std::array<vk::WriteDescriptorSet, 3>{
+		        vk::WriteDescriptorSet{*_accum_descriptor_set,
+		                               0,
+		                               0,
+		                               1,
+		                               vk::DescriptorType::eStorageBuffer,
+		                               nullptr,
+		                               &light_data_info},
+		        vk::WriteDescriptorSet{*_accum_descriptor_set,
+		                               1,
+		                               0,
+		                               1,
+		                               vk::DescriptorType::eCombinedImageSampler,
+		                               &depth_info},
+		        vk::WriteDescriptorSet{*_accum_descriptor_set,
+		                               2,
+		                               0,
+		                               1,
+		                               vk::DescriptorType::eCombinedImageSampler,
+		                               &depth_info}};
+
+		renderer.device().vk_device()->updateDescriptorSets(
+		        gsl::narrow<std::uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
+
 		_compose_descriptor_sets = util::build_vector(renderer.gbuffer().depth.mip_levels(), [&](auto i) {
-			return _desc_set_layout.create_set(renderer.descriptor_pool(),
-			                                   {_accum.view(i), _revealage.view(i)});
+			auto set        = renderer.create_descriptor_set(*_desc_set_layout, 3);
+			auto accum_info = vk::DescriptorImageInfo(
+			        *_sampler, _accum.view(i), vk::ImageLayout::eShaderReadOnlyOptimal);
+
+			auto revealage = vk::DescriptorImageInfo(
+			        *_sampler, _revealage.view(i), vk::ImageLayout::eShaderReadOnlyOptimal);
+
+			auto desc_writes = std::array<vk::WriteDescriptorSet, 3>{
+			        vk::WriteDescriptorSet{
+			                *set, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &light_data_info},
+			        vk::WriteDescriptorSet{
+			                *set, 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &accum_info},
+			        vk::WriteDescriptorSet{
+			                *set, 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &revealage}};
+
+
+			renderer.device().vk_device()->updateDescriptorSets(
+			        gsl::narrow<std::uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
+
+			return set;
 		});
 	}
 
@@ -317,14 +409,46 @@ namespace mirrage::renderer {
 		if(!_renderer.billboard_model().ready())
 			return;
 
-		auto anything_drawn = false;
+		// update _light_uniforms
+		auto light_uniforms_ptr = _light_uniforms_tmp.data();
+		auto lights_out         = gsl::span<Directional_light_uniforms>(
+                reinterpret_cast<Directional_light_uniforms*>(light_uniforms_ptr + 4 * 4), 4);
+
+		auto ambient_factor = util::max(0.1f, _renderer.settings().amient_light_intensity);
+		auto light_count    = 0;
+		for(auto [transform, light] : _ecs.list<ecs::components::Transform_comp, Directional_light_comp>()) {
+			if(light.light_particles()) {
+				lights_out[light_count].light_space =
+				        light.calc_shadowmap_view_proj(transform) * _renderer.global_uniforms().inv_view_mat;
+				lights_out[light_count].radiance =
+				        glm::vec4(light.color() * light.intensity() / 10000.0f, 1.f);
+				lights_out[light_count].shadow_radiance = glm::vec4(
+				        light.shadow_color() * light.shadow_intensity() / 10000.0f * ambient_factor, 1.f);
+
+				auto dir = _renderer.global_uniforms().view_mat * glm::vec4(-transform.direction(), 0.f);
+				dir      = glm::normalize(dir);
+				dir.w    = gsl::narrow<float>(_renderer.gbuffer().shadowmaps ? light.shadowmap_id() : -1);
+				lights_out[light_count].dir = dir;
+
+				light_count++;
+			}
+		}
+		*reinterpret_cast<std::int32_t*>(light_uniforms_ptr) = light_count;
+
+		_light_uniforms.update(frame.main_command_buffer, 0, _light_uniforms_tmp);
+
 
 		// TODO: draw normal/anim models
 
 		auto particle_begin =
 		        std::find_if(frame.particle_queue.begin(), frame.particle_queue.end(), [&](auto& p) {
-			        return p.type_cfg->blend == Particle_blend_mode::transparent && p.emitter->drawable();
+			        return (p.type_cfg->blend == Particle_blend_mode::transparent
+			                || p.type_cfg->blend == Particle_blend_mode::transparent_unlit)
+			               && (p.culling_mask & 1) != 0 && p.emitter->drawable();
 		        });
+
+		if(particle_begin == frame.particle_queue.end())
+			return;
 
 		auto mip_level = _renderer.settings().transparent_particle_mip_level;
 
@@ -341,24 +465,30 @@ namespace mirrage::renderer {
 			auto last_material = static_cast<const Material*>(nullptr);
 			auto last_model    = static_cast<const Model*>(nullptr);
 
+			auto desc_sets = std::array<vk::DescriptorSet, 3>{
+			        frame.global_uniform_set, *_accum_descriptor_set, *_renderer.gbuffer().shadowmaps};
+			_accum_render_pass.bind_descriptor_sets(0, desc_sets);
+
 			// draw particles
-			_accum_render_pass.set_stage("particle_lit"_strid);
 			for(auto& particle : util::range(particle_begin, frame.particle_queue.end())) {
-				if(particle.type_cfg->blend != Particle_blend_mode::transparent
-				   || !particle.emitter->drawable())
+				if((particle.culling_mask & 1) == 0 || !particle.emitter->drawable())
 					break;
 
-				anything_drawn = true;
+				if(particle.type_cfg->blend == Particle_blend_mode::transparent_unlit) {
+					_accum_render_pass.set_stage("particle"_strid);
+				} else if(particle.type_cfg->blend == Particle_blend_mode::transparent) {
+					_accum_render_pass.set_stage("particle_lit"_strid);
+				} else
+					break;
 
 				auto material = &*particle.type_cfg->material;
 				if(material != last_material) {
 					last_material = material;
-					last_material->bind(_accum_render_pass);
+					last_material->bind(_accum_render_pass, 3);
 				}
 
 				// bind emitter data
-				_accum_render_pass.bind_descriptor_set(2, particle.emitter->particle_uniforms());
-				_accum_render_pass.bind_descriptor_set(3, *_accum_descriptor_set);
+				_accum_render_pass.bind_descriptor_set(4, particle.emitter->particle_uniforms());
 
 				// bind model
 				auto model =
@@ -367,6 +497,17 @@ namespace mirrage::renderer {
 					last_model = model;
 					last_model->bind_mesh(frame.main_command_buffer, 0);
 				}
+
+				auto emissive_color = glm::vec4(1, 1, 1, 1000);
+				if(auto e = _ecs.get(particle.entity); e.is_some()) {
+					e.get_or_throw().process<Material_property_comp>(
+					        [&](auto& m) { emissive_color = m.emissive_color; });
+				}
+				emissive_color.a /= 10000.0f;
+				if(last_material && !last_material->has_emission()) {
+					emissive_color.a = 0;
+				}
+				dpc.light_data = emissive_color;
 
 				// bind particle data
 				frame.main_command_buffer.bindVertexBuffers(
@@ -393,27 +534,24 @@ namespace mirrage::renderer {
 			}
 		});
 
-		if(anything_drawn) {
-			// compose into frame
-			_compose_render_pass.execute(frame.main_command_buffer, _compose_framebuffer, [&] {
-				_compose_render_pass.bind_descriptor_set(
-				        1, *_compose_descriptor_sets.at(std::size_t(mip_level)));
-				frame.main_command_buffer.draw(3, 1, 0, 0);
-			});
-		}
+		// compose into frame
+		_compose_render_pass.execute(frame.main_command_buffer, _compose_framebuffer, [&] {
+			_compose_render_pass.bind_descriptor_set(1, *_compose_descriptor_sets.at(std::size_t(mip_level)));
+			frame.main_command_buffer.draw(3, 1, 0, 0);
+		});
 	}
 
 
-	auto Transparent_pass_factory::create_pass(Deferred_renderer& renderer,
-	                                           util::maybe<ecs::Entity_manager&>,
+	auto Transparent_pass_factory::create_pass(Deferred_renderer&                renderer,
+	                                           util::maybe<ecs::Entity_manager&> ecs,
 	                                           Engine&,
 	                                           bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>
 	{
-		if(!renderer.device().physical_device_features().independentBlend)
+		if(!renderer.device().physical_device_features().independentBlend || ecs.is_nothing())
 			return {};
 
 		auto& target = !write_first_pp_buffer ? renderer.gbuffer().colorA : renderer.gbuffer().colorB;
-		return std::make_unique<Transparent_pass>(renderer, target);
+		return std::make_unique<Transparent_pass>(renderer, ecs.get_or_throw(), target);
 	}
 
 	auto Transparent_pass_factory::rank_device(vk::PhysicalDevice,

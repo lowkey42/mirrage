@@ -111,14 +111,21 @@ namespace mirrage::renderer {
 	           vk::ImageAspectFlagBits::eColor)
 
 	  , shadowmaps_layout(device.create_descriptor_set_layout(std::array<vk::DescriptorSetLayoutBinding, 3>{
-	            vk::DescriptorSetLayoutBinding{0,
-	                                           vk::DescriptorType::eSampledImage,
-	                                           gsl::narrow<std::uint32_t>(max_shadowmaps),
-	                                           vk::ShaderStageFlagBits::eFragment},
 	            vk::DescriptorSetLayoutBinding{
-	                    1, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment},
+	                    0,
+	                    vk::DescriptorType::eSampledImage,
+	                    gsl::narrow<std::uint32_t>(max_shadowmaps),
+	                    vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex},
 	            vk::DescriptorSetLayoutBinding{
-	                    2, vk::DescriptorType::eSampler, 1, vk::ShaderStageFlagBits::eFragment},
+	                    1,
+	                    vk::DescriptorType::eSampler,
+	                    1,
+	                    vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex},
+	            vk::DescriptorSetLayoutBinding{
+	                    2,
+	                    vk::DescriptorType::eSampler,
+	                    1,
+	                    vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex},
 	    }))
 	  , shadowmaps(desc_pool.create_descriptor(*shadowmaps_layout, 3))
 	{

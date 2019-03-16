@@ -202,6 +202,10 @@ namespace mirrage::renderer {
 
 				nk_label(ctx, "Renderer Settings", NK_TEXT_LEFT);
 
+				bool_nk_wrapper = renderer_settings.particle_fragment_shadows ? 1 : 0;
+				nk_checkbox_label(ctx, "Particle Frag. Shadows", &bool_nk_wrapper);
+				renderer_settings.particle_fragment_shadows = bool_nk_wrapper == 1;
+
 				nk_layout_row_dynamic(ctx, 20, 1);
 				nk_property_int(ctx, "Debug Layer", -1, &renderer_settings.debug_gi_layer, 10, 1, 1);
 

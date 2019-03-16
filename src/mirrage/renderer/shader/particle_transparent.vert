@@ -18,7 +18,7 @@ layout(location = 2) out vec2 out_tex_coords;
 layout(location = 3) out vec4 out_particle_color;
 layout(location = 4) out vec4 out_screen_pos;
 
-layout(std140, set=2, binding = 0) readonly buffer Particle_type_config {
+layout(std140, set=4, binding = 0) readonly buffer Particle_type_config {
 	PARTICLE_TYPE_CONFIG
 } particle_config;
 
