@@ -26,20 +26,6 @@
 #include <sstream>
 
 
-
-template <class = void>
-void quick_exit(int) noexcept
-{
-	std::abort();
-}
-void mirrage_quick_exit() noexcept
-{
-	using namespace std;
-	// calls std::quick_exit if it exists or the template-fallback defined above, if not
-	// needs to be at global scope for this workaround to work correctly
-	quick_exit(0);
-}
-
 namespace mirrage {
 	using namespace ecs::components;
 	using namespace util::unit_literals;
@@ -121,11 +107,6 @@ namespace mirrage {
 					} else {
 						_engine.screens().leave();
 					}
-					break;
-				case "fast_quit"_strid:
-					_meta_system.renderer().device().wait_idle();
-					std::this_thread::sleep_for(std::chrono::milliseconds(250));
-					mirrage_quick_exit();
 					break;
 
 				case "create"_strid: {

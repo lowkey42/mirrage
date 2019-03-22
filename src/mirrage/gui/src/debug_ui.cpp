@@ -7,6 +7,19 @@
 #include <mirrage/utils/ranges.hpp>
 
 
+template <class = void>
+void quick_exit(int) noexcept
+{
+	std::abort();
+}
+void mirrage_quick_exit() noexcept
+{
+	using namespace std;
+	// calls std::quick_exit if it exists or the template-fallback defined above, if not
+	// needs to be at global scope for this workaround to work correctly
+	quick_exit(0);
+}
+
 namespace mirrage::gui {
 
 	namespace {
@@ -125,6 +138,9 @@ namespace mirrage::gui {
 
 		_mailbox.subscribe_to([&](input::Once_action& e) {
 			switch(e.id) {
+				case "fast_quit"_strid:
+					mirrage_quick_exit();
+					break;
 				case "console"_strid:
 					_show_console = !_show_console;
 					_focus_prompt = true;
