@@ -119,8 +119,8 @@ endif()
 
 option(MIRRAGE_ENABLE_CLANG_FORMAT "Includes a clangformat target, that automatically formats the source files." OFF)
 if(MIRRAGE_ENABLE_CLANG_FORMAT)
-	include(clang-format.cmake)
+	include(${MIRRAGE_ROOT_DIR}/clang-format.cmake)
 endif()
 
-include(embed_assets.cmake)
+include(${MIRRAGE_ROOT_DIR}/embed_assets.cmake)
 
