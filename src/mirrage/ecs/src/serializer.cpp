@@ -253,7 +253,7 @@ namespace mirrage::ecs {
 		auto& ecs_deserializer = static_cast<Deserializer&>(s);
 
 		if(!ecs_deserializer.manager.validate(e)) {
-			auto e_facet = ecs_deserializer.manager.emplace();
+			auto e_facet = ecs_deserializer.manager.emplace_empty();
 			e            = e_facet.handle();
 		}
 

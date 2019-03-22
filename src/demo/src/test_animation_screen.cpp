@@ -11,28 +11,28 @@ namespace mirrage {
 
 	Test_animation_screen::Test_animation_screen(Engine& engine) : Test_screen(engine)
 	{
-		_animation_test_dqs = _meta_system.entities().emplace("monk");
-		_animation_test_dqs.get<Transform_comp>().process([](auto& transform) {
-			transform.position    = {-8, 0, -0.5f - 1.f};
-			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
-		});
+		_animation_test_dqs = _meta_system.entities()
+		                              .entity_builder("monk")
+		                              .position({-8, 0, -0.5f - 1.f})
+		                              .direction(glm::vec3{-1, 0, 0})
+		                              .create();
 
-		_animation_test_lbs = _meta_system.entities().emplace("monk_lbs");
-		_animation_test_lbs.get<Transform_comp>().process([](auto& transform) {
-			transform.position    = {-8, 0, -0.5f + 1.f};
-			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
-		});
+		_animation_test_lbs = _meta_system.entities()
+		                              .entity_builder("monk_lbs")
+		                              .position({-8, 0, -0.5f + 1.f})
+		                              .direction(glm::vec3{-1, 0, 0})
+		                              .create();
 
 
-		_animation_test2_dqs = _meta_system.entities().emplace("rotation_test");
-		_animation_test2_dqs.get<Transform_comp>().process([](auto& transform) {
-			transform.position = {-4, 0, -0.5f - 1.f};
-		});
+		_animation_test2_dqs = _meta_system.entities()
+		                               .entity_builder("rotation_test")
+		                               .position({-4, 0, -0.5f - 1.f})
+		                               .create();
 
-		_animation_test2_lbs = _meta_system.entities().emplace("rotation_test_lbs");
-		_animation_test2_lbs.get<Transform_comp>().process([](auto& transform) {
-			transform.position = {-4, 0, -0.5f + 1.f};
-		});
+		_animation_test2_lbs = _meta_system.entities()
+		                               .entity_builder("rotation_test_lbs")
+		                               .position({-4, 0, -0.5f + 1.f})
+		                               .create();
 	}
 
 	void Test_animation_screen::_draw()

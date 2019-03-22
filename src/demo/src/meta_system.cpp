@@ -31,8 +31,7 @@ namespace mirrage {
 					              pos  = transform.position + transform.direction() * 2.f;
 				              }
 			              }
-			              _entities.emplace(blueprint).get<Transform_comp>().process(
-			                      [&](auto& transform) { transform.position = pos; });
+			              _entities.entity_builder(blueprint).position(pos).create();
 		              });
 
 		_commands.add("mem.renderer | Prints memory usage of renderer", [&] {

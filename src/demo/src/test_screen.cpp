@@ -79,10 +79,7 @@ namespace mirrage {
 	  , _gui(engine.gui())
 	  , _performance_log(util::nothing)
 	{
-		_camera = _meta_system.entities().emplace("camera");
-
-		auto cornell = _meta_system.entities().emplace("cornell");
-		cornell.get<Transform_comp>().process([&](auto& transform) { transform.position = {1000, 0, 0}; });
+		_meta_system.entities().entity_builder("cornell").position({1000, 0, 0}).create();
 
 		_cmd_commands.add_property("pos",
 		                           [&](glm::vec3 position) {
@@ -95,27 +92,25 @@ namespace mirrage {
 			                                   [&](auto& transform) { return transform.position; });
 		                           });
 
-		_meta_system.entities().emplace("sponza");
+		_meta_system.entities().entity_builder("sponza").create();
 
-		_meta_system.entities().emplace("test_particle_emitter").process<Transform_comp>([&](auto& transform) {
-			transform.position = {-6, 2, 1};
-		});
-		_meta_system.entities().emplace("test_smoke_emitter").process<Transform_comp>([&](auto& transform) {
-			transform.position = {-6, 1, -1};
-		});
+		_meta_system.entities().entity_builder("test_particle_emitter").position({-6, 2, 1}).create();
+		_meta_system.entities().entity_builder("test_smoke_emitter").position({-6, 1, -1}).create();
 
-		auto billboard = _meta_system.entities().emplace("billboard");
-		billboard.get<Transform_comp>().process([](auto& transform) {
-			transform.position    = {-8, 1, 0.5f};
-			transform.orientation = glm::quatLookAt(glm::vec3{-1, 0, 0}, glm::vec3{0, 1, 0});
-		});
+		_meta_system.entities()
+		        .entity_builder("billboard")
+		        .position({-8, 1, 0.5f})
+		        .direction({-1, 0, 0})
+		        .create();
 
-		auto decal = _meta_system.entities().emplace("decal");
-		decal.get<Transform_comp>().process([](auto& transform) { transform.position = {-8, 0, -0.5f}; });
+		_meta_system.entities().entity_builder("decal").position({-8, 0, -0.5f}).create();
 
-		_sun = _meta_system.entities().emplace("sun");
+		_sun = _meta_system.entities().entity_builder("sun").create();
 
-		_set_preset(1);
+		_camera = _meta_system.entities()
+		                  .entity_builder("camera")
+		                  .post_create([&](auto&&) { _set_preset(1); })
+		                  .create();
 
 		_mailbox.subscribe_to([&](input::Once_action& e) {
 			switch(e.id) {
@@ -133,14 +128,14 @@ namespace mirrage {
 					mirrage_quick_exit();
 					break;
 
-				case "create"_strid:
-					_meta_system.entities().emplace("cube").get<Transform_comp>().process(
-					        [&](auto& transform) {
-						        auto& cam          = _camera.get<Transform_comp>().get_or_throw();
-						        transform.position = cam.position + cam.direction();
-					        });
-
+				case "create"_strid: {
+					auto& cam = _camera.get<Transform_comp>().get_or_throw();
+					_meta_system.entities()
+					        .entity_builder("cube")
+					        .position(cam.position + cam.direction())
+					        .create();
 					break;
+				}
 
 				case "print"_strid: {
 					auto cam = _camera.get<Transform_comp>().get_or_throw().position;

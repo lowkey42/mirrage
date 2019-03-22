@@ -18,10 +18,13 @@
 #include <mirrage/utils/template_utils.hpp>
 
 #include <concurrentqueue.h>
+#include <glm/gtx/quaternion.hpp>
+#include <glm/vec3.hpp>
 
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 
@@ -36,6 +39,70 @@ namespace mirrage::ecs {
 	/// entity transfer object
 	using ETO = std::string;
 
+	class Entity_builder {
+	  public:
+		Entity_builder() = default;
+
+		auto blueprint(std::string v) -> Entity_builder&
+		{
+			_blueprint = std::move(v);
+			return *this;
+		}
+
+		auto position(glm::vec3 v) -> Entity_builder&
+		{
+			_position = v;
+			return *this;
+		}
+		auto direction(glm::vec3 v) -> Entity_builder&
+		{
+			_rotation = v;
+			_look_at  = false;
+			return *this;
+		}
+		auto look_at(glm::vec3 v) -> Entity_builder&
+		{
+			_rotation = v;
+			_look_at  = true;
+			return *this;
+		}
+		auto rotation(glm::quat v) -> Entity_builder&
+		{
+			_rotation = v;
+			return *this;
+		}
+
+		auto post_create(std::function<void(Entity_facet)> v) -> Entity_builder&
+		{
+			_post_create = v;
+			return *this;
+		}
+
+		auto create() -> Entity_facet;
+
+	  private:
+		friend class Entity_manager;
+
+		using Listener = std::function<void(Entity_facet)>;
+		using Rotation = std::variant<std::monostate, glm::vec3, glm::quat>;
+
+		Entity_builder(Entity_manager& m, std::string blueprint = {})
+		  : _manager(&m), _blueprint(std::move(blueprint))
+		{
+		}
+
+		void apply();
+
+		Entity_manager*        _manager = nullptr;
+		Entity_facet           _facet;
+		Listener               _post_create;
+		std::string            _blueprint;
+		Rotation               _rotation;
+		util::maybe<glm::vec3> _position;
+		bool                   _look_at = false;
+	};
+
+
 	/**
 	 * The main functionality is thread-safe but the other methods require a lock to prevent
 	 *   concurrent read access during their execution
@@ -46,8 +113,11 @@ namespace mirrage::ecs {
 		~Entity_manager();
 
 		// user interface; thread-safe
-		auto emplace() noexcept -> Entity_facet;
-		auto emplace(const std::string& blueprint) -> Entity_facet; // TODO/FIXME: currently NOT thread-safe
+		auto entity_builder(std::string blueprint = {}) -> Entity_builder
+		{
+			return {*this, std::move(blueprint)};
+		}
+		auto emplace_empty() -> Entity_facet;
 		auto get(Entity_handle entity) -> util::maybe<Entity_facet>;
 		auto get_handle(Entity_id id) const -> Entity_handle { return _handles.get(id); }
 		auto validate(Entity_handle entity) -> bool { return _handles.valid(entity); }
@@ -84,10 +154,12 @@ namespace mirrage::ecs {
 		auto component_type_by_name(const std::string& name) -> util::maybe<Component_type>;
 
 	  private:
+		friend class Entity_builder;
 		friend class Entity_facet;
 		friend class Entity_collection_facet;
 
-		using Erase_queue = moodycamel::ConcurrentQueue<Entity_handle>;
+		using Erase_queue   = moodycamel::ConcurrentQueue<Entity_handle>;
+		using Emplace_queue = moodycamel::ConcurrentQueue<Entity_builder>;
 
 		asset::Asset_manager& _assets;
 		util::any_ptr         _userdata;
@@ -95,6 +167,7 @@ namespace mirrage::ecs {
 		Entity_handle_generator    _handles;
 		Erase_queue                _queue_erase;
 		std::vector<Entity_handle> _local_queue_erase;
+		Emplace_queue              _queued_emplace;
 
 		std::vector<std::unique_ptr<Component_container_base>> _components;
 		std::unordered_map<std::string, Component_type>        _components_by_name;

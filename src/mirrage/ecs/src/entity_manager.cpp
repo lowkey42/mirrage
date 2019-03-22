@@ -3,6 +3,8 @@
 #include <mirrage/ecs/component.hpp>
 #include <mirrage/ecs/serializer.hpp>
 
+#include <mirrage/ecs/components/transform_comp.hpp>
+
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/string_utils.hpp>
 
@@ -23,15 +25,50 @@ namespace mirrage::ecs {
 	}
 	Entity_manager::~Entity_manager() { deinit_serializer(*this); }
 
-	Entity_facet Entity_manager::emplace() noexcept { return {*this, _handles.get_new()}; }
-	Entity_facet Entity_manager::emplace(const std::string& blueprint)
+	auto Entity_builder::create() -> Entity_facet
 	{
-		auto e = emplace();
+		MIRRAGE_INVARIANT(_manager, "Called Entity_builder::create() on uninitialized/moved-from object.");
 
-		apply_blueprint(_assets, e, blueprint);
+		_facet = _manager->emplace_empty();
 
-		return {*this, e.handle()};
+		if(!_blueprint.empty()) {
+			_manager->_queued_emplace.enqueue(*this);
+		} else {
+			apply();
+		}
+
+		return _facet;
 	}
+
+	void Entity_builder::apply()
+	{
+		MIRRAGE_INVARIANT(_facet, "Called Entity_builder::apply() without facet");
+
+		if(!_blueprint.empty())
+			apply_blueprint(_manager->_assets, _facet, _blueprint);
+
+		else if(_position.is_some() || std::holds_alternative<std::monostate>(_rotation))
+			_facet.emplace<components::Transform_comp>();
+
+		_facet.process<components::Transform_comp>([&](auto& transform) {
+			if(_position.is_some())
+				transform.position = _position.get_or_throw();
+
+			if(auto r = std::get_if<glm::vec3>(&_rotation)) {
+				if(_look_at)
+					transform.look_at(*r);
+				else
+					transform.direction(*r);
+			} else if(auto r = std::get_if<glm::quat>(&_rotation)) {
+				transform.orientation = *r;
+			}
+		});
+
+		if(_post_create)
+			_post_create(_facet);
+	}
+
+	auto Entity_manager::emplace_empty() -> Entity_facet { return {*this, _handles.get_new()}; }
 
 	auto Entity_manager::get(Entity_handle entity) -> util::maybe<Entity_facet>
 	{
@@ -55,27 +92,45 @@ namespace mirrage::ecs {
 		MIRRAGE_INVARIANT(_local_queue_erase.empty(),
 		                  "Someone's been sleeping in my bed! (_local_queue_erase is dirty)");
 
-		std::array<Entity_handle, 32> erase_buffer;
-		do {
-			std::size_t count = _queue_erase.try_dequeue_bulk(erase_buffer.data(), erase_buffer.size());
-
-			if(count > 0) {
-				for(std::size_t i = 0; i < count; i++) {
-					const auto h = erase_buffer[i];
-					if(!validate(h))
-						continue;
-
-					_local_queue_erase.emplace_back(h);
-
-					for(auto& component : _components) {
-						if(component)
-							component->erase(h);
+		{
+			std::array<Entity_builder, 8> emplace_buffer;
+			do {
+				std::size_t count =
+				        _queued_emplace.try_dequeue_bulk(emplace_buffer.data(), emplace_buffer.size());
+				if(count > 0) {
+					for(std::size_t i = 0; i < count; i++) {
+						emplace_buffer[i].apply();
 					}
+
+				} else {
+					break;
 				}
-			} else {
-				break;
-			}
-		} while(true);
+			} while(true);
+		}
+
+		{
+			std::array<Entity_handle, 32> erase_buffer;
+			do {
+				std::size_t count = _queue_erase.try_dequeue_bulk(erase_buffer.data(), erase_buffer.size());
+
+				if(count > 0) {
+					for(std::size_t i = 0; i < count; i++) {
+						const auto h = erase_buffer[i];
+						if(!validate(h))
+							continue;
+
+						_local_queue_erase.emplace_back(h);
+
+						for(auto& component : _components) {
+							if(component)
+								component->erase(h);
+						}
+					}
+				} else {
+					break;
+				}
+			} while(true);
+		}
 
 		for(auto& component : _components) {
 			if(component)
@@ -95,7 +150,8 @@ namespace mirrage::ecs {
 				component->clear();
 
 		_handles.clear();
-		_queue_erase = Erase_queue{};
+		_queue_erase    = Erase_queue{};
+		_queued_emplace = Emplace_queue{};
 	}
 
 
@@ -111,7 +167,7 @@ namespace mirrage::ecs {
 	auto Entity_manager::read_one(ETO data, Entity_handle target) -> Entity_facet
 	{
 		if(!validate(target)) {
-			target = emplace();
+			target = emplace_empty();
 		}
 
 		std::istringstream stream{data};
