@@ -186,16 +186,22 @@ namespace mirrage::asset {
 		friend class detail::Asset_container;
 
 	  private:
+		struct General_Disptacher {
+			std::string base_dir;
+			std::string default_extension;
+		};
+
 		mutable std::mutex        _containers_mutex;
 		mutable std::shared_mutex _dispatchers_mutex;
 
 		detail::Map<util::type_uid_t, std::unique_ptr<detail::Asset_container_base>> _containers;
 		detail::Map<AID, std::string>                                                _dispatchers;
+		detail::Map<Asset_type, General_Disptacher>                                  _general_dispatchers;
 
 
 		void _post_write();
 
-		auto _base_dir(Asset_type type) const -> util::maybe<std::string>;
+		auto _resolve_unkown(const AID& id, bool only_preexisting) const -> util::maybe<std::string>;
 
 		void _reload_dispatchers();
 

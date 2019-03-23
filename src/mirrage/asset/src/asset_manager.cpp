@@ -368,8 +368,8 @@ namespace mirrage::asset {
 				res.emplace_back(d.first);
 		}
 
-		_base_dir(type).process([&](const std::string& dir) {
-			for(auto&& f : list_files(dir, "", ""))
+		util::find_maybe(_general_dispatchers, type).process([&](auto& entry) {
+			for(auto&& f : list_files(entry.base_dir, "", ""))
 				res.emplace_back(type, f);
 		});
 
@@ -399,17 +399,8 @@ namespace mirrage::asset {
 			return id.name();
 
 
-		auto baseDir = _base_dir(id.type());
-
-		if(baseDir.is_some()) {
-			auto path = append_file(baseDir.get_or_throw(), id.name());
-			if(exists_file(path))
-				return std::move(path);
-
-			else if(!only_preexisting) {
-				PHYSFS_mkdir(baseDir.get_or_throw().c_str());
-				return std::move(path);
-			}
+		if(auto try2 = _resolve_unkown(id, only_preexisting); try2.is_some()) {
+			return std::move(try2.get_or_throw());
 		}
 
 		if(!only_preexisting) {
@@ -417,8 +408,32 @@ namespace mirrage::asset {
 		}
 
 		LOG(plog::warning) << "Couldn't resove AID '" << id.str()
-		                   << "'. Dispatcher: " << (res != _dispatchers.end() ? res->second : "!NO-MATCH")
-		                   << "; Base: " << baseDir.get_or("!NO-MATCH");
+		                   << "'. Dispatcher: " << (res != _dispatchers.end() ? res->second : "!NO-MATCH");
+
+		return util::nothing;
+	}
+	auto Asset_manager::_resolve_unkown(const AID& id, bool only_preexisting) const
+	        -> util::maybe<std::string>
+	{
+		auto lock = std::shared_lock{_dispatchers_mutex};
+
+		auto dir = _general_dispatchers.find(id.type());
+
+		if(dir == _general_dispatchers.end())
+			return util::nothing;
+
+		auto path = append_file(dir->second.base_dir, id.name());
+		if(exists_file(path))
+			return std::move(path);
+
+		path = path + dir->second.default_extension;
+		if(exists_file(path))
+			return std::move(path);
+
+		if(!only_preexisting) {
+			PHYSFS_mkdir(dir->second.base_dir.c_str());
+			return std::move(path);
+		}
 
 		return util::nothing;
 	}
@@ -436,18 +451,6 @@ namespace mirrage::asset {
 
 	void Asset_manager::_post_write() {}
 
-	auto Asset_manager::_base_dir(Asset_type type) const -> util::maybe<std::string>
-	{
-		auto lock = std::shared_lock{_dispatchers_mutex};
-
-		auto dir = _dispatchers.find(AID{type, ""}); // search for prefix-entry
-
-		if(dir == _dispatchers.end())
-			return util::nothing;
-
-		return dir->second;
-	}
-
 	void Asset_manager::_reload_dispatchers()
 	{
 		auto lock = std::unique_lock{_dispatchers_mutex};
@@ -461,8 +464,14 @@ namespace mirrage::asset {
 				auto        kvp  = util::split(l, "=");
 				std::string path = util::trim_copy(kvp.second);
 				if(!path.empty()) {
+					auto aid = AID{kvp.first};
 					LOG(plog::debug) << "    " << AID{kvp.first}.str() << " = " << path;
-					_dispatchers.emplace(AID{kvp.first}, std::move(path));
+
+					if(aid.name().empty()) {
+						auto [dir, ext] = util::split_on_last(path, "*");
+						_general_dispatchers.emplace(aid.type(), General_Disptacher{dir, ext});
+					} else
+						_dispatchers.emplace(std::move(aid), std::move(path));
 				}
 			}
 		}

@@ -1,5 +1,2 @@
-model: = models/
-mat: = materials/
-
-model:cube = models/cube.mmf
-
+model: = models/*.mmf
+mat: = materials/*.msf

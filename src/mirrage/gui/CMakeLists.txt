@@ -22,7 +22,7 @@ target_compile_features(mirrage_gui PUBLIC cxx_std_17)
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_gui.map" CONTENT
 "cfg:gui = settings/gui.json
 cfg:console_history = console_history.txt
-font: = fonts/
+font: = fonts/*.ttf
 font:default_font = fonts/default_font.ttf
 ")
 mirrage_embed_asset(TARGET mirrage_gui
