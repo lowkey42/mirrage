@@ -328,16 +328,10 @@ namespace mirrage {
 	}
 	void Test_screen::_draw_settings_window()
 	{
-		auto ctx = _gui.ctx();
-		if(nk_begin_titled(ctx,
-		                   "debug_controls",
-		                   "Debug Controls",
-		                   _gui.centered_left(250, 220),
-		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
+		ImGui::PositionNextWindow({250, 400}, ImGui::WindowPosition_X::left, ImGui::WindowPosition_Y::center);
+		if(ImGui::Begin("Debug Controls")) {
 
-			nk_layout_row_dynamic(ctx, 20, 2);
-
-			nk_label(ctx, "Preset", NK_TEXT_LEFT);
+			ImGui::TextUnformatted("Preset");
 			auto preset_options = std::array<const char*, 7>{{"Free Motion",
 			                                                  "Center",
 			                                                  "Top-Down",
@@ -345,34 +339,26 @@ namespace mirrage {
 			                                                  "Hallway",
 			                                                  "Hallway2",
 			                                                  "Cornell Box"}};
-			_set_preset(nk_combo(ctx,
-			                     preset_options.data(),
-			                     gsl::narrow<int>(preset_options.size()),
-			                     _selected_preset,
-			                     14,
-			                     nk_vec2(100.f, 200)));
 
-			nk_layout_row_dynamic(ctx, 20, 1);
+			ImGui::Combo("preset", &_selected_preset, preset_options.data(), int(preset_options.size()));
+
 
 			_camera.process<renderer::Camera_comp>([&](auto& cam) {
-				cam.dof_focus(nk_propertyf(ctx, "Focus Plane", 0.1f, cam.dof_focus(), 100.f, 1.f, 0.01f));
-				cam.dof_range(nk_propertyf(ctx, "Focus Range", 0.1f, cam.dof_range(), 10.f, 0.1f, 0.001f));
-				cam.dof_power(nk_propertyf(ctx, "DOF Power", 0.01f, cam.dof_power(), 1.f, 0.1f, 0.001f));
+				cam.dof_focus(ImGui::ValueSliderFloat("Focus Plane", cam.dof_focus(), 0.1f, 100.f));
+				cam.dof_range(ImGui::ValueSliderFloat("Focus Range", cam.dof_range(), 0.1f, 10.f));
+				cam.dof_power(ImGui::ValueSliderFloat("DOF Power", cam.dof_power(), 0.01f, 1.f));
 			});
 
 			if(!_meta_system.nims().is_playing()) {
-				nk_layout_row_dynamic(ctx, 20, 1);
-				nk_label(ctx, "Directional Light", NK_TEXT_LEFT);
+				ImGui::TextUnformatted("Directional Light");
 
-				nk_layout_row_dynamic(ctx, 14, 1);
-
-				auto elevation = nk_propertyf(ctx, "Elevation", 0.f, _sun_elevation, 1.f, 0.05f, 0.001f);
+				auto elevation = ImGui::ValueSliderFloat("Elevation", _sun_elevation, 0.f, 1.f);
 				if(std::abs(elevation - _sun_elevation) > 0.000001f) {
 					_sun_elevation = elevation;
 					_set_preset(0);
 				}
 
-				auto azimuth = nk_propertyf(ctx, "Azimuth", -2.f, _sun_azimuth, 2.f, 0.05f, 0.001f);
+				auto azimuth = ImGui::ValueSliderFloat("Azimuth", _sun_azimuth, -2.f, 2.f);
 				if(std::abs(azimuth - _sun_azimuth) > 0.000001f) {
 					_sun_azimuth = azimuth;
 					_set_preset(0);
@@ -382,31 +368,30 @@ namespace mirrage {
 
 				_sun.get<renderer::Directional_light_comp>().process(
 				        [&](renderer::Directional_light_comp& light) {
-					        auto new_size = nk_propertyf(
-					                ctx, "Size", 0.5f, light.source_radius() / 1_m, 20.f, 0.1f, 0.01f);
+					        auto new_size =
+					                ImGui::ValueSliderFloat("Size", light.source_radius() / 1_m, 0.5f, 20.f);
 					        light.source_radius(new_size * 1_m);
 
-					        auto new_temp = nk_propertyf(
-					                ctx, "Color", 500.f, _sun_color_temperature, 20000.f, 500.f, 50.f);
+					        auto new_temp =
+					                ImGui::ValueSliderFloat("Color", _sun_color_temperature, 500.f, 20000.f);
 
 					        if(std::abs(new_temp - _sun_color_temperature) > 0.000001f) {
 						        light.temperature(_sun_color_temperature = new_temp);
 						        _set_preset(0);
 					        }
 
-					        auto color = util::Rgba{light.color(), light.intensity() / 50'000.f};
-					        if(gui::color_picker(ctx, color, 210.f)) {
+					        ImGui::Spacing();
+					        ImGui::TextUnformatted("Color");
+					        auto color = util::Rgba{light.color(), light.intensity() / 50000.f};
+					        if(ImGui::ColorPicker4("Color", &color.r)) {
 						        light.color({color.r, color.g, color.b});
-						        light.intensity(color.a * 50'000.f);
+						        light.intensity(color.a * 50000.f);
 						        _set_preset(0);
 					        }
 				        });
 			}
-
-			nk_layout_row_dynamic(ctx, 10, 1);
-			nk_label(ctx, "", NK_TEXT_LEFT);
 		}
-		nk_end(ctx);
+		ImGui::End();
 	}
 
 	void Test_screen::_update_sun_position()

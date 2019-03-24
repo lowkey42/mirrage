@@ -5,9 +5,10 @@
 #include <mirrage/gui/debug_ui.hpp>
 #include <mirrage/gui/gui.hpp>
 
+#include <imgui.h>
+
 
 namespace mirrage::renderer {
-
 
 	namespace detail {
 		template <typename T>
@@ -76,21 +77,15 @@ namespace mirrage::renderer {
 				r->profiler().disable();
 		}
 
-		void draw(gui::Gui& gui) override
+		void draw(gui::Gui&) override
 		{
 			for(auto& r : _renderer_instances)
 				r->profiler().enable();
 
-			auto ctx = gui.ctx();
-			if(nk_begin_titled(ctx,
-			                   "profiler",
-			                   "Profiler",
-			                   gui.centered_right(330, 380),
-			                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE
-			                           | NK_WINDOW_SCALABLE)) {
-
-				nk_layout_row_dynamic(ctx, 20, 1);
-				if(nk_button_label(ctx, "Reset")) {
+			ImGui::PositionNextWindow(
+			        {330, 380}, ImGui::WindowPosition_X::right, ImGui::WindowPosition_Y::center);
+			if(ImGui::Begin("Renderer Profiler")) {
+				if(ImGui::Button("Reset")) {
 					for(auto& r : _renderer_instances)
 						r->profiler().reset();
 				}
@@ -101,16 +96,9 @@ namespace mirrage::renderer {
 				}
 #endif
 
-				constexpr auto rows = std::array<float, 5>{{0.4f, 0.15f, 0.15f, 0.15f, 0.15f}};
-				nk_layout_row(ctx, NK_DYNAMIC, 25, gsl::narrow<int>(rows.size()), rows.data());
-				nk_label(ctx, "RenderPass", NK_TEXT_CENTERED);
-				nk_label(ctx, "Curr (ms)", NK_TEXT_CENTERED);
-				nk_label(ctx, "Min (ms)", NK_TEXT_CENTERED);
-				nk_label(ctx, "Avg (ms)", NK_TEXT_CENTERED);
-				nk_label(ctx, "Max (ms)", NK_TEXT_CENTERED);
-
-				nk_layout_row(ctx, NK_DYNAMIC, 10, gsl::narrow<int>(rows.size()), rows.data());
-
+				ImGui::BeginTable("perf",
+				                  {"RenderPass", "Curr (ms)", "Min (ms)", "Avg (ms)", "Max (ms)"},
+				                  _first_frame);
 
 				auto print_entry = [&](auto&&                          printer,
 				                       const graphic::Profiler_result& result,
@@ -118,23 +106,22 @@ namespace mirrage::renderer {
 				                       int                             rank  = -1) -> void {
 					auto color = [&] {
 						switch(rank) {
-							case 0: return nk_rgb(255, 0, 0);
-							case 1: return nk_rgb(255, 220, 128);
-							default: return nk_rgb(255, 255, 255);
+							case 0: return ImColor(255, 0, 0);
+							case 1: return ImColor(255, 220, 128);
+							default: return ImColor(255, 255, 255);
 						}
 					}();
 
-					nk_label_colored(
-					        ctx, detail::pad_left(result.name(), depth * 4).c_str(), NK_TEXT_LEFT, color);
-					nk_label_colored(
-					        ctx, detail::to_fixed_str(result.time_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-					nk_label_colored(
-					        ctx, detail::to_fixed_str(result.time_min_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-					nk_label_colored(
-					        ctx, detail::to_fixed_str(result.time_avg_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-					nk_label_colored(
-					        ctx, detail::to_fixed_str(result.time_max_ms(), 2).c_str(), NK_TEXT_RIGHT, color);
-
+					ImGui::TextColored(color, "%s", detail::pad_left(result.name(), depth * 4).c_str());
+					ImGui::NextColumn();
+					ImGui::TextColored(color, "%s", detail::to_fixed_str(result.time_ms(), 2).c_str());
+					ImGui::NextColumn();
+					ImGui::TextColored(color, "%s", detail::to_fixed_str(result.time_min_ms(), 2).c_str());
+					ImGui::NextColumn();
+					ImGui::TextColored(color, "%s", detail::to_fixed_str(result.time_avg_ms(), 2).c_str());
+					ImGui::NextColumn();
+					ImGui::TextColored(color, "%s", detail::to_fixed_str(result.time_max_ms(), 2).c_str());
+					ImGui::NextColumn();
 
 					auto worst_timings = detail::top_n<2>(result, [](auto&& lhs, auto&& rhs) {
 						return lhs.time_avg_ms() < rhs.time_avg_ms();
@@ -151,11 +138,13 @@ namespace mirrage::renderer {
 					print_entry(print_entry, r->profiler().results());
 			}
 
-			nk_end(ctx);
+			ImGui::End();
+			_first_frame = false;
 		}
 
 	  private:
 		std::vector<Deferred_renderer*>& _renderer_instances;
+		bool                             _first_frame = true;
 	};
 
 
@@ -171,107 +160,70 @@ namespace mirrage::renderer {
 		{
 		}
 
-		void draw(gui::Gui& gui) override
+		void draw(gui::Gui&) override
 		{
-			auto ctx = gui.ctx();
-			if(nk_begin_titled(ctx,
-			                   "renderer_settings",
-			                   "Renderer Settings",
-			                   gui.centered_left(250, 600),
-			                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE
-			                           | NK_WINDOW_SCALABLE)) {
-				nk_layout_row_dynamic(ctx, 20, 1);
+			ImGui::PositionNextWindow(
+			        {250, 600}, ImGui::WindowPosition_X::left, ImGui::WindowPosition_Y::center);
+			if(ImGui::Begin("Renderer Setting")) {
 
 				auto renderer_settings = _factory.settings();
-				auto bool_nk_wrapper   = 0;
 
-				nk_property_int(ctx, "Window Width", 640, &_window_width, 7680, 1, 1);
-				nk_property_int(ctx, "Window Height", 360, &_window_height, 4320, 1, 1);
+				ImGui::SliderInt("Window Width", &_window_width, 640, 7680);
+				ImGui::SliderInt("Window Height", &_window_height, 360, 4320);
 
-				bool_nk_wrapper = _window_fullscreen ? 1 : 0;
-				nk_checkbox_label(ctx, "Fullscreen", &bool_nk_wrapper);
-				_window_fullscreen = bool_nk_wrapper == 1;
+				ImGui::Checkbox("Fullscreen", &_window_fullscreen);
 
-				if(nk_button_label(ctx, "Apply")) {
+				if(ImGui::Button("Apply")) {
 					apply_window_changed();
 				}
 
-				nk_layout_row_dynamic(ctx, 10, 1);
-				nk_label(ctx, "", NK_TEXT_LEFT);
-				nk_layout_row_dynamic(ctx, 20, 1);
+				ImGui::Spacing();
 
-				nk_label(ctx, "Renderer Settings", NK_TEXT_LEFT);
+				ImGui::TextUnformatted("Renderer Settings");
 
-				bool_nk_wrapper = renderer_settings.particle_fragment_shadows ? 1 : 0;
-				nk_checkbox_label(ctx, "Particle Frag. Shadows", &bool_nk_wrapper);
-				renderer_settings.particle_fragment_shadows = bool_nk_wrapper == 1;
+				ImGui::Checkbox("Particle Frag. Shadows", &renderer_settings.particle_fragment_shadows);
 
-				nk_layout_row_dynamic(ctx, 20, 1);
-				nk_property_int(ctx, "Debug Layer", -1, &renderer_settings.debug_gi_layer, 10, 1, 1);
+				ImGui::SliderInt("Debug Layer", &renderer_settings.debug_gi_layer, -1, 10);
 
-				bool_nk_wrapper = renderer_settings.gi ? 1 : 0;
-				nk_checkbox_label(ctx, "Indirect Illumination", &bool_nk_wrapper);
-				renderer_settings.gi = bool_nk_wrapper == 1;
+				ImGui::Checkbox("Indirect Illumination", &renderer_settings.gi);
 
-				bool_nk_wrapper = renderer_settings.gi_shadows ? 1 : 0;
-				nk_checkbox_label(ctx, "Indirect Shadows", &bool_nk_wrapper);
-				renderer_settings.gi_shadows = bool_nk_wrapper == 1;
+				ImGui::Checkbox("Indirect Shadows", &renderer_settings.gi_shadows);
 
-				bool_nk_wrapper = renderer_settings.gi_highres ? 1 : 0;
-				nk_checkbox_label(ctx, "High-Resolution GI", &bool_nk_wrapper);
-				renderer_settings.gi_highres = bool_nk_wrapper == 1;
+				ImGui::Checkbox("High-Resolution GI", &renderer_settings.gi_highres);
 
-				nk_property_int(ctx, "Minimum GI MIP", 0, &renderer_settings.gi_min_mip_level, 4, 1, 1);
+				ImGui::SliderInt("Minimum GI MIP", &renderer_settings.gi_min_mip_level, 0, 4);
 
-				nk_property_int(ctx, "Diffuse GI MIP", 0, &renderer_settings.gi_diffuse_mip_level, 4, 1, 1);
+				ImGui::SliderInt("Diffuse GI MIP", &renderer_settings.gi_diffuse_mip_level, 0, 4);
 
-				nk_property_int(
-				        ctx, "Low-Res Sample Count", 8, &renderer_settings.gi_lowres_samples, 1024, 1, 1);
+				ImGui::SliderInt("Low-Res Sample Count", &renderer_settings.gi_lowres_samples, 8, 1024);
+				ImGui::SliderInt("Sample Count", &renderer_settings.gi_samples, 8, 1024);
 
-				nk_property_int(ctx, "Sample Count", 8, &renderer_settings.gi_samples, 1024, 1, 1);
+				ImGui::SliderFloat("Exposure", &renderer_settings.exposure_override, 0.f, 50.f);
 
-				nk_property_float(
-				        ctx, "Exposure", 0.f, &renderer_settings.exposure_override, 50.f, 0.001f, 0.01f);
+				ImGui::SliderFloat(
+				        "Background Brightness", &renderer_settings.background_intensity, 0.f, 10.f);
 
-				nk_property_float(ctx,
-				                  "Background Brightness",
-				                  0.f,
-				                  &renderer_settings.background_intensity,
-				                  10.f,
-				                  1,
-				                  0.1f);
+				ImGui::Checkbox("Ambient Occlusion", &renderer_settings.ssao);
 
-				bool_nk_wrapper = renderer_settings.ssao ? 1 : 0;
-				nk_checkbox_label(ctx, "Ambient Occlusion", &bool_nk_wrapper);
-				renderer_settings.ssao = bool_nk_wrapper == 1;
+				ImGui::Checkbox("Bloom", &renderer_settings.bloom);
 
-				bool_nk_wrapper = renderer_settings.bloom ? 1 : 0;
-				nk_checkbox_label(ctx, "Bloom", &bool_nk_wrapper);
-				renderer_settings.bloom = bool_nk_wrapper == 1;
+				ImGui::Checkbox("Tonemapping", &renderer_settings.tonemapping);
 
-				bool_nk_wrapper = renderer_settings.tonemapping ? 1 : 0;
-				nk_checkbox_label(ctx, "Tonemapping", &bool_nk_wrapper);
-				renderer_settings.tonemapping = bool_nk_wrapper == 1;
-
-				bool_nk_wrapper = renderer_settings.depth_of_field ? 1 : 0;
-				nk_checkbox_label(ctx, "Depth of Field", &bool_nk_wrapper);
-				renderer_settings.depth_of_field = bool_nk_wrapper == 1;
+				ImGui::Checkbox("Depth of Field", &renderer_settings.depth_of_field);
 
 
-				nk_layout_row_dynamic(ctx, 20, 2);
-
-				if(nk_button_label(ctx, "Apply")) {
+				if(ImGui::Button("Apply")) {
 					apply_window_changed();
 					_factory.settings(renderer_settings, true);
 				} else {
 					_factory.settings(renderer_settings, false);
 				}
 
-				if(nk_button_label(ctx, "Reset")) {
+				if(ImGui::Button("Reset")) {
 					_factory.settings(renderer::Renderer_settings{}, true);
 				}
 			}
-			nk_end(ctx);
+			ImGui::End();
 		}
 
 		void apply_window_changed()

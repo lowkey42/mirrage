@@ -66,6 +66,7 @@ namespace mirrage::input {
 		auto viewport() const noexcept { return _viewport; }
 		void viewport(glm::vec4 v) { _viewport = v; }
 		void window(SDL_Window* w) { _sdl_window = w; }
+		auto window() { return _sdl_window; }
 
 		auto last_pointer_world_position(int idx = 0) const noexcept
 		{

@@ -25,30 +25,32 @@ namespace mirrage::renderer {
 		void draw(Frame_data&) override;
 
 		auto load_texture(int width, int height, int channels, const std::uint8_t* data)
-		        -> std::shared_ptr<struct nk_image> override;
+		        -> std::shared_ptr<void> override;
 
-		auto load_texture(const asset::AID&) -> std::shared_ptr<struct nk_image> override;
+		auto load_texture(const asset::AID&) -> std::shared_ptr<void> override;
 
 		auto name() const noexcept -> const char* override { return "GUI"; }
 
 	  protected:
-		void prepare_draw(gsl::span<const std::uint16_t>   indices,
-		                  gsl::span<const gui::Gui_vertex> vertices,
-		                  glm::mat4                        view_proj) override;
-		void draw_elements(int           texture_handle,
+		void prepare_draw(std::size_t      index_count,
+		                  std::size_t      vertex_count,
+		                  glm::mat4        view_proj,
+		                  Prepare_data_src write_data) override;
+		void draw_elements(void*         texture_handle,
 		                   glm::vec4     clip_rect,
 		                   std::uint32_t offset,
-		                   std::uint32_t count) override;
+		                   std::uint32_t count,
+		                   std::uint32_t vertex_offset) override;
 		void finalize_draw() override;
 
 	  private:
 		struct Loaded_texture {
 		  public:
-			struct nk_image handle;
+			void* handle;
 
 			auto get_if_ready() -> util::maybe<const graphic::DescriptorSet&>;
 
-			Loaded_texture(int                  handle,
+			Loaded_texture(std::uintptr_t       handle,
 			               graphic::Texture_ptr texture,
 			               vk::Sampler,
 			               Deferred_renderer&,
@@ -72,13 +74,13 @@ namespace mirrage::renderer {
 		graphic::Streamed_buffer          _mesh_buffer;
 
 		// texture cache/store
-		int                                                            _next_texture_handle = 0;
-		std::vector<std::shared_ptr<Loaded_texture>>                   _loaded_textures;
-		std::unordered_map<asset::AID, std::weak_ptr<struct nk_image>> _loaded_textures_by_aid;
-		std::unordered_map<int, std::weak_ptr<Loaded_texture>>         _loaded_textures_by_handle;
+		std::uintptr_t                                                    _next_texture_handle = 0;
+		std::vector<std::shared_ptr<Loaded_texture>>                      _loaded_textures;
+		std::unordered_map<asset::AID, std::weak_ptr<void>>               _loaded_textures_by_aid;
+		std::unordered_map<std::uintptr_t, std::weak_ptr<Loaded_texture>> _loaded_textures_by_handle;
 
 		// temporary values used during draw
-		int                                _bound_texture_handle = -1;
+		util::maybe<std::uintptr_t>        _bound_texture_handle = util::nothing;
 		util::maybe<vk::CommandBuffer>     _current_command_buffer;
 		util::maybe<graphic::Framebuffer&> _current_framebuffer;
 	};

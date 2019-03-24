@@ -19,9 +19,6 @@
 [submodule "dependencies/magic_get"]
 	path = dependencies/magic_get
 	url = https://github.com/apolukhin/magic_get.git
-[submodule "dependencies/nuklear"]
-	path = dependencies/nuklear
-	url = https://github.com/vurtun/nuklear.git
 [submodule "dependencies/physfs"]
 	path = dependencies/physfs
 	url = https://github.com/lowkey42/physfs.git
@@ -43,3 +40,6 @@
 [submodule "dependencies/crunch"]
 	path = dependencies/crunch
 	url = https://github.com/lowkey42/crunch.git
+[submodule "dependencies/imgui"]
+	path = dependencies/imgui
+	url = https://github.com/ocornut/imgui.git

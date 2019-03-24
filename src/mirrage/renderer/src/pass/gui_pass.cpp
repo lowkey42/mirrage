@@ -73,7 +73,7 @@ namespace mirrage::renderer {
 			return device.create_descriptor_set_layout(binding);
 		}
 
-		constexpr auto max_render_buffer_size = vk::DeviceSize(1024) * 1024;
+		constexpr auto max_render_buffer_size = vk::DeviceSize(1024) * 1024 * 10;
 	} // namespace
 
 
@@ -102,7 +102,7 @@ namespace mirrage::renderer {
 
 		_current_command_buffer = frame.main_command_buffer;
 		_current_framebuffer    = _framebuffers.at(frame.swapchain_image);
-		_bound_texture_handle   = -1;
+		_bound_texture_handle   = util::nothing;
 
 		draw_gui();
 
@@ -119,12 +119,12 @@ namespace mirrage::renderer {
 		util::erase_if(_loaded_textures_by_handle, [](auto& t) { return t.second.expired(); });
 	}
 
-	Gui_pass::Loaded_texture::Loaded_texture(int                     handle,
+	Gui_pass::Loaded_texture::Loaded_texture(std::uintptr_t          handle,
 	                                         graphic::Texture_ptr    texture,
 	                                         vk::Sampler             sampler,
 	                                         Deferred_renderer&      renderer,
 	                                         vk::DescriptorSetLayout desc_layout)
-	  : handle{nk_image_id(handle)}
+	  : handle{reinterpret_cast<void*>(handle)}
 	  , descriptor_set(renderer.create_descriptor_set(desc_layout, 1))
 	  , texture(std::move(texture))
 	  , sampler(sampler)
@@ -156,7 +156,7 @@ namespace mirrage::renderer {
 	}
 
 	auto Gui_pass::load_texture(int width, int height, int channels, const std::uint8_t* data)
-	        -> std::shared_ptr<struct nk_image>
+	        -> std::shared_ptr<void>
 	{
 		auto handle = _next_texture_handle++;
 
@@ -178,14 +178,14 @@ namespace mirrage::renderer {
 
 		_loaded_textures_by_handle.emplace(handle, entry);
 
-		auto return_value = std::shared_ptr<struct nk_image>(entry, &entry->handle);
+		auto return_value = std::shared_ptr<void>(entry, entry->handle);
 
-		_loaded_textures.emplace_back(std::move(entry));
+		_loaded_textures.emplace_back(entry);
 
 		return return_value;
 	}
 
-	auto Gui_pass::load_texture(const asset::AID& aid) -> std::shared_ptr<struct nk_image>
+	auto Gui_pass::load_texture(const asset::AID& aid) -> std::shared_ptr<void>
 	{
 		auto cache_entry = _loaded_textures_by_aid[aid];
 		if(auto sp = cache_entry.lock()) {
@@ -203,18 +203,19 @@ namespace mirrage::renderer {
 
 		_loaded_textures_by_handle.emplace(handle, entry);
 
-		auto return_value = std::shared_ptr<struct nk_image>(entry, &entry->handle);
+		auto return_value = std::shared_ptr<void>(entry, &entry->handle);
 
-		_loaded_textures.emplace_back(std::move(entry));
+		_loaded_textures.emplace_back(entry);
 
 		cache_entry = return_value;
 		return return_value;
 	}
 
 
-	void Gui_pass::prepare_draw(gsl::span<const std::uint16_t>   indices,
-	                            gsl::span<const gui::Gui_vertex> vertices,
-	                            glm::mat4                        view_proj)
+	void Gui_pass::prepare_draw(std::size_t      index_count,
+	                            std::size_t      vertex_count,
+	                            glm::mat4        view_proj,
+	                            Prepare_data_src write_data)
 	{
 
 		auto& cb = _current_command_buffer.get_or_throw(
@@ -224,16 +225,20 @@ namespace mirrage::renderer {
 		        "Gui_pass::prepare_draw ha to be "
 		        "called inside a draw call!");
 
-		auto index_offset = vertices.size_bytes();
-		_mesh_buffer.update_objs(0, graphic::to_bytes(vertices));
-		_mesh_buffer.update_objs(gsl::narrow<std::int32_t>(index_offset), graphic::to_bytes(indices));
+		auto index_offset = vertex_count * sizeof(gui::Gui_vertex);
+
+		_mesh_buffer.resize(gsl::narrow<std::int32_t>(index_offset + sizeof(std::int16_t) * index_count));
+
+		_mesh_buffer.update_objects<char>(0, [&](gsl::span<char> data) {
+			write_data(reinterpret_cast<std::uint16_t*>(data.data() + index_offset),
+			           reinterpret_cast<gui::Gui_vertex*>(data.data()));
+		});
+
 		_mesh_buffer.flush(cb,
 		                   vk::PipelineStageFlagBits::eVertexInput,
 		                   vk::AccessFlagBits::eVertexAttributeRead | vk::AccessFlagBits::eIndexRead);
 
-
 		_render_pass.unsafe_begin_renderpass(cb, fb); // ended by finalize_draw()
-
 
 		_render_pass.push_constant("camera"_strid, view_proj);
 
@@ -242,34 +247,38 @@ namespace mirrage::renderer {
 		        _mesh_buffer.read_buffer(), gsl::narrow<std::uint32_t>(index_offset), vk::IndexType::eUint16);
 	}
 
-	void Gui_pass::draw_elements(int           texture_handle,
+	void Gui_pass::draw_elements(void*         texture_handle,
 	                             glm::vec4     clip_rect,
 	                             std::uint32_t offset,
-	                             std::uint32_t count)
+	                             std::uint32_t count,
+	                             std::uint32_t vertex_offset)
 	{
-		auto& cb = _current_command_buffer.get_or_throw(
-		        "Gui_pass::prepare_draw ha to be "
-		        "called inside a draw call!");
+		auto int_tex_handle = reinterpret_cast<std::uintptr_t>(texture_handle);
 
-		if(texture_handle != _bound_texture_handle) {
-			auto texture = _loaded_textures_by_handle[texture_handle].lock();
-			MIRRAGE_INVARIANT(texture, "The requested texture has not been loaded or already been freed!");
+		auto& cb = _current_command_buffer.get_or_throw(
+		        "Gui_pass::prepare_draw has to be called inside a draw call!");
+
+		if(_bound_texture_handle.is_nothing() || int_tex_handle != _bound_texture_handle.get_or_throw()) {
+			auto texture = _loaded_textures_by_handle[int_tex_handle].lock();
+			MIRRAGE_INVARIANT(texture,
+			                  "The requested texture (" << int_tex_handle
+			                                            << ") has not been loaded or already been freed!");
 
 			auto descset = texture->get_if_ready();
 			if(descset.is_nothing())
 				return;
 
 			_render_pass.bind_descriptor_sets(0, {descset.get_or_throw().get_ptr(), 1});
-			_bound_texture_handle = texture_handle;
+			_bound_texture_handle = int_tex_handle;
 		}
 
 		cb.setScissor(0,
 		              {vk::Rect2D{vk::Offset2D(static_cast<std::int32_t>(clip_rect.x),
 		                                       static_cast<std::int32_t>(clip_rect.y)),
-		                          vk::Extent2D(static_cast<std::uint32_t>(clip_rect.z),
-		                                       static_cast<std::uint32_t>(clip_rect.w))}});
+		                          vk::Extent2D(static_cast<std::uint32_t>(clip_rect.z - clip_rect.x),
+		                                       static_cast<std::uint32_t>(clip_rect.w - clip_rect.y))}});
 
-		cb.drawIndexed(count, 1, offset, 0, 0);
+		cb.drawIndexed(count, 1, offset, std::int32_t(vertex_offset), 0);
 	}
 
 	void Gui_pass::finalize_draw() { _render_pass.unsafe_end_renderpass(); }

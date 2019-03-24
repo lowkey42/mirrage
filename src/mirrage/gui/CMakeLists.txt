@@ -9,11 +9,8 @@ file(GLOB_RECURSE HEADER_FILES
 )
 
 add_library(mirrage_gui STATIC
-	src/color_picker.cpp
 	src/debug_ui.cpp
 	src/gui.cpp
-	src/menu.cpp
-	src/text_edit.cpp
 	${HEADER_FILES}
 )
 add_library(mirrage::gui ALIAS mirrage_gui)
@@ -46,7 +43,7 @@ target_link_libraries(mirrage_gui
 		mirrage::utils
 		gsl
 		glm::glm
-		nuklear
+		imgui::imgui
 		mirrage::asset
 		mirrage::input
 		sf2

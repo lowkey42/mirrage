@@ -7,34 +7,71 @@
 
 #pragma once
 
-#include <cstdint>
-
-#define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
-#define NK_INCLUDE_FONT_BAKING
-#define NK_INCLUDE_DEFAULT_FONT
-#include <nuklear.h>
-
 #include <mirrage/utils/maybe.hpp>
-#include <mirrage/utils/template_utils.hpp>
+#include <mirrage/utils/str_id.hpp>
 #include <mirrage/utils/units.hpp>
 
 #include <glm/vec2.hpp>
-#include <gsl/gsl>
+#include <glm/vec4.hpp>
 
+#include <imgui.h>
+
+#include <cstdint>
 #include <memory>
 
-extern nk_size nk_do_progress(nk_flags*                       state,
-                              struct nk_command_buffer*       out,
-                              struct nk_rect                  bounds,
-                              nk_size                         value,
-                              nk_size                         max,
-                              int                             modifiable,
-                              const struct nk_style_progress* style,
-                              struct nk_input*                in);
 
-struct nk_context;
+namespace ImGui {
+	enum class WindowPosition_X { center = 0, left = 1, right = 2 };
+	enum class WindowPosition_Y { center = 0, top = 1, bottom = 2 };
+
+	extern void PositionNextWindow(glm::vec2        size,
+	                               WindowPosition_X x,
+	                               WindowPosition_Y y,
+	                               glm::vec2        offset = {});
+
+	struct Column {
+		const char* header = "";
+		float       size   = -1.f;
+
+		Column() = default;
+		/*implicit*/ Column(const char* header, float size = -1) : header(header), size(size) {}
+	};
+
+	extern void BeginTable(const char* id,
+	                       std::initializer_list<Column>,
+	                       bool first_call,
+	                       bool border    = true,
+	                       bool separator = true);
+
+	extern float ValueSliderFloat(const char* label,
+	                              float       v,
+	                              float       v_min,
+	                              float       v_max,
+	                              const char* format = "%.3f",
+	                              float       power  = 1.0f);
+
+	// ImGui::InputText() with std::string
+	// Because text input needs dynamic resizing, we need to setup a callback to grow the capacity
+	IMGUI_API bool InputText(const char*            label,
+	                         std::string*           str,
+	                         ImGuiInputTextFlags    flags     = 0,
+	                         ImGuiInputTextCallback callback  = nullptr,
+	                         void*                  user_data = nullptr);
+	IMGUI_API bool InputTextMultiline(const char*            label,
+	                                  std::string*           str,
+	                                  const ImVec2&          size      = ImVec2(0, 0),
+	                                  ImGuiInputTextFlags    flags     = 0,
+	                                  ImGuiInputTextCallback callback  = nullptr,
+	                                  void*                  user_data = nullptr);
+	IMGUI_API bool InputTextWithHint(const char*            label,
+	                                 const char*            hint,
+	                                 std::string*           str,
+	                                 ImGuiInputTextFlags    flags     = 0,
+	                                 ImGuiInputTextCallback callback  = nullptr,
+	                                 void*                  user_data = nullptr);
+} // namespace ImGui
+
+struct ImFont;
 
 namespace mirrage {
 	class Engine;
@@ -57,13 +94,10 @@ namespace mirrage::gui {
 		struct Nk_renderer;
 	}
 
-	extern auto nk_interactive_text(struct nk_context* ctx, const char* str, int len, nk_color color) -> int;
-
-
 	struct Gui_vertex {
-		glm::vec2 position;
-		glm::vec2 uv;
-		nk_byte   color[4];
+		glm::vec2    position;
+		glm::vec2    uv;
+		std::uint8_t color[4];
 	};
 
 	class Gui_renderer_interface {
@@ -74,22 +108,26 @@ namespace mirrage::gui {
 		void draw_gui();
 
 		virtual auto load_texture(int width, int height, int channels, const std::uint8_t* data)
-		        -> std::shared_ptr<struct nk_image> = 0;
+		        -> std::shared_ptr<void> = 0;
 
-		virtual auto load_texture(const asset::AID&) -> std::shared_ptr<struct nk_image> = 0;
+		virtual auto load_texture(const asset::AID&) -> std::shared_ptr<void> = 0;
 
 	  protected:
 		friend class Gui;
 		friend struct detail::Nk_renderer;
 
-		virtual void prepare_draw(gsl::span<const std::uint16_t> indices,
-		                          gsl::span<const Gui_vertex>    vertices,
-		                          glm::mat4                      view_proj)  = 0;
-		virtual void draw_elements(int           texture_handle,
+		using Prepare_data_src = std::function<void(std::uint16_t*, Gui_vertex*)>;
+
+		virtual void prepare_draw(std::size_t      index_count,
+		                          std::size_t      vertex_count,
+		                          glm::mat4        view_proj,
+		                          Prepare_data_src write_data)  = 0;
+		virtual void draw_elements(void*         texture_handle,
 		                           glm::vec4     clip_rect,
 		                           std::uint32_t offset,
-		                           std::uint32_t count) = 0;
-		virtual void finalize_draw()                    = 0;
+		                           std::uint32_t count,
+		                           std::uint32_t vertex_offset) = 0;
+		virtual void finalize_draw()                            = 0;
 
 	  private:
 		template <class>
@@ -98,10 +136,7 @@ namespace mirrage::gui {
 		Gui* _gui;
 	};
 
-	// TODO: gamepad input: https://gist.github.com/vurtun/519801825b4ccfad6767
-	//                      https://github.com/vurtun/nuklear/issues/50
-	// TODO: theme support: https://github.com/vurtun/nuklear/blob/master/demo/style.c
-	//                      https://github.com/vurtun/nuklear/blob/master/example/skinning.c
+
 	class Gui {
 	  public:
 		Gui(glm::vec4 viewport, asset::Asset_manager& assets, input::Input_manager& input);
@@ -110,20 +145,14 @@ namespace mirrage::gui {
 		void draw();
 		void start_frame();
 
-		auto ctx() -> nk_context*;
+		auto find_font(util::Str_id) const -> util::maybe<ImFont*>;
 
 		auto viewport() const noexcept { return _viewport; }
-		auto virtual_viewport() const noexcept -> glm::vec4;
-
 		void viewport(glm::vec4 new_viewport);
-
-		struct ::nk_rect centered(int width, int height);
-		struct ::nk_rect centered_left(int width, int height);
-		struct ::nk_rect centered_right(int width, int height);
 
 		auto ready() const noexcept { return bool(_impl); }
 
-		auto load_texture(const asset::AID&) -> std::shared_ptr<struct nk_image>;
+		auto load_texture(const asset::AID&) -> std::shared_ptr<void>;
 
 	  private:
 		template <class>
@@ -159,32 +188,4 @@ namespace mirrage::gui {
 		}
 	};
 
-
-	// widgets
-	extern bool color_picker(nk_context*, util::Rgb& color, float width, float factor = 1.f);
-	extern bool color_picker(nk_context*, util::Rgba& color, float width, float factor = 1.f);
-
-	extern void begin_menu(nk_context*, int& active);
-	extern bool menu_button(nk_context*, const char* text, bool enabled = true);
-	extern void end_menu(nk_context*);
-
-	class Text_edit {
-	  public:
-		Text_edit();
-		Text_edit(Text_edit&&) = default;
-		Text_edit& operator=(Text_edit&&) = default;
-		~Text_edit();
-
-		void reset(const std::string&);
-		void get(std::string&) const;
-
-		auto active() const noexcept { return _active; }
-
-		void update_and_draw(nk_context*, nk_flags type);
-		void update_and_draw(nk_context*, nk_flags type, std::string&);
-
-	  private:
-		util::maybe<nk_text_edit> _data;
-		bool                      _active = false;
-	};
 } // namespace mirrage::gui

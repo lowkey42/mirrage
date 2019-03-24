@@ -44,16 +44,11 @@ namespace mirrage {
 
 		auto& anim = anim_mb.get_or_throw();
 
-		auto ctx = _gui.ctx();
-		if(nk_begin_titled(ctx,
-		                   "Animation",
-		                   "Animation",
-		                   _gui.centered_right(300, 500),
-		                   NK_WINDOW_BORDER | NK_WINDOW_MOVABLE | NK_WINDOW_TITLE | NK_WINDOW_MINIMIZABLE)) {
+		ImGui::PositionNextWindow(
+		        {300, 500}, ImGui::WindowPosition_X::right, ImGui::WindowPosition_Y::center);
+		if(ImGui::Begin("Animation")) {
+			ImGui::TextUnformatted("Animation");
 
-			nk_layout_row_dynamic(ctx, 20, 1);
-
-			nk_label(ctx, "Animation", NK_TEXT_LEFT);
 			auto animations_strs = std::array<const char*, 9>{
 			        {"[None]", "Attack", "Dance", "Die", "Flee", "Idle", "Sad", "Sleep", "Walk"}};
 			auto animations_ids = std::array<util::Str_id, 9>{{""_strid,
@@ -68,20 +63,13 @@ namespace mirrage {
 			(void) animations_ids;
 
 			auto curr_animation_id = anim.animation_id().get_or(""_strid);
-			auto curr_idx =
-			        std::distance(animations_ids.begin(),
-			                      std::find(animations_ids.begin(), animations_ids.end(), curr_animation_id));
+			auto curr_idx          = int(std::distance(
+                    animations_ids.begin(),
+                    std::find(animations_ids.begin(), animations_ids.end(), curr_animation_id)));
 
-			auto new_idx = nk_combo(ctx,
-			                        animations_strs.data(),
-			                        gsl::narrow<int>(animations_strs.size()),
-			                        int(curr_idx),
-			                        14,
-			                        nk_vec2(100.f, 200));
-
-			if(new_idx != curr_idx) {
-				anim.play(animations_ids.at(std::size_t(new_idx)));
-				anim_lbs_mb.process([&](auto& anim) { anim.play(animations_ids.at(std::size_t(new_idx))); });
+			if(ImGui::Combo("Animation", &curr_idx, animations_strs.data(), int(animations_strs.size()))) {
+				anim.play(animations_ids.at(std::size_t(curr_idx)));
+				anim_lbs_mb.process([&](auto& anim) { anim.play(animations_ids.at(std::size_t(curr_idx))); });
 			}
 
 			anim.animation().process([&](auto& curr_animation) {
@@ -106,8 +94,7 @@ namespace mirrage {
 
 				auto duration = curr_animation->duration();
 
-				nk_label(ctx, "Time", NK_TEXT_LEFT);
-				auto new_time = nk_slide_float(ctx, 0.f, time, duration, 0.01f);
+				auto new_time = ImGui::ValueSliderFloat("Time", time, 0.f, duration);
 				if(std::abs(new_time - time) > 0.00001f) {
 					dqs_anim.mark_dirty();
 					lbs_anim.mark_dirty();
@@ -119,29 +106,30 @@ namespace mirrage {
 						curr_lbs_state->time = new_time;
 				}
 
-				nk_label(ctx,
-				         (util::to_string(new_time) + " / " + util::to_string(duration)).c_str(),
-				         NK_TEXT_LEFT);
+				ImGui::TextUnformatted(
+				        (util::to_string(new_time) + " / " + util::to_string(duration)).c_str());
 
-				auto speed = anim.speed();
-				nk_property_float(ctx, "Speed", 0.f, &speed, 5.f, 0.1f, 0.05f);
-				anim.speed(speed);
+				anim.speed(ImGui::ValueSliderFloat("Speed", anim.speed(), 0.f, 5.f));
 
 
 				if(anim.paused())
-					anim.pause(!nk_button_label(ctx, "Continue"));
+					anim.pause(!ImGui::Button("Continue"));
 				else
-					anim.pause(nk_button_label(ctx, "Pause"));
+					anim.pause(ImGui::Button("Pause"));
+
+				ImGui::SameLine();
 
 				if(anim.reversed())
-					anim.reverse(!nk_button_label(ctx, "Reverse (->)"));
+					anim.reverse(!ImGui::Button("Reverse (->)"));
 				else
-					anim.reverse(nk_button_label(ctx, "Reverse (<-)"));
+					anim.reverse(ImGui::Button("Reverse (<-)"));
+
+				ImGui::SameLine();
 
 				if(anim.looped())
-					anim.loop(!nk_button_label(ctx, "Once"));
+					anim.loop(!ImGui::Button("Once"));
 				else
-					anim.loop(nk_button_label(ctx, "Repeat"));
+					anim.loop(ImGui::Button("Repeat"));
 
 
 				anim_lbs_mb.process([&](auto& anim_lbs) {
@@ -153,18 +141,18 @@ namespace mirrage {
 			});
 		}
 
-		nk_label(ctx, "Rotation Test", NK_TEXT_LEFT);
+		ImGui::TextUnformatted("Rotation Test");
 		_animation_test2_dqs.get<renderer::Simple_animation_controller_comp>().process([&](auto& anim) {
 			if(anim.paused())
-				anim.pause(!nk_button_label(ctx, "Continue"));
+				anim.pause(!ImGui::Button("Continue"));
 			else
-				anim.pause(nk_button_label(ctx, "Pause"));
+				anim.pause(ImGui::Button("Pause"));
 
 			_animation_test2_lbs.get<renderer::Simple_animation_controller_comp>().process(
 			        [&](auto& anim_lbs) { anim_lbs.pause(anim.paused()); });
 		});
 
-		nk_end(ctx);
+		ImGui::End();
 
 		Test_screen::_draw();
 	}

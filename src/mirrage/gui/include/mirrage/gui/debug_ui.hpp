@@ -11,6 +11,8 @@
 #include <mirrage/utils/console_command.hpp>
 #include <mirrage/utils/messagebus.hpp>
 
+#include <imgui.h>
+
 #include <iostream>
 #include <unordered_set>
 
@@ -47,24 +49,20 @@ namespace mirrage::gui {
 		void draw();
 
 	  private:
-		static constexpr auto max_command_length = 256;
+		Gui&                     _gui;
+		util::Mailbox_collection _mailbox;
+		asset::Asset_manager&    _assets;
+		ImGuiTextFilter          _text_filter;
 
-		Gui&                                 _gui;
-		util::Mailbox_collection             _mailbox;
-		asset::Asset_manager&                _assets;
-		bool                                 _show_console        = false;
-		bool                                 _focus_prompt        = false;
-		bool                                 _show_suggestions    = false;
-		int                                  _selected_suggestion = -1;
-		std::uint32_t                        _scroll_x            = 0;
-		std::uint32_t                        _scroll_y            = 0;
-		bool                                 _scroll_lock         = true;
-		std::array<char, max_command_length> _command_input_buffer{};
-		int                                  _command_input_length = 0;
-		util::Console_command_container      _commands;
-		std::unordered_set<std::string>      _shown_debug_menus;
-		std::vector<std::string>             _history;
-		int                                  _current_history_entry = -1;
+		bool        _show_console     = false;
+		bool        _scroll_to_bottom = true;
+		bool        _focus_prompt     = true;
+		std::string _command;
+
+		util::Console_command_container _commands;
+		std::unordered_set<std::string> _shown_debug_menus;
+		std::vector<std::string>        _history;
+		int                             _current_history_entry = -1;
 
 		void _save_history();
 	};
