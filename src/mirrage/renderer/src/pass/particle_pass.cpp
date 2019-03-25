@@ -96,14 +96,14 @@ namespace mirrage::renderer {
 			if(allowed_queues[0] == allowed_queues[1])
 				queue_count = 1;
 
-			auto create_info = vk::BufferCreateInfo{vk::BufferCreateFlags{},
-			                                        size_bytes,
-			                                        vk::BufferUsageFlagBits::eTransferDst
-			                                                | vk::BufferUsageFlagBits::eStorageBuffer
-			                                                | vk::BufferUsageFlagBits::eVertexBuffer,
-			                                        vk::SharingMode::eConcurrent,
-			                                        queue_count,
-			                                        allowed_queues.data()};
+			auto create_info = vk::BufferCreateInfo{
+			        vk::BufferCreateFlags{},
+			        size_bytes,
+			        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer
+			                | vk::BufferUsageFlagBits::eVertexBuffer,
+			        queue_count > 1 ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive,
+			        queue_count,
+			        allowed_queues.data()};
 			particles = renderer.device().create_buffer(create_info, false, graphic::Memory_lifetime::normal);
 		}
 
@@ -149,7 +149,7 @@ namespace mirrage::renderer {
 			        vk::BufferCreateFlags{},
 			        size_bytes,
 			        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
-			        vk::SharingMode::eConcurrent,
+			        queue_count > 1 ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive,
 			        queue_count,
 			        allowed_queues.data()};
 			buffer = renderer.device().create_buffer(create_info, true, graphic::Memory_lifetime::normal);
