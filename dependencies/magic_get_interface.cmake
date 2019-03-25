@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-project(magic_get)
+include_guard()
 
-add_library(magic_get INTERFACE)
-add_library(boost::magic_get ALIAS magic_get)
-target_include_directories(magic_get INTERFACE
+add_library(pfr INTERFACE)
+add_library(boost::pfr ALIAS pfr)
+target_include_directories(pfr INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/magic_get/include>
 	$<INSTALL_INTERFACE:include>)
 
@@ -15,7 +15,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 	target_compile_options(magic_get INTERFACE -DBOOST_PFR_USE_CPP17=0)
 endif()
 
-install(TARGETS magic_get EXPORT magic_get_targets INCLUDES DESTINATION include)
+install(TARGETS pfr EXPORT magic_get_targets INCLUDES DESTINATION include)
 install(
     DIRECTORY ${CMAKE_SOURCE_DIR}/magic_get/include/
     DESTINATION include

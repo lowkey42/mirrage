@@ -13,7 +13,9 @@ include(gsl_interface.cmake)
 include(moodycamel_interface.cmake)
 include(imgui_interface.cmake)
 
-include(magic_get_interface.cmake)
+if(NOT TARGET boost::pfr)
+	include(magic_get_interface.cmake)
+endif()
 
 SET(PHYSFS_ARCHIVE_7Z FALSE CACHE BOOL "" FORCE)
 SET(PHYSFS_BUILD_SHARED FALSE CACHE BOOL "" FORCE)
