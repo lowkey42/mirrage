@@ -138,6 +138,9 @@ namespace mirrage::renderer {
 
 			auto allowed_queues =
 			        std::array<uint32_t, 2>{renderer.compute_queue_family(), renderer.queue_family()};
+			auto queue_count = gsl::narrow<std::uint32_t>(allowed_queues.size());
+			if(allowed_queues[0] == allowed_queues[1])
+				queue_count = 1;
 
 			auto size_bytes = vk::DeviceSize(capacity) * vk::DeviceSize(sizeof(Particle_keyframe))
 			                  + vk::DeviceSize(sizeof(Type_uniforms));
@@ -147,7 +150,7 @@ namespace mirrage::renderer {
 			        size_bytes,
 			        vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eStorageBuffer,
 			        vk::SharingMode::eConcurrent,
-			        gsl::narrow<std::uint32_t>(allowed_queues.size()),
+			        queue_count,
 			        allowed_queues.data()};
 			buffer = renderer.device().create_buffer(create_info, true, graphic::Memory_lifetime::normal);
 
