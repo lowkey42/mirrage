@@ -92,13 +92,17 @@ namespace mirrage::renderer {
 
 			auto allowed_queues =
 			        std::array<uint32_t, 2>{renderer.compute_queue_family(), renderer.queue_family()};
+			auto queue_count = gsl::narrow<std::uint32_t>(allowed_queues.size());
+			if(allowed_queues[0] == allowed_queues[1])
+				queue_count = 1;
+
 			auto create_info = vk::BufferCreateInfo{vk::BufferCreateFlags{},
 			                                        size_bytes,
 			                                        vk::BufferUsageFlagBits::eTransferDst
 			                                                | vk::BufferUsageFlagBits::eStorageBuffer
 			                                                | vk::BufferUsageFlagBits::eVertexBuffer,
 			                                        vk::SharingMode::eConcurrent,
-			                                        gsl::narrow<std::uint32_t>(allowed_queues.size()),
+			                                        queue_count,
 			                                        allowed_queues.data()};
 			particles = renderer.device().create_buffer(create_info, false, graphic::Memory_lifetime::normal);
 		}
