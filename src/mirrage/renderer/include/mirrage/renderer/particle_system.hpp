@@ -443,8 +443,8 @@ namespace mirrage::asset {
 	template <>
 	struct Loader<renderer::Particle_system_config> {
 	  public:
-		static auto              load(istream in) -> async::task<renderer::Particle_system_config>;
-		[[noreturn]] static void save(ostream, const renderer::Particle_system_config&)
+		auto              load(istream in) -> async::task<renderer::Particle_system_config>;
+		[[noreturn]] void save(ostream, const renderer::Particle_system_config&)
 		{
 			MIRRAGE_FAIL("Save of Particle_system_config is not supported!");
 		}
@@ -453,8 +453,8 @@ namespace mirrage::asset {
 	template <>
 	struct Loader<renderer::Particle_type_config> {
 	  public:
-		static auto              load(istream in) -> async::task<renderer::Particle_type_config>;
-		[[noreturn]] static void save(ostream, const renderer::Particle_type_config&)
+		auto              load(istream in) -> async::task<renderer::Particle_type_config>;
+		[[noreturn]] void save(ostream, const renderer::Particle_type_config&)
 		{
 			MIRRAGE_FAIL("Save of Particle_type_config is not supported!");
 		}

@@ -472,12 +472,16 @@ namespace mirrage::renderer {
 			assets.create_stateful_loader<Material>(device, assets, material_sampler, material_layout);
 			assets.create_stateful_loader<Model>(device, assets, draw_queue);
 			assets.create_stateful_loader<Particle_script>(device, storage_buffer, uniform_buffer);
+			assets.create_stateful_loader<Particle_system_config>();
+			assets.create_stateful_loader<Particle_type_config>();
 		}
 		~Asset_loaders()
 		{
+			assets.remove_stateful_loader<Particle_type_config>();
+			assets.remove_stateful_loader<Particle_system_config>();
+			assets.remove_stateful_loader<Particle_script>();
 			assets.remove_stateful_loader<Model>();
 			assets.remove_stateful_loader<Material>();
-			assets.remove_stateful_loader<Particle_script>();
 		}
 	};
 
