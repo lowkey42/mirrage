@@ -14,6 +14,10 @@
 #include <cstdint>
 #include <string>
 
+#ifdef _WIN32
+#include "SDL_syswm.h"
+#endif
+
 
 extern void ref_embedded_assets_mirrage_gui();
 
@@ -274,7 +278,7 @@ namespace mirrage::gui {
 				int display_w, display_h;
 				SDL_GetWindowSize(window, &w, &h);
 				SDL_GL_GetDrawableSize(window, &display_w, &display_h);
-				io.DisplaySize = ImVec2(w, h);
+				io.DisplaySize = ImVec2(static_cast<float>(w), static_cast<float>(h));
 				if(w > 0 && h > 0)
 					io.DisplayFramebufferScale =
 					        ImVec2(static_cast<float>(display_w) / w, static_cast<float>(display_h) / h);

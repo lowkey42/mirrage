@@ -103,7 +103,7 @@ namespace mirrage::renderer {
 				} else {
 					auto position = transform.position + bb.offset;
 					if(bb.active && bb.material.ready()
-					   && is_visible(viewers.front(), position, bb.size.length())) {
+					   && is_visible(viewers.front(), position, glm::length(bb.size))) {
 						frame.billboard_queue.emplace_back(bb);
 						frame.billboard_queue.back().offset = position;
 					}

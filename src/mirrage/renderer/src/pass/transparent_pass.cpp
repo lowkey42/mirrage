@@ -516,7 +516,7 @@ namespace mirrage::renderer {
 				        {vk::DeviceSize(particle.emitter->particle_offset())
 				         * vk::DeviceSize(sizeof(Particle))});
 
-				dpc.light_data2.w = mip_level;
+				dpc.light_data2.w = static_cast<float>(mip_level);
 				dpc.model         = glm::mat4(1);
 				if(particle.type_cfg->geometry == Particle_geometry::billboard) {
 					dpc.model    = glm::inverse(_renderer.global_uniforms().view_mat);

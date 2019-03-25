@@ -293,7 +293,7 @@ namespace mirrage::renderer {
 		for(auto i = std::size_t(0); i < frame.particle_queue.size(); i++) {
 			auto& p = frame.particle_queue[i];
 
-			effector_count += p.effectors.size();
+			effector_count += gsl::narrow<std::int32_t>(p.effectors.size());
 
 			auto spawn = p.emitter->spawn(_rand);
 			if(particle_count + spawn >= max_particles) {

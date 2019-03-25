@@ -53,7 +53,9 @@ namespace mirrage::renderer {
 			_spawn_entry_timer = 0;
 		}
 
-		auto pps = std::normal_distribution<float>(entry.particles_per_second, entry.stddev)(rand);
+		auto pps = (entry.stddev > 0.0f)
+		                   ? std::normal_distribution<float>(entry.particles_per_second, entry.stddev)(rand)
+		                   : entry.particles_per_second;
 
 		auto spawn = static_cast<std::int32_t>(_time_accumulator * pps);
 
@@ -83,8 +85,8 @@ namespace mirrage::renderer {
 	  , _loaded(_cfg.ready())
 	  , _emitters(!_loaded ? Emitter_list{}
 	                       : util::build_vector(
-	                                 _cfg->emitters.size(),
-	                                 [&](auto idx) { return Particle_emitter(_cfg->emitters[idx]); }))
+	                               _cfg->emitters.size(),
+	                               [&](auto idx) { return Particle_emitter(_cfg->emitters[idx]); }))
 	  , _effectors(!_loaded ? Effector_list{} : _cfg->effectors)
 	  , _position(position)
 	  , _rotation(rotation)
@@ -162,8 +164,8 @@ namespace mirrage::renderer {
 		auto desc_sets      = std::array<vk::DescriptorSetLayout, 2>{shared_desc_set, storage_buffer};
 		auto push_constants = vk::PushConstantRange{vk::ShaderStageFlagBits::eCompute, 0, 4 * 4 * 4 * 2};
 
-		return device.vk_device()->createPipelineLayoutUnique(
-		        vk::PipelineLayoutCreateInfo{{}, desc_sets.size(), desc_sets.data(), 1, &push_constants});
+		return device.vk_device()->createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo{
+		        {}, gsl::narrow<std::uint32_t>(desc_sets.size()), desc_sets.data(), 1, &push_constants});
 	}
 
 } // namespace mirrage::renderer
@@ -201,12 +203,13 @@ namespace mirrage::asset {
 	{
 		auto r = renderer::Particle_system_config();
 
-		sf2::deserialize_json(in,
-		                      [&](auto& msg, uint32_t row, uint32_t column) {
-			                      LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at "
-			                                       << row << ":" << column << ": " << msg;
-		                      },
-		                      r);
+		sf2::deserialize_json(
+		        in,
+		        [&](auto& msg, uint32_t row, uint32_t column) {
+			        LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at " << row << ":"
+			                         << column << ": " << msg;
+		        },
+		        r);
 
 		auto loads = std::vector<async::task<void>>();
 		loads.reserve(r.emitters.size() * 2u);
@@ -229,12 +232,13 @@ namespace mirrage::asset {
 	{
 		auto r = renderer::Particle_type_config();
 
-		sf2::deserialize_json(in,
-		                      [&](auto& msg, uint32_t row, uint32_t column) {
-			                      LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at "
-			                                       << row << ":" << column << ": " << msg;
-		                      },
-		                      r);
+		sf2::deserialize_json(
+		        in,
+		        [&](auto& msg, uint32_t row, uint32_t column) {
+			        LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at " << row << ":"
+			                         << column << ": " << msg;
+		        },
+		        r);
 
 		auto script     = in.manager().load<renderer::Particle_script>(r.update_script_id);
 		r.update_script = script;
