@@ -80,9 +80,7 @@ namespace mirrage::graphic {
 	                                        vk::Format::eD32Sfloat,
 	                                        vk::Format::eD16Unorm,
 	                                        vk::Format::eD16UnormS8Uint},
-	                                       vk::FormatFeatureFlagBits::eDepthStencilAttachment
-	                                               | vk::FormatFeatureFlagBits::eBlitDst
-	                                               | vk::FormatFeatureFlagBits::eBlitSrc,
+	                                       vk::FormatFeatureFlagBits::eDepthStencilAttachment,
 	                                       Format_usage::image_optimal)
 	                          .get_or_throw("No depth format supported"
 	                                        " by device"))
