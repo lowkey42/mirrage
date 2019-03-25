@@ -379,8 +379,8 @@ namespace mirrage::renderer {
 	{
 		auto _ = _renderer.profiler().push("Foveal rescale");
 
-		auto foveal_mip_level =
-		        compute_foveal_mip_level(gsl::narrow<float>(_src.height()), _renderer.global_uniforms().proj_planes.w);
+		auto foveal_mip_level    = compute_foveal_mip_level(gsl::narrow<float>(_src.height()),
+                                                         _renderer.global_uniforms().proj_planes.w);
 		_last_max_histogram_size = _src.height(foveal_mip_level) * _src.width(foveal_mip_level);
 		if(foveal_mip_level > 0) {
 			graphic::generate_mipmaps(command_buffer,
@@ -590,10 +590,14 @@ namespace mirrage::renderer {
 		return current_score;
 	}
 
-	void Tone_mapping_pass_factory::configure_device(vk::PhysicalDevice,
+	void Tone_mapping_pass_factory::configure_device(vk::PhysicalDevice pd,
 	                                                 util::maybe<std::uint32_t>,
 	                                                 graphic::Device_create_info& create_info)
 	{
+		auto features = pd.getFeatures();
+
+		MIRRAGE_INVARIANT(features.shaderStorageImageExtendedFormats,
+		                  "Unsupported extension: shaderStorageImageExtendedFormats");
 		create_info.features.shaderStorageImageExtendedFormats = true;
 	}
 } // namespace mirrage::renderer
