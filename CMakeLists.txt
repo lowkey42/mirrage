@@ -25,6 +25,6 @@ endif()
 add_subdirectory(dependencies)
 add_subdirectory(src)
 
-if(MSVC_IDE)
+if(MSVC_IDE AND MIRRAGE_BUILD_DEMO)
 	set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT demo)
 endif()

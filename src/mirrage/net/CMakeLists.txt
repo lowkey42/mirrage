@@ -35,7 +35,7 @@ target_link_libraries(mirrage_net
 		glm::glm
 		mirrage::error
 		enet
-		boost::magic_get
+		boost::pfr
 )
 
 

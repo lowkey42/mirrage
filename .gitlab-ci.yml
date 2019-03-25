@@ -40,6 +40,7 @@ variables:
     - cd build
     - cmake -E remove_directory src
     - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
+    - cmake --build .
     - cmake --build . --target src/install
     - cmake --build . --target test
   <<: *linux-cache-spec
@@ -81,6 +82,7 @@ build-mingw:
     - cd build
     - cmake -E remove_directory src
     - cmake -G Ninja -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DCMAKE_BUILD_TYPE=Release -DMIRRAGE_ENABLE_COTIRE=OFF -DMIRRAGE_EXPORT_EXECUTABLE=ON ..
+    - cmake --build .
     - cmake --build . --target src/install
     - cmake --build . --target test
   variables:
