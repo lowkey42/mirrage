@@ -102,7 +102,7 @@ namespace mirrage::graphic {
 	  private:
 		friend class Device;
 
-		const vk::Device&     _device;
+		const vk::Device*     _device;
 		vk::UniqueCommandPool _pool;
 
 		Command_buffer_pool(const vk::Device& device, vk::UniqueCommandPool pool);

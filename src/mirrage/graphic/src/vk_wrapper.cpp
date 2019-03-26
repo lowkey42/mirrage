@@ -9,19 +9,23 @@
 namespace mirrage::graphic {
 
 	Command_buffer_pool::Command_buffer_pool(const vk::Device& device, vk::UniqueCommandPool pool)
-	  : _device(device), _pool(std::move(pool))
+	  : _device(&device), _pool(std::move(pool))
 	{
 	}
-	Command_buffer_pool::~Command_buffer_pool() { _device.waitIdle(); }
+	Command_buffer_pool::~Command_buffer_pool()
+	{
+		if(_device)
+			_device->waitIdle();
+	}
 
 	auto Command_buffer_pool::create_primary(std::int32_t count) -> std::vector<vk::UniqueCommandBuffer>
 	{
-		return _device.allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
+		return _device->allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
 		        *_pool, vk::CommandBufferLevel::ePrimary, gsl::narrow<std::uint32_t>(count)));
 	}
 	auto Command_buffer_pool::create_secondary(std::int32_t count) -> std::vector<vk::UniqueCommandBuffer>
 	{
-		return _device.allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
+		return _device->allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
 		        *_pool, vk::CommandBufferLevel::eSecondary, gsl::narrow<std::uint32_t>(count)));
 	}
 

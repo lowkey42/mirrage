@@ -11,7 +11,6 @@ namespace mirrage::graphic {
 
 	class Swapchain : public Window_modification_handler {
 	  public:
-		Swapchain() = default;
 		Swapchain(const vk::Device& dev, vk::PhysicalDevice, Window&, vk::SwapchainCreateInfoKHR);
 		Swapchain(Swapchain&&) = default;
 		Swapchain& operator=(Swapchain&&) = default;
@@ -32,9 +31,9 @@ namespace mirrage::graphic {
 		auto image_format() const noexcept { return _image_format; }
 
 	  private:
-		const vk::Device&                _device;
+		const vk::Device*                _device;
 		vk::PhysicalDevice               _gpu;
-		Window&                          _window;
+		Window*                          _window;
 		vk::SwapchainCreateInfoKHR       _info;
 		vk::UniqueSwapchainKHR           _swapchain;
 		std::vector<vk::Image>           _images;
