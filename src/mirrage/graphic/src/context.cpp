@@ -321,7 +321,7 @@ namespace mirrage::graphic {
 			_debug_callback = _instance->createDebugUtilsMessengerEXTUnique(create_info);
 		}
 
-#ifndef MIRRAGE_VULKAN_USE_LABELS
+#ifndef MIRRAGE_IGNORE_VULKAN_LABELS
 		_vkCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(
 		        vkGetInstanceProcAddr(*_instance, "vkCmdBeginDebugUtilsLabelEXT"));
 		_vkCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(
