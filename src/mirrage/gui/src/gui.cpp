@@ -1,3 +1,4 @@
+#include <sf2/sf2.hpp>
 #include <mirrage/gui/gui.hpp>
 
 #include <mirrage/asset/asset_manager.hpp>
@@ -9,7 +10,6 @@
 #include <imgui.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
-#include <sf2/sf2.hpp>
 
 #include <cstdint>
 #include <string>
