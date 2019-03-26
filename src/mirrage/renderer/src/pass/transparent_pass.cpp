@@ -572,5 +572,17 @@ namespace mirrage::renderer {
 			LOG(plog::warning) << "Feature independentBlend is not supported. Transparent objects will not "
 			                      "be rendered!";
 		}
+
+		if(features.fragmentStoresAndAtomics) {
+			ci.features.fragmentStoresAndAtomics = true;
+		} else {
+			LOG(plog::warning) << "Feature fragmentStoresAndAtomics is not supported.";
+		}
+
+		if(features.vertexPipelineStoresAndAtomics) {
+			ci.features.vertexPipelineStoresAndAtomics = true;
+		} else {
+			LOG(plog::warning) << "Feature vertexPipelineStoresAndAtomics is not supported.";
+		}
 	}
 } // namespace mirrage::renderer

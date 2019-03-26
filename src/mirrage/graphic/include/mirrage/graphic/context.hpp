@@ -82,8 +82,8 @@ namespace mirrage {
 
 			std::unordered_map<std::string, Window_ptr> _windows;
 
-			PFN_vkCmdBeginDebugUtilsLabelEXT _vkCmdBeginDebugUtilsLabelEXT;
-			PFN_vkCmdEndDebugUtilsLabelEXT   _vkCmdEndDebugUtilsLabelEXT;
+			PFN_vkCmdBeginDebugUtilsLabelEXT _vkCmdBeginDebugUtilsLabelEXT = nullptr;
+			PFN_vkCmdEndDebugUtilsLabelEXT   _vkCmdEndDebugUtilsLabelEXT   = nullptr;
 
 			auto _find_window_settings(const std::string& name, int width, int height) -> Window_settings;
 		};

@@ -321,6 +321,7 @@ namespace mirrage::graphic {
 			_debug_callback = _instance->createDebugUtilsMessengerEXTUnique(create_info);
 		}
 
+#ifndef MIRRAGE_VULKAN_USE_LABELS
 		_vkCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(
 		        vkGetInstanceProcAddr(*_instance, "vkCmdBeginDebugUtilsLabelEXT"));
 		_vkCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(
@@ -332,6 +333,7 @@ namespace mirrage::graphic {
 			LOG(plog::warning) << "vkCmdBeginDebugUtilsLabelEXT/vkCmdEndDebugUtilsLabelEXT extension "
 			                      "function not found.";
 		}
+#endif
 
 		for(auto&& [_, window] : _windows) {
 			(void) _;

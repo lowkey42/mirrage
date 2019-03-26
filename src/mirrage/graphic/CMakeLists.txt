@@ -32,6 +32,11 @@ add_library(mirrage_graphic STATIC
 add_library(mirrage::graphic ALIAS mirrage_graphic)
 target_compile_features(mirrage_graphic PUBLIC cxx_std_17)
 
+option(MIRRAGE_VULKAN_USE_LABELS "Use labels if VK_EXT_DEBUG_UTILS_EXTENSION_NAME is available" ON)
+if(NOT MIRRAGE_VULKAN_USE_LABELS)
+	target_compile_definitions(mirrage_graphic PRIVATE MIRRAGE_IGNORE_VULKAN_LABELS)
+endif()
+
 set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 target_compile_options(mirrage_graphic PRIVATE ${MIRRAGE_DEFAULT_COMPILER_ARGS})
 

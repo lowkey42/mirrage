@@ -763,9 +763,21 @@ namespace mirrage::renderer {
 		return current_score;
 	}
 
-	void Particle_pass_factory::configure_device(vk::PhysicalDevice,
+	void Particle_pass_factory::configure_device(vk::PhysicalDevice pd,
 	                                             util::maybe<std::uint32_t>,
-	                                             graphic::Device_create_info&)
+	                                             graphic::Device_create_info& ci)
 	{
+		auto features = pd.getFeatures();
+		if(features.fragmentStoresAndAtomics) {
+			ci.features.fragmentStoresAndAtomics = true;
+		} else {
+			LOG(plog::warning) << "Feature fragmentStoresAndAtomics is not supported.";
+		}
+
+		if(features.vertexPipelineStoresAndAtomics) {
+			ci.features.vertexPipelineStoresAndAtomics = true;
+		} else {
+			LOG(plog::warning) << "Feature vertexPipelineStoresAndAtomics is not supported.";
+		}
 	}
 } // namespace mirrage::renderer
