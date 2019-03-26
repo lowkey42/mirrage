@@ -56,7 +56,10 @@ namespace mirrage::graphic {
 	};
 
 	struct Image_dimensions {
-		Image_dimensions(std::int32_t width, std::int32_t height, std::int32_t depth, std::int32_t layers)
+		Image_dimensions(std::int32_t width  = 1,
+		                 std::int32_t height = 1,
+		                 std::int32_t depth  = 1,
+		                 std::int32_t layers = 1)
 		  : width(width), height(height), depth(depth), layers(layers)
 		{
 		}
@@ -71,22 +74,28 @@ namespace mirrage::graphic {
 
 	template <>
 	struct Image_dimensions_t<Image_type::single_1d> : Image_dimensions {
-		Image_dimensions_t(std::int32_t width) : Image_dimensions(width, 1, 1, 1) {}
+		Image_dimensions_t(std::int32_t width = 1) : Image_dimensions(width, 1, 1, 1) {}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::single_2d> : Image_dimensions {
-		Image_dimensions_t(std::int32_t width, std::int32_t height) : Image_dimensions(width, height, 1, 1) {}
+		Image_dimensions_t(std::int32_t width = 1, std::int32_t height = 1)
+		  : Image_dimensions(width, height, 1, 1)
+		{
+		}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::array_2d> : Image_dimensions {
-		Image_dimensions_t(std::int32_t width, std::int32_t height, std::int32_t layers)
+		Image_dimensions_t(std::int32_t width = 1, std::int32_t height = 1, std::int32_t layers = 1)
 		  : Image_dimensions(width, height, 1, layers)
 		{
 		}
 	};
 	template <>
 	struct Image_dimensions_t<Image_type::cubemap> : Image_dimensions {
-		Image_dimensions_t(std::int32_t width, std::int32_t height) : Image_dimensions(width, height, 1, 6) {}
+		Image_dimensions_t(std::int32_t width = 1, std::int32_t height = 1)
+		  : Image_dimensions(width, height, 1, 6)
+		{
+		}
 	};
 
 
@@ -102,7 +111,7 @@ namespace mirrage::graphic {
 	  private:
 		friend class Device;
 
-		const vk::Device&     _device;
+		const vk::Device*     _device;
 		vk::UniqueCommandPool _pool;
 
 		Command_buffer_pool(const vk::Device& device, vk::UniqueCommandPool pool);
@@ -123,7 +132,7 @@ namespace mirrage::graphic {
 	  private:
 		friend class Device;
 
-		const vk::Device& _device;
+		const vk::Device* _device;
 		vk::UniqueFence   _fence;
 
 		Fence(const vk::Device& device, bool signaled);

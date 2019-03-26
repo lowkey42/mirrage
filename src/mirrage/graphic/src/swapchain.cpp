@@ -10,9 +10,9 @@ namespace mirrage::graphic {
 	                     Window&                    window,
 	                     vk::SwapchainCreateInfoKHR info)
 	  : Window_modification_handler(window)
-	  , _device(dev)
+	  , _device(&dev)
 	  , _gpu(gpu)
-	  , _window(window)
+	  , _window(&window)
 	  , _info(info)
 	  , _swapchain(dev.createSwapchainKHRUnique(info))
 	  , _images(dev.getSwapchainImagesKHR(*_swapchain))
@@ -37,13 +37,14 @@ namespace mirrage::graphic {
 			ivc.setViewType(vk::ImageViewType::e2D);
 			ivc.setFormat(_info.imageFormat);
 			ivc.setSubresourceRange(vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1});
-			_image_views.emplace_back(_device.createImageViewUnique(ivc));
+			_image_views.emplace_back(_device->createImageViewUnique(ivc));
 		}
 	}
 
 	auto Swapchain::acquireNextImage(vk::Semaphore s, vk::Fence f) const -> std::size_t
 	{
-		return _device.acquireNextImageKHR(*_swapchain, std::numeric_limits<std::uint64_t>::max(), s, f).value;
+		return _device->acquireNextImageKHR(*_swapchain, std::numeric_limits<std::uint64_t>::max(), s, f)
+		        .value;
 	}
 
 	bool Swapchain::present(vk::Queue& q, std::size_t img_index, vk::Semaphore s)
@@ -53,25 +54,25 @@ namespace mirrage::graphic {
 		auto info   = vk::PresentInfoKHR{s ? 1u : 0u, &s, 1, &*_swapchain, &img_index_vk};
 		auto result = vkQueuePresentKHR(VkQueue(q), reinterpret_cast<VkPresentInfoKHR*>(&info));
 
-		_window.on_present();
+		_window->on_present();
 
 		if(result != VK_SUCCESS || _recreate_pending) {
 			_recreate_pending = false;
-			_device.waitIdle();
+			_device->waitIdle();
 
-			auto capabilities = _gpu.getSurfaceCapabilitiesKHR(_window.surface());
+			auto capabilities = _gpu.getSurfaceCapabilitiesKHR(_window->surface());
 			LOG(plog::debug) << "Extends: " << capabilities.currentExtent.width << ", "
 			                 << capabilities.currentExtent.height;
 
-			_image_width  = _window.width();
-			_image_height = _window.height();
+			_image_width  = _window->width();
+			_image_height = _window->height();
 
 			_info.oldSwapchain       = *_swapchain;
 			_info.imageExtent.width  = gsl::narrow<std::uint32_t>(_image_width);
 			_info.imageExtent.height = gsl::narrow<std::uint32_t>(_image_height);
 
-			_swapchain = _device.createSwapchainKHRUnique(_info);
-			_images    = _device.getSwapchainImagesKHR(*_swapchain);
+			_swapchain = _device->createSwapchainKHRUnique(_info);
+			_images    = _device->getSwapchainImagesKHR(*_swapchain);
 
 			_create_image_views();
 

@@ -9,31 +9,35 @@
 namespace mirrage::graphic {
 
 	Command_buffer_pool::Command_buffer_pool(const vk::Device& device, vk::UniqueCommandPool pool)
-	  : _device(device), _pool(std::move(pool))
+	  : _device(&device), _pool(std::move(pool))
 	{
 	}
-	Command_buffer_pool::~Command_buffer_pool() { _device.waitIdle(); }
+	Command_buffer_pool::~Command_buffer_pool()
+	{
+		if(_device)
+			_device->waitIdle();
+	}
 
 	auto Command_buffer_pool::create_primary(std::int32_t count) -> std::vector<vk::UniqueCommandBuffer>
 	{
-		return _device.allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
+		return _device->allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
 		        *_pool, vk::CommandBufferLevel::ePrimary, gsl::narrow<std::uint32_t>(count)));
 	}
 	auto Command_buffer_pool::create_secondary(std::int32_t count) -> std::vector<vk::UniqueCommandBuffer>
 	{
-		return _device.allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
+		return _device->allocateCommandBuffersUnique(vk::CommandBufferAllocateInfo(
 		        *_pool, vk::CommandBufferLevel::eSecondary, gsl::narrow<std::uint32_t>(count)));
 	}
 
 
-	Fence::operator bool() const { return _device.getFenceStatus(*_fence) == vk::Result::eSuccess; }
-	void   Fence::reset() { _device.resetFences({*_fence}); }
-	void Fence::wait() { _device.waitForFences({*_fence}, true, std::numeric_limits<std::uint64_t>::max()); }
+	Fence::operator bool() const { return _device->getFenceStatus(*_fence) == vk::Result::eSuccess; }
+	void   Fence::reset() { _device->resetFences({*_fence}); }
+	void Fence::wait() { _device->waitForFences({*_fence}, true, std::numeric_limits<std::uint64_t>::max()); }
 
 	Fence::Fence(const vk::Device& device, bool signaled)
-	  : _device(device)
-	  , _fence(_device.createFenceUnique({signaled ? vk::FenceCreateFlags{vk::FenceCreateFlagBits::eSignaled}
-	                                               : vk::FenceCreateFlags{}}))
+	  : _device(&device)
+	  , _fence(_device->createFenceUnique({signaled ? vk::FenceCreateFlags{vk::FenceCreateFlagBits::eSignaled}
+	                                                : vk::FenceCreateFlags{}}))
 	{
 	}
 
