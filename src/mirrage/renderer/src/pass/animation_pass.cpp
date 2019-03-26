@@ -221,6 +221,9 @@ namespace mirrage::renderer {
 			geo.animation_uniform_offset = offset;
 		}
 
+		// add padding to allow overstepping
+		required_size += gsl::narrow<std::uint32_t>(64u * 3u * 4u * sizeof(float));
+
 		if(_animation_uniforms.resize(required_size)) {
 			// recreate DescriptorSet if the buffer has been recreated
 			auto anim_desc_buffer_write = vk::DescriptorBufferInfo{
