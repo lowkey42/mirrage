@@ -153,12 +153,21 @@ namespace mirrage::input {
 
 	void Input_mapper::on_key_pressed(Key k)
 	{
+		_cont_pressed_keys.emplace(k);
 		find_maybe(_active_context->keys, k).process([&](auto& action) { process_pressed(_bus, action); });
 	}
 
-	void Input_mapper::on_key_released(Key k)
+	void Input_mapper::on_key_released(Key k, bool filtered)
 	{
-		find_maybe(_active_context->keys, k).process([&](auto& action) { process_release(_bus, action); });
+		auto pressed = _cont_pressed_keys.count(k);
+		_cont_pressed_keys.erase(k);
+
+		find_maybe(_active_context->keys, k).process([&](auto& action) {
+			if(!filtered || action.type == Reaction_type::continuous) {
+				if(pressed || action.type != Reaction_type::continuous)
+					process_release(_bus, action);
+			}
+		});
 	}
 
 	void Input_mapper::on_mouse_pos_change(glm::vec2 rel, glm::vec2 abs)
@@ -213,6 +222,8 @@ namespace mirrage::input {
 
 	void Input_mapper::on_mouse_button_pressed(Mouse_button b, float pressure)
 	{
+		_cont_pressed_mouse.emplace(b);
+
 		find_maybe(_active_context->mouse_buttons, {b, 0}).process([&](auto& action) {
 			process_pressed(_bus, action, Input_source{0}, pressure);
 		});
@@ -221,9 +232,9 @@ namespace mirrage::input {
 			_primary_mouse_button_down = true;
 	}
 
-	void Input_mapper::on_mouse_button_released(Mouse_button b, int8_t clicks)
+	void Input_mapper::on_mouse_button_released(Mouse_button b, int8_t clicks, bool filtered)
 	{
-		if(b != 1 || !_is_mouse_drag) {
+		if((b != 1 || !_is_mouse_drag) && !filtered) {
 			find_maybe(_active_context->mouse_buttons, {b, clicks}).process([&](auto& action) {
 				process_release(_bus, action);
 			});
@@ -236,13 +247,16 @@ namespace mirrage::input {
 
 		// call end listerners for continue_click_handlers (clicks==0)
 		find_maybe(_active_context->mouse_buttons, {b, 0}).process([&](auto& action) {
-			process_release(_bus, action);
+			if(!filtered || (action.type == Reaction_type::continuous && _cont_pressed_mouse.count(b) > 0))
+				process_release(_bus, action);
 		});
 
 		if(b == 1) {
 			_primary_mouse_button_down = false;
 			_is_mouse_drag             = false;
 		}
+
+		_cont_pressed_mouse.erase(b);
 	}
 
 	void Input_mapper::on_pad_stick_change(Input_source src, Pad_stick s, glm::vec2 rel, glm::vec2 abs)

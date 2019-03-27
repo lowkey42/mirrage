@@ -18,6 +18,7 @@
 #include <glm/vec2.hpp>
 #include <memory>
 #include <unordered_map>
+#include <unordered_set>
 
 
 namespace mirrage::asset {
@@ -51,7 +52,7 @@ namespace mirrage::input {
 		void enable_context(Context_id id);
 
 		void on_key_pressed(Key);
-		void on_key_released(Key);
+		void on_key_released(Key, bool filtered);
 
 		void on_mouse_pos_change(glm::vec2 rel, glm::vec2 abs);
 
@@ -62,7 +63,7 @@ namespace mirrage::input {
 		void on_pad_button_released(Input_source src, Pad_button);
 
 		void on_mouse_button_pressed(Mouse_button, float pressure = 1.f);
-		void on_mouse_button_released(Mouse_button, int8_t clicks);
+		void on_mouse_button_released(Mouse_button, int8_t clicks, bool filtered);
 
 		void on_pad_stick_change(Input_source src, Pad_stick, glm::vec2 rel, glm::vec2 abs);
 
@@ -73,6 +74,9 @@ namespace mirrage::input {
 		Context_id                              _default_context_id;
 		Context_id                              _active_context_id;
 		Context*                                _active_context;
+
+		std::unordered_set<Key>          _cont_pressed_keys;
+		std::unordered_set<Mouse_button> _cont_pressed_mouse;
 
 		bool _primary_mouse_button_down = false;
 		bool _is_mouse_drag             = false;

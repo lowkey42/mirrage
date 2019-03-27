@@ -212,8 +212,9 @@ namespace mirrage::input {
 
 	void Input_manager::_handle_event(SDL_Event& event, bool filtered)
 	{
-		if(filtered)
-			return; // TODO: don't filter key/button-up events if the down event has already been send
+		if(filtered && event.type != SDL_KEYUP && event.type != SDL_MOUSEBUTTONUP) {
+			return;
+		}
 
 		switch(event.type) {
 			case SDL_TEXTINPUT: _mailbox.send<Char_input>(event.text.text); break;
@@ -224,8 +225,9 @@ namespace mirrage::input {
 				break;
 
 			case SDL_KEYUP:
-				if(event.key.repeat == 0)
-					_mapper->on_key_released(from_sdl_keycode(event.key.keysym.sym));
+				if(event.key.repeat == 0) {
+					_mapper->on_key_released(from_sdl_keycode(event.key.keysym.sym), filtered);
+				}
 				break;
 
 			case SDL_MOUSEMOTION: _on_mouse_motion(event.motion); break;
@@ -236,8 +238,8 @@ namespace mirrage::input {
 				break;
 
 			case SDL_MOUSEBUTTONUP:
-				_mapper->on_mouse_button_released(event.button.button,
-				                                  static_cast<int8_t>(event.button.clicks));
+				_mapper->on_mouse_button_released(
+				        event.button.button, static_cast<int8_t>(event.button.clicks), filtered);
 				_pointer_active[0] = false;
 				break;
 
@@ -282,7 +284,7 @@ namespace mirrage::input {
 						if(event.tfinger.type == SDL_FINGERDOWN)
 							_mapper->on_mouse_button_pressed(1, event.tfinger.pressure);
 						else if(event.tfinger.type == SDL_FINGERUP)
-							_mapper->on_mouse_button_released(1, 1);
+							_mapper->on_mouse_button_released(1, 1, filtered);
 					}
 				}
 				break;
