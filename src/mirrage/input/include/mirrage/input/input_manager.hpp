@@ -102,7 +102,7 @@ namespace mirrage::input {
 		void _on_mouse_motion(const SDL_MouseMotionEvent& motion);
 
 		void _poll_events();
-		void _handle_event(SDL_Event& event);
+		void _handle_event(SDL_Event& event, bool filtered);
 
 	  private:
 		class Gamepad;

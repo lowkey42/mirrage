@@ -1,5 +1,5 @@
-#include <sf2/sf2.hpp>
 #include <mirrage/gui/gui.hpp>
+#include <sf2/sf2.hpp>
 
 #include <mirrage/asset/asset_manager.hpp>
 #include <mirrage/input/events.hpp>
@@ -373,6 +373,7 @@ namespace mirrage::gui {
 						handle_key(evt.type == SDL_KEYDOWN, evt.key.keysym.scancode);
 						return evt.key.keysym.sym == SDLK_ESCAPE || !io.WantCaptureKeyboard;
 
+					case SDL_MOUSEBUTTONUP: return !io.WantCaptureMouse;
 					case SDL_MOUSEBUTTONDOWN:
 						if(evt.button.button > 0 && evt.button.button < 4) {
 							_mouse_pressed[evt.button.button - 1] = true;

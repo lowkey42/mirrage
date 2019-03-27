@@ -201,9 +201,7 @@ namespace mirrage::input {
 			                             [&](auto f) { return !f->propagate(event); })
 			                != _event_filter.end();
 
-			if(!filtered) {
-				_handle_event(event);
-			}
+			_handle_event(event, filtered);
 		}
 
 		for(auto& f : _event_filter) {
@@ -212,8 +210,11 @@ namespace mirrage::input {
 	}
 
 
-	void Input_manager::_handle_event(SDL_Event& event)
+	void Input_manager::_handle_event(SDL_Event& event, bool filtered)
 	{
+		if(filtered)
+			return; // TODO: don't filter key/button-up events if the down event has already been send
+
 		switch(event.type) {
 			case SDL_TEXTINPUT: _mailbox.send<Char_input>(event.text.text); break;
 
@@ -339,7 +340,8 @@ namespace mirrage::input {
 		if(SDL_IsGameController(joystick_id)) {
 			SDL_GameController* controller = SDL_GameControllerOpen(joystick_id);
 			if(controller) {
-				_gamepads.emplace_back(std::make_unique<Gamepad>(gsl::narrow<Input_source>(_gamepads.size() + 1), controller, *_mapper));
+				_gamepads.emplace_back(std::make_unique<Gamepad>(
+				        gsl::narrow<Input_source>(_gamepads.size() + 1), controller, *_mapper));
 				_mailbox.send<Source_added>(Input_source(_gamepads.size()));
 			} else {
 				std::cerr << "Could not open gamecontroller " << joystick_id << ": " << SDL_GetError()
