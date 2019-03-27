@@ -203,7 +203,7 @@ namespace mirrage::renderer {
 
 		_loaded_textures_by_handle.emplace(handle, entry);
 
-		auto return_value = std::shared_ptr<void>(entry, &entry->handle);
+		auto return_value = std::shared_ptr<void>(entry, entry->handle);
 
 		_loaded_textures.emplace_back(entry);
 
