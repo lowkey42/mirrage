@@ -25,7 +25,7 @@ namespace mirrage::asset {
 		if(_cached_result)
 			return util::justPtr(_cached_result);
 
-		return ready() ? util::nothing : get_blocking();
+		return ready() ? util::nothing : util::maybe<const R&>(get_blocking());
 	}
 
 	template <class R>
