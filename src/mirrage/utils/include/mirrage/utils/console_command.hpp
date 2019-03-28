@@ -131,15 +131,19 @@ namespace mirrage::util {
                                 if(arg_iter == arg_end) {
                                     LOG(plog::error) << "Not enough arguments.";
                                     return util::nothing;
+                                }
 
-                                } else if((*arg_iter)[1].length() == 0) {
+								auto curr = *arg_iter;
+								arg_iter++;
+
+								if(curr[1].length() == 0) {
                                     return util::from_string<typename decltype(type)::type>(
-                                            cmd.substr(std::size_t(arg_iter->position()),
-                                                       std::size_t(arg_iter->length())));
+                                            cmd.substr(std::size_t(curr.position()),
+                                                       std::size_t(curr.length())));
 
                                 } else { // quoted
-                                    auto arg = std::string_view((*arg_iter)[1].first,
-                                                                std::size_t((*arg_iter)[1].length()));
+                                    auto arg = std::string_view(curr[1].first,
+                                                                std::size_t(curr[1].length()));
                                     if(!arg.find("\\"))
                                         return util::from_string<typename decltype(type)::type>(arg);
                                     else {
