@@ -209,23 +209,6 @@ namespace mirrage::asset {
 			throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
 			                        "Unable to set write-dir: "s + write_dir);
 
-		for(auto ea : Embedded_asset::instances()) {
-			LOG(plog::info) << "Include embedded asset \"" << ea->name() << "\": " << ea->data().size()
-			                << " bytes MD5: "
-			                << util::md5(std::string(reinterpret_cast<const char*>(ea->data().data()),
-			                                         std::size_t(ea->data().size_bytes())));
-			auto name = "embedded_" + ea->name() + ".zip";
-			if(!PHYSFS_mountMemory(ea->data().data(),
-			                       static_cast<PHYSFS_uint64>(ea->data().size_bytes()),
-			                       nullptr,
-			                       name.c_str(),
-			                       nullptr,
-			                       1)) {
-				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
-				                        "Unable to add embedded archive: "s + ea->name());
-			}
-		}
-
 		auto add_source = [](std::string path) {
 			auto apath = PHYSFS_getRealDir(path.c_str());
 			if(apath) {
@@ -273,6 +256,23 @@ namespace mirrage::asset {
 					continue;
 				}
 				add_source(l.c_str());
+			}
+		}
+
+		for(auto ea : Embedded_asset::instances()) {
+			LOG(plog::info) << "Include embedded asset \"" << ea->name() << "\": " << ea->data().size()
+			                << " bytes MD5: "
+			                << util::md5(std::string(reinterpret_cast<const char*>(ea->data().data()),
+			                                         std::size_t(ea->data().size_bytes())));
+			auto name = "embedded_" + ea->name() + ".zip";
+			if(!PHYSFS_mountMemory(ea->data().data(),
+			                       static_cast<PHYSFS_uint64>(ea->data().size_bytes()),
+			                       nullptr,
+			                       name.c_str(),
+			                       nullptr,
+			                       1)) {
+				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
+				                        "Unable to add embedded archive: "s + ea->name());
 			}
 		}
 
