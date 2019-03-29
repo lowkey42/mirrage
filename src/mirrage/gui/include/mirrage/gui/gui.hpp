@@ -21,6 +21,8 @@
 
 
 namespace ImGui {
+	inline constexpr float SIZE_AUTO = 0.0f;
+
 	enum class WindowPosition_X { center = 0, left = 1, right = 2 };
 	enum class WindowPosition_Y { center = 0, top = 1, bottom = 2 };
 
