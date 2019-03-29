@@ -46,6 +46,7 @@ add_library(mirrage_renderer STATIC
 	src/pass/billboard_pass.cpp
 	src/pass/blit_pass.cpp 
 	src/pass/bloom_pass.cpp
+	src/pass/clear_pass.cpp
 	src/pass/debug_draw_pass.cpp
 	src/pass/deferred_geometry_subpass.cpp
 	src/pass/deferred_lighting_subpass.cpp
