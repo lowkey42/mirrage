@@ -35,8 +35,11 @@ namespace mirrage::renderer {
 			return render_pass_id_of<Debug_draw_pass_factory>();
 		}
 
-		auto create_pass(Deferred_renderer&, util::maybe<ecs::Entity_manager&>, Engine&, bool&)
-		        -> std::unique_ptr<Render_pass> override;
+		auto create_pass(Deferred_renderer&,
+		                 std::shared_ptr<void>,
+		                 util::maybe<ecs::Entity_manager&>,
+		                 Engine&,
+		                 bool&) -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t> graphics_queue, int current_score)
 		        -> int override;

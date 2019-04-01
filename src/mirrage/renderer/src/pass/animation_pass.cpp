@@ -289,7 +289,8 @@ namespace mirrage::renderer {
 	}
 
 
-	auto Animation_pass_factory::create_pass(Deferred_renderer&                renderer,
+	auto Animation_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                         std::shared_ptr<void>,
 	                                         util::maybe<ecs::Entity_manager&> entities,
 	                                         Engine&,
 	                                         bool&) -> std::unique_ptr<Render_pass>

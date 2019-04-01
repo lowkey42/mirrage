@@ -77,7 +77,7 @@ namespace mirrage::renderer {
 	} // namespace
 
 
-	Gui_pass::Gui_pass(Deferred_renderer& drenderer, Engine&)
+	Gui_pass::Gui_pass(Deferred_renderer& drenderer, Engine&, std::shared_ptr<void> last_state)
 	  : _renderer(drenderer)
 	  , _sampler(drenderer.device().create_sampler(1,
 	                                               vk::SamplerAddressMode::eClampToEdge,
@@ -85,14 +85,41 @@ namespace mirrage::renderer {
 	                                               vk::Filter::eLinear,
 	                                               vk::SamplerMipmapMode::eNearest))
 	  , _descriptor_set_layout(create_descriptor_set_layout(drenderer.device(), *_sampler))
+	  , _texture_cache(last_state ? std::static_pointer_cast<Texture_cache>(last_state)
+	                              : std::make_unique<Texture_cache>(drenderer))
 	  , _render_pass(build_render_pass(drenderer, *_descriptor_set_layout, _framebuffers))
 	  , _descriptor_set(drenderer.create_descriptor_set(*_descriptor_set_layout, 1))
 	  , _mesh_buffer(drenderer.device(),
 	                 max_render_buffer_size,
 	                 vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer)
 	{
+		_texture_cache->shrink();
 	}
 
+	Gui_pass::Texture_cache::Texture_cache(Deferred_renderer& r)
+	  : _renderer(r)
+	  , _sampler(r.device().create_sampler(1,
+	                                       vk::SamplerAddressMode::eClampToEdge,
+	                                       vk::BorderColor::eIntOpaqueBlack,
+	                                       vk::Filter::eLinear,
+	                                       vk::SamplerMipmapMode::eNearest))
+	  , _descriptor_set_layout(create_descriptor_set_layout(r.device(), *_sampler))
+	{
+	}
+
+	auto Gui_pass::extract_persistent_state() -> std::shared_ptr<void> { return _texture_cache; }
+
+	void Gui_pass::Texture_cache::shrink()
+	{
+		for(auto& texture : _loaded_textures) {
+			if(texture.use_count() == 1) {
+				texture.reset();
+			}
+		}
+		util::erase_if(_loaded_textures, [](auto& t) { return !t; });
+		util::erase_if(_loaded_textures_by_aid, [](auto& t) { return t.second.expired(); });
+		util::erase_if(_loaded_textures_by_handle, [](auto& t) { return t.second.expired(); });
+	}
 
 	void Gui_pass::update(util::Time) {}
 
@@ -109,14 +136,7 @@ namespace mirrage::renderer {
 		_current_command_buffer = util::nothing;
 
 		// remove unused textures from cache
-		for(auto& texture : _loaded_textures) {
-			if(texture.use_count() == 1) {
-				texture.reset();
-			}
-		}
-		util::erase_if(_loaded_textures, [](auto& t) { return !t; });
-		util::erase_if(_loaded_textures_by_aid, [](auto& t) { return t.second.expired(); });
-		util::erase_if(_loaded_textures_by_handle, [](auto& t) { return t.second.expired(); });
+		_texture_cache->shrink();
 	}
 
 	Gui_pass::Loaded_texture::Loaded_texture(std::uintptr_t          handle,
@@ -158,6 +178,11 @@ namespace mirrage::renderer {
 	auto Gui_pass::load_texture(int width, int height, int channels, const std::uint8_t* data)
 	        -> std::shared_ptr<void>
 	{
+		return _texture_cache->load_texture(width, height, channels, data);
+	}
+	auto Gui_pass::Texture_cache::load_texture(int width, int height, int channels, const std::uint8_t* data)
+	        -> std::shared_ptr<void>
+	{
 		auto handle = _next_texture_handle++;
 
 		auto dimensions = graphic::Image_dimensions_t<graphic::Image_type::single_2d>{
@@ -186,6 +211,10 @@ namespace mirrage::renderer {
 	}
 
 	auto Gui_pass::load_texture(const asset::AID& aid) -> std::shared_ptr<void>
+	{
+		return _texture_cache->load_texture(aid);
+	}
+	auto Gui_pass::Texture_cache::load_texture(const asset::AID& aid) -> std::shared_ptr<void>
 	{
 		auto cache_entry = _loaded_textures_by_aid[aid];
 		if(auto sp = cache_entry.lock()) {
@@ -259,7 +288,7 @@ namespace mirrage::renderer {
 		        "Gui_pass::prepare_draw has to be called inside a draw call!");
 
 		if(_bound_texture_handle.is_nothing() || int_tex_handle != _bound_texture_handle.get_or_throw()) {
-			auto texture = _loaded_textures_by_handle[int_tex_handle].lock();
+			auto texture = _texture_cache->_loaded_textures_by_handle[int_tex_handle].lock();
 			MIRRAGE_INVARIANT(texture,
 			                  "The requested texture (" << int_tex_handle
 			                                            << ") has not been loaded or already been freed!");
@@ -284,12 +313,14 @@ namespace mirrage::renderer {
 	void Gui_pass::finalize_draw() { _render_pass.unsafe_end_renderpass(); }
 
 
-	auto Gui_pass_factory::create_pass(Deferred_renderer& renderer,
+	auto Gui_pass_factory::create_pass(Deferred_renderer&    renderer,
+	                                   std::shared_ptr<void> last_state,
 	                                   util::maybe<ecs::Entity_manager&>,
 	                                   Engine& engine,
 	                                   bool&) -> std::unique_ptr<Render_pass>
 	{
-		return std::make_unique<gui::Gui_renderer_instance<Gui_pass>>(engine.gui(), renderer, engine);
+		return std::make_unique<gui::Gui_renderer_instance<Gui_pass>>(
+		        engine.gui(), renderer, engine, std::move(last_state));
 	}
 
 	auto Gui_pass_factory::rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int current_score)

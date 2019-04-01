@@ -53,8 +53,11 @@ namespace mirrage::renderer {
 	  public:
 		auto id() const noexcept -> Render_pass_id override { return render_pass_id_of<Taa_pass_factory>(); }
 
-		auto create_pass(Deferred_renderer&, util::maybe<ecs::Entity_manager&>, Engine&, bool&)
-		        -> std::unique_ptr<Render_pass> override;
+		auto create_pass(Deferred_renderer&,
+		                 std::shared_ptr<void>,
+		                 util::maybe<ecs::Entity_manager&>,
+		                 Engine&,
+		                 bool&) -> std::unique_ptr<Render_pass> override;
 
 		auto rank_device(vk::PhysicalDevice, util::maybe<std::uint32_t>, int) -> int override;
 

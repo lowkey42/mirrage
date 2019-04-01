@@ -103,7 +103,8 @@ namespace mirrage::renderer {
 	}
 
 
-	auto Billboard_pass_factory::create_pass(Deferred_renderer&                renderer,
+	auto Billboard_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                         std::shared_ptr<void>,
 	                                         util::maybe<ecs::Entity_manager&> entities,
 	                                         Engine&,
 	                                         bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass>

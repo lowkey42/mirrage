@@ -101,7 +101,8 @@ namespace mirrage::renderer {
 	  , _pass_factories(std::move(passes))
 	  , _passes(util::map(_pass_factories,
 	                      [&, write_first_pp_buffer = true](auto& factory) mutable {
-		                      return factory->create_pass(*this, ecs, engine, write_first_pp_buffer);
+		                      return factory->create_pass(
+		                              *this, std::shared_ptr<void>{}, ecs, engine, write_first_pp_buffer);
 	                      }))
 	  , _cameras(ecs.is_some() ? util::justPtr(&ecs.get_or_throw().list<Camera_comp>()) : util::nothing)
 	{
@@ -130,9 +131,15 @@ namespace mirrage::renderer {
 		LOG(plog::warning) << "--recreate";
 		device().wait_idle();
 
+		auto persisted_pass_states = std::vector<std::shared_ptr<void>>();
+
 		for(auto& pass : _passes) {
-			if(pass)
+			if(pass) {
+				persisted_pass_states.emplace_back(pass->extract_persistent_state());
 				pass.reset();
+			} else {
+				persisted_pass_states.emplace_back();
+			}
 		}
 
 		if(gbuffer_required(_pass_factories)) {
@@ -146,10 +153,10 @@ namespace mirrage::renderer {
 		auto write_first_pp_buffer = true;
 		for(auto i = std::size_t(0); i < _passes.size(); i++) {
 			_passes[i] = _pass_factories.at(i)->create_pass(
-			        *this, _entity_manager, *_engine, write_first_pp_buffer);
+			        *this, persisted_pass_states.at(i), _entity_manager, *_engine, write_first_pp_buffer);
 		}
 
-		_profiler = graphic::Profiler(device(), 64);
+		_profiler = graphic::Profiler(device(), 128);
 
 		device().wait_idle();
 	}

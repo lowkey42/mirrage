@@ -172,6 +172,10 @@ namespace mirrage::renderer {
 		virtual void process_camera(Camera_state&) {} //< allows passes to modify the current camera
 
 		virtual auto name() const noexcept -> const char* = 0;
+
+		/// API to allow render passes to save some of their state (e.g. loaded textures/data)
+		///   across pipeline/renderer recreation
+		virtual auto extract_persistent_state() -> std::shared_ptr<void> { return {}; }
 	};
 
 	using Render_pass_id = util::type_uid_t;
@@ -184,6 +188,7 @@ namespace mirrage::renderer {
 		virtual auto id() const noexcept -> Render_pass_id = 0;
 
 		virtual auto create_pass(Deferred_renderer&,
+		                         std::shared_ptr<void> last_state,
 		                         util::maybe<ecs::Entity_manager&>,
 		                         Engine&,
 		                         bool& write_first_pp_buffer) -> std::unique_ptr<Render_pass> = 0;

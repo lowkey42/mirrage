@@ -240,6 +240,7 @@ namespace mirrage::renderer {
 
 
 	auto Ssao_pass_factory::create_pass(Deferred_renderer& renderer,
+	                                    std::shared_ptr<void>,
 	                                    util::maybe<ecs::Entity_manager&>,
 	                                    Engine&,
 	                                    bool&) -> std::unique_ptr<Render_pass>
