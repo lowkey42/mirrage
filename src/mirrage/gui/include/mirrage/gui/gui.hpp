@@ -14,11 +14,37 @@
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 
+
+#define IM_VEC2_CLASS_EXTRA              \
+	constexpr ImVec2(const glm::vec2& f) \
+	{                                    \
+		x = f.x;                         \
+		y = f.y;                         \
+	}                                    \
+	constexpr operator glm::vec2() const { return glm::vec2(x, y); }
+#define IM_VEC4_CLASS_EXTRA              \
+	constexpr ImVec4(const glm::vec4& f) \
+	{                                    \
+		x = f.x;                         \
+		y = f.y;                         \
+		z = f.z;                         \
+		w = f.w;                         \
+	}                                    \
+	constexpr operator glm::vec4() const { return glm::vec4(x, y, z, w); }
+
 #include <imgui.h>
 
 #include <cstdint>
 #include <memory>
 
+
+namespace mirrage::gui::literals {
+	inline ImColor operator"" _imcolor(const char* str, std::size_t len)
+	{
+		auto c = mirrage::util::hex_to_color(str, len);
+		return {std::pow(c.r, 2.2f), std::pow(c.g, 2.2f), std::pow(c.b, 2.2f), c.a};
+	}
+} // namespace mirrage::gui::literals
 
 namespace ImGui {
 	inline constexpr float SIZE_AUTO = 0.0f;

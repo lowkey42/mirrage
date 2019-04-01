@@ -7,9 +7,11 @@
 
 #pragma once
 
+#include <mirrage/utils/log.hpp>
+
+#include <glm/glm.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtx/rotate_vector.hpp>
-#include <glm/vec2.hpp>
 
 #include <cmath>
 #include <type_traits>
@@ -26,6 +28,68 @@ namespace mirrage::util {
 
 	using Rgba = glm::vec4;
 	using Rgb  = glm::vec3;
+
+	// hex code to color conversion
+	namespace detail {
+		constexpr auto constexpr_strlen(const char* str)
+		{
+			auto len = std::size_t(0);
+			while(*str != '\0')
+				str++;
+
+			return len;
+		}
+
+		constexpr auto hex_char_to_byte(char c)
+		{
+			auto b = std::int32_t(c & 0b1111);
+			return c > '9' ? b + 0b1001 : b;
+		}
+	} // namespace detail
+
+	inline auto hex_to_color(const char* color, std::size_t len) -> Rgba
+	{
+		// skip leading #
+		if(*color == '#') {
+			color++;
+			len--;
+		}
+
+		auto result = glm::vec4(1, 1, 1, 1);
+
+		switch(len) {
+			case 3:
+			case 4:
+				for(auto i = 0; i < int(len); i++)
+					result[i] = detail::hex_char_to_byte(color[i]) / 255.f;
+				break;
+
+			case 6:
+			case 8:
+				for(auto i = 0; i < int(len) / 2; i++)
+					result[i] = (detail::hex_char_to_byte(color[i * 2]) << 4
+					             | detail::hex_char_to_byte(color[i * 2]))
+					            / 255.f;
+
+				break;
+
+			default: MIRRAGE_FAIL("Invalid input to hex_to_vec4: " << color);
+		}
+
+		return result;
+	}
+
+	[[nodiscard]] inline auto hex_to_color(const std::string& str) -> Rgba
+	{
+		return hex_to_color(str.c_str(), str.length());
+	}
+
+	[[nodiscard]] inline auto hex_to_color(const char* str) -> Rgba
+	{
+		return hex_to_color(str, detail::constexpr_strlen(str));
+	}
+
+
 
 	template <class S>
 	struct Value_type {
@@ -415,6 +479,11 @@ namespace mirrage::util {
 		constexpr Force operator"" _n(unsigned long long v) { return Force(static_cast<float>(v)); }
 		constexpr Force operator"" _kn(long double v) { return Force(static_cast<float>(v * 1000)); }
 		constexpr Force operator"" _kn(unsigned long long v) { return Force(static_cast<float>(v * 1000)); }
+
+		inline glm::vec4 operator"" _color(const char* str, std::size_t len)
+		{
+			return hex_to_color(str, len);
+		}
 
 		constexpr Time         second   = 1_s;
 		constexpr Time_squared second_2 = 1_s * 1_s;
