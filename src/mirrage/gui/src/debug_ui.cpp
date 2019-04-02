@@ -69,20 +69,20 @@ namespace mirrage::gui {
 			auto stream    = std::stringstream{};
 			auto max_width = 0;
 			for(auto& c : util::Console_command_container::list_all_commands()) {
-				auto sep  = c.second.api().find("|");
-				max_width = std::max(max_width, int(sep != std::string::npos ? sep : c.second.api().size()));
+				auto sep  = c.second->api().find("|");
+				max_width = std::max(max_width, int(sep != std::string::npos ? sep : c.second->api().size()));
 			}
 
 			for(auto& c : util::Console_command_container::list_all_commands()) {
-				auto sep = c.second.api().find("|");
+				auto sep = c.second->api().find("|");
 
-				stream << c.second.api().substr(0, sep);
-				for(int i = int(sep != std::string::npos ? sep : c.second.api().size()); i < max_width + 10;
+				stream << c.second->api().substr(0, sep);
+				for(int i = int(sep != std::string::npos ? sep : c.second->api().size()); i < max_width + 10;
 				    i++)
 					stream << ' ';
 
 				if(sep != std::string::npos)
-					stream << c.second.api().substr(sep + 1);
+					stream << c.second->api().substr(sep + 1);
 
 				stream << "\n";
 			}

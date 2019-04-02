@@ -2,6 +2,7 @@
 
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/ranges.hpp>
+#include <mirrage/utils/small_vector.hpp>
 
 
 namespace mirrage::util {
@@ -9,7 +10,8 @@ namespace mirrage::util {
 	{
 		auto& cmds = all_commands();
 		for(auto iter = cmds.begin(); iter != cmds.end();) {
-			if(std::find(_command_ids.begin(), _command_ids.end(), iter->second.id()) != _command_ids.end()) {
+			if(std::find(_command_ids.begin(), _command_ids.end(), iter->second->id())
+			   != _command_ids.end()) {
 				iter = cmds.erase(iter);
 			} else {
 				iter++;
@@ -27,10 +29,17 @@ namespace mirrage::util {
 			return false;
 		}
 
+		auto commands = util::small_vector<Console_command*, 1>();
+		for(auto& [key, value] : util::range(begin, end)) {
+			commands.emplace_back(value.get());
+		}
+
 		auto args = arg_sep != std::string::npos ? cmd.substr(arg_sep) : std::string_view{};
 
-		for(auto& [key, value] : util::range(begin, end))
-			value.call(args);
+		for(auto&& cmd : commands) {
+			LOG(plog::debug) << "CMD Call " << cmd << " to " << cmd->id();
+			cmd->call(args);
+		}
 
 		return true;
 	}
@@ -42,7 +51,7 @@ namespace mirrage::util {
 		auto matches = std::vector<Console_command*>();
 		for(auto&& [key, value] : all_commands()) {
 			if(cmd.size() <= key.size() && std::string_view(key.c_str(), cmd.size()) == cmd) {
-				matches.emplace_back(&value);
+				matches.emplace_back(value.get());
 			}
 		}
 

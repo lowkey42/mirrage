@@ -95,9 +95,9 @@ namespace mirrage::util {
 		static auto list_all_commands() -> const auto& { return all_commands(); }
 
 	  private:
-		static auto all_commands() -> std::unordered_multimap<std::string, Console_command>&
+		static auto all_commands() -> std::unordered_multimap<std::string, std::unique_ptr<Console_command>>&
 		{
-			static std::unordered_multimap<std::string, Console_command> cmds;
+			static std::unordered_multimap<std::string, std::unique_ptr<Console_command>> cmds;
 			return cmds;
 		}
 
@@ -118,46 +118,43 @@ namespace mirrage::util {
 		        std::regex(R"xxx(\"((?:[^"]|\\")+(?!\\).)\"|([^ ]+))xxx", std::regex::optimize);
 
 		auto name = api.substr(0, api.find(" "));
-		auto c    = all_commands().emplace(
-                std::piecewise_construct,
-                std::forward_as_tuple(name),
-                std::forward_as_tuple(name, api, [api, f = std::forward<F>(f)](std::string_view cmd) {
-                    auto arg_iter =
-                            std::cregex_iterator(cmd.data(), cmd.data() + cmd.size(), split_args_regex);
-                    auto arg_end = std::cregex_iterator();
 
-                    util::foreach_function_arg_call(
-                            f, [&](auto type) -> util::maybe<typename decltype(type)::type> {
-                                if(arg_iter == arg_end) {
-                                    LOG(plog::error) << "Not enough arguments.";
-                                    return util::nothing;
-                                }
+		auto cmd_callback = [api, f = std::forward<F>(f)](std::string_view cmd) {
+			auto arg_iter = std::cregex_iterator(cmd.data(), cmd.data() + cmd.size(), split_args_regex);
+			auto arg_end  = std::cregex_iterator();
 
-								auto curr = *arg_iter;
-								arg_iter++;
+			util::foreach_function_arg_call(f, [&](auto type) -> util::maybe<typename decltype(type)::type> {
+				if(arg_iter == arg_end) {
+					LOG(plog::error) << "Not enough arguments.";
+					return util::nothing;
+				}
 
-								if(curr[1].length() == 0) {
-                                    return util::from_string<typename decltype(type)::type>(
-                                            cmd.substr(std::size_t(curr.position()),
-                                                       std::size_t(curr.length())));
+				auto curr = *arg_iter;
+				arg_iter++;
 
-                                } else { // quoted
-                                    auto arg = std::string_view(curr[1].first,
-                                                                std::size_t(curr[1].length()));
-                                    if(!arg.find("\\"))
-                                        return util::from_string<typename decltype(type)::type>(arg);
-                                    else {
-                                        // contains escape sequences we have to replace
-                                        auto arg_str = std::string(arg);
-                                        util::replace_inplace(arg_str, "\\\"", "\"");
-                                        util::replace_inplace(arg_str, "\\\\", "\\");
-                                        return util::from_string<typename decltype(type)::type>(arg_str);
-                                    }
-                                }
-                            });
-                }));
+				if(curr[1].length() == 0) {
+					return util::from_string<typename decltype(type)::type>(
+					        cmd.substr(std::size_t(curr.position()), std::size_t(curr.length())));
 
-		_command_ids.emplace_back(c->second.id());
+				} else { // quoted
+					auto arg = std::string_view(curr[1].first, std::size_t(curr[1].length()));
+					if(!arg.find("\\"))
+						return util::from_string<typename decltype(type)::type>(arg);
+					else {
+						// contains escape sequences we have to replace
+						auto arg_str = std::string(arg);
+						util::replace_inplace(arg_str, "\\\"", "\"");
+						util::replace_inplace(arg_str, "\\\\", "\\");
+						return util::from_string<typename decltype(type)::type>(arg_str);
+					}
+				}
+			});
+		};
+
+		auto c = all_commands().emplace(std::move(name),
+		                                std::make_unique<Console_command>(name, api, cmd_callback));
+
+		_command_ids.emplace_back(c->second->id());
 		return *this;
 	}
 
