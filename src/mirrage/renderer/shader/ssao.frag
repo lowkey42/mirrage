@@ -117,10 +117,10 @@ void main() {
 
 	float depth = texelFetch(depth_sampler, center_px, MIN_MIP).r;
 	vec3 P = position_from_ldepth(vertex_out.tex_coords, depth);
+	vec3 N = decode_normal(texelFetch(mat_data_sampler, center_px_normal, 0).rg);
+	P += N*0.05;
 
 	packKey(CSZToKey(P.z), out_color.gb);
-
-	vec3 N = decode_normal(texelFetch(mat_data_sampler, center_px_normal, 0).rg);
 
 	float random_pattern_rotation_angle = random(vec4(center_px.x, center_px.y, global_uniforms.time.x, 0));
 

@@ -48,8 +48,8 @@ namespace mirrage::renderer {
 		float scene_luminance_override    = -1.f;
 		float exposure_luminance_override = -1.f;
 		float scotopic_sim_weight         = 1.f;
-		float min_display_luminance       = 2.f;
-		float max_display_luminance       = 150.0f;
+		float min_display_luminance       = 40.f;
+		float max_display_luminance       = 200.0f;
 		float amient_light_intensity      = 0.1f;
 
 		int  transparent_particle_mip_level = 0;

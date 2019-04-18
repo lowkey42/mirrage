@@ -15,7 +15,7 @@ layout(location = 0) out vec4 out_color;
 layout(set=1, binding = 0) uniform sampler2D color_sampler;
 
 layout (constant_id = 0) const float MAX_RADIUS = 15;
-layout (constant_id = 1) const float RAD_SCALE = 0.8;
+layout (constant_id = 1) const float RAD_SCALE = 0.7;
 
 layout(push_constant) uniform Push_constants {
 	// focus_distance, range, radius

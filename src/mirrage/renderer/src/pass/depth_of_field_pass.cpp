@@ -87,7 +87,7 @@ namespace mirrage::renderer {
 	                                      *_descriptor_set_layout,
 	                                      _coc_framebuffer))
 
-	  , _dof_descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view(1)}))
+	  , _dof_descriptor_set(_descriptor_set_layout.create_set(renderer.descriptor_pool(), {src.view(2)}))
 	  , _dof_renderpass(build_render_pass(renderer,
 	                                      target,
 	                                      2,
@@ -142,6 +142,16 @@ namespace mirrage::renderer {
 				_coc_renderpass.push_constant("pcs"_strid, pcs);
 				frame.main_command_buffer.draw(3, 1, 0, 0);
 			});
+
+			graphic::blit_texture(frame.main_command_buffer,
+			                      _src,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                      _src,
+			                      vk::ImageLayout::eUndefined,
+			                      vk::ImageLayout::eShaderReadOnlyOptimal,
+			                      1,
+			                      2);
 		}
 
 		{

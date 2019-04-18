@@ -28,7 +28,11 @@ float calc_coc(float dist) {
 	const float range = pcs.parameters[1];
 	const float radius = pcs.parameters[2];
 
-	return MAX_RADIUS * radius * clamp((dist - focus_distance) / dist / range, -1.0, 1.0);
+	float coc = (dist - focus_distance) / dist / range;
+	if(coc<0)
+		coc *= 2.0;
+
+	return MAX_RADIUS * radius * clamp(coc, -1.0, 1.0);
 }
 
 void main() {

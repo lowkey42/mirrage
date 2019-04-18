@@ -200,6 +200,9 @@ namespace mirrage::renderer {
 
 				ImGui::SliderFloat("Exposure", &renderer_settings.exposure_override, 0.f, 50.f);
 
+				ImGui::SliderFloat("Min Disp. Lum.", &renderer_settings.min_display_luminance, 1.f, 100.f);
+				ImGui::SliderFloat("Max Disp. Lum.", &renderer_settings.max_display_luminance, 1.f, 1000.f);
+
 				ImGui::SliderFloat(
 				        "Background Brightness", &renderer_settings.background_intensity, 0.f, 10.f);
 

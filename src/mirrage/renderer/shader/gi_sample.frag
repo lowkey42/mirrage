@@ -203,7 +203,7 @@ vec3 calc_illumination_from(int lod, vec2 tex_size, ivec2 src_uv, vec2 shaded_uv
 	// calculate the size of the differential area
 	float cos_alpha = Pn.z;
 	float cos_beta  = dot(Pn, N);
-	float ds = pcs.prev_projection[2][3] * depth*depth * clamp(cos_alpha / cos_beta, 0.001, 1000.0);
+	float ds = pcs.prev_projection[2][3] * depth*depth * clamp(cos_alpha / cos_beta, 0.005, 1000.0);
 
 	// multiply all factors, that modulate the light transfer
 	float weight = visibility * NdotL_dst * NdotL_src * ds / (0.01+r2);
