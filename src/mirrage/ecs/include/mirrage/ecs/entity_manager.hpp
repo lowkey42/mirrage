@@ -121,6 +121,8 @@ namespace mirrage::ecs {
 		auto get(Entity_handle entity) -> util::maybe<Entity_facet>;
 		auto get_handle(Entity_id id) const -> Entity_handle { return _handles.get(id); }
 		auto validate(Entity_handle entity) -> bool { return _handles.valid(entity); }
+		template <typename... Ts, typename F>
+		void process(Entity_handle entity, F&& callback);
 
 		// deferred to next call to process_queued_actions
 		void erase(Entity_handle entity);

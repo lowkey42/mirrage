@@ -30,6 +30,13 @@ namespace mirrage::ecs {
 		return it != _components_by_name.end() ? util::just(it->second) : util::nothing;
 	}
 
+	template <typename... Ts, typename F>
+	void Entity_manager::process(Entity_handle entity, F&& callback)
+	{
+		if(auto f = get(entity); f.is_some())
+			f.get_or_throw().process<Ts...>(std::forward<F>(callback));
+	}
+
 	template <typename C>
 	auto Entity_manager::list() -> Component_container<C>&
 	{
@@ -103,7 +110,8 @@ namespace mirrage::ecs {
 	template <typename T, typename... Args>
 	void Entity_facet::emplace(Args&&... args)
 	{
-		emplace_init<T>(+[](const T&) {}, std::forward<Args>(args)...);
+		emplace_init<T>(
+		        +[](const T&) {}, std::forward<Args>(args)...);
 	}
 
 	template <typename T, typename F, typename... Args>
