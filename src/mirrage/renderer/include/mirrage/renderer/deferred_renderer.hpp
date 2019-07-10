@@ -50,7 +50,7 @@ namespace mirrage::renderer {
 		float scotopic_sim_weight         = 1.f;
 		float min_display_luminance       = 40.f;
 		float max_display_luminance       = 200.0f;
-		float amient_light_intensity      = 0.1f;
+		float amient_light_intensity      = 0.05f;
 
 		int  transparent_particle_mip_level = 0;
 		bool particle_fragment_shadows      = true;
