@@ -14,6 +14,8 @@ namespace mirrage::util {
 	using default_rand = std::mt19937_64;
 
 	struct random_seed_seq {
+		using result_type = std::random_device::result_type;
+	
 		template <typename It>
 		void generate(It begin, It end)
 		{

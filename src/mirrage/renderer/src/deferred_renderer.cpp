@@ -74,10 +74,8 @@ namespace mirrage::renderer {
 	                          vk::DescriptorType::eStorageImage,
 	                          vk::DescriptorType::eSampledImage,
 	                          vk::DescriptorType::eSampler})
-	  , _gbuffer(gbuffer_required(passes) ? std::make_unique<GBuffer>(device(),
-	                                                                  _descriptor_set_pool,
-	                                                                  factory._window.width(),
-	                                                                  factory._window.height())
+	  , _gbuffer(gbuffer_required(passes) ? std::make_unique<GBuffer>(
+	                     device(), _descriptor_set_pool, factory._window.width(), factory._window.height())
 	                                      : std::unique_ptr<GBuffer>())
 	  , _profiler(device(), 128)
 
@@ -608,7 +606,6 @@ namespace mirrage::renderer {
 			                       vk::ImageLayout::ePresentSrcKHR,
 			                       0,
 			                       1);
-			//return; // nothing drawn, nothing to do
 		}
 
 
