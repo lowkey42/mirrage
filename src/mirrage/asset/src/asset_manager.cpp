@@ -424,15 +424,15 @@ namespace mirrage::asset {
 
 		auto path = append_file(dir->second.base_dir, id.name());
 		if(exists_file(path))
-			return std::move(path);
+			return path;
 
 		path = path + dir->second.default_extension;
 		if(exists_file(path))
-			return std::move(path);
+			return path;
 
 		if(!only_preexisting) {
 			PHYSFS_mkdir(dir->second.base_dir.c_str());
-			return std::move(path);
+			return path;
 		}
 
 		return util::nothing;
