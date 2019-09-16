@@ -112,6 +112,7 @@ namespace mirrage::input {
 					break;
 
 				case Reaction_type::once:
+				case Reaction_type::once_down: bus.send<Once_action>(action.action, src); break;
 				default: break;
 			}
 		}
@@ -146,6 +147,7 @@ namespace mirrage::input {
 
 				case Reaction_type::once: bus.send<Once_action>(action.action, src); break;
 
+				case Reaction_type::once_down:
 				default: break;
 			}
 		}

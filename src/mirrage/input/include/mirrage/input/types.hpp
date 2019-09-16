@@ -186,7 +186,7 @@ namespace mirrage::input {
 	using Context_id   = util::Str_id;
 	using Input_source = int8_t;
 
-	enum class Reaction_type { none, once, continuous, range };
+	enum class Reaction_type { none, once, once_down, continuous, range };
 
 
 #ifdef sf2_structDef
@@ -332,7 +332,7 @@ namespace mirrage::input {
 
 	sf2_structDef(Mouse_click, button, clicks);
 
-	sf2_enumDef(Reaction_type, none, once, continuous, range);
+	sf2_enumDef(Reaction_type, none, once, once_down, continuous, range);
 #endif
 } // namespace mirrage::input
 
