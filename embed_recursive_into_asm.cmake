@@ -17,7 +17,8 @@ function(mirrage_copy_recursive src dst)
 				COMMAND ${CMAKE_COMMAND} -E copy_if_different "${path}" "${dst}/"
 				OUTPUT_QUIET
 			)
-			list(APPEND local_copied_files "${dst}/${file}") 
+			file(RELATIVE_PATH REL_PATH "${DST_DIR}/embed" "${dst}/${file}")
+			list(APPEND local_copied_files ${REL_PATH}) 
 		endif()
 	endforeach(path)
 	
