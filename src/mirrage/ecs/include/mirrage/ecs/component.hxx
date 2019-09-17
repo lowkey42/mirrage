@@ -322,7 +322,7 @@ namespace mirrage::ecs {
 			static_assert(util::dependent_false<T>(), "Iteration is not supported by Void_storage_policy.");
 			return &dummy_instance + 1;
 		}
-		auto size() const -> Component_index { return _size; }
+		auto size() const -> Component_index { return static_cast<Component_index>(_size); }
 		auto empty() const -> bool { return _size == 0; }
 
 	  private:
