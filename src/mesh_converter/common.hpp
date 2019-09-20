@@ -28,11 +28,15 @@ namespace mirrage {
 
 	struct Mesh_converted_config {
 		Texture_mapping texture_mappings{
-		        {Texture_type::albedo, {1}},       // aiTextureType_DIFFUSE
-		        {Texture_type::metalness, {3}},    // aiTextureType_AMBIENT
-		        {Texture_type::roughness, {7, 2}}, // aiTextureType_SHININESS, aiTextureType_SPECULAR
-		        {Texture_type::normal, {6, 5}},    // aiTextureType_NORMALS, aiTextureType_HEIGHT
-		        {Texture_type::emission, {4}},     // aiTextureType_EMISSIVE
+		        {Texture_type::albedo, {1, 12}},    // aiTextureType_DIFFUSE, aiTextureType_BASE_COLOR
+		        {Texture_type::metalness, {3, 15}}, // aiTextureType_AMBIENT, aiTextureType_METALNESS
+		        {Texture_type::roughness,
+		         {7,
+		          2,
+		          16}}, // aiTextureType_SHININESS, aiTextureType_SPECULAR, aiTextureType_DIFFUSE_ROUGHNESS
+		        {Texture_type::normal,
+		         {6, 13, 5}}, // aiTextureType_NORMALS, aiTextureType_NORMAL_CAMERA, aiTextureType_HEIGHT
+		        {Texture_type::emission, {4, 14}}, // aiTextureType_EMISSIVE, aiTextureType_EMISSION_COLOR
 		};
 
 		std::unordered_map<std::string, std::unordered_map<Texture_type, std::string>>

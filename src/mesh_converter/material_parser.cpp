@@ -354,6 +354,12 @@ namespace mirrage {
 		auto material_file         = renderer::Material_data{};
 		material_file.substance_id = util::Str_id("default"); // TODO: decide alpha-test / alpha-blend
 
+		for(auto i = std::size_t(0); i < material.mNumProperties; i++) {
+			auto m = material.mProperties[i];
+			LOG(plog::info) << "Mat " << m->mKey.C_Str() << " Index=" << m->mIndex
+			                << " Data=" << std::string(m->mData, m->mDataLength);
+		}
+
 		// convert albedo
 		auto albedo_name =
 		        resolve_path(name, base_dir, find_texture(name, material, cfg, Texture_type::albedo));

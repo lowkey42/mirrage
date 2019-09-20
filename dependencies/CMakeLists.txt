@@ -74,11 +74,11 @@ add_subdirectory(sf2)
 
 
 if(MIRRAGE_BUILD_MESH_CONVERTER)
-	find_package(assimp 4.1)
-	if(NOT assimp_FOUND)
+#	find_package(assimp 4.1)
+#	if(NOT assimp_FOUND)
 		add_subdirectory(assimp)
 		set_property(TARGET assimp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/assimp/include")
-	endif()
+#	endif()
 
 	add_subdirectory(stb_image)
 	include(crunch_interface.cmake)
