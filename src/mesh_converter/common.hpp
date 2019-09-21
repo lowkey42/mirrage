@@ -28,8 +28,9 @@ namespace mirrage {
 
 	struct Mesh_converted_config {
 		Texture_mapping texture_mappings{
-		        {Texture_type::albedo, {1, 12}},    // aiTextureType_DIFFUSE, aiTextureType_BASE_COLOR
-		        {Texture_type::metalness, {3, 15}}, // aiTextureType_AMBIENT, aiTextureType_METALNESS
+		        {Texture_type::albedo, {1, 12}}, // aiTextureType_DIFFUSE, aiTextureType_BASE_COLOR
+		        {Texture_type::metalness,
+		         {3, 11, 15}}, // aiTextureType_AMBIENT, aiTextureType_REFLECTION aiTextureType_METALNESS
 		        {Texture_type::roughness,
 		         {7,
 		          2,
