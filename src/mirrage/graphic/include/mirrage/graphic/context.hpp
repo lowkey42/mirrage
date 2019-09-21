@@ -72,6 +72,7 @@ namespace mirrage {
 			void vkCmdEndDebugUtilsLabelEXT(VkCommandBuffer commandBuffer);
 
 		  private:
+			bool                          _debug;
 			asset::Asset_manager&         _assets;
 			std::string                   _name;
 			asset::Ptr<Graphics_settings> _settings;

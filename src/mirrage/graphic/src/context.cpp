@@ -234,7 +234,7 @@ namespace mirrage::graphic {
 	                 uint32_t              engineVersion,
 	                 bool                  debug,
 	                 asset::Asset_manager& assets)
-	  : _assets(assets), _name(appName)
+	  : _debug(debug), _assets(assets), _name(appName)
 	{
 
 		auto maybe_settings = assets.load_maybe<Graphics_settings>("cfg:graphics"_aid);
@@ -270,9 +270,9 @@ namespace mirrage::graphic {
 		add_present_extensions(required_extensions, _windows);
 		auto optional_extensions = std::vector<const char*>{};
 
-		required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-
 		if(debug) {
+			required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+
 			_enabled_layers = check_layers({"VK_LAYER_LUNARG_image",
 			                                "VK_LAYER_LUNARG_parameter_validation",
 			                                "VK_LAYER_LUNARG_core_validation",
@@ -319,21 +319,21 @@ namespace mirrage::graphic {
 			                | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance,
 			        &debugCallback};
 			_debug_callback = _instance->createDebugUtilsMessengerEXTUnique(create_info);
-		}
 
 #ifndef MIRRAGE_IGNORE_VULKAN_LABELS
-		_vkCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(
-		        vkGetInstanceProcAddr(*_instance, "vkCmdBeginDebugUtilsLabelEXT"));
-		_vkCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(
-		        vkGetInstanceProcAddr(*_instance, "vkCmdEndDebugUtilsLabelEXT"));
+			_vkCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(
+			        vkGetInstanceProcAddr(*_instance, "vkCmdBeginDebugUtilsLabelEXT"));
+			_vkCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(
+			        vkGetInstanceProcAddr(*_instance, "vkCmdEndDebugUtilsLabelEXT"));
 
-		if(!_vkCmdBeginDebugUtilsLabelEXT || !_vkCmdEndDebugUtilsLabelEXT) {
-			_vkCmdBeginDebugUtilsLabelEXT = nullptr;
-			_vkCmdEndDebugUtilsLabelEXT   = nullptr;
-			LOG(plog::warning) << "vkCmdBeginDebugUtilsLabelEXT/vkCmdEndDebugUtilsLabelEXT extension "
-			                      "function not found.";
-		}
+			if(!_vkCmdBeginDebugUtilsLabelEXT || !_vkCmdEndDebugUtilsLabelEXT) {
+				_vkCmdBeginDebugUtilsLabelEXT = nullptr;
+				_vkCmdEndDebugUtilsLabelEXT   = nullptr;
+				LOG(plog::warning) << "vkCmdBeginDebugUtilsLabelEXT/vkCmdEndDebugUtilsLabelEXT extension "
+				                      "function not found.";
+			}
 #endif
+		}
 
 		for(auto&& [_, window] : _windows) {
 			(void) _;
@@ -700,12 +700,12 @@ namespace mirrage::graphic {
 	void Context::vkCmdBeginDebugUtilsLabelEXT(VkCommandBuffer             commandBuffer,
 	                                           const VkDebugUtilsLabelEXT* pLabelInfo)
 	{
-		if(_vkCmdBeginDebugUtilsLabelEXT)
+		if(_debug && _vkCmdBeginDebugUtilsLabelEXT)
 			_vkCmdBeginDebugUtilsLabelEXT(commandBuffer, pLabelInfo);
 	}
 	void Context::vkCmdEndDebugUtilsLabelEXT(VkCommandBuffer commandBuffer)
 	{
-		if(_vkCmdEndDebugUtilsLabelEXT)
+		if(_debug && _vkCmdEndDebugUtilsLabelEXT)
 			_vkCmdEndDebugUtilsLabelEXT(commandBuffer);
 	}
 
