@@ -228,12 +228,15 @@ namespace mirrage::renderer {
 					auto offset = feedback->offset;
 					auto count  = feedback->count;
 					feedback++;
-					emitter->set(&_rev,
-					             *_per_frame_data.at(frame_idx).particles,
-					             emitter->next_uniforms(),
-					             offset,
-					             count,
-					             i);
+
+					if(offset + count < _per_frame_data.at(frame_idx).capacity) {
+						emitter->set(&_rev,
+						             *_per_frame_data.at(frame_idx).particles,
+						             emitter->next_uniforms(),
+						             offset,
+						             count,
+						             i);
+					}
 				}
 			}
 
