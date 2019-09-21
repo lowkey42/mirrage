@@ -179,7 +179,7 @@ namespace mirrage::renderer {
 	                                                            renderer.compute_uniform_buffer_layout()))
 	  , _update_fence(renderer.device().create_fence(false))
 	  , _per_frame_data(util::build_vector<Per_frame_data>(
-	            renderer.device().max_frames_in_flight(), [&](auto, auto& vec) {
+	            renderer.device().max_frames_in_flight() + 3, [&](auto, auto& vec) {
 		            vec.emplace_back().reserve(renderer,
 		                                       initial_particle_capacity,
 		                                       initial_particle_type_capacity,
