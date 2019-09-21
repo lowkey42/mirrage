@@ -111,7 +111,7 @@ namespace mirrage::input {
 					bus.send<Range_action>(action.action, src, glm::vec2{intensity, 0}, glm::vec2{0, 0});
 					break;
 
-				case Reaction_type::once:
+				case Reaction_type::once: break;
 				case Reaction_type::once_down: bus.send<Once_action>(action.action, src); break;
 				default: break;
 			}
