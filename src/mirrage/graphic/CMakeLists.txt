@@ -23,6 +23,7 @@ add_library(mirrage_graphic STATIC
 	src/render_pass.cpp
 	src/streamed_buffer.cpp
 	src/swapchain.cpp
+	src/settings.cpp
 	src/texture.cpp
 	src/transfer_manager.cpp
 	src/vk_wrapper.cpp

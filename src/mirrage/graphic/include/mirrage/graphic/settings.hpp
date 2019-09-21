@@ -32,10 +32,7 @@ namespace mirrage::graphic {
 	};
 
 
-	inline auto default_window_settings(int display = 0) -> Window_settings
-	{
-		return Window_settings{1280, 720, display, Fullscreen::no};
-	}
+	extern auto default_window_settings(int display = 0) -> Window_settings;
 	inline auto default_settings(int display = 0) -> Graphics_settings
 	{
 		auto settings            = Graphics_settings{};
