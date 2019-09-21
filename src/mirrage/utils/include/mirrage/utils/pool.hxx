@@ -369,7 +369,7 @@ namespace mirrage::util {
 	                                                F&&           on_relocate,
 	                                                const index_t count)
 	{
-		MIRRAGE_INVARIANT((src < dst && src + count < dst) || (dst < src && dst + count < src),
+		MIRRAGE_INVARIANT(src > dst || src + count < dst,
 		                  "_move_elements_uninitialized with overlapping ranges");
 
 		auto c_src = src;
