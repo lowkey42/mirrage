@@ -515,7 +515,7 @@ namespace mirrage::graphic {
 				sc_info.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment
 				                      | vk::ImageUsageFlagBits::eTransferDst);
 				sc_info.setImageArrayLayers(1);
-				sc_info.setMinImageCount(std::max(3u, capabilities.minImageCount));
+				sc_info.setMinImageCount(std::max(2u, capabilities.minImageCount));
 				if(capabilities.maxImageCount > 0 && capabilities.maxImageCount < sc_info.minImageCount) {
 					sc_info.setMinImageCount(capabilities.maxImageCount);
 				}

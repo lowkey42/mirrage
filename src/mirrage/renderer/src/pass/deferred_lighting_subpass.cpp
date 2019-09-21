@@ -216,8 +216,6 @@ namespace mirrage::renderer {
 			return;
 		}
 
-		_renderer.device().wait_idle();
-
 		// point light
 		if(_point_light_mesh.ready()) {
 			auto first_point_light = true;
