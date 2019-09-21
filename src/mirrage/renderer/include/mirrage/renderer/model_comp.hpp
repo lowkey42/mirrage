@@ -17,7 +17,12 @@ namespace mirrage::renderer {
 		static constexpr const char* name() { return "Material_property"; }
 
 		Material_property_comp() = default;
-		Material_property_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
+		Material_property_comp(ecs::Entity_handle   owner,
+		                       ecs::Entity_manager& em,
+		                       glm::vec4            emissive_color = glm::vec4(1, 1, 1, 1000.f))
+		  : Component(owner, em), emissive_color(emissive_color)
+		{
+		}
 
 		glm::vec4 emissive_color = glm::vec4(1, 1, 1, 1000.f);
 	};
