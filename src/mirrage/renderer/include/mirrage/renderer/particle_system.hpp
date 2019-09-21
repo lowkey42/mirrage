@@ -274,6 +274,14 @@ namespace mirrage::renderer {
 
 		void active(bool b) noexcept { _active = b; }
 		auto active() const noexcept { return _active; }
+		void reset_time()
+		{
+			_time_accumulator   = 0;
+			_spawn_idx          = 0;
+			_spawn_entry_timer  = 0;
+			_particles_to_spawn = 0;
+			_last_timestep      = 0;
+		}
 
 		void position(glm::vec3 p) noexcept { _position = p; }
 		auto position() const noexcept { return _position; }
