@@ -275,10 +275,11 @@ namespace mirrage::graphic {
 
 			_enabled_layers = check_layers({"VK_LAYER_LUNARG_image",
 			                                "VK_LAYER_LUNARG_parameter_validation",
-			                                "VK_LAYER_LUNARG_core_validation",
+			                                "VK_LAYER_LUNARG_standard_validation",
 			                                "VK_LAYER_LUNARG_swapchain",
 			                                "VK_LAYER_GOOGLE_unique_objects",
-			                                "VK_LAYER_GOOGLE_threading"});
+			                                "VK_LAYER_GOOGLE_threading",
+			                                "VK_LAYER_KHRONOS_validation"});
 		}
 
 		sort_and_unique(required_extensions);
