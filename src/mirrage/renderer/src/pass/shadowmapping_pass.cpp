@@ -38,7 +38,7 @@ namespace mirrage::renderer {
 			                                  vk::AttachmentLoadOp::eDontCare,
 			                                  vk::AttachmentStoreOp::eDontCare,
 			                                  vk::ImageLayout::eUndefined,
-			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+			                                  vk::ImageLayout::eDepthStencilAttachmentOptimal});
 
 			auto shadowmap = builder.add_attachment(
 			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
@@ -258,6 +258,20 @@ namespace mirrage::renderer {
 
 	void Shadowmapping_pass::draw(Frame_data& frame)
 	{
+		if(_first_frame) {
+			_first_frame = false;
+			for(auto& sm : _shadowmaps) {
+				graphic::clear_texture(frame.main_command_buffer,
+				                       sm.texture.image(),
+				                       sm.texture.width(),
+				                       sm.texture.height(),
+				                       util::Rgba{0, 0, 0, 1},
+				                       vk::ImageLayout::eUndefined,
+				                       vk::ImageLayout::eShaderReadOnlyOptimal,
+				                       0,
+				                       1);
+			}
+		}
 
 		// free shadowmaps of deleted lights
 		for(auto& sm : _shadowmaps) {

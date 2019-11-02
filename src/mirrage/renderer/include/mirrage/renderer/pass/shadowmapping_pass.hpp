@@ -44,6 +44,7 @@ namespace mirrage::renderer {
 		ecs::Entity_manager&      _entities;
 		vk::Format                _shadowmap_format;
 		graphic::Render_target_2D _depth;
+		bool                      _first_frame = true;
 
 		vk::UniqueSampler _shadowmap_sampler;
 		vk::UniqueSampler _shadowmap_depth_sampler;
