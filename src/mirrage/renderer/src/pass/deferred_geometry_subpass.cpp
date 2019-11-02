@@ -352,8 +352,11 @@ namespace mirrage::renderer {
 		render_pass.set_stage("default"_strid);
 		if(_renderer.billboard_model().ready()) {
 			for(auto&& particle : frame.particle_queue) {
+				MIRRAGE_INVARIANT(particle.emitter->particle_count() >= 0,
+				                  "negative particle count: " << particle.emitter->particle_count());
+
 				if(particle.type_cfg->blend != Particle_blend_mode::solid || (particle.culling_mask & 1) == 0
-				   || !particle.emitter->drawable())
+				   || !particle.emitter->drawable() || particle.emitter->particle_count() <= 0)
 					break;
 
 				auto material = &*particle.type_cfg->material;

@@ -179,7 +179,7 @@ namespace mirrage::renderer {
 	                                                            renderer.compute_uniform_buffer_layout()))
 	  , _update_fence(renderer.device().create_fence(false))
 	  , _per_frame_data(util::build_vector<Per_frame_data>(
-	            renderer.device().max_frames_in_flight() + 3, [&](auto, auto& vec) {
+	            renderer.device().max_frames_in_flight() + 1, [&](auto, auto& vec) {
 		            vec.emplace_back().reserve(renderer,
 		                                       initial_particle_capacity,
 		                                       initial_particle_type_capacity,
@@ -209,6 +209,7 @@ namespace mirrage::renderer {
 	void Particle_pass::draw(Frame_data& frame)
 	{
 		if(_update_submitted && _update_fence) {
+			_update_fence.wait();
 			_update_fence.reset();
 			_update_submitted = false;
 
@@ -228,6 +229,8 @@ namespace mirrage::renderer {
 					auto offset = feedback->offset;
 					auto count  = feedback->count;
 					feedback++;
+
+					MIRRAGE_INVARIANT(count >= 0, "negative particle count: " << count);
 
 					if(offset + count < _per_frame_data.at(frame_idx).capacity) {
 						emitter->set(&_rev,
@@ -289,6 +292,9 @@ namespace mirrage::renderer {
 		data.commands = _renderer.create_compute_command_buffer();
 		auto commands = *data.commands;
 		commands.begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+
+		auto commands_label =
+		        graphic::Queue_debug_label(_renderer.device().context(), commands, "Particle update");
 
 		auto [feedback, feedback_mapping] = _alloc_feedback_buffer(frame);
 

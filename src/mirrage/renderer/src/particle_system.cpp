@@ -57,7 +57,7 @@ namespace mirrage::renderer {
 		                   ? std::normal_distribution<float>(entry.particles_per_second, entry.stddev)(rand)
 		                   : entry.particles_per_second;
 
-		auto spawn = static_cast<std::int32_t>(_time_accumulator * pps);
+		auto spawn = static_cast<std::int32_t>(std::max(0.f, _time_accumulator * pps));
 
 		if(pps > 0.f) {
 			_last_timestep = static_cast<float>(spawn) / pps;
@@ -85,8 +85,8 @@ namespace mirrage::renderer {
 	  , _loaded(_cfg.ready())
 	  , _emitters(!_loaded ? Emitter_list{}
 	                       : util::build_vector(
-	                                 _cfg->emitters.size(),
-	                                 [&](auto idx) { return Particle_emitter(_cfg->emitters[idx]); }))
+	                               _cfg->emitters.size(),
+	                               [&](auto idx) { return Particle_emitter(_cfg->emitters[idx]); }))
 	  , _effectors(!_loaded ? Effector_list{} : _cfg->effectors)
 	  , _position(position)
 	  , _rotation(rotation)
@@ -203,12 +203,13 @@ namespace mirrage::asset {
 	{
 		auto r = renderer::Particle_system_config();
 
-		sf2::deserialize_json(in,
-		                      [&](auto& msg, uint32_t row, uint32_t column) {
-			                      LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at "
-			                                       << row << ":" << column << ": " << msg;
-		                      },
-		                      r);
+		sf2::deserialize_json(
+		        in,
+		        [&](auto& msg, uint32_t row, uint32_t column) {
+			        LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at " << row << ":"
+			                         << column << ": " << msg;
+		        },
+		        r);
 
 		auto loads = std::vector<async::task<void>>();
 		loads.reserve(r.emitters.size() * 2u);
@@ -231,12 +232,13 @@ namespace mirrage::asset {
 	{
 		auto r = renderer::Particle_type_config();
 
-		sf2::deserialize_json(in,
-		                      [&](auto& msg, uint32_t row, uint32_t column) {
-			                      LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at "
-			                                       << row << ":" << column << ": " << msg;
-		                      },
-		                      r);
+		sf2::deserialize_json(
+		        in,
+		        [&](auto& msg, uint32_t row, uint32_t column) {
+			        LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at " << row << ":"
+			                         << column << ": " << msg;
+		        },
+		        r);
 
 		auto script     = in.manager().load<renderer::Particle_script>(r.update_script_id);
 		r.update_script = script;

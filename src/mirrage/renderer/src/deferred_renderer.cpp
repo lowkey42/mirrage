@@ -662,6 +662,9 @@ namespace mirrage::renderer {
 					return q.timestampValidBits >= 32
 					       && (q.queueFlags & vk::QueueFlagBits::eCompute) == vk::QueueFlagBits::eCompute;
 				});
+
+			} else {
+				LOG(plog::info) << "Using async compute";
 			}
 
 			return queue;
