@@ -169,7 +169,7 @@ namespace mirrage::input {
 	using Mouse_button = uint8_t;
 
 	struct Mouse_click {
-		Mouse_button button;
+		Mouse_button button=0;
 		int8_t       clicks = -1;
 
 		bool operator<(Mouse_click rhs) const noexcept
