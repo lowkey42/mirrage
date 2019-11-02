@@ -103,7 +103,9 @@ namespace mirrage::graphic {
 				case vk::ImageLayout::eSharedPresentKHR:
 				case vk::ImageLayout::ePresentSrcKHR: return vk::AccessFlagBits::eColorAttachmentWrite;
 
-				default: return ~vk::AccessFlags{};
+				default:
+					LOG(plog::warning) << "Unexcepted layout " << ((int) layout);
+					return vk::AccessFlags{};
 			}
 		}
 	} // namespace
