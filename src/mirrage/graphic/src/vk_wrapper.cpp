@@ -104,7 +104,7 @@ namespace mirrage::graphic {
 				case vk::ImageLayout::ePresentSrcKHR: return vk::AccessFlagBits::eColorAttachmentWrite;
 
 				default:
-					LOG(plog::warning) << "Unexcepted layout " << ((int) layout);
+					LOG(plog::warning) << "Unexcepted layout " << static_cast<int>(layout);
 					return vk::AccessFlags{};
 			}
 		}
