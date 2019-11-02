@@ -14,6 +14,8 @@ namespace mirrage::renderer {
 
 		std::int32_t mip_levels;
 
+		bool depth_sampleable;
+
 		vk::Format                depth_format;
 		graphic::Render_target_2D depth;        // depth-buffer
 		graphic::Render_target_2D prev_depth;   // depth-buffer from previouse frame

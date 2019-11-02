@@ -33,6 +33,13 @@ namespace mirrage::renderer {
 		graphic::DescriptorSet              _accum_descriptor_set;
 		std::vector<graphic::DescriptorSet> _compose_descriptor_sets;
 
+		vk::UniqueSampler                    _depth_sampler;
+		graphic::Image_descriptor_set_layout _mip_desc_set_layout;
+		std::vector<graphic::DescriptorSet>  _mip_descriptor_sets;
+
+		std::vector<graphic::Framebuffer> _mip_framebuffers;
+		graphic::Render_pass              _mip_render_pass;
+
 		std::vector<graphic::Framebuffer> _accum_framebuffers;
 		graphic::Render_pass              _accum_render_pass;
 

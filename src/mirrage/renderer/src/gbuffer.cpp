@@ -38,6 +38,13 @@ namespace mirrage::renderer {
 
 			return get_hdr_format(device);
 		}
+
+		auto is_format_blitable(graphic::Device& device, vk::Format format)
+		{
+			auto props = device.physical_device().getFormatProperties(format);
+			auto flags = vk::FormatFeatureFlagBits::eBlitSrc | vk::FormatFeatureFlagBits::eBlitDst;
+			return (props.optimalTilingFeatures & flags) == flags;
+		}
 	} // namespace
 
 	GBuffer::GBuffer(graphic::Device&          device,
@@ -45,6 +52,7 @@ namespace mirrage::renderer {
 	                 std::int32_t              width,
 	                 std::int32_t              height)
 	  : mip_levels(static_cast<std::int32_t>(std::floor(std::log2(std::min(width, height))) - 2))
+	  , depth_sampleable(!is_format_blitable(device, get_depth_format(device)))
 	  , depth_format(get_depth_format(device))
 	  , depth(device,
 	          {width, height},
@@ -67,8 +75,10 @@ namespace mirrage::renderer {
 	                 mip_levels,
 	                 device.get_depth_format(),
 	                 vk::ImageUsageFlagBits::eDepthStencilAttachment
-	                         | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eTransferSrc
-	                         | vk::ImageUsageFlagBits::eTransferDst,
+	                         | vk::ImageUsageFlagBits::eInputAttachment
+	                         | (depth_sampleable ? vk::ImageUsageFlagBits::eSampled
+	                                             : vk::ImageUsageFlagBits::eTransferSrc
+	                                                       | vk::ImageUsageFlagBits::eTransferDst),
 	                 vk::ImageAspectFlagBits::eDepth)
 
 	  , albedo_mat_id_format(device.get_texture_rgba_format().get_or_throw("No rgba-format supported"))

@@ -30,6 +30,57 @@ namespace mirrage::renderer {
 			glm::vec4 shadow_color;
 		};
 
+		auto build_mip_render_pass(Deferred_renderer&                 renderer,
+		                           vk::DescriptorSetLayout            desc_set_layout,
+		                           std::vector<graphic::Framebuffer>& out_framebuffers)
+		{
+
+			auto builder = renderer.device().create_render_pass_builder();
+
+			auto depth = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  renderer.device().get_depth_format(),
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eDepthStencilAttachmentOptimal});
+
+			auto pipeline                    = graphic::Pipeline_description{};
+			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
+			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
+
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+
+			pipeline.add_push_constant("dpc"_strid,
+			                           sizeof(Push_constants),
+			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+
+			builder.add_subpass(pipeline)
+			        .depth_stencil_attachment(depth)
+			        .stage("depth_mipmap"_strid)
+			        .shader("frag_shader:depth_mipgen"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:fullscreen"_aid, graphic::Shader_stage::vertex);
+
+			auto render_pass = builder.build();
+
+			out_framebuffers.reserve(std::size_t(renderer.gbuffer().depth_buffer.mip_levels()));
+
+			for(auto i : util::range(renderer.gbuffer().depth_buffer.mip_levels())) {
+				out_framebuffers.emplace_back(
+				        builder.build_framebuffer({renderer.gbuffer().depth_buffer.view(i), util::Rgba{1.f}},
+				                                  renderer.gbuffer().depth_buffer.width(i),
+				                                  renderer.gbuffer().depth_buffer.height(i)));
+			}
+
+			return render_pass;
+		}
+
 		auto build_accum_render_pass(Deferred_renderer&                 renderer,
 		                             vk::DescriptorSetLayout            desc_set_layout,
 		                             vk::Format                         revealage_format,
@@ -211,17 +262,16 @@ namespace mirrage::renderer {
 			return render_pass;
 		}
 
-		void generate_depth_mipmaps(vk::CommandBuffer cb,
-		                            vk::Image         image,
-		                            std::int32_t      width,
-		                            std::int32_t      height,
-		                            std::int32_t      mip_count,
-		                            std::int32_t      start_mip_level,
-		                            bool              filter_linear)
+		[[maybe_unused]] void generate_depth_mipmaps(vk::CommandBuffer cb,
+		                                             vk::Image         image,
+		                                             std::int32_t      width,
+		                                             std::int32_t      height,
+		                                             std::int32_t      mip_count,
+		                                             std::int32_t      start_mip_level)
 		{
 			using namespace graphic;
 
-			auto aspecs = vk::ImageAspectFlagBits::eDepth | vk::ImageAspectFlagBits::eStencil;
+			auto aspecs = vk::ImageAspectFlagBits::eDepth;
 
 			if(mip_count == 0) {
 				mip_count = static_cast<std::int32_t>(std::floor(std::log2(std::min(width, height))) + 1);
@@ -262,7 +312,7 @@ namespace mirrage::renderer {
 				             image,
 				             vk::ImageLayout::eTransferDstOptimal,
 				             {blit},
-				             filter_linear ? vk::Filter::eLinear : vk::Filter::eNearest);
+				             vk::Filter::eNearest);
 
 				image_layout_transition(cb,
 				                        image,
@@ -333,6 +383,15 @@ namespace mirrage::renderer {
 	                                              vk::SamplerMipmapMode::eNearest))
 	  , _desc_set_layout(create_descriptor_set_layout(renderer.device()))
 	  , _accum_descriptor_set(renderer.create_descriptor_set(*_desc_set_layout, 3))
+
+	  , _depth_sampler(renderer.device().create_sampler(1,
+	                                                    vk::SamplerAddressMode::eClampToEdge,
+	                                                    vk::BorderColor::eIntOpaqueBlack,
+	                                                    vk::Filter::eNearest,
+	                                                    vk::SamplerMipmapMode::eNearest))
+	  , _mip_desc_set_layout(renderer.device(), *_depth_sampler, 1)
+	  , _mip_render_pass(build_mip_render_pass(renderer, *_mip_desc_set_layout, _mip_framebuffers))
+
 	  , _accum_render_pass(build_accum_render_pass(
 	            renderer, *_desc_set_layout, _revealage_format, _accum, _revealage, _accum_framebuffers))
 	  , _compose_render_pass(
@@ -396,6 +455,29 @@ namespace mirrage::renderer {
 
 			return set;
 		});
+
+		if(_renderer.gbuffer().depth_sampleable) {
+			LOG(plog::info) << "Using shader based mip generation for depth";
+
+			_mip_descriptor_sets = util::build_vector(renderer.gbuffer().depth.mip_levels(), [&](auto i) {
+				auto set  = renderer.create_descriptor_set(*_mip_desc_set_layout, 1);
+				auto info = vk::DescriptorImageInfo(*_depth_sampler,
+				                                    renderer.gbuffer().depth_buffer.view(i),
+				                                    vk::ImageLayout::eShaderReadOnlyOptimal);
+
+				auto desc_writes = std::array<vk::WriteDescriptorSet, 1>{vk::WriteDescriptorSet{
+				        *set, 0, 0, 1, vk::DescriptorType::eCombinedImageSampler, &info}};
+
+
+				renderer.device().vk_device()->updateDescriptorSets(
+				        gsl::narrow<std::uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
+
+				return set;
+			});
+
+		} else {
+			LOG(plog::info) << "Using blit based mip generation for depth";
+		}
 	}
 
 
@@ -452,13 +534,42 @@ namespace mirrage::renderer {
 
 		auto mip_level = _renderer.settings().transparent_particle_mip_level;
 
-		generate_depth_mipmaps(frame.main_command_buffer,
-		                       _renderer.gbuffer().depth_buffer.image(),
-		                       _renderer.gbuffer().depth_buffer.width(),
-		                       _renderer.gbuffer().depth_buffer.height(),
-		                       mip_level + 1,
-		                       0,
-		                       false);
+		// generate depth mipmaps
+		if(_renderer.gbuffer().depth_sampleable) {
+			for(auto dst = 1; dst <= mip_level; dst++) {
+				graphic::image_layout_transition(frame.main_command_buffer,
+				                                 _renderer.gbuffer().depth_buffer.image(),
+				                                 vk::ImageLayout::eDepthStencilAttachmentOptimal,
+				                                 vk::ImageLayout::eShaderReadOnlyOptimal,
+				                                 vk::ImageAspectFlagBits::eDepth,
+				                                 dst - 1,
+				                                 1);
+
+				auto& fb = _mip_framebuffers.at(gsl::narrow<std::size_t>(dst));
+				_mip_render_pass.execute(frame.main_command_buffer, fb, [&] {
+					_mip_render_pass.bind_descriptor_set(1, *_mip_descriptor_sets.at(dst - 1));
+
+					frame.main_command_buffer.draw(3, 1, 0, 0);
+				});
+
+				graphic::image_layout_transition(frame.main_command_buffer,
+				                                 _renderer.gbuffer().depth_buffer.image(),
+				                                 vk::ImageLayout::eShaderReadOnlyOptimal,
+				                                 vk::ImageLayout::eDepthStencilAttachmentOptimal,
+				                                 vk::ImageAspectFlagBits::eDepth,
+				                                 dst - 1,
+				                                 1);
+			}
+
+		} else {
+			// TODO: refactor into renderpass to support GeForce GT 750M that can't blit to Depth-Buffers
+			generate_depth_mipmaps(frame.main_command_buffer,
+			                       _renderer.gbuffer().depth_buffer.image(),
+			                       _renderer.gbuffer().depth_buffer.width(),
+			                       _renderer.gbuffer().depth_buffer.height(),
+			                       mip_level + 1,
+			                       0);
+		}
 
 		auto& fb = _accum_framebuffers.at(gsl::narrow<std::size_t>(mip_level));
 		_accum_render_pass.execute(frame.main_command_buffer, fb, [&] {
