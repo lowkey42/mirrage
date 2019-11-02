@@ -75,11 +75,7 @@ namespace mirrage::graphic {
 	  , _memory_allocator(*_device, _gpu, dedicated_alloc_supported)
 	  , _transfer_manager(*this, transfer_queue, 2)
 	  , _delete_queue(*this, 2, false)
-	  , _depth_format(get_supported_format({vk::Format::eD24UnormS8Uint,
-	                                        vk::Format::eD32SfloatS8Uint,
-	                                        vk::Format::eD32Sfloat,
-	                                        vk::Format::eD16Unorm,
-	                                        vk::Format::eD16UnormS8Uint},
+	  , _depth_format(get_supported_format({vk::Format::eD32Sfloat, vk::Format::eD16Unorm},
 	                                       vk::FormatFeatureFlagBits::eDepthStencilAttachment,
 	                                       Format_usage::image_optimal)
 	                          .get_or_throw("No depth format supported"
