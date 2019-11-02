@@ -120,7 +120,7 @@ namespace mirrage::graphic {
 
 		Memory_backed() = default;
 		Memory_backed(UniqueHandleType&& instance, Device_memory&& memory)
-		  : _instance(std::move(instance)), _memory(std::move(memory))
+		  : _memory(std::move(memory)), _instance(std::move(instance))
 		{
 		}
 
@@ -135,8 +135,8 @@ namespace mirrage::graphic {
 
 
 	  private:
-		UniqueHandleType _instance;
 		Device_memory    _memory;
+		UniqueHandleType _instance;
 	};
 
 	using Backed_buffer = Memory_backed<vk::UniqueBuffer>;
