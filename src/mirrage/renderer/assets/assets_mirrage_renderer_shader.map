@@ -1,4 +1,7 @@
 shader: = shader/
+comp_shader: = shader/*.comp.spv
+vert_shader: = shader/*.vert.spv
+frag_shader: = shader/*.frag.spv
 
 comp_shader:particle_spawn_sphere = shader/particle/spawn_sphere.comp.spv
 comp_shader:particle_update_simple = shader/particle/update_simple.comp.spv
