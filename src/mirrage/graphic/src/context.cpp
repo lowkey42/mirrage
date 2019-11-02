@@ -130,7 +130,7 @@ namespace mirrage::graphic {
 			bool all_supported = true;
 			for(auto i = 0u; i < support_confirmed.size(); i++) {
 				if(!support_confirmed[i]) {
-					LOG(plog::warning) << "Unsupported extension \"" << required[i] << "\"!";
+					LOG(plog::error) << "Unsupported extension \"" << required[i] << "\"!";
 					all_supported = false;
 				}
 			}
@@ -159,9 +159,9 @@ namespace mirrage::graphic {
 				}
 
 				if(!layer_requested) {
-					LOG(plog::debug) << "Additional validation layer is available, that hasn't been "
-					                    "requested: "
-					                 << l.layerName;
+					LOG(plog::verbose) << "Additional validation layer is available, that hasn't been "
+					                      "requested: "
+					                   << l.layerName;
 				}
 			}
 
@@ -170,11 +170,14 @@ namespace mirrage::graphic {
 				{
 					auto msg = std::stringstream{};
 					msg << "Some requested validation layers are not supported: \n";
-					for(auto& l : validation_layers) {
-						msg << "  - " << l << "\n";
+					for(auto& l : requested) {
+						if(std::none_of(validation_layers.begin(), validation_layers.end(), [&](auto str) {
+							   return 0 == strcmp(str, l);
+						   }))
+							msg << "  - " << l << "\n";
 					}
 
-					LOG(plog::error) << msg.str();
+					LOG(plog::warning) << msg.str();
 				}
 			}
 
@@ -186,6 +189,10 @@ namespace mirrage::graphic {
 		                                             const VkDebugUtilsMessengerCallbackDataEXT* data,
 		                                             void*)
 		{
+			if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT
+			   && data->pMessageIdName != nullptr && strcmp(data->pMessageIdName, "Loader Message") == 0)
+				return VK_FALSE;
+
 			auto level = [&] {
 				if(messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
 					return plog::verbose;
@@ -273,10 +280,8 @@ namespace mirrage::graphic {
 		if(debug) {
 			required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-			_enabled_layers = check_layers({"VK_LAYER_LUNARG_image",
-			                                "VK_LAYER_LUNARG_parameter_validation",
+			_enabled_layers = check_layers({"VK_LAYER_LUNARG_parameter_validation",
 			                                "VK_LAYER_LUNARG_standard_validation",
-			                                "VK_LAYER_LUNARG_swapchain",
 			                                "VK_LAYER_GOOGLE_unique_objects",
 			                                "VK_LAYER_GOOGLE_threading",
 			                                "VK_LAYER_KHRONOS_validation"});
