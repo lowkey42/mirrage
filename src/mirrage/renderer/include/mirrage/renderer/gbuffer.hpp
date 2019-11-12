@@ -5,12 +5,15 @@
 
 namespace mirrage::renderer {
 
+	struct Renderer_settings;
+
 	struct GBuffer {
 	  public:
 		GBuffer(graphic::Device&          device,
 		        graphic::Descriptor_pool& desc_pool,
 		        std::int32_t              width,
-		        std::int32_t              height);
+		        std::int32_t              height,
+		        const Renderer_settings&  settings);
 
 		std::int32_t mip_levels;
 

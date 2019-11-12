@@ -64,7 +64,7 @@ namespace mirrage::renderer {
 	  , _factory(&factory)
 	  , _entity_manager(ecs)
 	  , _descriptor_set_pool(*device().vk_device(),
-	                         128,
+	                         160,
 	                         {vk::DescriptorType::eUniformBuffer,
 	                          vk::DescriptorType::eUniformBufferDynamic,
 	                          vk::DescriptorType::eCombinedImageSampler,
@@ -74,8 +74,11 @@ namespace mirrage::renderer {
 	                          vk::DescriptorType::eStorageImage,
 	                          vk::DescriptorType::eSampledImage,
 	                          vk::DescriptorType::eSampler})
-	  , _gbuffer(gbuffer_required(passes) ? std::make_unique<GBuffer>(
-	                     device(), _descriptor_set_pool, factory._window.width(), factory._window.height())
+	  , _gbuffer(gbuffer_required(passes) ? std::make_unique<GBuffer>(device(),
+	                                                                  _descriptor_set_pool,
+	                                                                  factory._window.width(),
+	                                                                  factory._window.height(),
+	                                                                  factory.settings())
 	                                      : std::unique_ptr<GBuffer>())
 	  , _profiler(device(), 128)
 
@@ -144,8 +147,11 @@ namespace mirrage::renderer {
 			_gbuffer.reset();
 
 			// recreate gbuffer and renderpasses
-			_gbuffer = std::make_unique<GBuffer>(
-			        device(), _descriptor_set_pool, _factory->_window.width(), _factory->_window.height());
+			_gbuffer = std::make_unique<GBuffer>(device(),
+			                                     _descriptor_set_pool,
+			                                     _factory->_window.width(),
+			                                     _factory->_window.height(),
+			                                     _factory->settings());
 		}
 
 		auto write_first_pp_buffer = true;

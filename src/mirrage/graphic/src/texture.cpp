@@ -107,24 +107,24 @@ namespace mirrage::graphic::detail {
 	                           gsl::span<const std::uint8_t> data,
 	                           std::uint32_t                 owner_qfamily)
 	  : _image(device.transfer().upload_image(
-	            vk_type(type),
-	            owner_qfamily,
-	            dim,
-	            format,
-	            generate_mipmaps ? 0 : 1,
-	            gsl::narrow<std::int32_t>(data.size_bytes() + 4),
-	            [&, idx = std::uint32_t(0)](char* dest, std::uint32_t size) mutable {
-		            if(idx == 0) {
-			            MIRRAGE_INVARIANT(size >= 4, "unexpected read of less than 4 byte");
-			            new(dest) std::uint32_t(gsl::narrow<std::uint32_t>(data.size_bytes()));
-			            dest += 4;
-			            idx += 4;
-			            size -= 4;
-		            }
-		            if(size >= 4) {
-			            std::memcpy(dest, data.data() + (idx - 4), size);
-		            }
-	            }))
+	          vk_type(type),
+	          owner_qfamily,
+	          dim,
+	          format,
+	          generate_mipmaps ? 0 : 1,
+	          gsl::narrow<std::int32_t>(data.size_bytes() + 4),
+	          [&, idx = std::uint32_t(0)](char* dest, std::uint32_t size) mutable {
+		          if(idx == 0) {
+			          MIRRAGE_INVARIANT(size >= 4, "unexpected read of less than 4 byte");
+			          new(dest) std::uint32_t(gsl::narrow<std::uint32_t>(data.size_bytes()));
+			          dest += 4;
+			          idx += 4;
+			          size -= 4;
+		          }
+		          if(size >= 4) {
+			          std::memcpy(dest, data.data() + (idx - 4), size);
+		          }
+	          }))
 	  , _image_view(device.create_image_view(
 	            image(), format, 0, gsl::narrow<std::uint32_t>(_image.mip_level_count())))
 	{

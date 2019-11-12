@@ -70,6 +70,8 @@ float sample_shadow(mat4 light_space, int shadowmap, vec3 p) {
 
 void main() {
 	base_main();
+	vec4 np = global_uniforms.proj_mat * (out_view_pos+vec4(0,0,0.2,0));
+	gl_Position.z = np.z/np.w*gl_Position.w;
 
 	if(FRAGMENT_SHADOWS==0) {
 		vec3 p = out_view_pos.xyz / out_view_pos.w;

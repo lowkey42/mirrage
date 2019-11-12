@@ -44,7 +44,8 @@ namespace mirrage::util {
 			auto ptr   = _reserve(sizeof(T), alignof(T));
 			auto grave = new(ptr) T(std::move(obj));
 
-			_entries.emplace_back(+[](void* ptr) { reinterpret_cast<T*>(ptr)->~T(); }, grave);
+			_entries.emplace_back(
+			        +[](void* ptr) { reinterpret_cast<T*>(ptr)->~T(); }, grave);
 
 			return *grave;
 		}

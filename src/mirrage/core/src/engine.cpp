@@ -100,12 +100,12 @@ namespace mirrage {
 	  , _sdl(headless)
 	  , _graphics_context(headless ? std::unique_ptr<graphic::Context>()
 	                               : std::make_unique<graphic::Context>(
-	                                         title,
-	                                         graphic::make_version_number(version_major, version_minor, 0),
-	                                         "No Engine",
-	                                         graphic::make_version_number(0, 0, 0),
-	                                         debug,
-	                                         *_asset_manager))
+	                                       title,
+	                                       graphic::make_version_number(version_major, version_minor, 0),
+	                                       "No Engine",
+	                                       graphic::make_version_number(0, 0, 0),
+	                                       debug,
+	                                       *_asset_manager))
 	  , _graphics_main_window(headless ? util::nothing : _graphics_context->find_window("Main"))
 	  , _input_manager(headless ? std::unique_ptr<input::Input_manager>()
 	                            : std::make_unique<input::Input_manager>(_bus, *_asset_manager))

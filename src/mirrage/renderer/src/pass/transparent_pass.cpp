@@ -41,7 +41,7 @@ namespace mirrage::renderer {
 			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
 			                                  renderer.device().get_depth_format(),
 			                                  vk::SampleCountFlagBits::e1,
-			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentLoadOp::eClear,
 			                                  vk::AttachmentStoreOp::eStore,
 			                                  vk::AttachmentLoadOp::eDontCare,
 			                                  vk::AttachmentStoreOp::eDontCare,
@@ -52,7 +52,8 @@ namespace mirrage::renderer {
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
 			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
 			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
+			pipeline.depth_stencil =
+			        vk::PipelineDepthStencilStateCreateInfo({}, true, true, vk::CompareOp::eAlways);
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
@@ -171,7 +172,8 @@ namespace mirrage::renderer {
 			        builder.add_subpass(particle_accum_pipeline)
 			                .color_attachment(accum, graphic::all_color_components, blend_accum)
 			                .color_attachment(revealage, graphic::all_color_components, blend_revealage)
-			                .depth_stencil_attachment(depth);
+			                .depth_stencil_attachment(depth, vk::ImageLayout::eDepthStencilReadOnlyOptimal)
+			                .input_attachment(depth, vk::ImageLayout::eDepthStencilReadOnlyOptimal);
 
 			auto frag_shadows = renderer.settings().particle_fragment_shadows ? 1 : 0;
 			particle_accum_pass.stage("particle_lit"_strid)
@@ -198,6 +200,74 @@ namespace mirrage::renderer {
 				auto attachments = std::array<graphic::Framebuffer_attachment_desc, 3>{
 				        {{renderer.gbuffer().depth_buffer.view(i), util::Rgba{1.f}},
 				         {accum_buffer.view(i), util::Rgba{0.f, 0.f, 0.f, 0.f}},
+				         {revealage_buffer.view(i), util::Rgba{1.f, 0.f, 0.f, 0.f}}}};
+
+				out_framebuffers.emplace_back(builder.build_framebuffer(
+				        attachments, accum_buffer.width(i), accum_buffer.height(i)));
+			}
+
+			return render_pass;
+		}
+
+		auto build_upsample_render_pass(Deferred_renderer&                 renderer,
+		                                vk::DescriptorSetLayout            desc_set_layout,
+		                                vk::Format                         revealage_format,
+		                                graphic::Render_target_2D&         accum_buffer,
+		                                graphic::Render_target_2D&         revealage_buffer,
+		                                std::vector<graphic::Framebuffer>& out_framebuffers)
+		{
+
+			auto builder = renderer.device().create_render_pass_builder();
+
+			auto accum = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  renderer.gbuffer().color_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+
+			auto revealage = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  revealage_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+
+			auto pipeline                    = graphic::Pipeline_description{};
+			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
+			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
+
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+
+			pipeline.add_push_constant("dpc"_strid,
+			                           sizeof(Push_constants),
+			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+
+			builder.add_subpass(pipeline)
+			        .color_attachment(accum)
+			        .color_attachment(revealage)
+			        .stage("upsample"_strid)
+			        .shader("frag_shader:transparent_upsample"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:fullscreen"_aid, graphic::Shader_stage::vertex);
+
+			auto render_pass = builder.build();
+
+			out_framebuffers.reserve(std::size_t(accum_buffer.mip_levels()));
+
+			for(auto i : util::range(accum_buffer.mip_levels())) {
+				auto attachments = std::array<graphic::Framebuffer_attachment_desc, 2>{
+				        {{accum_buffer.view(i), util::Rgba{0.f, 0.f, 0.f, 0.f}},
 				         {revealage_buffer.view(i), util::Rgba{1.f, 0.f, 0.f, 0.f}}}};
 
 				out_framebuffers.emplace_back(builder.build_framebuffer(
@@ -335,10 +405,14 @@ namespace mirrage::renderer {
 		auto create_descriptor_set_layout(graphic::Device& device) -> vk::UniqueDescriptorSetLayout
 		{
 			auto stages   = vk::ShaderStageFlagBits::eFragment | vk::ShaderStageFlagBits::eVertex;
-			auto bindings = std::array<vk::DescriptorSetLayoutBinding, 3>{
+			auto bindings = std::array<vk::DescriptorSetLayoutBinding, 6>{
 			        vk::DescriptorSetLayoutBinding{0, vk::DescriptorType::eStorageBuffer, 1, stages},
 			        vk::DescriptorSetLayoutBinding{1, vk::DescriptorType::eCombinedImageSampler, 1, stages},
-			        vk::DescriptorSetLayoutBinding{2, vk::DescriptorType::eCombinedImageSampler, 1, stages}};
+			        vk::DescriptorSetLayoutBinding{2, vk::DescriptorType::eCombinedImageSampler, 1, stages},
+			        vk::DescriptorSetLayoutBinding{3, vk::DescriptorType::eCombinedImageSampler, 1, stages},
+			        vk::DescriptorSetLayoutBinding{4, vk::DescriptorType::eCombinedImageSampler, 1, stages},
+			        vk::DescriptorSetLayoutBinding{
+			                5, vk::DescriptorType::eInputAttachment, 1, vk::ShaderStageFlagBits::eFragment}};
 
 			return device.create_descriptor_set_layout(bindings);
 		}
@@ -382,7 +456,6 @@ namespace mirrage::renderer {
 	                                              vk::Filter::eLinear,
 	                                              vk::SamplerMipmapMode::eNearest))
 	  , _desc_set_layout(create_descriptor_set_layout(renderer.device()))
-	  , _accum_descriptor_set(renderer.create_descriptor_set(*_desc_set_layout, 3))
 
 	  , _depth_sampler(renderer.device().create_sampler(1,
 	                                                    vk::SamplerAddressMode::eClampToEdge,
@@ -394,6 +467,8 @@ namespace mirrage::renderer {
 
 	  , _accum_render_pass(build_accum_render_pass(
 	            renderer, *_desc_set_layout, _revealage_format, _accum, _revealage, _accum_framebuffers))
+	  , _upsample_render_pass(build_upsample_render_pass(
+	            renderer, *_desc_set_layout, _revealage_format, _accum, _revealage, _upsample_framebuffers))
 	  , _compose_render_pass(
 	            build_compose_render_pass(renderer, *_desc_set_layout, target, _compose_framebuffer))
 	  , _light_uniforms(renderer.device().transfer().create_dynamic_buffer(
@@ -406,48 +481,52 @@ namespace mirrage::renderer {
 	  , _light_uniforms_tmp(sizeof(Directional_light_uniforms) * 4 + 4 * 4)
 	{
 		auto light_data_info = vk::DescriptorBufferInfo(_light_uniforms.buffer(), 0, VK_WHOLE_SIZE);
-		auto depth_info      = vk::DescriptorImageInfo(
-                *_sampler, renderer.gbuffer().depth.view(0), vk::ImageLayout::eShaderReadOnlyOptimal);
 
-		auto desc_writes = std::array<vk::WriteDescriptorSet, 3>{
-		        vk::WriteDescriptorSet{*_accum_descriptor_set,
-		                               0,
-		                               0,
-		                               1,
-		                               vk::DescriptorType::eStorageBuffer,
-		                               nullptr,
-		                               &light_data_info},
-		        vk::WriteDescriptorSet{*_accum_descriptor_set,
-		                               1,
-		                               0,
-		                               1,
-		                               vk::DescriptorType::eCombinedImageSampler,
-		                               &depth_info},
-		        vk::WriteDescriptorSet{*_accum_descriptor_set,
-		                               2,
-		                               0,
-		                               1,
-		                               vk::DescriptorType::eCombinedImageSampler,
-		                               &depth_info}};
+		_accum_descriptor_sets = util::build_vector(renderer.gbuffer().depth.mip_levels(), [&](auto i) {
+			auto set = renderer.create_descriptor_set(*_desc_set_layout, 3);
 
-		renderer.device().vk_device()->updateDescriptorSets(
-		        gsl::narrow<std::uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
+			auto depth_info = vk::DescriptorImageInfo({},
+			                                          renderer.gbuffer().depth_buffer.view(i),
+			                                          vk::ImageLayout::eDepthStencilReadOnlyOptimal);
 
-		_compose_descriptor_sets = util::build_vector(renderer.gbuffer().depth.mip_levels(), [&](auto i) {
-			auto set        = renderer.create_descriptor_set(*_desc_set_layout, 3);
+			auto desc_writes = std::array<vk::WriteDescriptorSet, 2>{
+			        vk::WriteDescriptorSet{
+			                *set, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &light_data_info},
+			        vk::WriteDescriptorSet{*set, 5, 0, 1, vk::DescriptorType::eInputAttachment, &depth_info}};
+
+
+			renderer.device().vk_device()->updateDescriptorSets(
+			        gsl::narrow<std::uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
+
+			return set;
+		});
+
+		_upsample_descriptor_sets = util::build_vector(renderer.gbuffer().depth.mip_levels(), [&](auto i) {
+			auto set        = renderer.create_descriptor_set(*_desc_set_layout, 5);
 			auto accum_info = vk::DescriptorImageInfo(
 			        *_sampler, _accum.view(i), vk::ImageLayout::eShaderReadOnlyOptimal);
 
 			auto revealage = vk::DescriptorImageInfo(
 			        *_sampler, _revealage.view(i), vk::ImageLayout::eShaderReadOnlyOptimal);
 
-			auto desc_writes = std::array<vk::WriteDescriptorSet, 3>{
+			auto depth_base   = vk::DescriptorImageInfo(*_sampler,
+                                                      renderer.gbuffer().depth_buffer.view(i),
+                                                      vk::ImageLayout::eShaderReadOnlyOptimal);
+			auto depth_target = vk::DescriptorImageInfo(*_sampler,
+			                                            renderer.gbuffer().depth_buffer.view(0),
+			                                            vk::ImageLayout::eShaderReadOnlyOptimal);
+
+			auto desc_writes = std::array<vk::WriteDescriptorSet, 5>{
 			        vk::WriteDescriptorSet{
 			                *set, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &light_data_info},
 			        vk::WriteDescriptorSet{
 			                *set, 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &accum_info},
 			        vk::WriteDescriptorSet{
-			                *set, 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &revealage}};
+			                *set, 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &revealage},
+			        vk::WriteDescriptorSet{
+			                *set, 3, 0, 1, vk::DescriptorType::eCombinedImageSampler, &depth_base},
+			        vk::WriteDescriptorSet{
+			                *set, 4, 0, 1, vk::DescriptorType::eCombinedImageSampler, &depth_target}};
 
 
 			renderer.device().vk_device()->updateDescriptorSets(
@@ -478,7 +557,32 @@ namespace mirrage::renderer {
 		} else {
 			LOG(plog::info) << "Using blit based mip generation for depth";
 		}
-	}
+
+
+		_compose_descriptor_sets = util::build_vector(renderer.gbuffer().depth.mip_levels(), [&](auto i) {
+			auto set = renderer.create_descriptor_set(*_desc_set_layout, 3);
+
+			auto accum_info = vk::DescriptorImageInfo(
+			        *_sampler, _accum.view(i), vk::ImageLayout::eShaderReadOnlyOptimal);
+
+			auto revealage = vk::DescriptorImageInfo(
+			        *_sampler, _revealage.view(i), vk::ImageLayout::eShaderReadOnlyOptimal);
+
+			auto desc_writes = std::array<vk::WriteDescriptorSet, 3>{
+			        vk::WriteDescriptorSet{
+			                *set, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &light_data_info},
+			        vk::WriteDescriptorSet{
+			                *set, 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &accum_info},
+			        vk::WriteDescriptorSet{
+			                *set, 2, 0, 1, vk::DescriptorType::eCombinedImageSampler, &revealage}};
+
+
+			renderer.device().vk_device()->updateDescriptorSets(
+			        gsl::narrow<std::uint32_t>(desc_writes.size()), desc_writes.data(), 0, nullptr);
+
+			return set;
+		});
+	} // namespace mirrage::renderer
 
 
 	void Transparent_pass::update(util::Time) {}
@@ -562,7 +666,6 @@ namespace mirrage::renderer {
 			}
 
 		} else {
-			// TODO: refactor into renderpass to support GeForce GT 750M that can't blit to Depth-Buffers
 			generate_depth_mipmaps(frame.main_command_buffer,
 			                       _renderer.gbuffer().depth_buffer.image(),
 			                       _renderer.gbuffer().depth_buffer.width(),
@@ -576,8 +679,9 @@ namespace mirrage::renderer {
 			auto last_material = static_cast<const Material*>(nullptr);
 			auto last_model    = static_cast<const Model*>(nullptr);
 
-			auto desc_sets = std::array<vk::DescriptorSet, 3>{
-			        frame.global_uniform_set, *_accum_descriptor_set, *_renderer.gbuffer().shadowmaps};
+			auto desc_sets = std::array<vk::DescriptorSet, 3>{frame.global_uniform_set,
+			                                                  *_accum_descriptor_sets.at(mip_level),
+			                                                  *_renderer.gbuffer().shadowmaps};
 			_accum_render_pass.bind_descriptor_sets(0, desc_sets);
 
 			// draw particles
@@ -645,9 +749,43 @@ namespace mirrage::renderer {
 			}
 		});
 
+
+		if(mip_level > _renderer.settings().upsample_transparency_to_mip) {
+			auto target_mip = _renderer.settings().upsample_transparency_to_mip;
+			// upsample low-res buffers
+			graphic::image_layout_transition(frame.main_command_buffer,
+			                                 _renderer.gbuffer().depth_buffer.image(),
+			                                 vk::ImageLayout::eDepthStencilAttachmentOptimal,
+			                                 vk::ImageLayout::eShaderReadOnlyOptimal,
+			                                 vk::ImageAspectFlagBits::eDepth,
+			                                 0,
+			                                 mip_level + 1);
+
+			for(auto i = mip_level - 1; i >= target_mip; i--) {
+				_upsample_render_pass.execute(
+				        frame.main_command_buffer,
+				        _upsample_framebuffers.at(gsl::narrow<std::size_t>(i)),
+				        [&] {
+					        _upsample_render_pass.bind_descriptor_set(
+					                1, *_upsample_descriptor_sets.at(gsl::narrow<std::size_t>(i + 1)));
+					        frame.main_command_buffer.draw(3, 1, 0, 0);
+				        });
+			}
+
+			graphic::image_layout_transition(frame.main_command_buffer,
+			                                 _renderer.gbuffer().depth_buffer.image(),
+			                                 vk::ImageLayout::eShaderReadOnlyOptimal,
+			                                 vk::ImageLayout::eDepthStencilAttachmentOptimal,
+			                                 vk::ImageAspectFlagBits::eDepth,
+			                                 0,
+			                                 mip_level + 1);
+
+			mip_level = target_mip;
+		}
+
 		// compose into frame
 		_compose_render_pass.execute(frame.main_command_buffer, _compose_framebuffer, [&] {
-			_compose_render_pass.bind_descriptor_set(1, *_compose_descriptor_sets.at(std::size_t(mip_level)));
+			_compose_render_pass.bind_descriptor_set(1, *_compose_descriptor_sets.at(mip_level));
 			frame.main_command_buffer.draw(3, 1, 0, 0);
 		});
 	}

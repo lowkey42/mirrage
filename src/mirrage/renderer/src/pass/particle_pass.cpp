@@ -231,15 +231,17 @@ namespace mirrage::renderer {
 					feedback++;
 
 					MIRRAGE_INVARIANT(count >= 0, "negative particle count: " << count);
+					MIRRAGE_INVARIANT(offset + count <= _per_frame_data.at(frame_idx).capacity,
+					                  "particle shader error, offset "
+					                          << (offset + count)
+					                          << " >= " << _per_frame_data.at(frame_idx).capacity);
 
-					if(offset + count < _per_frame_data.at(frame_idx).capacity) {
-						emitter->set(&_rev,
-						             *_per_frame_data.at(frame_idx).particles,
-						             emitter->next_uniforms(),
-						             offset,
-						             count,
-						             i);
-					}
+					emitter->set(&_rev,
+					             *_per_frame_data.at(frame_idx).particles,
+					             emitter->next_uniforms(),
+					             offset,
+					             count,
+					             i);
 				}
 			}
 
@@ -285,13 +287,29 @@ namespace mirrage::renderer {
 		MIRRAGE_INVARIANT(_emitter_gpu_data.empty(),
 		                  "_emitter_gpu_data is not empty at the start of the update process.");
 
-		const auto max_particles = _renderer.settings().max_particles;
-
 		auto& data = _per_frame_data.at(std::size_t(_current_frame));
 
 		data.commands = _renderer.create_compute_command_buffer();
+		data.commands->begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+
+		_build_update_commands(frame, data);
+
+		// submit to async compute queue
+		data.commands->end();
+		auto submit = vk::SubmitInfo{0, nullptr, nullptr, 1, &*data.commands};
+		_renderer.compute_queue().submit(submit, _update_fence.vk_fence());
+		_update_submitted = true;
+
+		_current_frame = (_current_frame + 1) % std::int32_t(_per_frame_data.size());
+		_first_frame   = false;
+		_dt            = 0.f;
+	}
+
+	void Particle_pass::_build_update_commands(Frame_data& frame, Per_frame_data& data)
+	{
+		const auto max_particles = _renderer.settings().max_particles;
+
 		auto commands = *data.commands;
-		commands.begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 
 		auto commands_label =
 		        graphic::Queue_debug_label(_renderer.device().context(), commands, "Particle update");
@@ -420,16 +438,6 @@ namespace mirrage::renderer {
 		// copy feedback buffer back to host visible memory
 		commands.copyBuffer(
 		        *_feedback_buffer, *_feedback_buffer_host, vk::BufferCopy{0, 0, feedback_size_bytes});
-
-		// submit to async compute queue
-		commands.end();
-		auto submit = vk::SubmitInfo{0, nullptr, nullptr, 1, &commands};
-		_renderer.compute_queue().submit(submit, _update_fence.vk_fence());
-		_update_submitted = true;
-
-		_current_frame = (_current_frame + 1) % std::int32_t(_per_frame_data.size());
-		_first_frame   = false;
-		_dt            = 0.f;
 	}
 
 	auto Particle_pass::_alloc_feedback_buffer(Frame_data& frame)

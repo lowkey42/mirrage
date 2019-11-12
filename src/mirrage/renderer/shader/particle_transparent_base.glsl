@@ -37,7 +37,8 @@ layout(std430, set=1, binding = 0) readonly buffer Light_data {
 	Directional_light dir_lights[];
 } lights;
 
-layout(set=1, binding = 1) uniform sampler2D depth_sampler;
+//layout(set=1, binding = 1) uniform sampler2D depth_sampler;
+layout(input_attachment_index = 0, set=1, binding = 5) uniform subpassInput depth_sampler;
 
 layout(set=2, binding = 0) uniform texture2D shadowmaps[1];
 layout(set=2, binding = 1) uniform samplerShadow shadowmap_shadow_sampler; // sampler2DShadow

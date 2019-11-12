@@ -15,7 +15,7 @@ namespace mirrage::util {
 
 	struct random_seed_seq {
 		using result_type = std::random_device::result_type;
-	
+
 		template <typename It>
 		void generate(It begin, It end)
 		{

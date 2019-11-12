@@ -181,8 +181,6 @@ namespace mirrage::renderer {
 
 				ImGui::TextUnformatted("Renderer Settings");
 
-				ImGui::Checkbox("Particle Frag. Shadows", &renderer_settings.particle_fragment_shadows);
-
 				ImGui::SliderInt("Debug Layer", &renderer_settings.debug_gi_layer, -1, 10);
 
 				ImGui::Checkbox("Indirect Illumination", &renderer_settings.gi);
@@ -213,6 +211,12 @@ namespace mirrage::renderer {
 				ImGui::Checkbox("Tonemapping", &renderer_settings.tonemapping);
 
 				ImGui::Checkbox("Depth of Field", &renderer_settings.depth_of_field);
+
+				ImGui::TextUnformatted("Particles");
+				ImGui::Checkbox("Particle Frag. Shadows", &renderer_settings.particle_fragment_shadows);
+				ImGui::Checkbox("High Quality Depth", &renderer_settings.high_quality_particle_depth);
+				ImGui::SliderInt("MIP Level", &renderer_settings.transparent_particle_mip_level, 0, 5);
+				ImGui::SliderInt("MIP Upsample", &renderer_settings.upsample_transparency_to_mip, 0, 5);
 
 
 				if(ImGui::Button("Apply")) {

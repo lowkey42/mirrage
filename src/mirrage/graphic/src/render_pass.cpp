@@ -310,18 +310,19 @@ namespace mirrage::graphic {
 		return *this;
 	}
 
-	auto Subpass_builder::input_attachment(Attachment_ref attachment) -> Subpass_builder&
+	auto Subpass_builder::input_attachment(Attachment_ref attachment, vk::ImageLayout layout)
+	        -> Subpass_builder&
 	{
 		auto attachment_idx = gsl::narrow_cast<uint32_t>(reinterpret_cast<std::intptr_t>(attachment));
-		_input_attachments.emplace_back(attachment_idx, vk::ImageLayout::eShaderReadOnlyOptimal);
+		_input_attachments.emplace_back(attachment_idx, layout);
 
 		return *this;
 	}
-	auto Subpass_builder::depth_stencil_attachment(Attachment_ref attachment) -> Subpass_builder&
+	auto Subpass_builder::depth_stencil_attachment(Attachment_ref attachment, vk::ImageLayout layout)
+	        -> Subpass_builder&
 	{
-		auto attachment_idx = gsl::narrow_cast<uint32_t>(reinterpret_cast<std::intptr_t>(attachment));
-		_depth_stencil_attachment =
-		        vk::AttachmentReference{attachment_idx, vk::ImageLayout::eDepthStencilAttachmentOptimal};
+		auto attachment_idx       = gsl::narrow_cast<uint32_t>(reinterpret_cast<std::intptr_t>(attachment));
+		_depth_stencil_attachment = vk::AttachmentReference{attachment_idx, layout};
 		return *this;
 	}
 	auto Subpass_builder::preserve_attachment(Attachment_ref attachment) -> Subpass_builder&

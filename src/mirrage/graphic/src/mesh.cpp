@@ -12,13 +12,13 @@ namespace mirrage::graphic {
 	           std::function<void(char*)> write_vertices,
 	           std::function<void(char*)> write_indices)
 	  : _buffer(device.transfer().upload_buffer(
-	            vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer,
-	            owner_qfamily,
-	            gsl::narrow<std::int32_t>(vertex_count + index_count),
-	            [&](char* dest) {
-		            write_vertices(dest);
-		            write_indices(dest + vertex_count);
-	            }))
+	          vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer,
+	          owner_qfamily,
+	          gsl::narrow<std::int32_t>(vertex_count + index_count),
+	          [&](char* dest) {
+		          write_vertices(dest);
+		          write_indices(dest + vertex_count);
+	          }))
 	  , _index_offset(vertex_count)
 	  , _indices(std::uint32_t(index_count / sizeof(std::uint32_t)))
 	{

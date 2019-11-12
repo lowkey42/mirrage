@@ -271,12 +271,13 @@ namespace mirrage::asset {
 		}
 
 		// transfer mesh data to gpu
-		auto mesh = graphic::Mesh(_device,
-		                          _owner_qfamily,
-		                          header.vertex_size,
-		                          header.index_size,
-		                          [&](char* dest) { in.read_direct(dest, header.vertex_size); },
-		                          [&](char* dest) { in.read_direct(dest, header.index_size); });
+		auto mesh = graphic::Mesh(
+		        _device,
+		        _owner_qfamily,
+		        header.vertex_size,
+		        header.index_size,
+		        [&](char* dest) { in.read_direct(dest, header.vertex_size); },
+		        [&](char* dest) { in.read_direct(dest, header.index_size); });
 
 		auto footer = std::uint32_t(0);
 		read(in, footer);

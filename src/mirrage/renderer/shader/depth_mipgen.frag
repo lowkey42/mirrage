@@ -9,5 +9,6 @@ layout(location = 0) in Vertex_data {
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 
 void main() {
-	gl_FragDepth = textureLod(depth_sampler, vertex_out.tex_coords, 0).r;
+	vec4 depth = textureGather(depth_sampler, vertex_out.tex_coords, 0);
+	gl_FragDepth = max(depth[0], max(depth[1], max(depth[2], depth[3])));
 }

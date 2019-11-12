@@ -128,7 +128,7 @@ void base_main() {
 	out_tex_coords = clip_rect.xy + out_tex_coords * clip_rect.zw;
 	out_tex_coords.y = 1-out_tex_coords.y;
 
-	vec4 color = calc_color(keyframe_a, keyframe_b, keyframe_t, rand_color);;
+	vec4 color = calc_color(keyframe_a, keyframe_b, keyframe_t, rand_color);
 	out_particle_color = vec4(hsv2rgb(color.xyz), color.a);
 
 	vec4 screen_pos = global_uniforms.proj_mat * view_pos;

@@ -67,16 +67,16 @@ namespace mirrage {
 	{
 		_meta_system.entities().entity_builder("cornell").position({1000, 0, 0}).create();
 
-		_cmd_commands.add_property("pos",
-		                           [&](glm::vec3 position) {
-			                           _camera.get<Transform_comp>().process(
-			                                   [&](auto& transform) { transform.position = position; });
-		                           },
-		                           [&]() {
-			                           return _camera.get<Transform_comp>().process(
-			                                   glm::vec3(0, 0, 0),
-			                                   [&](auto& transform) { return transform.position; });
-		                           });
+		_cmd_commands.add_property(
+		        "pos",
+		        [&](glm::vec3 position) {
+			        _camera.get<Transform_comp>().process(
+			                [&](auto& transform) { transform.position = position; });
+		        },
+		        [&]() {
+			        return _camera.get<Transform_comp>().process(
+			                glm::vec3(0, 0, 0), [&](auto& transform) { return transform.position; });
+		        });
 
 		_meta_system.entities().entity_builder("sponza").create();
 
@@ -275,7 +275,7 @@ namespace mirrage {
 		});
 		_look = {0.f, 0.f};
 
-		_meta_system.update(_paused ? util::Time(0.001f) : dt);
+		_meta_system.update(_paused ? util::Time(0.0f) : dt);
 
 		_performance_log.process([&](auto& log) {
 			_performance_log_delay_left -= dt;

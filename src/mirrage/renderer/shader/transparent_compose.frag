@@ -19,14 +19,14 @@ layout(set=1, binding = 1) uniform sampler2D accum_sampler;
 layout(set=1, binding = 2) uniform sampler2D revealage_sampler;
 
 void main() {
-	float revealage = textureLod(revealage_sampler, vertex_out.tex_coords, 0).r;
+	float revealage = texture(revealage_sampler, vertex_out.tex_coords, 0).r;
 
 	if (revealage == 1.0) {
 		// Save the blending and color texture fetch cost
 		discard;
 	}
 
-	vec4 accum     = textureLod(accum_sampler, vertex_out.tex_coords, 0);
+	vec4 accum     = texture(accum_sampler, vertex_out.tex_coords, 0);
 
 	// Suppress overflow
 	vec4 abs_accum = abs(accum);

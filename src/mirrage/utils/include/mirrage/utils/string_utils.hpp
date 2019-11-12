@@ -84,14 +84,14 @@ namespace mirrage::util {
 			auto ss    = std::stringstream(std::string(view));
 			auto val   = T{};
 			auto error = false;
-			sf2::deserialize_json<T>(ss,
-			                         [&](auto& msg, uint32_t row, uint32_t column) {
-				                         error = true;
-				                         LOG(plog::error)
-				                                 << "Unable to parse string \"" << view << "\". Error at "
-				                                 << row << ":" << column << ": " << msg;
-			                         },
-			                         val);
+			sf2::deserialize_json<T>(
+			        ss,
+			        [&](auto& msg, uint32_t row, uint32_t column) {
+				        error = true;
+				        LOG(plog::error) << "Unable to parse string \"" << view << "\". Error at " << row
+				                         << ":" << column << ": " << msg;
+			        },
+			        val);
 
 			return error ? util::nothing : util::just(std::move(val));
 

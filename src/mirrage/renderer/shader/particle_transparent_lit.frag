@@ -87,10 +87,10 @@ vec4 calc_color(int mip) {
 	albedo *= out_particle_color;
 
 	vec2 screen_uv = out_screen_pos.xy/out_screen_pos.w*0.5+0.5;
-	float background_depth = textureLod(depth_sampler, screen_uv, mip).r * -global_uniforms.proj_planes.y;
-	albedo.a *= smoothstep(0, 0.2, abs(background_depth-view_pos.z/view_pos.w));
+	float background = subpassLoad(depth_sampler).r;
+	albedo.a *= 1.0 - max(0.0, view_pos.z-to_linear_depth(background))/0.1;
 
-	if(albedo.a<0.001) {
+	if(albedo.a<0.00001) {
 		discard;
 	}
 

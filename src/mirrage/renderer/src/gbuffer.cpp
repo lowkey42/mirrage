@@ -1,5 +1,7 @@
 #include <mirrage/renderer/gbuffer.hpp>
 
+#include <mirrage/renderer/deferred_renderer.hpp>
+
 #include <mirrage/graphic/device.hpp>
 
 namespace mirrage::renderer {
@@ -50,9 +52,11 @@ namespace mirrage::renderer {
 	GBuffer::GBuffer(graphic::Device&          device,
 	                 graphic::Descriptor_pool& desc_pool,
 	                 std::int32_t              width,
-	                 std::int32_t              height)
+	                 std::int32_t              height,
+	                 const Renderer_settings&  settings)
 	  : mip_levels(static_cast<std::int32_t>(std::floor(std::log2(std::min(width, height))) - 2))
-	  , depth_sampleable(!is_format_blitable(device, get_depth_format(device)))
+	  , depth_sampleable(settings.high_quality_particle_depth
+	                     || !is_format_blitable(device, get_depth_format(device)))
 	  , depth_format(get_depth_format(device))
 	  , depth(device,
 	          {width, height},
@@ -75,8 +79,8 @@ namespace mirrage::renderer {
 	                 mip_levels,
 	                 device.get_depth_format(),
 	                 vk::ImageUsageFlagBits::eDepthStencilAttachment
-	                         | vk::ImageUsageFlagBits::eInputAttachment
-	                         | (depth_sampleable ? vk::ImageUsageFlagBits::eSampled
+	                         | vk::ImageUsageFlagBits::eInputAttachment | vk::ImageUsageFlagBits::eSampled
+	                         | (depth_sampleable ? vk::ImageUsageFlagBits(0)
 	                                             : vk::ImageUsageFlagBits::eTransferSrc
 	                                                       | vk::ImageUsageFlagBits::eTransferDst),
 	                 vk::ImageAspectFlagBits::eDepth)

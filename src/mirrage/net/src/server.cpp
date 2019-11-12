@@ -90,16 +90,12 @@ namespace mirrage::net {
 	               int                        max_out_bandwidth,
 	               Connected_callback         on_connected,
 	               Disconnected_callback      on_disconnected)
-	  : Connection(open_server_host(type,
-	                                hostname,
-	                                port,
-	                                channels.size(),
-	                                max_clients,
-	                                max_in_bandwidth,
-	                                max_out_bandwidth),
-	               channels,
-	               std::move(on_connected),
-	               std::move(on_disconnected))
+	  : Connection(
+	          open_server_host(
+	                  type, hostname, port, channels.size(), max_clients, max_in_bandwidth, max_out_bandwidth),
+	          channels,
+	          std::move(on_connected),
+	          std::move(on_disconnected))
 	{
 	}
 

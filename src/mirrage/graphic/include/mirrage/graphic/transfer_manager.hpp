@@ -206,21 +206,21 @@ namespace mirrage::graphic {
 				size += std::int32_t(subdata.size_bytes());
 			}
 
-			return upload_buffer(usage,
-			                     owner,
-			                     size,
-			                     [&](char* dest) {
-				                     auto offset = std::ptrdiff_t(0);
+			return upload_buffer(
+			        usage,
+			        owner,
+			        size,
+			        [&](char* dest) {
+				        auto offset = std::ptrdiff_t(0);
 
-				                     for(auto&& subdata : data) {
-					                     auto subdata_size = subdata.size_bytes();
-					                     std::memcpy(dest + offset,
-					                                 subdata.data(),
-					                                 gsl::narrow<std::size_t>(subdata_size));
-					                     offset += subdata_size;
-				                     }
-			                     },
-			                     dedicated);
+				        for(auto&& subdata : data) {
+					        auto subdata_size = subdata.size_bytes();
+					        std::memcpy(
+					                dest + offset, subdata.data(), gsl::narrow<std::size_t>(subdata_size));
+					        offset += subdata_size;
+				        }
+			        },
+			        dedicated);
 		}
 
 		auto upload_buffer(vk::BufferUsageFlags       usage,

@@ -218,8 +218,12 @@ namespace mirrage::graphic {
 		                      vk::ColorComponentFlags       colorWriteMask = all_color_components,
 		                      util::maybe<Attachment_blend> blend = util::nothing) -> Subpass_builder&;
 
-		auto input_attachment(Attachment_ref) -> Subpass_builder&;
-		auto depth_stencil_attachment(Attachment_ref) -> Subpass_builder&;
+		auto input_attachment(Attachment_ref,
+		                      vk::ImageLayout layout = vk::ImageLayout::eShaderReadOnlyOptimal)
+		        -> Subpass_builder&;
+		auto depth_stencil_attachment(
+		        Attachment_ref, vk::ImageLayout layout = vk::ImageLayout::eDepthStencilAttachmentOptimal)
+		        -> Subpass_builder&;
 		auto preserve_attachment(Attachment_ref) -> Subpass_builder&;
 
 

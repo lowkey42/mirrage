@@ -81,7 +81,8 @@ namespace mirrage::graphic {
 			auto ret          = vkAllocateDescriptorSets(_device, &c_alloc_info, &desc_set);
 
 			if(ret == VK_SUCCESS) {
-				return DescriptorSet(this, gsl::narrow<Descriptor_pool_chunk_index>(pool_idx), desc_set, bindings);
+				return DescriptorSet(
+				        this, gsl::narrow<Descriptor_pool_chunk_index>(pool_idx), desc_set, bindings);
 			} else {
 				LOG(plog::warning) << "Allocated a new descriptorSetPool (shouldn't happen too often!).";
 				*free_iter = 0;

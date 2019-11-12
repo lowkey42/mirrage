@@ -118,10 +118,11 @@ namespace mirrage::graphic {
 	  , _queue(_device.get_queue(transfer_queue))
 	  , _semaphore(device.create_semaphore())
 	  , _command_buffer_pool(device.create_command_buffer_pool(transfer_queue, true, true))
-	  , _command_buffers(device,
-	                     +[](vk::UniqueCommandBuffer& cb) { cb->reset({}); },
-	                     [&] { return std::move(_command_buffer_pool.create_primary()[0]); },
-	                     max_frames)
+	  , _command_buffers(
+	            device,
+	            +[](vk::UniqueCommandBuffer& cb) { cb->reset({}); },
+	            [&] { return std::move(_command_buffer_pool.create_primary()[0]); },
+	            max_frames)
 	{
 
 		if(!_device.is_unified_memory_architecture()) {

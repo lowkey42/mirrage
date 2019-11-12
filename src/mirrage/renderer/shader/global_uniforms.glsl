@@ -18,4 +18,10 @@ vec3 position_from_ldepth(vec2 uv, float z) {
 	return vec3((uv.xy * global_uniforms.proj_info.xy + global_uniforms.proj_info.zw), 1) * z;
 }
 
+float to_linear_depth(float d) {
+	float z_n = 2.0 * d - 1.0;
+	float z_e = 2.0 * global_uniforms.proj_planes.x * global_uniforms.proj_planes.y / (global_uniforms.proj_planes.y + global_uniforms.proj_planes.x - z_n * (global_uniforms.proj_planes.y - global_uniforms.proj_planes.x));
+	return z_e;
+}
+
 #endif

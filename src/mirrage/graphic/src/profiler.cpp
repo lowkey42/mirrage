@@ -77,7 +77,7 @@ namespace mirrage::graphic {
 
 	Profiler::Query_pool_entry::Query_pool_entry(Device& device, std::uint32_t max_count)
 	  : pool(device.vk_device()->createQueryPoolUnique(
-	            vk::QueryPoolCreateInfo{vk::QueryPoolCreateFlags{}, vk::QueryType::eTimestamp, max_count}))
+	          vk::QueryPoolCreateInfo{vk::QueryPoolCreateFlags{}, vk::QueryType::eTimestamp, max_count}))
 	{
 	}
 
@@ -86,7 +86,7 @@ namespace mirrage::graphic {
 	  , _ns_per_tick(static_cast<double>(device.physical_device_properties().limits.timestampPeriod))
 	  , _query_ids(max_elements)
 	  , _last_results("All", _generate_query_id(), _generate_query_id())
-	  , _query_pools(device.max_frames_in_flight(),
+	  , _query_pools(device.max_frames_in_flight() + 1,
 	                 [&] { return Query_pool_entry(device, gsl::narrow<std::uint32_t>(_query_ids)); })
 	  , _query_used(max_elements, false)
 	{
@@ -169,10 +169,6 @@ namespace mirrage::graphic {
 		}
 
 		_current_command_buffer = util::nothing;
-
-		if(_active) {
-			_device.waitIdle();
-		}
 	}
 
 	void Profiler::_update_result(Profiler_result& result, const std::vector<std::uint32_t>& data)

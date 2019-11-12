@@ -232,7 +232,8 @@ namespace mirrage::graphic {
 	class Delete_queue : public Per_frame_queue<util::purgatory> {
 	  public:
 		Delete_queue(Device& device, std::size_t max_frames = 4, bool warn_on_full = true)
-		  : Per_frame_queue(device, +[](util::purgatory& p) { p.clear(); }, max_frames, warn_on_full)
+		  : Per_frame_queue(
+		          device, +[](util::purgatory& p) { p.clear(); }, max_frames, warn_on_full)
 		{
 		}
 

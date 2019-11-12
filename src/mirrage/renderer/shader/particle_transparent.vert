@@ -36,4 +36,6 @@ out gl_PerVertex {
 
 void main() {
 	base_main();
+	vec4 np = global_uniforms.proj_mat * (out_view_pos+vec4(0,0,0.2,0));
+	gl_Position.z = np.z/np.w*gl_Position.w;
 }

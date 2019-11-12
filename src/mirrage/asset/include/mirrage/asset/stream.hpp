@@ -97,12 +97,13 @@ namespace mirrage::asset {
 		{
 			auto r = T();
 
-			sf2::deserialize_json(in,
-			                      [&](auto& msg, uint32_t row, uint32_t column) {
-				                      LOG(plog::error) << "Error parsing JSON from " << in.aid().str()
-				                                       << " at " << row << ":" << column << ": " << msg;
-			                      },
-			                      r);
+			sf2::deserialize_json(
+			        in,
+			        [&](auto& msg, uint32_t row, uint32_t column) {
+				        LOG(plog::error) << "Error parsing JSON from " << in.aid().str() << " at " << row
+				                         << ":" << column << ": " << msg;
+			        },
+			        r);
 
 			return r;
 		}

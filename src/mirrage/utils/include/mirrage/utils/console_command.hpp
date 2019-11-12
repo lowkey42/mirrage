@@ -72,9 +72,10 @@ namespace mirrage::util {
 		template <typename T, typename F = detail::Default_var_setter<T>>
 		auto add_var(const std::string& name, T& var, F setter = {})
 		{
-			add_property(name,
-			             [&var, setter = std::move(setter)](T new_val) mutable { setter(var, new_val); },
-			             [&var, name = name]() -> decltype(auto) { return var; });
+			add_property(
+			        name,
+			        [&var, setter = std::move(setter)](T new_val) mutable { setter(var, new_val); },
+			        [&var, name = name]() -> decltype(auto) { return var; });
 		}
 
 		template <typename FS, typename FG>
@@ -123,32 +124,33 @@ namespace mirrage::util {
 			auto arg_iter = std::cregex_iterator(cmd.data(), cmd.data() + cmd.size(), split_args_regex);
 			auto arg_end  = std::cregex_iterator();
 
-			util::foreach_function_arg_call(f, [&](auto type) -> util::maybe<typename decltype(type)::type> {
-				if(arg_iter == arg_end) {
-					LOG(plog::error) << "Not enough arguments.";
-					return util::nothing;
-				}
+			util::foreach_function_arg_call(
+			        f, [&](auto type) -> util::maybe<typename decltype(type)::type> {
+				        if(arg_iter == arg_end) {
+					        LOG(plog::error) << "Not enough arguments.";
+					        return util::nothing;
+				        }
 
-				auto curr = *arg_iter;
-				arg_iter++;
+				        auto curr = *arg_iter;
+				        arg_iter++;
 
-				if(curr[1].length() == 0) {
-					return util::from_string<typename decltype(type)::type>(
-					        cmd.substr(std::size_t(curr.position()), std::size_t(curr.length())));
+				        if(curr[1].length() == 0) {
+					        return util::from_string<typename decltype(type)::type>(
+					                cmd.substr(std::size_t(curr.position()), std::size_t(curr.length())));
 
-				} else { // quoted
-					auto arg = std::string_view(curr[1].first, std::size_t(curr[1].length()));
-					if(!arg.find("\\"))
-						return util::from_string<typename decltype(type)::type>(arg);
-					else {
-						// contains escape sequences we have to replace
-						auto arg_str = std::string(arg);
-						util::replace_inplace(arg_str, "\\\"", "\"");
-						util::replace_inplace(arg_str, "\\\\", "\\");
-						return util::from_string<typename decltype(type)::type>(arg_str);
-					}
-				}
-			});
+				        } else { // quoted
+					        auto arg = std::string_view(curr[1].first, std::size_t(curr[1].length()));
+					        if(!arg.find("\\"))
+						        return util::from_string<typename decltype(type)::type>(arg);
+					        else {
+						        // contains escape sequences we have to replace
+						        auto arg_str = std::string(arg);
+						        util::replace_inplace(arg_str, "\\\"", "\"");
+						        util::replace_inplace(arg_str, "\\\\", "\\");
+						        return util::from_string<typename decltype(type)::type>(arg_str);
+					        }
+				        }
+			        });
 		};
 
 		auto c = all_commands().emplace(std::move(name),

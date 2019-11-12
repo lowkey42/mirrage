@@ -76,7 +76,8 @@ namespace mirrage::graphic {
 	  , _transfer_manager(*this, transfer_queue, 2)
 	  , _delete_queue(*this, 2, false)
 	  , _depth_format(get_supported_format({vk::Format::eD32Sfloat, vk::Format::eD16Unorm},
-	                                       vk::FormatFeatureFlagBits::eDepthStencilAttachment,
+	                                       vk::FormatFeatureFlagBits::eDepthStencilAttachment
+	                                               | vk::FormatFeatureFlagBits::eSampledImage,
 	                                       Format_usage::image_optimal)
 	                          .get_or_throw("No depth format supported"
 	                                        " by device"))
