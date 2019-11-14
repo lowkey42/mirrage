@@ -176,12 +176,15 @@ namespace mirrage::renderer {
 			                .input_attachment(depth, vk::ImageLayout::eDepthStencilReadOnlyOptimal);
 
 			auto frag_shadows = renderer.settings().particle_fragment_shadows ? 1 : 0;
+			auto frag_gi      = renderer.settings().particle_gi ? 1 : 0;
 			particle_accum_pass.stage("particle_lit"_strid)
 			        .shader("frag_shader:particle_transparent_lit"_aid,
 			                graphic::Shader_stage::fragment,
 			                "main",
 			                0,
-			                frag_shadows)
+			                frag_shadows,
+			                1,
+			                frag_gi)
 			        .shader("vert_shader:particle_transparent_lit"_aid,
 			                graphic::Shader_stage::vertex,
 			                "main",
@@ -450,7 +453,7 @@ namespace mirrage::renderer {
 	               vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled,
 	               vk::ImageAspectFlagBits::eColor)
 
-	  , _sampler(renderer.device().create_sampler(1,
+	  , _sampler(renderer.device().create_sampler(9,
 	                                              vk::SamplerAddressMode::eClampToEdge,
 	                                              vk::BorderColor::eIntOpaqueBlack,
 	                                              vk::Filter::eLinear,
@@ -489,10 +492,17 @@ namespace mirrage::renderer {
 			                                          renderer.gbuffer().depth_buffer.view(i),
 			                                          vk::ImageLayout::eDepthStencilReadOnlyOptimal);
 
-			auto desc_writes = std::array<vk::WriteDescriptorSet, 2>{
+			auto ambient = vk::DescriptorImageInfo(
+			        *_sampler,
+			        renderer.gbuffer().ambient_light.get_or(renderer.gbuffer().colorA).view(0),
+			        vk::ImageLayout::eShaderReadOnlyOptimal);
+
+			auto desc_writes = std::array<vk::WriteDescriptorSet, 3>{
 			        vk::WriteDescriptorSet{
 			                *set, 0, 0, 1, vk::DescriptorType::eStorageBuffer, nullptr, &light_data_info},
-			        vk::WriteDescriptorSet{*set, 5, 0, 1, vk::DescriptorType::eInputAttachment, &depth_info}};
+			        vk::WriteDescriptorSet{*set, 5, 0, 1, vk::DescriptorType::eInputAttachment, &depth_info},
+			        vk::WriteDescriptorSet{
+			                *set, 1, 0, 1, vk::DescriptorType::eCombinedImageSampler, &ambient}};
 
 
 			renderer.device().vk_device()->updateDescriptorSets(

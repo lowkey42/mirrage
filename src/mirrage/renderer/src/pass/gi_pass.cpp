@@ -641,6 +641,112 @@ namespace mirrage::renderer {
 			return render_pass;
 		}
 
+		auto build_ambient_render_pass(Deferred_renderer&      renderer,
+		                               vk::DescriptorSetLayout desc_set_layout,
+		                               Render_target_2D&       target,
+		                               Framebuffer&            out_framebuffer)
+		{
+
+			auto builder = renderer.device().create_render_pass_builder();
+
+			auto color = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  renderer.gbuffer().color_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+
+			auto pipeline                    = graphic::Pipeline_description{};
+			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
+			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
+
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+			pipeline.add_push_constant("pcs"_strid,
+			                           sizeof(Gi_constants),
+			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+
+			auto& pass = builder.add_subpass(pipeline).color_attachment(color);
+
+			pass.stage("mipgen"_strid)
+			        .shader("frag_shader:gi_ambient_filter"_aid, graphic::Shader_stage::fragment)
+			        .shader("vert_shader:gi_ambient_filter"_aid, graphic::Shader_stage::vertex);
+
+			auto render_pass = builder.build();
+
+			out_framebuffer = builder.build_framebuffer({target.view(0), util::Rgba{}},
+			                                            gsl::narrow<int>(target.width()),
+			                                            gsl::narrow<int>(target.height()));
+
+			return render_pass;
+		}
+
+		auto build_ambient_blur_render_pass(Deferred_renderer&        renderer,
+		                                    vk::DescriptorSetLayout   desc_set_layout,
+		                                    Render_target_2D&         target_horizontal,
+		                                    Render_target_2D&         target_vertical,
+		                                    std::vector<Framebuffer>& out_framebuffers_horizontal,
+		                                    std::vector<Framebuffer>& out_framebuffers_vertical)
+		{
+
+			auto builder = renderer.device().create_render_pass_builder();
+
+			auto color = builder.add_attachment(
+			        vk::AttachmentDescription{vk::AttachmentDescriptionFlags{},
+			                                  renderer.gbuffer().color_format,
+			                                  vk::SampleCountFlagBits::e1,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eStore,
+			                                  vk::AttachmentLoadOp::eDontCare,
+			                                  vk::AttachmentStoreOp::eDontCare,
+			                                  vk::ImageLayout::eUndefined,
+			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
+
+			auto pipeline                    = graphic::Pipeline_description{};
+			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
+			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
+			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
+			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
+
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
+			pipeline.add_descriptor_set_layout(desc_set_layout);
+			pipeline.add_push_constant("pcs"_strid,
+			                           sizeof(Gi_constants),
+			                           vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment);
+
+			auto& pass = builder.add_subpass(pipeline).color_attachment(color);
+
+			pass.stage("blur_h"_strid)
+			        .shader("frag_shader:bloom_blur"_aid, graphic::Shader_stage::fragment, "main", 0, 1)
+			        .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex, "main", 0, 1);
+
+			pass.stage("blur_v"_strid)
+			        .shader("frag_shader:bloom_blur"_aid, graphic::Shader_stage::fragment, "main", 0, 0)
+			        .shader("vert_shader:bloom_blur"_aid, graphic::Shader_stage::vertex, "main", 0, 0);
+
+			auto render_pass = builder.build();
+
+			out_framebuffers_horizontal = util::build_vector(target_horizontal.mip_levels(), [&](auto i) {
+				return builder.build_framebuffer({target_horizontal.view(i), util::Rgba{}},
+				                                 target_horizontal.width(i),
+				                                 target_horizontal.height(i));
+			});
+
+			out_framebuffers_vertical = util::build_vector(target_vertical.mip_levels(), [&](auto i) {
+				return builder.build_framebuffer({target_vertical.view(i), util::Rgba{}},
+				                                 target_vertical.width(i),
+				                                 target_vertical.height(i));
+			});
+
+			return render_pass;
+		}
+
 		auto get_brdf_format(graphic::Device& device)
 		{
 			auto format = device.get_supported_format(
@@ -704,6 +810,8 @@ namespace mirrage::renderer {
 		{
 			return v % 2 == 0 ? v : v + T(1);
 		}
+
+		constexpr auto ambient_mip = 2;
 	} // namespace
 
 
@@ -769,6 +877,26 @@ namespace mirrage::renderer {
 	                         vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferDst
 	                                 | vk::ImageUsageFlagBits::eColorAttachment,
 	                         vk::ImageAspectFlagBits::eColor)
+
+	  , _ambient_light(renderer.device(),
+	                   {in_out.width(ambient_mip), in_out.height(ambient_mip)},
+	                   0,
+	                   renderer.gbuffer().color_format,
+	                   vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+	                           | vk::ImageUsageFlagBits::eInputAttachment
+	                           | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst
+	                           | vk::ImageUsageFlagBits::eStorage,
+	                   vk::ImageAspectFlagBits::eColor)
+
+	  , _ambient_light_blur(renderer.device(),
+	                        {in_out.width(ambient_mip), in_out.height(ambient_mip)},
+	                        0,
+	                        renderer.gbuffer().color_format,
+	                        vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eSampled
+	                                | vk::ImageUsageFlagBits::eInputAttachment
+	                                | vk::ImageUsageFlagBits::eTransferSrc
+	                                | vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eStorage,
+	                        vk::ImageAspectFlagBits::eColor)
 
 	  , _history_success_format(get_history_success_format(renderer.device()))
 	  , _history_weight_format(get_history_weight_format(renderer.device()))
@@ -889,6 +1017,23 @@ namespace mirrage::renderer {
 	                                               _gi_specular_history.view(),
 	                                               renderer.gbuffer().albedo_mat_id.view(0),
 	                                               _integrated_brdf.view()}))
+
+	  , _ambient_renderpass(build_ambient_render_pass(
+	            renderer, *_descriptor_set_layout, _ambient_light, _ambient_framebuffer))
+	  , _ambient_descriptor_set(_descriptor_set_layout.create_set(
+	            renderer.descriptor_pool(), {_gi_diffuse_result.view(0), _color_in_out.view(0)}))
+
+	  , _ambient_blur_renderpass(build_ambient_blur_render_pass(renderer,
+	                                                            *_descriptor_set_layout,
+	                                                            _ambient_light_blur,
+	                                                            _ambient_light,
+	                                                            _ambient_blur_framebuffers_horizontal,
+	                                                            _ambient_blur_framebuffers_vertical))
+
+	  , _ambient_blur_descriptor_set_horizontal(_descriptor_set_layout.create_set(
+	            renderer.descriptor_pool(), {_ambient_light.view(), _ambient_light.view()}))
+	  , _ambient_blur_descriptor_set_vertical(_descriptor_set_layout.create_set(
+	            renderer.descriptor_pool(), {_ambient_light_blur.view(), _ambient_light_blur.view()}))
 	{
 
 		auto end = _max_mip_level;
@@ -912,6 +1057,8 @@ namespace mirrage::renderer {
 			_sample_descriptor_sets.emplace_back(
 			        _descriptor_set_layout.create_set(renderer.descriptor_pool(), images));
 		}
+
+		_renderer.gbuffer().ambient_light = _ambient_light;
 	}
 
 
@@ -969,8 +1116,6 @@ namespace mirrage::renderer {
 		}
 
 		if(_first_frame) {
-			_first_frame = false;
-
 			_integrate_brdf(frame.main_command_buffer);
 		}
 
@@ -984,6 +1129,10 @@ namespace mirrage::renderer {
 		_generate_mipmaps(frame.main_command_buffer, frame.global_uniform_set);
 		_generate_gi_samples(frame.main_command_buffer, frame.global_uniform_set);
 		_draw_gi(frame.main_command_buffer);
+		_generate_ambient_texture(frame.main_command_buffer);
+
+
+		_first_frame = false;
 	}
 
 	void Gi_pass::_integrate_brdf(vk::CommandBuffer command_buffer)
@@ -1316,6 +1465,60 @@ namespace mirrage::renderer {
 
 			command_buffer.draw(3, 1, 0, 0);
 		});
+	}
+
+	void Gi_pass::_generate_ambient_texture(vk::CommandBuffer command_buffer)
+	{
+		auto _ = _renderer.profiler().push("Ambient");
+
+		if(_first_frame) {
+			graphic::clear_texture(command_buffer,
+			                       _ambient_light_blur,
+			                       util::Rgba{0, 0, 0, 0},
+			                       vk::ImageLayout::eUndefined,
+			                       vk::ImageLayout::eShaderReadOnlyOptimal);
+		}
+
+		_ambient_renderpass.execute(command_buffer, _ambient_framebuffer, [&] {
+			_ambient_renderpass.bind_descriptor_set(1, *_ambient_descriptor_set);
+			command_buffer.draw(3, 1, 0, 0);
+		});
+
+		// smallest resolution of ambient light to use. Trade-off between preserving details and noise under movement
+		auto min_mip = util::min(_ambient_light.mip_levels(),
+		                         static_cast<int>(std::floor(std::log2(
+		                                 util::min(_ambient_light.height(), _ambient_light.width()) / 8.f))));
+
+		graphic::generate_mipmaps(command_buffer,
+		                          _ambient_light.image(),
+		                          vk::ImageLayout::eShaderReadOnlyOptimal,
+		                          vk::ImageLayout::eShaderReadOnlyOptimal,
+		                          _ambient_light.width(),
+		                          _ambient_light.height());
+
+		for(auto i = min_mip; i > 0; i--) {
+			auto pcs               = Gi_constants{};
+			pcs.reprojection[0][0] = float(i);
+
+			auto& fb_h = _ambient_blur_framebuffers_horizontal.at(std::size_t(i - 1));
+			auto& fb_v = _ambient_blur_framebuffers_vertical.at(std::size_t(i - 1));
+
+			// blur horizontal
+			_ambient_blur_renderpass.execute(command_buffer, fb_h, [&] {
+				_ambient_blur_renderpass.bind_descriptor_set(1, *_ambient_blur_descriptor_set_horizontal);
+				_ambient_blur_renderpass.push_constant("pcs"_strid, pcs);
+				command_buffer.draw(3, 1, 0, 0);
+			});
+
+			pcs.reprojection[0][0] = float(i - 1);
+			// blur vertical
+			_ambient_blur_renderpass.execute(command_buffer, fb_v, [&] {
+				_ambient_blur_renderpass.set_stage("blur_v"_strid);
+				_ambient_blur_renderpass.bind_descriptor_set(1, *_ambient_blur_descriptor_set_vertical);
+				_ambient_blur_renderpass.push_constant("pcs"_strid, pcs);
+				command_buffer.draw(3, 1, 0, 0);
+			});
+		}
 	}
 
 

@@ -68,6 +68,9 @@ frag_shader:ssao = shader/ssao.frag.spv
 vert_shader:gi_blend = shader/fullscreen.vert.spv
 frag_shader:gi_blend = shader/gi_blend.frag.spv
 
+vert_shader:gi_ambient_filter = shader/fullscreen.vert.spv
+frag_shader:gi_ambient_filter = shader/gi_ambient_filter.frag.spv
+
 vert_shader:gi_diffuse_reproject = shader/fullscreen.vert.spv
 frag_shader:gi_diffuse_reproject = shader/gi_diffuse_reproject.frag.spv
 

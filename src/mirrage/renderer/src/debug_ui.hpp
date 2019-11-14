@@ -173,10 +173,6 @@ namespace mirrage::renderer {
 
 				ImGui::Checkbox("Fullscreen", &_window_fullscreen);
 
-				if(ImGui::Button("Apply")) {
-					apply_window_changed();
-				}
-
 				ImGui::Spacing();
 
 				ImGui::TextUnformatted("Renderer Settings");
@@ -214,6 +210,7 @@ namespace mirrage::renderer {
 
 				ImGui::TextUnformatted("Particles");
 				ImGui::Checkbox("Particle Frag. Shadows", &renderer_settings.particle_fragment_shadows);
+				ImGui::Checkbox("Particle GI", &renderer_settings.particle_gi);
 				ImGui::Checkbox("High Quality Depth", &renderer_settings.high_quality_particle_depth);
 				ImGui::SliderInt("MIP Level", &renderer_settings.transparent_particle_mip_level, 0, 5);
 				ImGui::SliderInt("MIP Upsample", &renderer_settings.upsample_transparency_to_mip, 0, 5);

@@ -54,6 +54,7 @@ namespace mirrage::renderer {
 
 		int  transparent_particle_mip_level = 2;
 		bool particle_fragment_shadows      = true;
+		bool particle_gi                    = true;
 		bool high_quality_particle_depth    = true;
 		int  upsample_transparency_to_mip   = 1;
 
@@ -86,6 +87,7 @@ namespace mirrage::renderer {
 	              amient_light_intensity,
 	              transparent_particle_mip_level,
 	              particle_fragment_shadows,
+	              particle_gi,
 	              high_quality_particle_depth,
 	              upsample_transparency_to_mip,
 	              taa,

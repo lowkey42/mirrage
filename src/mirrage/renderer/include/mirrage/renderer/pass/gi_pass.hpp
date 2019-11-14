@@ -51,6 +51,9 @@ namespace mirrage::renderer {
 		graphic::Render_target_2D _gi_specular;
 		graphic::Render_target_2D _gi_specular_history;
 
+		graphic::Render_target_2D _ambient_light;
+		graphic::Render_target_2D _ambient_light_blur;
+
 		vk::Format                _history_success_format;
 		vk::Format                _history_weight_format;
 		graphic::Render_target_2D _history_success;
@@ -111,6 +114,16 @@ namespace mirrage::renderer {
 		graphic::Render_pass   _blend_renderpass;
 		graphic::DescriptorSet _blend_descriptor_set;
 
+		// generate ambient lights from GI results
+		graphic::Framebuffer   _ambient_framebuffer;
+		graphic::Render_pass   _ambient_renderpass;
+		graphic::DescriptorSet _ambient_descriptor_set;
+
+		std::vector<graphic::Framebuffer> _ambient_blur_framebuffers_horizontal;
+		std::vector<graphic::Framebuffer> _ambient_blur_framebuffers_vertical;
+		graphic::Render_pass              _ambient_blur_renderpass;
+		graphic::DescriptorSet            _ambient_blur_descriptor_set_horizontal;
+		graphic::DescriptorSet            _ambient_blur_descriptor_set_vertical;
 
 		// calculates the texture with the preintegrated BRDF
 		void _integrate_brdf(vk::CommandBuffer command_buffer);
@@ -130,6 +143,10 @@ namespace mirrage::renderer {
 
 		// blends the _gi_diffuse and _gi_specular into _color_in_out
 		void _draw_gi(vk::CommandBuffer command_buffer);
+
+		// generates a low-resolution texture containing ambient light information that
+		// can be used to light particles, ...
+		void _generate_ambient_texture(vk::CommandBuffer command_buffer);
 	};
 
 	class Gi_pass_factory : public Render_pass_factory {

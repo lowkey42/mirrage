@@ -39,12 +39,12 @@ namespace mirrage::renderer {
 		vk::UniqueDescriptorSetLayout animation_data_layout;
 		vk::DescriptorSet             animation_data; //< might change each frame!
 
+		util::maybe<graphic::Render_target_2D&> ambient_light;
+
 		bool                          shadowmapping_enabled = false;
 		std::int32_t                  max_shadowmaps        = 1;
 		vk::UniqueDescriptorSetLayout shadowmaps_layout;
 		graphic::DescriptorSet        shadowmaps;
-
-		util::maybe<graphic::Texture_2D_array&> voxels;
 
 		float min_luminance = 1e-4f;
 		float max_luminance = 1e6f;

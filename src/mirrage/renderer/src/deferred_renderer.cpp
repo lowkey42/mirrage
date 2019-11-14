@@ -64,7 +64,7 @@ namespace mirrage::renderer {
 	  , _factory(&factory)
 	  , _entity_manager(ecs)
 	  , _descriptor_set_pool(*device().vk_device(),
-	                         160,
+	                         256,
 	                         {vk::DescriptorType::eUniformBuffer,
 	                          vk::DescriptorType::eUniformBufferDynamic,
 	                          vk::DescriptorType::eCombinedImageSampler,

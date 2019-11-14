@@ -4,9 +4,12 @@
 
 #include "particle_transparent_base.glsl"
 
+layout(set=1, binding = 1) uniform sampler2D ambient_sampler;
+
 layout(location = 5) in vec4 in_shadows;
 
 layout (constant_id = 0) const int FRAGMENT_SHADOWS = 1;
+layout (constant_id = 1) const int GI = 0;
 
 vec3 decode_tangent_normal(vec2 tn) {
 	vec3 N = vec3(tn, 0);
@@ -65,7 +68,9 @@ vec3 calc_lighting(vec3 albedo, vec3 radiance, vec3 shadow_radiance, vec3 positi
 			shadow = sample_shadow(ls, shadowmap, position);
 		}
 	} else {
-		shadow = in_shadows[shadowmap];
+		if(shadowmap>=0 && shadowmap<4) {
+			shadow = in_shadows[shadowmap];
+		}
 	}
 
 	float NdotL = max(dot(N, L), 0.0);
@@ -83,6 +88,8 @@ vec3 calc_lighting(vec3 albedo, vec3 radiance, vec3 shadow_radiance, vec3 positi
 }
 
 vec4 calc_color(int mip) {
+	const float PI = 3.14159265359;
+
 	vec4 albedo = texture(albedo_sampler, tex_coords);
 	albedo *= out_particle_color;
 
@@ -109,20 +116,28 @@ vec4 calc_color(int mip) {
 	vec4 result_color = vec4(0,0,0,albedo.a);
 
 	result_color.rgb += albedo.rgb *  model_uniforms.light_data.rgb * emissive_power
-	                    * model_uniforms.light_data.a * albedo.a;
+	                    * model_uniforms.light_data.a;
+
+	if(GI==1) {
+		vec2 uv = screen_uv + vec2(N.x, N.y)/10.0;
+		result_color.rgb += calc_lighting(albedo.rgb,
+										  textureLod(ambient_sampler, uv, 0).rgb, vec3(0,0,0),
+										  view_pos.xyz/view_pos.w, N, N, roughness, metallic,
+										  -1);
+	}
 
 	if(lights.count==0) {
-		result_color.rgb += albedo.rgb * albedo.a;
+		result_color.rgb += albedo.rgb;
 
 	} else {
 		for(int i=0; i<lights.count; i++) {
 			result_color.rgb += calc_lighting(albedo.rgb,
 			                                  lights.dir_lights[i].radiance.rgb, lights.dir_lights[i].shadow_radiance.rgb,
 			                                  view_pos.xyz/view_pos.w, N, lights.dir_lights[i].dir.xyz, roughness, metallic,
-			                                  i)
-			        * albedo.a;
+			                                  i);
 		}
 	}
 
+	result_color.rgb *= albedo.a;
 	return result_color;
 }
