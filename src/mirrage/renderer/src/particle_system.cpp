@@ -218,11 +218,11 @@ namespace mirrage::asset {
 			e.emit_script = in.manager().load<renderer::Particle_script>(e.emit_script_id);
 			e.type        = in.manager().load<renderer::Particle_type_config>(e.type_id);
 
-			loads.emplace_back(async::when_all(e.emit_script.internal_task(), e.type.internal_task())
-			                           .then([](auto&&...) {}));
+			loads.emplace_back(
+			        async::when_all(e.emit_script.internal_task(), e.type.internal_task()).then([] {}));
 		}
 
-		return async::when_all(loads.begin(), loads.end()).then([r = std::move(r)](auto&&...) mutable {
+		return async::when_all(loads.begin(), loads.end()).then([r = std::move(r)]() mutable {
 			return std::move(r);
 		});
 	}

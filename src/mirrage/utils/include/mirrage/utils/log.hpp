@@ -22,16 +22,20 @@ namespace mirrage::util {
 #endif
 
 /// logs the given error message and ends the program with a stacktrace without unwinding the stack.
-#define MIRRAGE_FAIL(M)                                                                                       \
-	do {                                                                                                      \
-		IF_LOG_(PLOG_DEFAULT_INSTANCE, plog::fatal)                                                           \
-		(*plog::get<PLOG_DEFAULT_INSTANCE>()) +=                                                              \
-		        (plog::Record(                                                                                \
-		                 plog::fatal, PLOG_GET_FUNC(), __LINE__, PLOG_GET_FILE(), reinterpret_cast<void*>(0)) \
-		         << M)                                                                                        \
-		        << "\n"                                                                                       \
-		        << mirrage::util::print_stacktrace();                                                         \
-		std::abort();                                                                                         \
+#define MIRRAGE_FAIL(M)                                                                       \
+	do {                                                                                      \
+		IF_PLOG_(PLOG_DEFAULT_INSTANCE_ID, plog::fatal)                                       \
+		(*plog::get<PLOG_DEFAULT_INSTANCE_ID>()) += (plog::Record(plog::fatal,                \
+		                                                          PLOG_GET_FUNC(),            \
+		                                                          __LINE__,                   \
+		                                                          PLOG_GET_FILE(),            \
+		                                                          reinterpret_cast<void*>(0), \
+		                                                          PLOG_DEFAULT_INSTANCE_ID)   \
+		                                                     .ref()                           \
+		                                             << M)                                    \
+		                                            << "\n"                                   \
+		                                            << mirrage::util::print_stacktrace();     \
+		std::abort();                                                                         \
 	} while(false)
 
 #define MIRRAGE_INVARIANT(C, M)    \

@@ -166,7 +166,7 @@ namespace mirrage::graphic {
 			}
 
 			if(validation_layers.size() != requested.size()) {
-				IF_LOG(plog::error)
+				IF_PLOG(plog::warning)
 				{
 					auto msg = std::stringstream{};
 					msg << "Some requested validation layers are not supported: \n";
@@ -291,7 +291,7 @@ namespace mirrage::graphic {
 		sort_and_unique(optional_extensions);
 		auto extensions = check_extensions(required_extensions, optional_extensions);
 
-		IF_LOG(plog::info)
+		IF_PLOG(plog::info)
 		{
 			auto msg = std::stringstream{};
 			msg << "Initializing vulkan...\n";

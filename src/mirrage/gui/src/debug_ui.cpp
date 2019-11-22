@@ -91,17 +91,21 @@ namespace mirrage::gui {
 		});
 
 		_commands.add("history | Prints all previous commands", [&]() {
-			IF_LOG_(PLOG_DEFAULT_INSTANCE, plog::info)
+			IF_PLOG_(PLOG_DEFAULT_INSTANCE_ID, plog::info)
 			{
-				auto record =
-				        plog::Record(plog::info, PLOG_GET_FUNC(), __LINE__, PLOG_GET_FILE(), PLOG_GET_THIS());
+				auto record = plog::Record(plog::info,
+				                           PLOG_GET_FUNC(),
+				                           __LINE__,
+				                           PLOG_GET_FILE(),
+				                           PLOG_GET_THIS(),
+				                           PLOG_DEFAULT_INSTANCE_ID);
 
-				record << "History:\n";
+				record.ref() << "History:\n";
 				for(auto& h : _history) {
-					record << h << "\n";
+					record.ref() << h << "\n";
 				}
 
-				(*plog::get<PLOG_DEFAULT_INSTANCE>()) += std::move(record);
+				(*plog::get<PLOG_DEFAULT_INSTANCE_ID>()) += record.ref();
 			}
 		});
 		_commands.add("history.clear | Clears the history", [&]() {
@@ -167,7 +171,6 @@ namespace mirrage::gui {
 		        {width, height}, ImGui::WindowPosition_X::center, ImGui::WindowPosition_Y::top);
 		if(ImGui::Begin("debug_console",
 		                nullptr,
-		                {width, height},
 		                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove
 		                        | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse)) {
 
