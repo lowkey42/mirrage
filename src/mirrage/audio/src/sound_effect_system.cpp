@@ -109,7 +109,7 @@ namespace mirrage::audio {
 			_audio.backend().set3dListenerParameters(
 			        pos.x, pos.y, pos.z, at.x, at.y, at.z, up.x, up.y, up.z, vel.x, vel.y, vel.z);
 		};
-		_last_listener_position = _last_listener_position;
+		_last_listener_position = listener_position;
 
 		// update sound effect
 		for(auto& [source, transform] : _ecs.list<Audio_source_comp, Transform_comp>()) {
