@@ -92,7 +92,7 @@ namespace mirrage::audio {
 		auto listener_priority    = std::numeric_limits<float>::lowest();
 		for(auto& [listener, transform] : _ecs.list<Listener_comp, Transform_comp>()) {
 			if(listener.priority >= listener_priority) {
-				listener_priority    = listener.priority; 
+				listener_priority    = listener.priority;
 				listener_position    = transform.position + listener.offset;
 				listener_orientation = transform.orientation;
 			}
