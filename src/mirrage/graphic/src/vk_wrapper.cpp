@@ -32,7 +32,12 @@ namespace mirrage::graphic {
 
 	Fence::operator bool() const { return _device->getFenceStatus(*_fence) == vk::Result::eSuccess; }
 	void   Fence::reset() { _device->resetFences({*_fence}); }
-	void Fence::wait() { _device->waitForFences({*_fence}, true, std::numeric_limits<std::uint64_t>::max()); }
+	void   Fence::wait()
+	{
+		if(_device->waitForFences({*_fence}, true, 4'000'000'000) == vk::Result::eTimeout) {
+			LOG(plog::error) << "Fence didn't get signaled after 4 seconds!";
+		}
+	}
 
 	Fence::Fence(const vk::Device& device, bool signaled)
 	  : _device(&device)

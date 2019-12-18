@@ -7,5 +7,11 @@
 	},
 	"Particle_system": {
 		"cfg": "particle_sys:test_particles"
+	},
+	"Audio_source": {
+		"sound_bank": "sbank:audio/demo_sounds.json",
+		"playing_sounds": [
+			{"id":"ping", "loop": true, "volume":20.0}
+		]
 	}
 }

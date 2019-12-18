@@ -10,6 +10,7 @@
 #include "meta_system.hpp"
 #include "systems/nim_system.hpp"
 
+#include <mirrage/audio/audio_manager.hpp>
 #include <mirrage/engine.hpp>
 #include <mirrage/gui/gui.hpp>
 #include <mirrage/renderer/deferred_renderer.hpp>
@@ -41,7 +42,8 @@ namespace mirrage {
 	  protected:
 		util::Mailbox_collection _mailbox;
 
-		Meta_system _meta_system;
+		Meta_system            _meta_system;
+		audio::Music_container _music;
 
 		gui::Gui& _gui;
 
