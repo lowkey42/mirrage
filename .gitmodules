@@ -3,7 +3,7 @@
 	url = https://github.com/bombela/backward-cpp.git
 [submodule "dependencies/plog"]
 	path = dependencies/plog
-	url = https://github.com/lowkey42/plog.git
+	url = https://github.com/SergiusTheBest/plog.git
 [submodule "dependencies/assimp"]
 	path = dependencies/assimp
 	url = https://github.com/assimp/assimp.git
