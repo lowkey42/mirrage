@@ -7,6 +7,9 @@
 
 
 namespace mirrage {
+	namespace audio {
+		class Sound_effect_system;
+	}
 	namespace renderer {
 		class Deferred_renderer;
 	}
@@ -36,6 +39,7 @@ namespace mirrage {
 		ecs::Entity_manager                          _entities;
 		std::unique_ptr<renderer::Deferred_renderer> _renderer;
 		std::unique_ptr<renderer::Loading_system>    _model_loading;
+		std::unique_ptr<audio::Sound_effect_system>  _sound_effects;
 		std::unique_ptr<systems::Nim_system>         _nims;
 		util::Console_command_container              _commands;
 	};

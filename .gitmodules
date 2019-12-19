@@ -43,3 +43,6 @@
 [submodule "dependencies/imgui"]
 	path = dependencies/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "dependencies/soloud"]
+	path = dependencies/soloud
+	url = https://github.com/jarikomppa/soloud.git

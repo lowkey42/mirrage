@@ -4,16 +4,16 @@
 #include "meta_system.hpp"
 #include "systems/nim_system.hpp"
 
-#include <mirrage/renderer/animation_comp.hpp>
-#include <mirrage/renderer/light_comp.hpp>
-#include <mirrage/renderer/model_comp.hpp>
-#include <mirrage/renderer/pass/gui_pass.hpp>
-
+#include <mirrage/audio/audio_source_comp.hpp>
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/graphic/window.hpp>
 #include <mirrage/gui/gui.hpp>
 #include <mirrage/input/events.hpp>
 #include <mirrage/input/input_manager.hpp>
+#include <mirrage/renderer/animation_comp.hpp>
+#include <mirrage/renderer/light_comp.hpp>
+#include <mirrage/renderer/model_comp.hpp>
+#include <mirrage/renderer/pass/gui_pass.hpp>
 #include <mirrage/translations.hpp>
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/units.hpp>
@@ -62,6 +62,7 @@ namespace mirrage {
 	  : Screen(engine)
 	  , _mailbox(engine.bus())
 	  , _meta_system(static_cast<Game_engine&>(engine))
+	  , _music(engine.audio(), engine.assets().load<audio::Sample>("wav_stream:audio/music.ogg"_aid), 10.f)
 	  , _gui(engine.gui())
 	  , _performance_log(util::nothing)
 	{
@@ -83,11 +84,11 @@ namespace mirrage {
 		_meta_system.entities().entity_builder("test_particle_emitter").position({-6, 2, 1}).create();
 		_meta_system.entities().entity_builder("test_smoke_emitter").position({-6, 1, -1}).create();
 
-		_meta_system.entities()
-		        .entity_builder("billboard")
-		        .position({-8, 1, 0.5f})
-		        .direction({-1, 0, 0})
-		        .create();
+		auto billboard = _meta_system.entities()
+		                         .entity_builder("billboard")
+		                         .position({-8, 1, 0.5f})
+		                         .direction({-1, 0, 0})
+		                         .create();
 
 		_meta_system.entities().entity_builder("decal").position({-8, 0, -0.5f}).create();
 
@@ -97,6 +98,11 @@ namespace mirrage {
 		                  .entity_builder("camera")
 		                  .post_create([&](auto&&) { _set_preset(1); })
 		                  .create();
+
+
+		_cmd_commands.add("test.sound | Plays a test sound", [&, billboard]() mutable {
+			billboard.get<audio::Audio_source_comp>().get_or_throw().play_once("example"_strid, 4.f);
+		});
 
 		_mailbox.subscribe_to([&](input::Once_action& e) {
 			switch(e.id) {
@@ -239,6 +245,7 @@ namespace mirrage {
 	{
 		_meta_system.shrink_to_fit();
 
+		_music.unpause();
 		_engine.input().enable_context("main"_strid);
 		_mailbox.enable();
 	}
@@ -247,6 +254,7 @@ namespace mirrage {
 	{
 		_mailbox.disable();
 		_engine.input().capture_mouse(false);
+		_music.pause();
 	}
 
 	void Test_screen::_update(util::Time dt)

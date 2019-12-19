@@ -53,6 +53,8 @@ namespace mirrage::asset {
 	template <class R>
 	class Ptr {
 	  public:
+		using value_type = R;
+
 		Ptr() = default;
 		Ptr(const AID& aid, async::shared_task<R> task) : _aid(aid), _task(std::move(task)) {}
 

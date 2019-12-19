@@ -24,7 +24,7 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/assets_mirrage_core.map" CONTE
 "cfg:input_mapping = settings/input_mapping.json
 cfg:graphics = graphics-cfg.json
 cfg:renderer = renderer-cfg.json
-cfg:sounds = sounds-cfg.json
+cfg:audio = audio-cfg.json
 cfg:language = language-cfg.json
 cfg:languages_info = settings/languages.json
 cfg:gui = settings/gui.json
@@ -55,6 +55,7 @@ target_link_libraries(mirrage
 		mirrage::gui
 		mirrage::input
 		mirrage::net
+		mirrage::audio
 		glm::glm
 )
 

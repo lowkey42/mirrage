@@ -1,0 +1,8 @@
+{
+	"example": [
+		{"text": "I'm an example text"},
+		{"text": "Another example!", "waveform": "pulse", "speed": 12.0, "freq": 1900},
+		{"text": "I'm an example text", "waveform": "sin", "speed": 8.0, "freq": 1100}
+	],
+	"ping": ["wav:audio/crow.wav"]
+}
