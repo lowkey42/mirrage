@@ -2,6 +2,7 @@
 
 #include "systems/nim_system.hpp"
 
+#include <mirrage/audio/sound_effect_system.hpp>
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/renderer/deferred_renderer.hpp>
 #include <mirrage/renderer/loading_system.hpp>
@@ -14,6 +15,7 @@ namespace mirrage {
 	  : _entities(engine.assets(), this)
 	  , _renderer(engine.renderer_factory().create_renderer(_entities, engine.render_pass_mask()))
 	  , _model_loading(std::make_unique<renderer::Loading_system>(_entities, engine.assets()))
+	  , _sound_effects(std::make_unique<audio::Sound_effect_system>(_entities, engine.audio()))
 	  , _nims(std::make_unique<systems::Nim_system>(_entities))
 	{
 		_entities.register_component_type<ecs::components::Transform_comp>();
@@ -52,6 +54,7 @@ namespace mirrage {
 		_entities.process_queued_actions();
 
 		_nims->update(dt);
+		_sound_effects->update(dt);
 		_model_loading->update(dt);
 		_renderer->update(dt);
 	}

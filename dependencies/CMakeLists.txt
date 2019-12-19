@@ -71,7 +71,7 @@ if(NOT TARGET mirrage::deps::SDL2)
 endif()
 
 add_subdirectory(sf2)
-
+include(soloud_interface.cmake)
 
 if(MIRRAGE_BUILD_MESH_CONVERTER)
 #	find_package(assimp 4.1)

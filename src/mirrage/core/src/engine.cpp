@@ -1,6 +1,7 @@
 #include <mirrage/engine.hpp>
 
 #include <mirrage/asset/asset_manager.hpp>
+#include <mirrage/audio/audio_manager.hpp>
 #include <mirrage/graphic/context.hpp>
 #include <mirrage/graphic/window.hpp>
 #include <mirrage/gui/gui.hpp>
@@ -74,6 +75,7 @@ namespace mirrage {
 		MIRRAGE_INVARIANT(SDL_Init(0) == 0, "Could not initialize SDL: " << get_sdl_error());
 
 		if(!headless) {
+			init_sub_system(SDL_INIT_AUDIO, "SDL_Audio");
 			init_sub_system(SDL_INIT_VIDEO, "SDL_Video");
 			init_sub_system(SDL_INIT_JOYSTICK, "SDL_Joystick");
 			init_sub_system(SDL_INIT_HAPTIC, "SDL_Haptic", false);
@@ -112,6 +114,7 @@ namespace mirrage {
 	  , _event_filter(headless ? std::unique_ptr<Engine_event_filter>()
 	                           : std::make_unique<Engine_event_filter>(*this))
 	  , _net_manager(std::make_unique<net::Net_manager>())
+	  , _audio_manager(std::make_unique<audio::Audio_manager>(*_asset_manager, !headless))
 	  , _current_time(SDL_GetTicks() / 1000.0)
 	  , _headless(headless)
 	{
@@ -210,6 +213,7 @@ namespace mirrage {
 
 		_screens.on_frame(delta_time_smoothed * second);
 
+		_audio_manager->update(delta_time * second);
 		_on_post_frame(delta_time_smoothed * second);
 
 		_screens.do_queued_actions();

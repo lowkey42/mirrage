@@ -120,7 +120,7 @@ namespace mirrage::util {
 
 		auto name = api.substr(0, api.find(" "));
 
-		auto cmd_callback = [api, f = std::forward<F>(f)](std::string_view cmd) {
+		auto cmd_callback = [api, f = std::forward<F>(f)](std::string_view cmd) mutable {
 			auto arg_iter = std::cregex_iterator(cmd.data(), cmd.data() + cmd.size(), split_args_regex);
 			auto arg_end  = std::cregex_iterator();
 
