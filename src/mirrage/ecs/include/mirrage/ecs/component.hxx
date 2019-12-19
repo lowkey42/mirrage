@@ -211,7 +211,6 @@ namespace mirrage::ecs {
 			static constexpr bool sorted = false;
 		};
 
-		// FIXME: sorted pool returns/erases the wrong values under heavy contention
 		template <class T>
 		struct Pool_storage_policy_sort<T, util::void_t<decltype(T::sort_key), decltype(T::sort_key_index)>> {
 			static constexpr bool sorted                   = true;

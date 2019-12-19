@@ -157,7 +157,7 @@ namespace mirrage::util {
 
 			if(all_valid) {
 				std::apply(
-				        [&](auto&&... args) {
+				        [&](auto&&... args) mutable {
 					        callback(std::forward<decltype(args)>(args).get_or_throw()...);
 				        },
 				        std::move(args));

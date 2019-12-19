@@ -22,6 +22,9 @@ namespace mirrage {
 	namespace asset {
 		class Asset_manager;
 	}
+	namespace audio {
+		class Audio_manager;
+	}
 	namespace input {
 		class Input_manager;
 	}
@@ -75,6 +78,7 @@ namespace mirrage {
 		auto& screens() noexcept { return _screens; }
 		auto& translator() noexcept { return *_translator; }
 		auto& net() noexcept { return *_net_manager; }
+		auto& audio() noexcept { return *_audio_manager; }
 		auto& gui() noexcept { return *_gui; }
 
 	  protected:
@@ -98,6 +102,7 @@ namespace mirrage {
 		std::unique_ptr<input::Input_manager> _input_manager;
 		std::unique_ptr<Engine_event_filter>  _event_filter;
 		std::unique_ptr<net::Net_manager>     _net_manager;
+		std::unique_ptr<audio::Audio_manager> _audio_manager;
 		std::unique_ptr<gui::Gui>             _gui;
 
 		double _current_time = 0;

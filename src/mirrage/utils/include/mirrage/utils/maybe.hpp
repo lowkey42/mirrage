@@ -433,7 +433,7 @@ namespace mirrage::util {
 			}
 
 		  private:
-			template <typename Func, int... S>
+			template <typename Func, std::size_t... S>
 			void call(Func&& f, seq<S...>)
 			{
 				call(std::forward<Func>(f), std::forward<decltype(std::get<S>(args))>(std::get<S>(args))...);

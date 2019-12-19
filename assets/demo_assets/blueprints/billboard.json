@@ -10,5 +10,8 @@
 				"dynamic_lighting": true
 			}
 		]
+	},
+	"Audio_source": {
+		"sound_bank": "sbank:audio/demo_sounds.json"
 	}
 }
