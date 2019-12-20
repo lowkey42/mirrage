@@ -46,3 +46,6 @@
 [submodule "dependencies/soloud"]
 	path = dependencies/soloud
 	url = https://github.com/jarikomppa/soloud.git
+[submodule "dependencies/cxxopts"]
+	path = dependencies/cxxopts
+	url = https://github.com/jarro2783/cxxopts.git

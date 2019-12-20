@@ -7,6 +7,7 @@ if(${MIRRAGE_ENABLE_BACKWARD})
 	add_subdirectory(backward-cpp)
 endif()
 
+add_subdirectory(cxxopts)
 add_subdirectory(enet)
 include(glm_interface.cmake)
 include(gsl_interface.cmake)

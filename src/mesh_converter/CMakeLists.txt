@@ -34,4 +34,5 @@ target_link_libraries(mesh_converter
 		doctest
 		crunch::crunch
 		Async++
+		cxxopts::cxxopts
 )
