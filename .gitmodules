@@ -49,3 +49,6 @@
 [submodule "dependencies/cxxopts"]
 	path = dependencies/cxxopts
 	url = https://github.com/jarro2783/cxxopts.git
+[submodule "dependencies/indicators"]
+	path = dependencies/indicators
+	url = https://github.com/p-ranav/indicators.git

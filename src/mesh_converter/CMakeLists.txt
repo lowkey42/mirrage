@@ -16,6 +16,9 @@ add_executable(mesh_converter
 	model_parser.hpp
 	skeleton_parser.cpp
 	skeleton_parser.hpp
+	helper/progress.hpp
+	helper/progress.cpp
+	helper/console.hpp
 	${BACKWARD_ENABLE}
 )
 if(${MIRRAGE_ENABLE_BACKWARD})
@@ -35,4 +38,5 @@ target_link_libraries(mesh_converter
 		crunch::crunch
 		Async++
 		cxxopts::cxxopts
+		indica::indica
 )

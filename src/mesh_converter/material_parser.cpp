@@ -161,7 +161,11 @@ namespace mirrage {
 
 		enum class Texture_format { s_rgba, rg };
 
-		void store_texture(Image_data<rgba32> image, std::string ouput, Texture_format format)
+		void store_texture(Image_data<rgba32>   image,
+		                   std::string          ouput,
+		                   Texture_format       format,
+		                   int                  dxt_level,
+		                   helper::Progress_ref progress = {})
 		{
 			static constexpr auto cDXTBlockSize = std::int32_t(4);
 
@@ -181,8 +185,8 @@ namespace mirrage {
 			const auto crn_format            = format == Texture_format::rg ? cCRNFmtDXN_XY : cCRNFmtDXT5;
 			auto       comp_params           = crn_comp_params{};
 			comp_params.m_format             = crn_format;
-			comp_params.m_dxt_quality        = cCRNDXTQualityUber;
-			comp_params.m_num_helper_threads = 4;
+			comp_params.m_dxt_quality        = static_cast<crn_dxt_quality>(dxt_level); //cCRNDXTQualityUber;
+			comp_params.m_num_helper_threads = 8;
 			comp_params.set_flag(cCRNCompFlagPerceptual, format == Texture_format::s_rgba);
 			comp_params.set_flag(cCRNCompFlagDXT1AForTransparency, format == Texture_format::s_rgba);
 			auto pContext = crn_create_block_compressor(comp_params);
@@ -212,6 +216,17 @@ namespace mirrage {
 
 			char       block_data[cDXTBlockSize * cDXTBlockSize * 4];
 			crn_uint32 pixels[cDXTBlockSize * cDXTBlockSize];
+
+			auto block_count    = std::size_t(0);
+			auto blocks_written = std::size_t(0);
+			for(std::uint32_t i = 0; i < image.mip_levels.size(); i++) {
+				auto width        = util::max(1, image.width >> i);
+				auto height       = util::max(1, image.height >> i);
+				auto num_blocks_x = std::size_t((width + cDXTBlockSize - 1) / cDXTBlockSize);
+				auto num_blocks_y = std::size_t((height + cDXTBlockSize - 1) / cDXTBlockSize);
+
+				block_count += num_blocks_x * num_blocks_y;
+			}
 
 			for(std::uint32_t i = 0; i < image.mip_levels.size(); i++) {
 				// calc and write size
@@ -246,6 +261,8 @@ namespace mirrage {
 						crn_compress_block(pContext, pixels, block_data);
 
 						out.write(block_data, std::streamsize(bytes_per_block));
+						blocks_written++;
+						progress.progress(static_cast<float>(blocks_written) / block_count);
 					}
 				}
 
@@ -254,14 +271,25 @@ namespace mirrage {
 					out.write(padding_data, std::streamsize(size_padded - total_compressed_size));
 				}
 			}
+
+			progress.progress(1.f);
+			progress.color(indicators::Color::GREEN);
 		}
-		void store_texture_async(Image_data<rgba32> image, std::string output, Texture_format format)
+		void store_texture_async(Image_data<rgba32>          image,
+		                         std::string                 output,
+		                         Texture_format              format,
+		                         int                         dxt_level,
+		                         helper::Progress_container& progress)
 		{
 			parallel_tasks_started++;
-			async::spawn([image = std::move(image), output = std::move(output), format]() mutable {
-				store_texture(std::move(image), std::move(output), format);
-				parallel_tasks_done++;
-			});
+			auto last_slash = output.find_last_of("/");
+			auto p          = progress.add(indicators::Color::YELLOW,
+                                  last_slash != std::string::npos ? output.substr(last_slash + 1) : output);
+			async::spawn(
+			        [image = std::move(image), output = std::move(output), format, p, dxt_level]() mutable {
+				        store_texture(std::move(image), std::move(output), format, dxt_level, p);
+				        parallel_tasks_done++;
+			        });
 		}
 
 		auto try_find_texture(const std::string&           mat_name,
@@ -299,8 +327,8 @@ namespace mirrage {
 			auto name         = sf2::get_enum_info<Texture_type>().name_of(type).str();
 			auto texture_name = "default_"s + name + ".png";
 
-			LOG(plog::info) << "No " << name << " texture for material '" << mat_name
-			                << "'. Trying fallback to '" << texture_name << "'.";
+			LOG(plog::debug) << "No " << name << " texture for material '" << mat_name
+			                 << "'. Trying fallback to '" << texture_name << "'.";
 
 			return texture_name;
 		}
@@ -335,7 +363,8 @@ namespace mirrage {
 	                      const aiMaterial&            material,
 	                      const std::string&           base_dir,
 	                      const std::string&           output,
-	                      const Mesh_converted_config& cfg)
+	                      const Mesh_converted_config& cfg,
+	                      helper::Progress_container&  progress)
 	{
 
 		if(cfg.print_material_info) {
@@ -354,12 +383,6 @@ namespace mirrage {
 		auto material_file         = renderer::Material_data{};
 		material_file.substance_id = util::Str_id("default"); // TODO: decide alpha-test / alpha-blend
 
-		for(auto i = std::size_t(0); i < material.mNumProperties; i++) {
-			auto m = material.mProperties[i];
-			LOG(plog::info) << "Mat " << m->mKey.C_Str() << " Index=" << m->mIndex
-			                << " Data=" << std::string(m->mData, m->mDataLength);
-		}
-
 		// convert albedo
 		auto albedo_name =
 		        resolve_path(name, base_dir, find_texture(name, material, cfg, Texture_type::albedo));
@@ -367,7 +390,11 @@ namespace mirrage {
 		auto albedo = load_texture2d(albedo_name);
 		generate_mip_maps(albedo, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
 		material_file.albedo_aid = name + "_albedo.ktx";
-		store_texture_async(albedo, texture_dir + material_file.albedo_aid, Texture_format::s_rgba);
+		store_texture_async(albedo,
+		                    texture_dir + material_file.albedo_aid,
+		                    Texture_format::s_rgba,
+		                    cfg.dxt_level,
+		                    progress);
 
 		// convert normal
 		auto normal_name = find_texture(name, material, cfg, Texture_type::normal);
@@ -393,7 +420,8 @@ namespace mirrage {
 			}
 		});
 		material_file.normal_aid = name + "_normal.ktx";
-		store_texture_async(normal, texture_dir + material_file.normal_aid, Texture_format::rg);
+		store_texture_async(
+		        normal, texture_dir + material_file.normal_aid, Texture_format::rg, cfg.dxt_level, progress);
 
 		// convert brdf
 		auto metallic_name  = find_texture(name, material, cfg, Texture_type::metalness);
@@ -415,7 +443,8 @@ namespace mirrage {
 			});
 		}
 		material_file.brdf_aid = name + "_brdf.ktx";
-		store_texture_async(roughness, texture_dir + material_file.brdf_aid, Texture_format::rg);
+		store_texture_async(
+		        roughness, texture_dir + material_file.brdf_aid, Texture_format::rg, cfg.dxt_level, progress);
 
 		// convert emissive
 		try_find_texture(name, material, cfg, Texture_type::emission).process([&](auto& emission_name) {
@@ -423,7 +452,11 @@ namespace mirrage {
 			generate_mip_maps(emission, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
 
 			material_file.emission_aid = name + "_emission.ktx";
-			store_texture_async(emission, texture_dir + material_file.emission_aid, Texture_format::rg);
+			store_texture_async(emission,
+			                    texture_dir + material_file.emission_aid,
+			                    Texture_format::rg,
+			                    cfg.dxt_level,
+			                    progress);
 		});
 
 		// determine substance type
@@ -452,10 +485,12 @@ namespace mirrage {
 		return true;
 	}
 
-	void convert_texture(const std::string& input,
-	                     const std::string& output_dir,
-	                     bool               normal_texture,
-	                     bool               srgb)
+	void convert_texture(const std::string&          input,
+	                     const std::string&          output_dir,
+	                     bool                        normal_texture,
+	                     bool                        srgb,
+	                     int                         dxt_level,
+	                     helper::Progress_container& progress)
 	{
 		auto data = load_texture2d(input, srgb);
 		if(normal_texture) {
@@ -489,8 +524,10 @@ namespace mirrage {
 		auto input_name = input_path.second.empty() ? input_path.first : input_path.second;
 		input_name      = util::split_on_last(input_name, ".").first;
 
-		store_texture(data,
-		              output_dir + "/" + input_name + ".ktx",
-		              srgb ? Texture_format::s_rgba : Texture_format::rg);
+		store_texture_async(data,
+		                    output_dir + "/" + input_name + ".ktx",
+		                    srgb ? Texture_format::s_rgba : Texture_format::rg,
+		                    dxt_level,
+		                    progress);
 	}
 } // namespace mirrage

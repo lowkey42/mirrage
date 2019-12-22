@@ -91,12 +91,6 @@ namespace mirrage {
 
 		auto animations = gsl::span(scene.mAnimations, scene.mNumAnimations);
 
-		if(cfg.print_animations) {
-			for(auto anim : animations) {
-				LOG(plog::info) << "Animation for model " << model_name << ": " << anim->mName.C_Str();
-			}
-		}
-
 		for(auto anim : animations) {
 			auto name = std::string(anim->mName.C_Str());
 			name.erase(std::remove_if(name.begin(), name.end(), invalid_char), name.end());

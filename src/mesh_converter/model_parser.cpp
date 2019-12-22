@@ -13,6 +13,9 @@
 #include <assimp/postprocess.h> // Post processing flags
 #include <assimp/scene.h>       // Output data structure
 #include <assimp/Importer.hpp>  // C++ importer interface
+#include <assimp/ProgressHandler.hpp>
+
+#include <indicators/block_progress_bar.hpp>
 
 #include <glm/gtx/norm.hpp>
 #include <gsl/gsl>
@@ -100,18 +103,44 @@ namespace mirrage {
 				v.bone_weights[min_weight] = weight;
 			}
 		}
+
+		struct MyProgressHandler : public Assimp::ProgressHandler {
+			indicators::BlockProgressBar* progresss;
+
+			MyProgressHandler(indicators::BlockProgressBar* p) : progresss(p) {}
+
+			bool Update(float p) override
+			{
+				if(progresss)
+					progresss->set_progress(p * 20.f);
+				return true;
+			}
+		};
 	} // namespace
 
 
-	void convert_model(const std::string& path, const std::string& output, const Mesh_converted_config& cfg)
+	void convert_model(const std::string&           path,
+	                   const std::string&           output,
+	                   const Mesh_converted_config& cfg,
+	                   helper::Progress_container&  progress,
+	                   bool                         ansi)
 	{
 		LOG(plog::info) << "Convert model \"" << path << "\" with output directory \"" << output << "\"";
+
+		auto model_progress = indicators::BlockProgressBar{};
+
+		if(ansi) {
+			model_progress.set_postfix_text("Parse model");
+			model_progress.set_foreground_color(indicators::Color::RED);
+			model_progress.set_progress(0.f);
+		}
 
 		auto base_dir   = extract_dir(path);
 		auto model_name = extract_file_name(path);
 
 		auto importer = Assimp::Importer();
 		importer.SetPropertyInteger(AI_CONFIG_PP_LBW_MAX_WEIGHTS, 4);
+		importer.SetProgressHandler(new MyProgressHandler(ansi ? &model_progress : nullptr));
 
 		auto scene = importer.ReadFile(
 		        path,
@@ -124,11 +153,21 @@ namespace mirrage {
 
 		MIRRAGE_INVARIANT(scene, "Unable to load model '" << path << "': " << importer.GetErrorString());
 
+
+		if(ansi) {
+			model_progress.set_postfix_text("Parse animations");
+			model_progress.set_progress(20.f);
+		}
+
 		// load skeleton
 		auto skeleton = parse_skeleton(model_name, output, *scene, cfg);
 		auto rigged   = !skeleton.bones.empty();
 		parse_animations(model_name, output, *scene, cfg, skeleton);
 
+		if(ansi) {
+			model_progress.set_postfix_text("Parse materials");
+			model_progress.set_progress(30.f);
+		}
 
 		// load materials
 		auto materials = gsl::span<const aiMaterial* const>(scene->mMaterials, scene->mNumMaterials);
@@ -147,7 +186,7 @@ namespace mirrage {
 				mat_id = model_name + "_" + mat_id;
 			}
 			util::to_lower_inplace(mat_id);
-			if(!convert_material(mat_id, *mat, base_dir, output, cfg)) {
+			if(!convert_material(mat_id, *mat, base_dir, output, cfg, progress)) {
 				LOG(plog::warning) << "Unable to parse material \"" << name.C_Str() << "\"!";
 				loaded_material_ids.emplace_back(util::nothing);
 				continue;
@@ -155,6 +194,10 @@ namespace mirrage {
 			loaded_material_ids.emplace_back(std::move(mat_id) + ".msf");
 		}
 
+		if(ansi) {
+			model_progress.set_progress(60.f);
+			model_progress.set_postfix_text("Parse vertex data");
+		}
 
 		// calc vertex/index counts
 		auto meshes = gsl::span<const aiMesh* const>(scene->mMeshes, scene->mNumMeshes);
@@ -205,7 +248,7 @@ namespace mirrage {
 				auto mesh = scene->mMeshes[mesh_idx];
 				if(mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE) {
 					LOG(plog::warning) << "Skipped non-triangle mesh";
-					//continue;
+					continue;
 				}
 
 				const auto first_index = rigged ? rigged_vertices.size() : normal_vertices.size();
@@ -277,6 +320,11 @@ namespace mirrage {
 			}
 		}
 
+		if(ansi) {
+			model_progress.set_postfix_text("Write model");
+			model_progress.set_progress(80.f);
+		}
+
 		// write file
 		auto model_out_filename = output + "/models/" + model_name + ".mmf";
 		util::to_lower_inplace(model_out_filename);
@@ -309,10 +357,6 @@ namespace mirrage {
 		header.bounding_sphere_offset_y = bounding_sphere.center.y;
 		header.bounding_sphere_offset_z = bounding_sphere.center.z;
 
-		LOG(plog::debug) << "Bounds: " << header.bounding_sphere_radius << " at "
-		                 << header.bounding_sphere_offset_x << "/" << header.bounding_sphere_offset_y << "/"
-		                 << header.bounding_sphere_offset_z;
-
 		// write header
 		write(model_out_file, header);
 		if(rigged) {
@@ -342,10 +386,6 @@ namespace mirrage {
 			write(model_out_file, bounding_sphere.center.y);
 			write(model_out_file, bounding_sphere.center.z);
 
-			LOG(plog::debug) << "Sub-Bounds: " << std::sqrt(bounding_sphere.radius_2) << " at "
-			                 << bounding_sphere.center.x << "/" << bounding_sphere.center.y << "/"
-			                 << bounding_sphere.center.z;
-
 			auto material_id_length = gsl::narrow<std::uint32_t>(sub_mesh.material_id.size());
 			write(model_out_file, material_id_length);
 			model_out_file.write(sub_mesh.material_id.data(), material_id_length);
@@ -363,6 +403,29 @@ namespace mirrage {
 		// write footer
 		write(model_out_file, renderer::Model_file_header::type_tag_value);
 
-		LOG(plog::info) << "Done.";
+		if(ansi) {
+			model_progress.set_postfix_text("Model Converted");
+			model_progress.set_progress(100.0001f);
+		}
+
+		LOG(plog::info) << "Bounds: " << header.bounding_sphere_radius << " at "
+		                << header.bounding_sphere_offset_x << "/" << header.bounding_sphere_offset_y << "/"
+		                << header.bounding_sphere_offset_z;
+
+		for(auto& sub_mesh : sub_meshes) {
+			(void) sub_mesh;
+			LOG(plog::info) << "Sub-Bounds: " << std::sqrt(bounding_sphere.radius_2) << " at "
+			                << bounding_sphere.center.x << "/" << bounding_sphere.center.y << "/"
+			                << bounding_sphere.center.z;
+		}
+
+		LOG(plog::info) << "Bone count: " << skeleton.bones.size();
+
+		if(cfg.print_animations) {
+			auto animations = gsl::span(scene->mAnimations, scene->mNumAnimations);
+			for(auto anim : animations) {
+				LOG(plog::info) << "Animation for model " << model_name << ": " << anim->mName.C_Str();
+			}
+		}
 	}
 } // namespace mirrage

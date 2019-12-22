@@ -3,6 +3,8 @@
 
 #include "common.hpp"
 #include "filesystem.hpp"
+#include "helper/console.hpp"
+#include "helper/progress.hpp"
 #include "material_parser.hpp"
 #include "model_parser.hpp"
 
@@ -11,7 +13,6 @@
 #include <mirrage/utils/string_utils.hpp>
 
 #include <doctest.h>
-#include <plog/Appenders/ColorConsoleAppender.h>
 #include <plog/Log.h>
 #include <cxxopts.hpp>
 #include <gsl/gsl>
@@ -35,6 +36,8 @@
 
 
 using namespace mirrage;
+using namespace mirrage::helper;
+using namespace std::chrono_literals;
 
 namespace {
 	template <typename T = std::string>
@@ -72,11 +75,6 @@ namespace {
 // ./mesh_converter --output=/foo/bar sponza.obj
 int main(int argc, char** argv)
 {
-	static auto fileAppender =
-	        plog::RollingFileAppender<plog::TxtFormatter>("mesh_converter.log", 4L * 1024L, 4);
-	static auto consoleAppender = plog::ColorConsoleAppender<plog::TxtFormatter>();
-	plog::init(plog::debug, &fileAppender).addAppender(&consoleAppender);
-
 	auto options_def =
 	        cxxopts::Options("./mesh_converter",
 	                         "Tool to convert textures (.png) and 3D models to the internal Mirrage format.");
@@ -86,8 +84,10 @@ int main(int argc, char** argv)
 	// clang-format off
 	options_def.add_options("Generel")
 	        ("h,help", "Show this help message")
+	        ("ansi", "Use ANSI escape sequences for colored output and progress bars.", cxxopts::value<bool>()->default_value("true"))
 	        ("o,output", "The output directory", cxxopts::value<std::string>())
 	        ("c,cfg", "The config file to use", cxxopts::value<std::string>())
+	        ("dxt_level", "The dxt compression level (0=fast, 4=small)", cxxopts::value<int>())
 	        ("input", "Input files", cxxopts::value<std::vector<std::string>>(inputs));
 
 	options_def.add_options("Textures")
@@ -98,6 +98,14 @@ int main(int argc, char** argv)
 	options_def.parse_positional({"input"});
 
 	auto options = options_def.parse(argc, argv);
+
+	const auto ansi = get_arg<bool>(options, "ansi").get_or(true);
+
+	auto consoleAppender = Mirrage_console_appender<plog::TxtFormatter>(ansi);
+	plog::init(plog::info, &consoleAppender);
+
+	auto progress = Progress_container(consoleAppender.mutex());
+	consoleAppender.on_log([&] { progress.restart(); });
 
 	if(options["help"].as<bool>()) {
 		std::cout << options_def.help({"Generel", "Textures"}) << "\n" << std::flush;
@@ -113,6 +121,9 @@ int main(int argc, char** argv)
 	auto config     = load_config(get_arg(options, "cfg"), output_arg, pwd(), inputs);
 	auto normal     = get_arg<bool>(options, "normal_texture").get_or(false);
 	auto srgb       = !get_arg<bool>(options, "material_texture").get_or(false);
+	auto dxt_level  = get_arg<int>(options, "dxt_level");
+
+	dxt_level.process([&](auto l) { config.dxt_level = l; });
 
 	auto output = output_arg.get_or(config.default_output_directory);
 
@@ -123,23 +134,22 @@ int main(int argc, char** argv)
 
 	for(auto&& input : inputs) {
 		if(util::ends_with(input, ".png"))
-			convert_texture(input, output, normal, srgb);
+			convert_texture(input, output, normal, srgb, config.dxt_level, progress);
 		else
-			convert_model(input, output, config);
+			convert_model(input, output, config, progress, ansi);
 	}
 
-	using namespace std::chrono_literals;
+	if(ansi) {
+		progress.enable();
+	} else {
+		LOG(plog::info) << "Waiting for parallel tasks...";
+	}
 
-	auto last_parallel_tasks_done = std::size_t(0);
 	while(parallel_tasks_started.load() > parallel_tasks_done.load()) {
-		if(last_parallel_tasks_done != parallel_tasks_done.load()) {
-			last_parallel_tasks_done = parallel_tasks_done.load();
-
-			LOG(plog::info) << "Waiting for background tasks: " << last_parallel_tasks_done << "/"
-			                << parallel_tasks_started.load();
-		}
 		std::this_thread::sleep_for(1s);
 	}
+
+	LOG(plog::info) << "Done";
 }
 
 namespace {

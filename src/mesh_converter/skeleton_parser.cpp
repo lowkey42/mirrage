@@ -159,8 +159,6 @@ namespace mirrage {
 
 		out_file.write("MBFF", 4);
 
-		LOG(plog::debug) << "Bone count: " << skeleton.bones.size();
-
 		return skeleton;
 	}
 } // namespace mirrage

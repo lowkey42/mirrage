@@ -9,6 +9,7 @@ endif()
 
 add_subdirectory(cxxopts)
 add_subdirectory(enet)
+add_subdirectory(indicators)
 include(glm_interface.cmake)
 include(gsl_interface.cmake)
 include(moodycamel_interface.cmake)

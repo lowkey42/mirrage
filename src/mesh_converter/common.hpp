@@ -50,8 +50,9 @@ namespace mirrage {
 		renderer::Skinning_type skinning_type = renderer::Skinning_type::linear_blend_skinning;
 
 		bool print_material_info = false;
-		bool print_animations    = true;
+		bool print_animations    = false;
 		bool prefix_materials    = true;
+		int  dxt_level           = 4;
 	};
 	sf2_structDef(Mesh_converted_config,
 	              texture_mappings,
@@ -61,7 +62,8 @@ namespace mirrage {
 	              skinning_type,
 	              print_material_info,
 	              print_animations,
-	              prefix_materials);
+	              prefix_materials,
+	              dxt_level);
 
 
 	template <typename T>
