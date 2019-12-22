@@ -326,8 +326,7 @@ namespace mirrage {
 		}
 
 		// write file
-		auto model_out_filename = output + "/models/" + model_name + ".mmf";
-		util::to_lower_inplace(model_out_filename);
+		auto model_out_filename = output + "/models/" + util::to_lower(model_name) + ".mmf";
 		auto model_out_file = std::ofstream(model_out_filename, std::ostream::binary | std::ostream::trunc);
 
 		MIRRAGE_INVARIANT(model_out_file.is_open(),

@@ -128,9 +128,8 @@ namespace mirrage {
 		if(skeleton.bones.empty())
 			return skeleton;
 
-		auto skel_out_filename = output + "/models/" + model_name + ".mbf";
-		util::to_lower_inplace(skel_out_filename);
-		auto out_file = std::ofstream(skel_out_filename, std::ostream::binary | std::ostream::trunc);
+		auto skel_out_filename = output + "/models/" + util::to_lower(model_name) + ".mbf";
+		auto out_file          = std::ofstream(skel_out_filename, std::ostream::binary | std::ostream::trunc);
 
 		MIRRAGE_INVARIANT(out_file.is_open(), "Unable to open output file \"" << skel_out_filename << "\"!");
 

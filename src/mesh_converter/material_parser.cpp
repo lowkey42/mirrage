@@ -477,9 +477,8 @@ namespace mirrage {
 
 
 		// store results
-		auto filename = output + "/materials/" + name + ".msf";
-		util::to_lower_inplace(filename);
-		auto file = std::ofstream(filename, std::ostream::trunc);
+		auto filename = output + "/materials/" + util::to_lower(name) + ".msf";
+		auto file     = std::ofstream(filename, std::ostream::trunc);
 		sf2::serialize_json(file, material_file);
 
 		return true;

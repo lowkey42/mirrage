@@ -148,9 +148,8 @@ namespace mirrage {
 			}
 
 
-			auto filename = base_dir + name + ".maf";
-			util::to_lower_inplace(filename);
-			auto file = std::ofstream(filename);
+			auto filename = base_dir + util::to_lower(name) + ".maf";
+			auto file     = std::ofstream(filename);
 			MIRRAGE_INVARIANT(file, "Couldn't open output animation file for: " << name);
 
 			// write animation data
