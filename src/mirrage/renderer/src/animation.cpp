@@ -52,7 +52,8 @@ namespace mirrage::renderer {
 		                  "Mirrage bone file '" << file.aid().str() << "' corrupted (header).");
 
 		auto version = read<std::uint16_t>(file);
-		MIRRAGE_INVARIANT(version == 1, "Unsupported bone file version " << version << ". Expected 1");
+		MIRRAGE_INVARIANT(version == 1 || version == 2,
+		                  "Unsupported bone file version " << version << ". Expected 1 or 2");
 
 		auto flags     = read<std::uint16_t>(file);
 		_skinning_type = static_cast<Skinning_type>(flags & 0b11);
@@ -334,35 +335,47 @@ namespace mirrage::renderer {
 
 	} // namespace
 
-	auto Animation::bone_transform(Bone_id bone_idx, float time, Animation_key& key) const
-	        -> util::maybe<Local_bone_transform>
+	auto Animation::bone_transform(Bone_id              bone_idx,
+	                               float                time,
+	                               Animation_key&       key,
+	                               Local_bone_transform def) const -> Local_bone_transform
 	{
 		const auto& bone_data = _bones.at(std::size_t(bone_idx));
 
-		if(bone_data.positions.empty() || bone_data.orientations.empty() || bone_data.scales.empty())
-			return util::nothing;
+		if(bone_data.positions.empty() && bone_data.orientations.empty() && bone_data.scales.empty())
+			return def;
 
-		float position_t = find_keyframe(bone_data.position_times,
-		                                 time,
-		                                 key.position_key,
-		                                 bone_data.pre_behaviour,
-		                                 bone_data.post_behaviour);
+		if(!bone_data.positions.empty()) {
+			float position_t = find_keyframe(bone_data.position_times,
+			                                 time,
+			                                 key.position_key,
+			                                 bone_data.pre_behaviour,
+			                                 bone_data.post_behaviour);
 
-		float scale_t = find_keyframe(
-		        bone_data.scale_times, time, key.scale_key, bone_data.pre_behaviour, bone_data.post_behaviour);
+			def.translation = interpolate(bone_data.positions, position_t, key.position_key);
+		}
 
-		float orientation_t = find_keyframe(bone_data.orientation_times,
-		                                    time,
-		                                    key.orientation_key,
-		                                    bone_data.pre_behaviour,
-		                                    bone_data.post_behaviour);
+		if(!bone_data.scales.empty()) {
+			float scale_t = find_keyframe(bone_data.scale_times,
+			                              time,
+			                              key.scale_key,
+			                              bone_data.pre_behaviour,
+			                              bone_data.post_behaviour);
 
+			def.scale = interpolate(bone_data.scales, scale_t, key.scale_key);
+		}
 
-		auto position = interpolate(bone_data.positions, position_t, key.position_key);
-		auto scale    = interpolate(bone_data.scales, scale_t, key.scale_key);
-		auto rotation = interpolate(bone_data.orientations, orientation_t, key.orientation_key);
+		if(!bone_data.orientations.empty()) {
+			float orientation_t = find_keyframe(bone_data.orientation_times,
+			                                    time,
+			                                    key.orientation_key,
+			                                    bone_data.pre_behaviour,
+			                                    bone_data.post_behaviour);
 
-		return util::maybe<Local_bone_transform>{rotation, position, scale};
+			def.orientation = interpolate(bone_data.orientations, orientation_t, key.orientation_key);
+		}
+
+		return def;
 	}
 
 

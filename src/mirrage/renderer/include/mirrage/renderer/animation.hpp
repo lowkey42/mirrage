@@ -85,8 +85,11 @@ namespace mirrage::renderer {
 	*
 	* |        BONE REF NAME         |		util::Str_id (empty if invalid)
 	* * BONE_COUNT
-	*
 	* |   M   |   B   |   F   |  F   |
+	*
+	* |          NAME LENGTH         |		starting from version 2
+	*         NAME LENGTH bytes
+	* * BONE_COUNT
 	*/
 	class Skeleton {
 	  public:
@@ -184,8 +187,8 @@ namespace mirrage::renderer {
 	  public:
 		Animation(asset::istream&);
 
-		auto bone_transform(Bone_id, float time, Animation_key& key) const
-		        -> util::maybe<Local_bone_transform>;
+		auto bone_transform(Bone_id, float time, Animation_key& key, Local_bone_transform def) const
+		        -> Local_bone_transform;
 
 		auto duration() const { return _duration; }
 

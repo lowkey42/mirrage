@@ -281,9 +281,8 @@ namespace mirrage::renderer {
 
 				result._bone_transforms[i] +=
 				        state.blend_weight
-				        * animation.bone_transform(Bone_id(i), state.time, key).get_or([&] {
-					          return skeleton_data.node_transform(Bone_id(i));
-				          });
+				        * animation.bone_transform(
+				                Bone_id(i), state.time, key, skeleton_data.node_transform(Bone_id(i)));
 			}
 		}
 	}

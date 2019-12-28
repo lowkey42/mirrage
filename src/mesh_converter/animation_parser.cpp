@@ -77,11 +77,12 @@ namespace mirrage {
 		};
 	} // namespace
 
-	void parse_animations(const std::string&           model_name,
-	                      const std::string&           output,
-	                      const aiScene&               scene,
-	                      const Mesh_converted_config& cfg,
-	                      const Skeleton_data&         skeleton)
+	void parse_animations(const std::string&              model_name,
+	                      const util::maybe<std::string>& name,
+	                      const std::string&              output,
+	                      const aiScene&                  scene,
+	                      const Mesh_converted_config&    cfg,
+	                      const Skeleton_data&            skeleton)
 	{
 		if(!scene.HasAnimations())
 			return;
@@ -90,16 +91,10 @@ namespace mirrage {
 		auto base_dir = output + "/animations/";
 
 		auto animations = gsl::span(scene.mAnimations, scene.mNumAnimations);
-
-		if(cfg.print_animations) {
-			for(auto anim : animations) {
-				LOG(plog::info) << "Animation for model " << model_name << ": " << anim->mName.C_Str();
-			}
-		}
-
 		for(auto anim : animations) {
-			auto name = std::string(anim->mName.C_Str());
-			name.erase(std::remove_if(name.begin(), name.end(), invalid_char), name.end());
+			auto anim_name = std::string(anim->mName.C_Str());
+			anim_name.erase(std::remove_if(anim_name.begin(), anim_name.end(), invalid_char),
+			                anim_name.end());
 
 			auto times        = std::vector<float>();
 			auto positions    = std::vector<glm::vec3>();
@@ -114,50 +109,69 @@ namespace mirrage {
 
 
 			for(auto channel : gsl::span(anim->mChannels, anim->mNumChannels)) {
-				auto bone_idx = skeleton.bones_by_name.find(channel->mNodeName.C_Str());
+				auto bone_name = std::string(channel->mNodeName.C_Str());
+				auto bone_idx  = skeleton.bones_by_name.find(bone_name);
+				if(auto i = bone_name.find("_$AssimpFbx$"); i != std::string::npos) {
+					bone_name = bone_name.substr(0, i);
+					bone_idx  = skeleton.bones_by_name.find(bone_name);
+				}
+
 				if(bone_idx == skeleton.bones_by_name.end()) {
 					LOG(plog::warning) << "Couldn't find bone '" << channel->mNodeName.C_Str()
 					                   << "' referenced by animation: " << anim->mName.C_Str();
 					continue;
 				}
 
+				const auto retarget_scale =
+				        skeleton.bones.at(std::size_t(bone_idx->second)).retarget_scale_factor;
+
 				auto& per_bone_data          = bones.at(std::size_t(bone_idx->second));
 				per_bone_data.pre_behaviour  = to_our_behaviour(channel->mPreState);
 				per_bone_data.post_behaviour = to_our_behaviour(channel->mPostState);
 
-				// positions
-				per_bone_data.position_count     = channel->mNumPositionKeys;
-				per_bone_data.position_times_idx = times.size();
-				per_bone_data.positions_idx      = positions.size();
-				for(auto& p : gsl::span(channel->mPositionKeys, channel->mNumPositionKeys)) {
-					times.emplace_back(static_cast<float>(p.mTime / anim->mTicksPerSecond));
-					positions.emplace_back(p.mValue.x, p.mValue.y, p.mValue.z);
+
+				if(channel->mNumPositionKeys > per_bone_data.position_count && cfg.animate_translation) {
+					// positions
+					per_bone_data.position_count     = channel->mNumPositionKeys;
+					per_bone_data.position_times_idx = times.size();
+					per_bone_data.positions_idx      = positions.size();
+					for(auto& p : gsl::span(channel->mPositionKeys, channel->mNumPositionKeys)) {
+						times.emplace_back(static_cast<float>(p.mTime / anim->mTicksPerSecond));
+						positions.emplace_back(glm::vec3(p.mValue.x, p.mValue.y, p.mValue.z)
+						                       * retarget_scale);
+					}
 				}
 
-				// scales
-				per_bone_data.scale_count     = channel->mNumScalingKeys;
-				per_bone_data.scale_times_idx = times.size();
-				per_bone_data.scales_idx      = scales.size();
-				for(auto& p : gsl::span(channel->mScalingKeys, channel->mNumScalingKeys)) {
-					times.emplace_back(static_cast<float>(p.mTime / anim->mTicksPerSecond));
-					scales.emplace_back(p.mValue.x, p.mValue.y, p.mValue.z);
+				if(channel->mNumScalingKeys > per_bone_data.scale_count && cfg.animate_scale) {
+					// scales
+					per_bone_data.scale_count     = channel->mNumScalingKeys;
+					per_bone_data.scale_times_idx = times.size();
+					per_bone_data.scales_idx      = scales.size();
+					for(auto& p : gsl::span(channel->mScalingKeys, channel->mNumScalingKeys)) {
+						times.emplace_back(static_cast<float>(p.mTime / anim->mTicksPerSecond));
+						scales.emplace_back(p.mValue.x, p.mValue.y, p.mValue.z);
+					}
 				}
 
-				// orientations
-				per_bone_data.orientation_count     = channel->mNumRotationKeys;
-				per_bone_data.orientation_times_idx = times.size();
-				per_bone_data.orientations_idx      = orientations.size();
-				for(auto& p : gsl::span(channel->mRotationKeys, channel->mNumRotationKeys)) {
-					times.emplace_back(static_cast<float>(p.mTime / anim->mTicksPerSecond));
-					orientations.emplace_back(p.mValue.w, p.mValue.x, p.mValue.y, p.mValue.z);
+				if(channel->mNumRotationKeys > per_bone_data.orientation_count && cfg.animate_orientation) {
+					// orientations
+					per_bone_data.orientation_count     = channel->mNumRotationKeys;
+					per_bone_data.orientation_times_idx = times.size();
+					per_bone_data.orientations_idx      = orientations.size();
+					for(auto& p : gsl::span(channel->mRotationKeys, channel->mNumRotationKeys)) {
+						times.emplace_back(static_cast<float>(p.mTime / anim->mTicksPerSecond));
+						orientations.emplace_back(p.mValue.w, p.mValue.x, p.mValue.y, p.mValue.z);
+					}
 				}
 			}
 
 
-			auto filename = base_dir + name + ".maf";
-			util::to_lower_inplace(filename);
+			auto filename = base_dir + util::to_lower(model_name + "_" + anim_name) + ".maf";
+			if(cfg.only_animations && animations.size() == 1 && name.is_some())
+				filename = base_dir + name.get_or_throw() + ".maf";
+
 			auto file = std::ofstream(filename);
-			MIRRAGE_INVARIANT(file, "Couldn't open output animation file for: " << name);
+			MIRRAGE_INVARIANT(file, "Couldn't open output animation file for: " << anim_name);
 
 			// write animation data
 			file.write("MAFF", 4);

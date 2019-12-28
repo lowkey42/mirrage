@@ -16,12 +16,19 @@ add_executable(mesh_converter
 	model_parser.hpp
 	skeleton_parser.cpp
 	skeleton_parser.hpp
+	helper/progress.hpp
+	helper/progress.cpp
+	helper/console.hpp
 	${BACKWARD_ENABLE}
 )
 if(${MIRRAGE_ENABLE_BACKWARD})
 	add_backward(mesh_converter)
 endif()
 target_compile_features(mesh_converter PUBLIC cxx_std_17)
+
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -Ofast")
+endif()
 
 target_link_libraries(mesh_converter
 	PRIVATE
@@ -34,4 +41,6 @@ target_link_libraries(mesh_converter
 		doctest
 		crunch::crunch
 		Async++
+		cxxopts::cxxopts
+		indica::indica
 )
