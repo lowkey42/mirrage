@@ -84,6 +84,8 @@ namespace mirrage::audio {
 			return;
 		}
 
+		auto inv_dt = dt.value() > 0.000001f ? 1.f / dt.value() : 0.f;
+
 		auto master_volume = _audio.settings().gameplay_volume;
 
 		// find listener
@@ -101,7 +103,7 @@ namespace mirrage::audio {
 		// update listener position
 		process(listener_position, listener_orientation) >> [&](const glm::vec3& pos, const glm::quat& o) {
 			auto vel = _last_listener_position.process(glm::vec3(0, 0, 0),
-			                                           [&](auto& lp) { return (pos - lp) / dt.value(); });
+			                                           [&](auto& lp) { return (pos - lp) * inv_dt; });
 
 			auto at = glm::rotate(o, glm::vec3(0, 0, -1));
 			auto up = glm::rotate(o, glm::vec3(0, 1, 0));
@@ -116,7 +118,7 @@ namespace mirrage::audio {
 			source._audio_manager = _audio;
 
 			const auto pos        = transform.position;
-			const auto vel        = (pos - source._last_position) / dt.value();
+			const auto vel        = (pos - source._last_position) * inv_dt;
 			source._last_position = pos;
 
 			for(auto& slot : source._slots) {

@@ -28,4 +28,19 @@ namespace mirrage {
 
 	auto exists(const std::string& name) -> bool { return access(name.c_str(), 0) == 0; }
 
+	std::string pwd()
+	{
+		char cCurrentPath[FILENAME_MAX];
+
+#ifdef _WIN32
+		_getcwd(cCurrentPath, sizeof(cCurrentPath));
+#else
+		if(getcwd(cCurrentPath, sizeof(cCurrentPath)) == nullptr) {
+			MIRRAGE_FAIL("getcwd with max length " << FILENAME_MAX << " failed with error code " << errno);
+		}
+#endif
+
+		return cCurrentPath;
+	}
+
 } // namespace mirrage

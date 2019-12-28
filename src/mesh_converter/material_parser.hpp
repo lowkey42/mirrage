@@ -16,11 +16,12 @@ namespace mirrage {
 	                             const Mesh_converted_config& cfg,
 	                             helper::Progress_container&  progress);
 
-	extern void convert_texture(const std::string&          input,
-	                            const std::string&          output_dir,
-	                            bool                        normal_texture,
-	                            bool                        srgb,
-	                            int                         dxt_level,
-	                            helper::Progress_container& progress);
+	extern void convert_texture(const std::string&              input,
+	                            const util::maybe<std::string>& name,
+	                            const std::string&              output_dir,
+	                            bool                            normal_texture,
+	                            bool                            srgb,
+	                            int                             dxt_level,
+	                            helper::Progress_container&     progress);
 
 } // namespace mirrage

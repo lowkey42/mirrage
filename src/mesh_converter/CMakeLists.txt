@@ -26,6 +26,10 @@ if(${MIRRAGE_ENABLE_BACKWARD})
 endif()
 target_compile_features(mesh_converter PUBLIC cxx_std_17)
 
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native -Ofast")
+endif()
+
 target_link_libraries(mesh_converter
 	PRIVATE
 		mirrage::mirrage

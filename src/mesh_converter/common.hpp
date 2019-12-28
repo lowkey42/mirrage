@@ -53,6 +53,15 @@ namespace mirrage {
 		bool print_animations    = false;
 		bool prefix_materials    = true;
 		int  dxt_level           = 4;
+		bool trim_bones          = false;
+		bool only_animations     = false;
+		bool skip_materials      = false;
+
+		float scale = 1.f;
+
+		bool animate_scale       = true;
+		bool animate_translation = true;
+		bool animate_orientation = true;
 	};
 	sf2_structDef(Mesh_converted_config,
 	              texture_mappings,
@@ -63,7 +72,11 @@ namespace mirrage {
 	              print_material_info,
 	              print_animations,
 	              prefix_materials,
-	              dxt_level);
+	              dxt_level,
+	              trim_bones,
+	              only_animations,
+	              skip_materials,
+	              scale);
 
 
 	template <typename T>
@@ -71,6 +84,13 @@ namespace mirrage {
 	{
 		static_assert(!std::is_pointer<T>::value, "T is a pointer. That is DEFINITLY not what you wanted!");
 		out.write(reinterpret_cast<const char*>(&value), sizeof(T));
+	}
+
+	inline void write(std::ostream& out, const std::string& value)
+	{
+		auto len = gsl::narrow<std::uint32_t>(value.size());
+		write(out, len);
+		out.write(value.data(), len);
 	}
 
 	template <typename T>
@@ -91,7 +111,6 @@ namespace mirrage {
 		                                {in.d1, in.d2, in.d3, in.d4}});
 										*/
 		return glm::transpose(glm::make_mat4(&in.a1));
-		;
 	}
 	inline auto to_glm(aiVector3D v) { return glm::vec3(v.x, v.y, v.z); }
 

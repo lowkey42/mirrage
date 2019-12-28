@@ -26,14 +26,6 @@
 #include <thread>
 #include <tuple>
 
-#ifdef _WIN32
-#include <direct.h>
-#include <windows.h>
-#else
-#include <sys/stat.h>
-#include <unistd.h>
-#endif
-
 
 using namespace mirrage;
 using namespace mirrage::helper;
@@ -48,21 +40,6 @@ namespace {
 		} else {
 			return util::nothing;
 		}
-	}
-
-	std::string pwd()
-	{
-		char cCurrentPath[FILENAME_MAX];
-
-#ifdef _WIN32
-		_getcwd(cCurrentPath, sizeof(cCurrentPath));
-#else
-		if(getcwd(cCurrentPath, sizeof(cCurrentPath)) == nullptr) {
-			MIRRAGE_FAIL("getcwd with max length " << FILENAME_MAX << " failed with error code " << errno);
-		}
-#endif
-
-		return cCurrentPath;
 	}
 
 	auto load_config(const util::maybe<std::string>& config_arg,
@@ -88,14 +65,30 @@ int main(int argc, char** argv)
 	        ("o,output", "The output directory", cxxopts::value<std::string>())
 	        ("c,cfg", "The config file to use", cxxopts::value<std::string>())
 	        ("dxt_level", "The dxt compression level (0=fast, 4=small)", cxxopts::value<int>())
-	        ("input", "Input files", cxxopts::value<std::vector<std::string>>(inputs));
+	        ("input", "Input files, optionally named with name=file", cxxopts::value<std::vector<std::string>>(inputs));
 
 	options_def.add_options("Textures")
 	        ("normal_texture", "Process texture as normal map", cxxopts::value<bool>()->default_value("false"))
 	        ("material_texture", "Process texture as material map (only RG channels)", cxxopts::value<bool>()->default_value("false"));
+
+	options_def.add_options("Models")
+	        ("trim_bones", "Remove bones that are not referenced by any vertices or other bones", cxxopts::value<bool>())
+	        ("only_animations", "Only convert animations and skip model, materials, ...", cxxopts::value<bool>())
+	        ("skip_materials", "Don't convert materials and textures", cxxopts::value<bool>())
+	        ("scale", "Global scale factor of the model (e.g. for Blender FBX export)", cxxopts::value<float>())
+	        ("fit_skeleton", "Reuse the given skeleton for animation export (remove additional bones, ...)", cxxopts::value<std::string>())
+	        ("guess_scale", "Tries to guess the scale factor per bone for animation retargeting (fit_skeleton)", cxxopts::value<bool>()->default_value("true"))
+	        ("material_names", "Names of the model materials (in order)", cxxopts::value<std::vector<std::string>>())
+	        ("print_materials", "Display informations about materials.", cxxopts::value<bool>())
+	        ("print_animations", "Display informations about animations.", cxxopts::value<bool>())
+	        ("animate_scale", "Allow animations to modify bone scales", cxxopts::value<bool>())
+	        ("animate_translation", "Allow animations to modify bone translations", cxxopts::value<bool>())
+	        ("animate_orientation", "Allow animations to modify bone orientations", cxxopts::value<bool>());
 	// clang-format on
 
 	options_def.parse_positional({"input"});
+	options_def.positional_help("<input>");
+	options_def.show_positional_help();
 
 	auto options = options_def.parse(argc, argv);
 
@@ -108,20 +101,37 @@ int main(int argc, char** argv)
 	consoleAppender.on_log([&] { progress.restart(); });
 
 	if(options["help"].as<bool>()) {
-		std::cout << options_def.help({"Generel", "Textures"}) << "\n" << std::flush;
+		std::cout << util::replace(options_def.help(), "--input arg", "<input>    ") << "\n" << std::flush;
 		return 0;
 
 	} else if(inputs.empty()) {
-		LOG(plog::warning) << "No input files!\n" << options_def.help({"Generel", "Textures"});
+		LOG(plog::warning) << "No input files!\n"
+		                   << util::replace(options_def.help(), "--input arg", "<input>    ");
 		return 1;
 	}
 
 
-	auto output_arg = get_arg(options, "output");
-	auto config     = load_config(get_arg(options, "cfg"), output_arg, pwd(), inputs);
-	auto normal     = get_arg<bool>(options, "normal_texture").get_or(false);
-	auto srgb       = !get_arg<bool>(options, "material_texture").get_or(false);
-	auto dxt_level  = get_arg<int>(options, "dxt_level");
+	auto output_arg        = get_arg(options, "output");
+	auto config            = load_config(get_arg(options, "cfg"), output_arg, pwd(), inputs);
+	auto normal            = get_arg<bool>(options, "normal_texture").get_or(false);
+	auto srgb              = !get_arg<bool>(options, "material_texture").get_or(false);
+	auto dxt_level         = get_arg<int>(options, "dxt_level");
+	config.trim_bones      = get_arg<bool>(options, "time_bones").get_or(config.trim_bones);
+	config.only_animations = get_arg<bool>(options, "only_animations").get_or(config.only_animations);
+	config.skip_materials  = get_arg<bool>(options, "skip_materials").get_or(config.skip_materials);
+	config.scale           = get_arg<float>(options, "scale").get_or(config.scale);
+	auto fit_skeleton      = get_arg<std::string>(options, "fit_skeleton");
+	auto guess_scale       = get_arg<bool>(options, "guess_scale").get_or(true);
+	config.trim_bones      = get_arg<bool>(options, "time_bones").get_or(config.trim_bones);
+	auto material_names    = get_arg<std::vector<std::string>>(options, "material_names").get_or({});
+
+	config.print_material_info = get_arg<bool>(options, "print_materials").get_or(config.print_material_info);
+	config.print_animations    = get_arg<bool>(options, "print_animations").get_or(config.print_animations);
+	config.animate_scale       = get_arg<bool>(options, "animate_scale").get_or(config.animate_scale);
+	config.animate_translation =
+	        get_arg<bool>(options, "animate_translation").get_or(config.animate_translation);
+	config.animate_orientation =
+	        get_arg<bool>(options, "animate_orientation").get_or(config.animate_orientation);
 
 	dxt_level.process([&](auto l) { config.dxt_level = l; });
 
@@ -133,10 +143,18 @@ int main(int argc, char** argv)
 	create_directory(output + "/textures");
 
 	for(auto&& input : inputs) {
+		auto del  = input.find_last_of("=");
+		auto name = util::maybe<std::string>::nothing();
+		if(del != std::string::npos) {
+			name  = input.substr(0, del);
+			input = input.substr(del + 1);
+		}
+
 		if(util::ends_with(input, ".png"))
-			convert_texture(input, output, normal, srgb, config.dxt_level, progress);
+			convert_texture(input, name, output, normal, srgb, config.dxt_level, progress);
 		else
-			convert_model(input, output, config, progress, ansi);
+			convert_model(
+			        input, name, output, config, fit_skeleton, guess_scale, material_names, progress, ansi);
 	}
 
 	if(ansi) {

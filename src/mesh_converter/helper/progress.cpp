@@ -24,6 +24,7 @@ namespace mirrage::helper {
 		p->show_percentage();
 		p->set_foreground_color(color);
 		p->set_postfix_text(message);
+		p->set_bar_width(60);
 
 		auto lock = plog::util::MutexLock{_mutex};
 

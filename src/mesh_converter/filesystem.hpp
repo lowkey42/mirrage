@@ -9,4 +9,6 @@ namespace mirrage {
 
 	extern auto exists(const std::string& name) -> bool;
 
+	extern std::string pwd();
+
 } // namespace mirrage

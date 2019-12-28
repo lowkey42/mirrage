@@ -275,21 +275,36 @@ namespace mirrage {
 			progress.progress(1.f);
 			progress.color(indicators::Color::GREEN);
 		}
-		void store_texture_async(Image_data<rgba32>          image,
-		                         std::string                 output,
+		template <typename F>
+		void store_texture_async(std::string                 output,
 		                         Texture_format              format,
 		                         int                         dxt_level,
-		                         helper::Progress_container& progress)
+		                         helper::Progress_container& progress,
+		                         F&&                         image_src)
 		{
 			parallel_tasks_started++;
 			auto last_slash = output.find_last_of("/");
 			auto p          = progress.add(indicators::Color::YELLOW,
                                   last_slash != std::string::npos ? output.substr(last_slash + 1) : output);
-			async::spawn(
-			        [image = std::move(image), output = std::move(output), format, p, dxt_level]() mutable {
-				        store_texture(std::move(image), std::move(output), format, dxt_level, p);
-				        parallel_tasks_done++;
-			        });
+			async::spawn([image_src = std::forward<F>(image_src),
+			              output    = std::move(output),
+			              format,
+			              p,
+			              dxt_level]() mutable {
+				store_texture(std::move(image_src)(), std::move(output), format, dxt_level, p);
+				parallel_tasks_done++;
+			});
+		}
+
+		[[maybe_unused]] void store_texture_async(Image_data<rgba32>          image,
+		                                          std::string                 output,
+		                                          Texture_format              format,
+		                                          int                         dxt_level,
+		                                          helper::Progress_container& progress)
+		{
+			store_texture_async(output, format, dxt_level, progress, [image = std::move(image)]() mutable {
+				return std::move(image);
+			});
 		}
 
 		auto try_find_texture(const std::string&           mat_name,
@@ -387,77 +402,8 @@ namespace mirrage {
 		auto albedo_name =
 		        resolve_path(name, base_dir, find_texture(name, material, cfg, Texture_type::albedo));
 
-		auto albedo = load_texture2d(albedo_name);
-		generate_mip_maps(albedo, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+		auto albedo              = load_texture2d(albedo_name);
 		material_file.albedo_aid = name + "_albedo.ktx";
-		store_texture_async(albedo,
-		                    texture_dir + material_file.albedo_aid,
-		                    Texture_format::s_rgba,
-		                    cfg.dxt_level,
-		                    progress);
-
-		// convert normal
-		auto normal_name = find_texture(name, material, cfg, Texture_type::normal);
-		auto normal      = load_texture2d(resolve_path(name, base_dir, normal_name), false);
-		normal.foreach([&](auto& pixel, auto level, auto x, auto y) {
-			// generate mip levels
-			if(level > 0) {
-				auto n_00 = normal.pixel(level - 1, x * 2, y * 2);
-				auto n_10 = normal.pixel(level - 1, x * 2 + 1, y * 2);
-				auto n_11 = normal.pixel(level - 1, x * 2 + 1, y * 2 + 1);
-				auto n_01 = normal.pixel(level - 1, x * 2, y * 2 + 1);
-
-				auto n = glm::normalize(glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
-				         + glm::normalize(glm::vec3(n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
-				         + glm::normalize(glm::vec3(n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
-				         + glm::normalize(glm::vec3(n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
-
-				n       = glm::normalize(n / 4.f);
-				pixel.r = n.x * 0.5f + 0.5f;
-				pixel.g = n.y * 0.5f + 0.5f;
-				pixel.b = n.z * 0.5f + 0.5f;
-				pixel.a = 1;
-			}
-		});
-		material_file.normal_aid = name + "_normal.ktx";
-		store_texture_async(
-		        normal, texture_dir + material_file.normal_aid, Texture_format::rg, cfg.dxt_level, progress);
-
-		// convert brdf
-		auto metallic_name  = find_texture(name, material, cfg, Texture_type::metalness);
-		auto roughness_name = find_texture(name, material, cfg, Texture_type::roughness);
-		auto metallic       = load_texture2d(resolve_path(name, base_dir, metallic_name), false);
-		auto roughness      = load_texture2d(resolve_path(name, base_dir, roughness_name), false);
-		generate_mip_maps(metallic, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
-		generate_mip_maps(roughness, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
-		if(roughness.width == metallic.width && roughness.height == metallic.height)
-			roughness.foreach([&](auto& pixel, auto level, auto x, auto y) {
-				pixel.g = metallic.pixel(level, x, y).r;
-			});
-		else {
-			auto width_scale  = float(metallic.width) / float(roughness.width);
-			auto height_scale = float(metallic.height) / float(roughness.height);
-			roughness.foreach([&](auto& pixel, auto level, auto x, auto y) {
-				pixel.g =
-				        metallic.pixel(level, std::int32_t(x * width_scale), std::int32_t(y * height_scale)).r;
-			});
-		}
-		material_file.brdf_aid = name + "_brdf.ktx";
-		store_texture_async(
-		        roughness, texture_dir + material_file.brdf_aid, Texture_format::rg, cfg.dxt_level, progress);
-
-		// convert emissive
-		try_find_texture(name, material, cfg, Texture_type::emission).process([&](auto& emission_name) {
-			auto emission = load_texture2d(resolve_path(name, base_dir, emission_name), false);
-			generate_mip_maps(emission, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
-
-			material_file.emission_aid = name + "_emission.ktx";
-			store_texture_async(emission,
-			                    texture_dir + material_file.emission_aid,
-			                    Texture_format::rg,
-			                    cfg.dxt_level,
-			                    progress);
-		});
 
 		// determine substance type
 		auto uses_alpha_mask  = std::int_fast32_t(0);
@@ -475,6 +421,96 @@ namespace mirrage {
 		else if(uses_alpha_mask > alpha_cutoff)
 			material_file.substance_id = util::Str_id("alphatest");
 
+		store_texture_async(texture_dir + material_file.albedo_aid,
+		                    Texture_format::s_rgba,
+		                    cfg.dxt_level,
+		                    progress,
+		                    [albedo = std::move(albedo)]() mutable {
+			                    generate_mip_maps(albedo, [](auto a, auto b, auto c, auto d) {
+				                    return (a + b + c + d) / 4.f;
+			                    });
+			                    return std::move(albedo);
+		                    });
+
+		// convert normal
+		auto normal_name = find_texture(name, material, cfg, Texture_type::normal);
+		auto normal_gen  = [path = resolve_path(name, base_dir, normal_name)]() mutable {
+            auto normal = load_texture2d(path, false);
+            normal.foreach([&](auto& pixel, auto level, auto x, auto y) {
+                // generate mip levels
+                if(level > 0) {
+                    auto n_00 = normal.pixel(level - 1, x * 2, y * 2);
+                    auto n_10 = normal.pixel(level - 1, x * 2 + 1, y * 2);
+                    auto n_11 = normal.pixel(level - 1, x * 2 + 1, y * 2 + 1);
+                    auto n_01 = normal.pixel(level - 1, x * 2, y * 2 + 1);
+
+                    auto n = glm::normalize(glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
+                             + glm::normalize(glm::vec3(n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
+                             + glm::normalize(glm::vec3(n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
+                             + glm::normalize(glm::vec3(n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
+
+                    n       = glm::normalize(n / 4.f);
+                    pixel.r = n.x * 0.5f + 0.5f;
+                    pixel.g = n.y * 0.5f + 0.5f;
+                    pixel.b = n.z * 0.5f + 0.5f;
+                    pixel.a = 1;
+                }
+            });
+            return normal;
+		};
+		material_file.normal_aid = name + "_normal.ktx";
+		store_texture_async(texture_dir + material_file.normal_aid,
+		                    Texture_format::rg,
+		                    cfg.dxt_level,
+		                    progress,
+		                    normal_gen);
+
+		// convert brdf
+		auto metallic_name  = find_texture(name, material, cfg, Texture_type::metalness);
+		auto roughness_name = find_texture(name, material, cfg, Texture_type::roughness);
+		auto mat_gen        = [metallic_path  = resolve_path(name, base_dir, metallic_name),
+                        roughness_path = resolve_path(name, base_dir, roughness_name)]() mutable {
+            auto metallic  = load_texture2d(metallic_path, false);
+            auto roughness = load_texture2d(roughness_path, false);
+
+            generate_mip_maps(metallic, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+            generate_mip_maps(roughness,
+                              [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+            if(roughness.width == metallic.width && roughness.height == metallic.height)
+                roughness.foreach([&](auto& pixel, auto level, auto x, auto y) {
+                    pixel.g = metallic.pixel(level, x, y).r;
+                });
+            else {
+                auto width_scale  = float(metallic.width) / float(roughness.width);
+                auto height_scale = float(metallic.height) / float(roughness.height);
+                roughness.foreach([&](auto& pixel, auto level, auto x, auto y) {
+                    pixel.g = metallic.pixel(level,
+                                             std::int32_t(x * width_scale),
+                                             std::int32_t(y * height_scale))
+                                      .r;
+                });
+            }
+            return roughness;
+		};
+		material_file.brdf_aid = name + "_brdf.ktx";
+		store_texture_async(
+		        texture_dir + material_file.brdf_aid, Texture_format::rg, cfg.dxt_level, progress, mat_gen);
+
+		// convert emissive
+		try_find_texture(name, material, cfg, Texture_type::emission).process([&](auto& emission_name) {
+			material_file.emission_aid = name + "_emission.ktx";
+			store_texture_async(texture_dir + material_file.emission_aid,
+			                    Texture_format::rg,
+			                    cfg.dxt_level,
+			                    progress,
+			                    [path = resolve_path(name, base_dir, emission_name)]() mutable {
+				                    auto emission = load_texture2d(path, false);
+				                    generate_mip_maps(emission, [](auto a, auto b, auto c, auto d) {
+					                    return (a + b + c + d) / 4.f;
+				                    });
+				                    return emission;
+			                    });
+		});
 
 		// store results
 		auto filename = output + "/materials/" + util::to_lower(name) + ".msf";
@@ -484,49 +520,53 @@ namespace mirrage {
 		return true;
 	}
 
-	void convert_texture(const std::string&          input,
-	                     const std::string&          output_dir,
-	                     bool                        normal_texture,
-	                     bool                        srgb,
-	                     int                         dxt_level,
-	                     helper::Progress_container& progress)
+	void convert_texture(const std::string&              input,
+	                     const util::maybe<std::string>& name,
+	                     const std::string&              output_dir,
+	                     bool                            normal_texture,
+	                     bool                            srgb,
+	                     int                             dxt_level,
+	                     helper::Progress_container&     progress)
 	{
-		auto data = load_texture2d(input, srgb);
-		if(normal_texture) {
-			data.foreach([&](auto& pixel, auto level, auto x, auto y) {
-				// generate mip levels
-				if(level > 0) {
-					auto n_00 = data.pixel(level - 1, x * 2, y * 2);
-					auto n_10 = data.pixel(level - 1, x * 2 + 1, y * 2);
-					auto n_11 = data.pixel(level - 1, x * 2 + 1, y * 2 + 1);
-					auto n_01 = data.pixel(level - 1, x * 2, y * 2 + 1);
+		auto gen = [input, srgb, normal_texture]() mutable {
+			auto data = load_texture2d(input, srgb);
+			if(normal_texture) {
+				data.foreach([&](auto& pixel, auto level, auto x, auto y) {
+					// generate mip levels
+					if(level > 0) {
+						auto n_00 = data.pixel(level - 1, x * 2, y * 2);
+						auto n_10 = data.pixel(level - 1, x * 2 + 1, y * 2);
+						auto n_11 = data.pixel(level - 1, x * 2 + 1, y * 2 + 1);
+						auto n_01 = data.pixel(level - 1, x * 2, y * 2 + 1);
 
-					auto n = glm::normalize(glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
-					         + glm::normalize(glm::vec3(n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
-					         + glm::normalize(glm::vec3(n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
-					         + glm::normalize(glm::vec3(n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
+						auto n = glm::normalize(glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
+						         + glm::normalize(glm::vec3(n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
+						         + glm::normalize(glm::vec3(n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
+						         + glm::normalize(glm::vec3(n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
 
-					n       = glm::normalize(n / 4.f);
-					pixel.r = n.x * 0.5f + 0.5f;
-					pixel.g = n.y * 0.5f + 0.5f;
-					pixel.b = n.z * 0.5f + 0.5f;
-					pixel.a = 1;
-				}
-			});
+						n       = glm::normalize(n / 4.f);
+						pixel.r = n.x * 0.5f + 0.5f;
+						pixel.g = n.y * 0.5f + 0.5f;
+						pixel.b = n.z * 0.5f + 0.5f;
+						pixel.a = 1;
+					}
+				});
 
-		} else {
-			generate_mip_maps(data, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
-		}
+			} else {
+				generate_mip_maps(data, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+			}
 
+			return data;
+		};
 
 		auto input_path = util::split_on_last(input, "/");
 		auto input_name = input_path.second.empty() ? input_path.first : input_path.second;
 		input_name      = util::split_on_last(input_name, ".").first;
 
-		store_texture_async(data,
-		                    output_dir + "/" + input_name + ".ktx",
+		store_texture_async(output_dir + "/" + name.get_or(util::to_lower(input_name)) + ".ktx",
 		                    srgb ? Texture_format::s_rgba : Texture_format::rg,
 		                    dxt_level,
-		                    progress);
+		                    progress,
+		                    std::move(gen));
 	}
 } // namespace mirrage
