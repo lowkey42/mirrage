@@ -72,6 +72,8 @@ int main(int argc, char** argv)
 	        ("material_texture", "Process texture as material map (only RG channels)", cxxopts::value<bool>()->default_value("false"));
 
 	options_def.add_options("Models")
+	        ("i,interactive", "Interactivly request paths for missing textures", cxxopts::value<bool>()->default_value("false"))
+	        ("a,interactive_all", "Interactivly request all texture paths", cxxopts::value<bool>()->default_value("false"))
 	        ("trim_bones", "Remove bones that are not referenced by any vertices or other bones", cxxopts::value<bool>())
 	        ("only_animations", "Only convert animations and skip model, materials, ...", cxxopts::value<bool>())
 	        ("skip_materials", "Don't convert materials and textures", cxxopts::value<bool>())
@@ -133,6 +135,10 @@ int main(int argc, char** argv)
 	config.animate_orientation =
 	        get_arg<bool>(options, "animate_orientation").get_or(config.animate_orientation);
 
+	auto interactive     = get_arg<bool>(options, "interactive").get_or(false);
+	auto interactive_all = get_arg<bool>(options, "interactive_all").get_or(false);
+	interactive |= interactive_all;
+
 	dxt_level.process([&](auto l) { config.dxt_level = l; });
 
 	auto output = output_arg.get_or(config.default_output_directory);
@@ -153,8 +159,17 @@ int main(int argc, char** argv)
 		if(util::ends_with(input, ".png"))
 			convert_texture(input, name, output, normal, srgb, config.dxt_level, progress);
 		else
-			convert_model(
-			        input, name, output, config, fit_skeleton, guess_scale, material_names, progress, ansi);
+			convert_model(input,
+			              name,
+			              output,
+			              config,
+			              fit_skeleton,
+			              guess_scale,
+			              material_names,
+			              progress,
+			              ansi,
+			              interactive,
+			              interactive_all);
 	}
 
 	if(ansi) {

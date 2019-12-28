@@ -14,7 +14,9 @@ namespace mirrage {
 	                             const std::string&           base_dir,
 	                             const std::string&           output,
 	                             const Mesh_converted_config& cfg,
-	                             helper::Progress_container&  progress);
+	                             helper::Progress_container&  progress,
+	                             bool                         interactive,
+	                             bool                         interactive_all);
 
 	extern void convert_texture(const std::string&              input,
 	                            const util::maybe<std::string>& name,

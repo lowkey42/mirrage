@@ -127,7 +127,9 @@ namespace mirrage {
 	                   bool                            guess_scale,
 	                   const std::vector<std::string>& material_names,
 	                   helper::Progress_container&     progress,
-	                   bool                            ansi)
+	                   bool                            ansi,
+	                   bool                            interactive,
+	                   bool                            interactive_all)
 	{
 		LOG(plog::info) << "Convert model \"" << path << "\" with output directory \"" << output << "\"";
 
@@ -163,6 +165,10 @@ namespace mirrage {
 
 		MIRRAGE_INVARIANT(scene, "Unable to load model '" << path << "': " << importer.GetErrorString());
 
+		auto textures = gsl::span<const aiTexture* const>(scene->mTextures, scene->mNumTextures);
+		for(auto& t : textures) {
+			LOG(plog::info) << "Found embedded texture: " << t->mFilename.C_Str();
+		}
 
 		if(ansi) {
 			model_progress.set_postfix_text("Parse animations");
@@ -214,7 +220,9 @@ namespace mirrage {
 					mat_id = model_name + "_" + mat_id;
 				}
 				util::to_lower_inplace(mat_id);
-				if(!cfg.skip_materials && !convert_material(mat_id, *mat, base_dir, output, cfg, progress)) {
+				if(!cfg.skip_materials
+				   && !convert_material(
+				           mat_id, *mat, base_dir, output, cfg, progress, interactive, interactive_all)) {
 					LOG(plog::warning) << "Unable to parse material \"" << name.C_Str() << "\"!";
 					loaded_material_ids.emplace_back(util::nothing);
 					continue;

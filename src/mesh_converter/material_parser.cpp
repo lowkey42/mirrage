@@ -79,16 +79,22 @@ namespace mirrage {
 			}
 
 			template <typename F>
+			void foreach_in_level(std::uint32_t level, F&& f)
+			{
+				auto width  = std::max(std::int_fast32_t(1), this->width >> level);
+				auto height = std::max(std::int_fast32_t(1), this->height >> level);
+				for(std::uint32_t y = 0; y < height; y++) {
+					for(std::uint32_t x = 0; x < width; x++) {
+						f(pixel(level, x, y), level, x, y);
+					}
+				}
+			}
+
+			template <typename F>
 			void foreach(F&& f)
 			{
 				for(std::uint32_t i = 0u; i < mip_levels.size(); i++) {
-					auto width  = std::max(std::int_fast32_t(1), this->width >> i);
-					auto height = std::max(std::int_fast32_t(1), this->height >> i);
-					for(std::uint32_t y = 0; y < height; y++) {
-						for(std::uint32_t x = 0; x < width; x++) {
-							f(pixel(i, x, y), i, x, y);
-						}
-					}
+					foreach_in_level(i, f);
 				}
 			}
 		};
@@ -333,17 +339,70 @@ namespace mirrage {
 		auto find_texture(const std::string&           mat_name,
 		                  const aiMaterial&            material,
 		                  const Mesh_converted_config& cfg,
-		                  Texture_type                 type) -> std::string
+		                  Texture_type                 type,
+		                  bool                         interactive,
+		                  bool                         interactive_all) -> std::string
 		{
 			auto tex = try_find_texture(mat_name, material, cfg, type);
-			if(tex.is_some())
+			if(tex.is_some() && !interactive_all)
 				return tex.get_or_throw();
 
 			auto name         = sf2::get_enum_info<Texture_type>().name_of(type).str();
-			auto texture_name = "default_"s + name + ".png";
+			auto texture_name = tex.get_or("default_"s + name + ".png");
 
-			LOG(plog::debug) << "No " << name << " texture for material '" << mat_name
-			                 << "'. Trying fallback to '" << texture_name << "'.";
+			if(interactive) {
+				auto options = std::stringstream{};
+				options << "<emtpy> \tDefault: " << texture_name << "\n";
+
+#define MIRRAGE_CHOOSE_TEXTURE_BLOCK(NAME)                                                                 \
+	if(auto t = get_texture_name(material, aiTextureType_##NAME); t.is_some()) {                           \
+		options << "   " << aiTextureType_##NAME << "    \t" << #NAME << ": " << t.get_or_throw() << "\n"; \
+	}
+
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(DIFFUSE)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(SPECULAR)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(AMBIENT)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(EMISSIVE)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(HEIGHT)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(NORMALS)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(SHININESS)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(OPACITY)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(DISPLACEMENT)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(LIGHTMAP)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(REFLECTION)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(BASE_COLOR)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(NORMAL_CAMERA)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(EMISSION_COLOR)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(METALNESS)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(DIFFUSE_ROUGHNESS)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(AMBIENT_OCCLUSION)
+				MIRRAGE_CHOOSE_TEXTURE_BLOCK(UNKNOWN)
+
+#undef MIRRAGE_CHOOSE_TEXTURE_BLOCK
+
+				LOG(plog::warning) << "No " << name << " texture for material '" << mat_name
+				                   << "'.\nChoose fallback or enter texture path:\n"
+				                   << options.str();
+
+				auto input = std::string();
+				std::getline(std::cin, input);
+				if(!input.empty()) {
+					try {
+						auto i = std::stoi(input);
+						texture_name =
+						        get_texture_name(material, static_cast<aiTextureType>(i))
+						                .get_or_throw("Couldn't find fallback texture with aiTextureType ",
+						                              i);
+
+					} catch(...) {
+						texture_name = input;
+					}
+				}
+
+			} else {
+				LOG(plog::info) << "No " << name << " texture for material '" << mat_name
+				                << "'. Trying fallback to '" << texture_name << "'.";
+			}
 
 			return texture_name;
 		}
@@ -358,19 +417,25 @@ namespace mirrage {
 				MIRRAGE_FAIL("Embedded textures are currently not supported. Used by material: " << mat_name);
 
 			} else if(filename[0] != '/') {
-				return base_dir + "/" + filename; // relative path
+				filename = base_dir + "/" + filename; // relative path
 
 			} else if(exists(filename)) {
 				return filename; // valid absolute path, just return it
 
 			} else if(auto pos = filename.find("/TEXTURE/"); pos != std::string::npos) {
 				// try to remove invalid directory that blender likes to include for some reason
-				return filename.substr(0, pos) + "/" + filename.substr(pos + 9);
+				filename = filename.substr(0, pos) + "/" + filename.substr(pos + 9);
 
 			} else {
 				// try to find just the filename
-				return base_dir + "/" + filename.substr(filename.find_last_of('/') + 1);
+				filename = base_dir + "/" + filename.substr(filename.find_last_of('/') + 1);
 			}
+
+			if(!exists(filename)) {
+				MIRRAGE_FAIL("Couldn't find file: " << filename);
+			}
+
+			return filename;
 		}
 	} // namespace
 
@@ -379,7 +444,9 @@ namespace mirrage {
 	                      const std::string&           base_dir,
 	                      const std::string&           output,
 	                      const Mesh_converted_config& cfg,
-	                      helper::Progress_container&  progress)
+	                      helper::Progress_container&  progress,
+	                      bool                         interactive,
+	                      bool                         interactive_all)
 	{
 
 		if(cfg.print_material_info) {
@@ -399,8 +466,10 @@ namespace mirrage {
 		material_file.substance_id = util::Str_id("default"); // TODO: decide alpha-test / alpha-blend
 
 		// convert albedo
-		auto albedo_name =
-		        resolve_path(name, base_dir, find_texture(name, material, cfg, Texture_type::albedo));
+		auto albedo_name = resolve_path(
+		        name,
+		        base_dir,
+		        find_texture(name, material, cfg, Texture_type::albedo, interactive, interactive_all));
 
 		auto albedo              = load_texture2d(albedo_name);
 		material_file.albedo_aid = name + "_albedo.ktx";
@@ -433,30 +502,31 @@ namespace mirrage {
 		                    });
 
 		// convert normal
-		auto normal_name = find_texture(name, material, cfg, Texture_type::normal);
-		auto normal_gen  = [path = resolve_path(name, base_dir, normal_name)]() mutable {
-            auto normal = load_texture2d(path, false);
-            normal.foreach([&](auto& pixel, auto level, auto x, auto y) {
-                // generate mip levels
-                if(level > 0) {
-                    auto n_00 = normal.pixel(level - 1, x * 2, y * 2);
-                    auto n_10 = normal.pixel(level - 1, x * 2 + 1, y * 2);
-                    auto n_11 = normal.pixel(level - 1, x * 2 + 1, y * 2 + 1);
-                    auto n_01 = normal.pixel(level - 1, x * 2, y * 2 + 1);
+		auto normal_name =
+		        find_texture(name, material, cfg, Texture_type::normal, interactive, interactive_all);
+		auto normal_gen = [path = resolve_path(name, base_dir, normal_name)]() mutable {
+			auto normal = load_texture2d(path, false);
+			normal.foreach([&](auto& pixel, auto level, auto x, auto y) {
+				// generate mip levels
+				if(level > 0) {
+					auto n_00 = normal.pixel(level - 1, x * 2, y * 2);
+					auto n_10 = normal.pixel(level - 1, x * 2 + 1, y * 2);
+					auto n_11 = normal.pixel(level - 1, x * 2 + 1, y * 2 + 1);
+					auto n_01 = normal.pixel(level - 1, x * 2, y * 2 + 1);
 
-                    auto n = glm::normalize(glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
-                             + glm::normalize(glm::vec3(n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
-                             + glm::normalize(glm::vec3(n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
-                             + glm::normalize(glm::vec3(n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
+					auto n = glm::normalize(glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
+					         + glm::normalize(glm::vec3(n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
+					         + glm::normalize(glm::vec3(n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
+					         + glm::normalize(glm::vec3(n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
 
-                    n       = glm::normalize(n / 4.f);
-                    pixel.r = n.x * 0.5f + 0.5f;
-                    pixel.g = n.y * 0.5f + 0.5f;
-                    pixel.b = n.z * 0.5f + 0.5f;
-                    pixel.a = 1;
-                }
-            });
-            return normal;
+					n       = glm::normalize(n / 4.f);
+					pixel.r = n.x * 0.5f + 0.5f;
+					pixel.g = n.y * 0.5f + 0.5f;
+					pixel.b = n.z * 0.5f + 0.5f;
+					pixel.a = 1;
+				}
+			});
+			return normal;
 		};
 		material_file.normal_aid = name + "_normal.ktx";
 		store_texture_async(texture_dir + material_file.normal_aid,
@@ -466,31 +536,34 @@ namespace mirrage {
 		                    normal_gen);
 
 		// convert brdf
-		auto metallic_name  = find_texture(name, material, cfg, Texture_type::metalness);
-		auto roughness_name = find_texture(name, material, cfg, Texture_type::roughness);
-		auto mat_gen        = [metallic_path  = resolve_path(name, base_dir, metallic_name),
-                        roughness_path = resolve_path(name, base_dir, roughness_name)]() mutable {
-            auto metallic  = load_texture2d(metallic_path, false);
-            auto roughness = load_texture2d(roughness_path, false);
+		auto metallic_name =
+		        find_texture(name, material, cfg, Texture_type::metalness, interactive, interactive_all);
+		auto roughness_name =
+		        find_texture(name, material, cfg, Texture_type::roughness, interactive, interactive_all);
+		auto mat_gen = [metallic_path  = resolve_path(name, base_dir, metallic_name),
+		                roughness_path = resolve_path(name, base_dir, roughness_name)]() mutable {
+			auto metallic  = load_texture2d(metallic_path, false);
+			auto roughness = load_texture2d(roughness_path, false);
 
-            generate_mip_maps(metallic, [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
-            generate_mip_maps(roughness,
-                              [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
-            if(roughness.width == metallic.width && roughness.height == metallic.height)
-                roughness.foreach([&](auto& pixel, auto level, auto x, auto y) {
-                    pixel.g = metallic.pixel(level, x, y).r;
-                });
-            else {
-                auto width_scale  = float(metallic.width) / float(roughness.width);
-                auto height_scale = float(metallic.height) / float(roughness.height);
-                roughness.foreach([&](auto& pixel, auto level, auto x, auto y) {
-                    pixel.g = metallic.pixel(level,
-                                             std::int32_t(x * width_scale),
-                                             std::int32_t(y * height_scale))
-                                      .r;
-                });
-            }
-            return roughness;
+			if(roughness.width == metallic.width && roughness.height == metallic.height)
+				roughness.foreach_in_level(0, [&](auto& pixel, auto level, auto x, auto y) {
+					pixel.g = metallic.pixel(level, x, y).r;
+				});
+			else {
+				auto width_scale  = float(metallic.width) / float(roughness.width);
+				auto height_scale = float(metallic.height) / float(roughness.height);
+				roughness.foreach_in_level(0, [&](auto& pixel, auto level, auto x, auto y) {
+					pixel.g = metallic.pixel(level,
+					                         std::int32_t(x * width_scale),
+					                         std::int32_t(y * height_scale))
+					                  .r;
+				});
+			}
+
+			generate_mip_maps(roughness,
+			                  [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+
+			return roughness;
 		};
 		material_file.brdf_aid = name + "_brdf.ktx";
 		store_texture_async(

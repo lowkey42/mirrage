@@ -15,5 +15,7 @@ namespace mirrage {
 	                          bool                            guess_scale,
 	                          const std::vector<std::string>& material_names,
 	                          helper::Progress_container&     progress,
-	                          bool                            ansi);
+	                          bool                            ansi,
+	                          bool                            interactive,
+	                          bool                            interactive_all);
 }
