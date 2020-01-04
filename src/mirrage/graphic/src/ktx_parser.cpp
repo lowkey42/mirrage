@@ -32,13 +32,14 @@ namespace mirrage::graphic {
 		};
 	} // namespace
 
-	auto parse_header(asset::istream& in, const std::string& filename) -> Ktx_header
+	auto parse_header(asset::istream& in, const std::string& filename) -> util::maybe<Ktx_header>
 	{
 		auto type_tag_data = std::array<unsigned char, sizeof(type_tag)>();
 
 		in.read(reinterpret_cast<char*>(type_tag_data.data()), type_tag_data.size());
 		if(memcmp(type_tag_data.data(), type_tag, type_tag_data.size()) != 0) {
-			MIRRAGE_FAIL("Invalid KTX file: " << filename);
+			in.seekg(-static_cast<std::streamoff>(type_tag_data.size()), in.cur);
+			return util::nothing;
 		}
 
 		auto header = ktx_header10();

@@ -7,6 +7,8 @@
 
 #include <mirrage/utils/ranges.hpp>
 
+#include <stb_image.h>
+
 #include <memory>
 
 
@@ -156,22 +158,67 @@ namespace mirrage::graphic::detail {
 	auto load_image_data(Device& device, std::uint32_t owner_qfamily, asset::istream in)
 	        -> std::tuple<Static_image, vk::Format, Image_type>
 	{
-		auto header     = parse_header(in, in.aid().str());
-		auto dimensions = Image_dimensions(gsl::narrow<std::int32_t>(header.width),
-		                                   gsl::narrow<std::int32_t>(header.height),
-		                                   gsl::narrow<std::int32_t>(header.depth),
-		                                   gsl::narrow<std::int32_t>(header.layers));
+		auto header_mb = parse_header(in, in.aid().str());
+		if(header_mb.is_some()) {
+			auto& header     = header_mb.get_or_throw();
+			auto  dimensions = Image_dimensions(gsl::narrow<std::int32_t>(header.width),
+                                               gsl::narrow<std::int32_t>(header.height),
+                                               gsl::narrow<std::int32_t>(header.depth),
+                                               gsl::narrow<std::int32_t>(header.layers));
 
-		auto image = device.transfer().upload_image(
-		        vk_type(header.type),
-		        owner_qfamily,
-		        dimensions,
-		        header.format,
-		        gsl::narrow<std::int32_t>(header.mip_levels),
-		        gsl::narrow<std::int32_t>(header.size),
-		        [&](char* dest, std::uint32_t size) { in.read_direct(dest, size); });
+			auto image = device.transfer().upload_image(
+			        vk_type(header.type),
+			        owner_qfamily,
+			        dimensions,
+			        header.format,
+			        gsl::narrow<std::int32_t>(header.mip_levels),
+			        gsl::narrow<std::int32_t>(header.size),
+			        [&](char* dest, std::uint32_t size) { in.read_direct(dest, size); });
 
-		return {std::move(image), header.format, header.type};
+			return {std::move(image), header.format, header.type};
+
+		} else {
+			auto img_buffer = in.bytes();
+
+			int  width  = 0;
+			int  height = 0;
+			auto data   = std::unique_ptr<stbi_uc, void (*)(void*)>(
+                    stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(img_buffer.data()),
+                                          gsl::narrow<int>(img_buffer.size()),
+                                          &width,
+                                          &height,
+                                          nullptr,
+                                          4),
+                    &stbi_image_free);
+			MIRRAGE_INVARIANT(data, "Invalid KTX (or other image) file: " << in.aid().str());
+
+			auto dimensions = Image_dimensions(gsl::narrow<std::int32_t>(width),
+			                                   gsl::narrow<std::int32_t>(height),
+			                                   gsl::narrow<std::int32_t>(1),
+			                                   gsl::narrow<std::int32_t>(1));
+
+			auto image = device.transfer().upload_image(
+			        vk_type(Image_type::single_2d),
+			        owner_qfamily,
+			        dimensions,
+			        vk::Format::eR8G8B8A8Srgb,
+			        0,
+			        gsl::narrow<std::int32_t>(width * height * 4 + sizeof(std::uint32_t)),
+			        [&, first_read = true](char* dest, std::uint32_t size) mutable {
+				        if(first_read) {
+					        first_read   = false;
+					        auto ml_size = std::uint32_t(width * height * 4);
+					        std::memcpy(dest, &ml_size, sizeof(std::uint32_t));
+				        } else {
+					        MIRRAGE_INVARIANT(size == static_cast<std::uint32_t>(width * height * 4),
+					                          "Second read doesn't have the right size: "
+					                                  << size << "!=" << (width * height * 4));
+					        std::memcpy(dest, data.get(), size);
+				        }
+			        });
+
+			return {std::move(image), vk::Format::eR8G8B8A8Srgb, Image_type::single_2d};
+		}
 	}
 
 } // namespace mirrage::graphic::detail

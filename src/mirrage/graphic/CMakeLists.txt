@@ -55,6 +55,7 @@ target_link_libraries(mirrage_graphic
 		sf2
 		mirrage::deps::SDL2
 		Vulkan::Vulkan
+		stb_image
 )
 
 
