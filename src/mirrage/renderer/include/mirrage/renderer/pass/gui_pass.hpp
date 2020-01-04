@@ -28,6 +28,7 @@ namespace mirrage::renderer {
 		        -> std::shared_ptr<void> override;
 
 		auto load_texture(const asset::AID&) -> std::shared_ptr<void> override;
+		auto texture_size(void* texture_handle) -> util::maybe<glm::ivec2> override;
 
 		auto name() const noexcept -> const char* override { return "GUI"; }
 
@@ -48,7 +49,8 @@ namespace mirrage::renderer {
 	  private:
 		struct Loaded_texture {
 		  public:
-			void* handle;
+			void*                handle;
+			graphic::Texture_ptr texture;
 
 			auto get_if_ready() -> util::maybe<const graphic::DescriptorSet&>;
 
@@ -61,7 +63,6 @@ namespace mirrage::renderer {
 
 		  private:
 			graphic::DescriptorSet descriptor_set;
-			graphic::Texture_ptr   texture;
 			vk::Sampler            sampler;
 			Deferred_renderer*     renderer;
 			bool                   initialized = false;

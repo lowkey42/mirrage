@@ -29,6 +29,9 @@ namespace mirrage {
 		void update(util::Time dt);
 		void draw();
 
+		void pause();
+		void unpause();
+
 		void shrink_to_fit();
 
 		auto entities() noexcept -> auto& { return _entities; }

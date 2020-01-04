@@ -36,6 +36,10 @@ namespace mirrage::gui::literals {
 	}
 } // namespace mirrage::gui::literals
 
+namespace mirrage::gui {
+	class Gui;
+}
+
 namespace ImGui {
 	inline constexpr float SIZE_AUTO = 0.0f;
 
@@ -87,6 +91,17 @@ namespace ImGui {
 	                                 ImGuiInputTextFlags    flags     = 0,
 	                                 ImGuiInputTextCallback callback  = nullptr,
 	                                 void*                  user_data = nullptr);
+
+
+	enum class Image_scaling { stretch, fill_x, fill_y, fill_min, fill_max };
+	void DrawImage(mirrage::gui::Gui&,
+	               void*         image,
+	               glm::vec2     center,
+	               glm::vec2     size,
+	               Image_scaling scaling = Image_scaling::stretch);
+
+	void BackgroundImage(mirrage::gui::Gui&, void* image, Image_scaling scaling = Image_scaling::stretch);
+
 } // namespace ImGui
 
 struct ImFont;
@@ -130,6 +145,8 @@ namespace mirrage::gui {
 
 		virtual auto load_texture(const asset::AID&) -> std::shared_ptr<void> = 0;
 
+		virtual auto texture_size(void* texture_handle) -> util::maybe<glm::ivec2> = 0;
+
 	  protected:
 		friend class Gui;
 		friend struct detail::Nk_renderer;
@@ -171,6 +188,7 @@ namespace mirrage::gui {
 		auto ready() const noexcept { return bool(_impl); }
 
 		auto load_texture(const asset::AID&) -> std::shared_ptr<void>;
+		auto texture_size(void* texture_handle) -> util::maybe<glm::ivec2>;
 
 	  private:
 		template <class>

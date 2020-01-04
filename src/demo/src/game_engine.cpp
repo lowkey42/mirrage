@@ -5,6 +5,7 @@
 #include <mirrage/renderer/pass/billboard_pass.hpp>
 #include <mirrage/renderer/pass/blit_pass.hpp>
 #include <mirrage/renderer/pass/bloom_pass.hpp>
+#include <mirrage/renderer/pass/clear_pass.hpp>
 #include <mirrage/renderer/pass/debug_draw_pass.hpp>
 #include <mirrage/renderer/pass/deferred_pass.hpp>
 #include <mirrage/renderer/pass/depth_of_field_pass.hpp>
@@ -40,6 +41,7 @@ namespace mirrage {
 	                              renderer::make_pass_factory<renderer::Particle_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Animation_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
+	                              renderer::make_pass_factory<renderer::Clear_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Deferred_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Gen_mipmap_pass_factory>(),
 	                              renderer::make_pass_factory<renderer::Ssao_pass_factory>(),
@@ -56,6 +58,7 @@ namespace mirrage {
 	  , _global_render(_renderer_factory->create_renderer<renderer::Gui_pass_factory>())
 	  , _render_pass_mask(_renderer_factory->all_passes_mask())
 	{
+		util::erase_fast(_render_pass_mask, renderer::render_pass_id_of<renderer::Clear_pass_factory>());
 		util::erase_fast(_render_pass_mask, renderer::render_pass_id_of<renderer::Gui_pass_factory>());
 	}
 

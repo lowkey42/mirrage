@@ -1,6 +1,7 @@
 #include "test_screen.hpp"
 
 #include "game_engine.hpp"
+#include "menu_screen.hpp"
 #include "meta_system.hpp"
 #include "systems/nim_system.hpp"
 
@@ -111,7 +112,7 @@ namespace mirrage {
 						_meta_system.nims().stop();
 						_set_preset(1);
 					} else {
-						_engine.screens().leave();
+						_engine.screens().enter<Menu_screen>(false);
 					}
 					break;
 
@@ -245,6 +246,7 @@ namespace mirrage {
 	{
 		_meta_system.shrink_to_fit();
 
+		_meta_system.unpause();
 		_music.unpause();
 		_engine.input().enable_context("main"_strid);
 		_mailbox.enable();
@@ -255,6 +257,7 @@ namespace mirrage {
 		_mailbox.disable();
 		_engine.input().capture_mouse(false);
 		_music.pause();
+		_meta_system.pause();
 	}
 
 	void Test_screen::_update(util::Time dt)

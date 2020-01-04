@@ -8,6 +8,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT
 
 #include "game_engine.hpp"
+#include "menu_screen.hpp"
 #include "test_animation_screen.hpp"
 #include "test_screen.hpp"
 
@@ -152,6 +153,8 @@ namespace {
 			engine->screens().enter<Test_screen>();
 		else if(argc > 1 && argv[1] == "animation_test"s)
 			engine->screens().enter<Test_animation_screen>();
+		else if(argc > 1 && argv[1] == "menu"s)
+			engine->screens().enter<Menu_screen>();
 		else
 			engine->screens().enter<Test_screen>();
 	}

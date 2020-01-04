@@ -13,6 +13,7 @@ add_executable(demo ${HEADER_FILES}
 	src/main.cpp
 	src/meta_system.cpp
 	src/test_screen.cpp
+	src/menu_screen.cpp
 	src/test_animation_screen.cpp
 	${BACKWARD_ENABLE}
 )

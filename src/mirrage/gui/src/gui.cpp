@@ -86,6 +86,46 @@ namespace ImGui {
 		SliderFloat(label, &v, v_min, v_max, format, power);
 		return v;
 	}
+
+	void DrawImage(
+	        mirrage::gui::Gui& gui, void* image, glm::vec2 center, glm::vec2 size, Image_scaling scaling)
+	{
+		gui.texture_size(image).process([&](auto& img_size) {
+			switch(scaling) {
+				case Image_scaling::fill_min:
+					scaling = size.x < size.y ? Image_scaling::fill_x : Image_scaling::fill_y;
+					break;
+				case Image_scaling::fill_max:
+					scaling = size.x > size.y ? Image_scaling::fill_x : Image_scaling::fill_y;
+					break;
+				default: break;
+			}
+			switch(scaling) {
+				case Image_scaling::fill_x: size.y = img_size.y * size.x / img_size.x; break;
+				case Image_scaling::fill_y: size.x = img_size.x * size.y / img_size.y; break;
+				default: break;
+			}
+
+			auto p_min = center - size / 2.f;
+			auto p_max = center + size / 2.f;
+			ImGui::GetWindowDrawList()->AddImage(image, ImVec2(p_min.x, p_min.y), ImVec2(p_max.x, p_max.y));
+		});
+	}
+
+	void BackgroundImage(mirrage::gui::Gui& gui, void* image, Image_scaling scaling)
+	{
+		auto size = glm::vec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
+
+		ImGui::PositionNextWindow(size, ImGui::WindowPosition_X::center, ImGui::WindowPosition_Y::center);
+		if(ImGui::Begin("##bg",
+		                nullptr,
+		                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
+		                        | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoBringToFrontOnFocus
+		                        | ImGuiWindowFlags_NoFocusOnAppearing)) {
+			DrawImage(gui, image, size / 2.f, size, scaling);
+		}
+		ImGui::End();
+	}
 } // namespace ImGui
 
 
@@ -647,6 +687,11 @@ namespace mirrage::gui {
 	{
 		MIRRAGE_INVARIANT(_renderer, "No gui renderer instantiated when load_texture was called!");
 		return _renderer->load_texture(aid);
+	}
+	auto Gui::texture_size(void* texture_handle) -> util::maybe<glm::ivec2>
+	{
+		MIRRAGE_INVARIANT(_renderer, "No gui renderer instantiated when load_texture was called!");
+		return _renderer->texture_size(texture_handle);
 	}
 
 } // namespace mirrage::gui

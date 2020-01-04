@@ -49,6 +49,9 @@ namespace mirrage {
 		_entities.clear();
 	}
 
+	void Meta_system::pause() { _sound_effects->pause(); }
+	void Meta_system::unpause() { _sound_effects->unpause(); }
+
 	void Meta_system::update(util::Time dt)
 	{
 		_entities.process_queued_actions();

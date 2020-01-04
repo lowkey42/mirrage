@@ -145,8 +145,8 @@ namespace mirrage::renderer {
 	                                         Deferred_renderer&      renderer,
 	                                         vk::DescriptorSetLayout desc_layout)
 	  : handle{reinterpret_cast<void*>(handle)}
-	  , descriptor_set(renderer.create_descriptor_set(desc_layout, 1))
 	  , texture(std::move(texture))
+	  , descriptor_set(renderer.create_descriptor_set(desc_layout, 1))
 	  , sampler(sampler)
 	  , renderer(&renderer)
 	{
@@ -238,6 +238,18 @@ namespace mirrage::renderer {
 
 		cache_entry = return_value;
 		return return_value;
+	}
+
+	auto Gui_pass::texture_size(void* texture_handle) -> util::maybe<glm::ivec2>
+	{
+		auto int_tex_handle = reinterpret_cast<std::uintptr_t>(texture_handle);
+		auto texture        = _texture_cache->_loaded_textures_by_handle[int_tex_handle].lock();
+
+		if(texture && texture->texture.ready()) {
+			return glm::ivec2(texture->texture->width(), texture->texture->height());
+		} else {
+			return util::nothing;
+		}
 	}
 
 
