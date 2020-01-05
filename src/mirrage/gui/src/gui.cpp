@@ -158,7 +158,7 @@ namespace ImGui {
 				return false;
 
 			const ImGuiID id         = window->GetID(label);
-			const ImVec2  label_size = CalcTextSize(label, NULL, true);
+			const ImVec2  label_size = CalcTextSize(label, nullptr, true);
 
 			const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(size));
 			ItemSize(bb);
