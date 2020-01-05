@@ -19,43 +19,6 @@ namespace mirrage::input {
 
 	using namespace util::unit_literals;
 
-	class Input_manager::Gamepad {
-	  public:
-		Gamepad(Input_source src_id, SDL_GameController*, Input_mapper& mapper);
-		~Gamepad();
-
-		void force_feedback(float force);
-
-		auto button_pressed(Pad_button b) const noexcept -> bool;
-		auto button_released(Pad_button b) const noexcept -> bool;
-
-		auto button_down(Pad_button b) const noexcept -> bool;
-		auto button_up(Pad_button b) const noexcept -> bool;
-		auto trigger(Pad_button b) const noexcept -> float;
-
-		void update(util::Time dt);
-
-		auto axis(Pad_stick stick) -> glm::vec2;
-
-		auto id() const noexcept { return _id; }
-
-	  private:
-		Input_source        _src_id;
-		int                 _id;
-		SDL_GameController* _sdl_controller;
-		SDL_Haptic*         _haptic;
-		Input_mapper&       _mapper;
-
-		uint8_t   _button_state[pad_button_count]{};
-		float     _button_value[pad_button_count]{};
-		glm::vec2 _stick_state[pad_stick_count]{};
-
-		float _stick_dead_zone = 0.2f, _stick_max = 32767.f;
-
-		float      _current_force = 0.f;
-		util::Time _force_reset_timer{0.f};
-	};
-
 	namespace {
 		inline auto from_sdl_keycode(SDL_Keycode key) { return static_cast<Key>(key); }
 
@@ -129,26 +92,20 @@ namespace mirrage::input {
 		SDL_RecordGesture(-1);
 
 		_mailbox.subscribe<Force_feedback, 4>(8, [&](auto& m) {
-			auto handle = [&] {
-				if(m.src > 0 && m.src - 1 < static_cast<int>(this->_gamepads.size())) {
-					auto& pad = this->_gamepads.at(std::size_t(m.src - 1));
-					if(pad)
-						pad->force_feedback(m.force);
-				}
-
 #ifdef EMSCRIPTEN
-				if(m.src == 0 && m.force > 0.5)
-					emscripten_vibrate(200);
+			if(m.src == 0 && m.force > 0.5)
+				emscripten_vibrate(200);
 #endif
-			};
 
 			if(m.src >= 0)
-				handle();
+				for(auto& gp : _gamepads) {
+					if(gp.input_src() == m.src)
+						gp.force_feedback(m.force);
+				}
 
 			else {
-				for(auto i = 0u; i < this->_gamepads.size() + 1; i++) {
-					m.src = gsl::narrow<Input_source>(i);
-					handle();
+				for(auto& gp : _gamepads) {
+					gp.force_feedback(m.force);
 				}
 			}
 		});
@@ -181,9 +138,7 @@ namespace mirrage::input {
 			_pointer_world_pos[i] = _screen_to_world_coords(_pointer_screen_pos[i]);
 
 		for(auto& gp : _gamepads)
-			if(gp) {
-				gp->update(dt);
-			}
+			gp.update(dt);
 
 		_mailbox.update_subscriptions();
 	}
@@ -342,9 +297,8 @@ namespace mirrage::input {
 		if(SDL_IsGameController(joystick_id)) {
 			SDL_GameController* controller = SDL_GameControllerOpen(joystick_id);
 			if(controller) {
-				_gamepads.emplace_back(std::make_unique<Gamepad>(
-				        gsl::narrow<Input_source>(_gamepads.size() + 1), controller, *_mapper));
-				_mailbox.send<Source_added>(Input_source(_gamepads.size()));
+				_gamepads.emplace_back(_next_gamepad_id++, controller, *_mapper);
+				_mailbox.send<Source_added>(_gamepads.back().input_src());
 			} else {
 				std::cerr << "Could not open gamecontroller " << joystick_id << ": " << SDL_GetError()
 				          << std::endl;
@@ -354,14 +308,13 @@ namespace mirrage::input {
 
 	void Input_manager::_remove_gamepad(int instance_id)
 	{
-		auto e = std::find_if(_gamepads.begin(), _gamepads.end(), [instance_id](auto& c) {
-			return c->id() == instance_id;
-		});
+		auto e = std::find_if(
+		        _gamepads.begin(), _gamepads.end(), [instance_id](auto& c) { return c.id() == instance_id; });
 
 		if(e != _gamepads.end()) {
-			auto idx = std::distance(_gamepads.begin(), e);
-			_mailbox.send<Source_removed>(Input_source(idx));
-			e->reset();
+			_mailbox.send<Source_removed>(e->input_src());
+			*e = std::move(_gamepads.back());
+			_gamepads.pop_back();
 		}
 	}
 
@@ -369,23 +322,23 @@ namespace mirrage::input {
 
 
 	// Gamepad impl
-	Input_manager::Gamepad::Gamepad(Input_source src_id, SDL_GameController* c, Input_mapper& mapper)
+	Gamepad::Gamepad(Input_source src_id, SDL_GameController* c, Input_mapper& mapper)
 	  : _src_id(src_id)
 	  , _id(SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(c)))
-	  , _sdl_controller(c)
-	  , _mapper(mapper)
+	  , _sdl_controller(c, &SDL_GameControllerClose)
+	  , _haptic(SDL_HapticOpenFromJoystick(SDL_GameControllerGetJoystick(_sdl_controller.get())),
+	            &SDL_HapticClose)
+	  , _mapper(&mapper)
 	{
+		auto name = SDL_GameControllerName(_sdl_controller.get());
 
-		auto name = SDL_GameControllerName(_sdl_controller);
-
-		_haptic = SDL_HapticOpenFromJoystick(SDL_GameControllerGetJoystick(_sdl_controller));
 		if(!_haptic)
 			LOG(plog::warning) << "Warning: Controller '" << name
 			                   << "'' does not support haptics: " << SDL_GetError();
 
 		else {
-			if(SDL_HapticRumbleInit(_haptic) < 0) {
-				_haptic = nullptr;
+			if(SDL_HapticRumbleInit(_haptic.get()) < 0) {
+				_haptic.reset();
 				LOG(plog::warning) << "Warning: Unable to initialize rumble for '" << name
 				                   << "': " << SDL_GetError();
 			}
@@ -393,15 +346,8 @@ namespace mirrage::input {
 
 		LOG(plog::info) << "Detected gamepad '" << name << "'";
 	}
-	Input_manager::Gamepad::~Gamepad()
-	{
-		if(_haptic)
-			SDL_HapticClose(_haptic);
 
-		SDL_GameControllerClose(_sdl_controller);
-	}
-
-	void Input_manager::Gamepad::force_feedback(float force)
+	void Gamepad::force_feedback(float force) const
 	{
 		if(force > _current_force) {
 			_force_reset_timer = 200_ms;
@@ -409,22 +355,22 @@ namespace mirrage::input {
 		}
 
 		if(_haptic)
-			SDL_HapticRumblePlay(_haptic, glm::clamp(_current_force, 0.f, 1.f), 200);
+			SDL_HapticRumblePlay(_haptic.get(), glm::clamp(_current_force, 0.f, 1.f), 200);
 	}
 
-	auto Input_manager::Gamepad::button_pressed(Pad_button b) const noexcept -> bool
+	auto Gamepad::button_pressed(Pad_button b) const noexcept -> bool
 	{
 		return _button_state[static_cast<int8_t>(b)] == 1;
 	}
-	auto Input_manager::Gamepad::button_released(Pad_button b) const noexcept -> bool
+	auto Gamepad::button_released(Pad_button b) const noexcept -> bool
 	{
 		return _button_state[static_cast<int8_t>(b)] == 3;
 	}
 
-	auto Input_manager::Gamepad::trigger(Pad_button b) const noexcept -> float
+	auto Gamepad::trigger(Pad_button b) const noexcept -> float
 	{
 		auto state = [&](auto t) {
-			return glm::abs(SDL_GameControllerGetAxis(_sdl_controller, t)) / _stick_max;
+			return glm::abs(SDL_GameControllerGetAxis(_sdl_controller.get(), t)) / _stick_max;
 		};
 
 		if(b == Pad_button::left_trigger)
@@ -437,17 +383,35 @@ namespace mirrage::input {
 			return 0;
 	}
 
-	auto Input_manager::Gamepad::button_down(Pad_button button) const noexcept -> bool
+	auto Gamepad::button_down(Pad_button button) const noexcept -> bool
 	{
-		if(!is_trigger(button))
-			return SDL_GameControllerGetButton(_sdl_controller, to_sdl_pad_button(button)) != 0;
-
-		else
+		if(is_trigger(button)) {
 			return trigger(button) > _stick_dead_zone;
-	}
-	auto Input_manager::Gamepad::button_up(Pad_button b) const noexcept -> bool { return !button_down(b); }
 
-	void Input_manager::Gamepad::update(util::Time dt)
+		} else {
+			auto state = [&](auto t) {
+				return SDL_GameControllerGetAxis(_sdl_controller.get(), t) / _stick_max;
+			};
+
+			// clang-format off
+			switch(button) {
+				case Pad_button::left_stick_left:   return state(SDL_CONTROLLER_AXIS_LEFTX)  < -0.6f;
+				case Pad_button::left_stick_right:  return state(SDL_CONTROLLER_AXIS_LEFTX)  > +0.6f;
+				case Pad_button::left_stick_up:     return state(SDL_CONTROLLER_AXIS_LEFTY)  < -0.6f;
+				case Pad_button::left_stick_down:   return state(SDL_CONTROLLER_AXIS_LEFTY)  > 0.6f;
+				case Pad_button::right_stick_left:  return state(SDL_CONTROLLER_AXIS_RIGHTX) < -0.6f;
+				case Pad_button::right_stick_right:	return state(SDL_CONTROLLER_AXIS_RIGHTX) > +0.6f;
+				case Pad_button::right_stick_up:    return state(SDL_CONTROLLER_AXIS_RIGHTY) < -0.6f;
+				case Pad_button::right_stick_down:  return state(SDL_CONTROLLER_AXIS_RIGHTY) > 0.6f;
+				default:
+					return SDL_GameControllerGetButton(_sdl_controller.get(), to_sdl_pad_button(button)) != 0;
+			}
+			// clang-format on
+		}
+	}
+	auto Gamepad::button_up(Pad_button b) const noexcept -> bool { return !button_down(b); }
+
+	void Gamepad::update(util::Time dt)
 	{
 		if(_force_reset_timer > 0_s) {
 			_force_reset_timer -= dt;
@@ -466,9 +430,9 @@ namespace mirrage::input {
 				case 1: // pressed
 					_button_state[i] = down ? 2 : 3;
 					if(is_trigger(button))
-						_mapper.on_pad_button_pressed(_src_id, button, trigger(button));
+						_mapper->on_pad_button_pressed(_src_id, button, trigger(button));
 					else
-						_mapper.on_pad_button_pressed(_src_id, button, 1.f);
+						_mapper->on_pad_button_pressed(_src_id, button, 1.f);
 
 					break;
 				case 2: // down
@@ -476,7 +440,7 @@ namespace mirrage::input {
 					{
 						auto value = trigger(button);
 						if(std::abs(_button_value[i] - value) > 0.1f) {
-							_mapper.on_pad_button_changed(_src_id, button, value);
+							_mapper->on_pad_button_changed(_src_id, button, value);
 							_button_value[i] = value;
 						}
 					}
@@ -484,7 +448,7 @@ namespace mirrage::input {
 					break;
 				case 3: // released
 					_button_state[i] = down ? 1 : 0;
-					_mapper.on_pad_button_released(_src_id, button);
+					_mapper->on_pad_button_released(_src_id, button);
 					break;
 			}
 		}
@@ -494,17 +458,17 @@ namespace mirrage::input {
 
 			auto state = axis(stick);
 			if(state != _stick_state[i]) {
-				_mapper.on_pad_stick_change(_src_id, stick, state - _stick_state[i], state);
+				_mapper->on_pad_stick_change(_src_id, stick, state - _stick_state[i], state);
 				_stick_state[i] = state;
 			}
 		}
 	}
 
-	auto Input_manager::Gamepad::axis(Pad_stick s) -> glm::vec2
+	auto Gamepad::axis(Pad_stick s) const -> glm::vec2
 	{
 		glm::vec2 v{
-		        SDL_GameControllerGetAxis(_sdl_controller, to_sdl_axis_x(s)) / _stick_max,
-		        SDL_GameControllerGetAxis(_sdl_controller, to_sdl_axis_y(s)) / _stick_max,
+		        SDL_GameControllerGetAxis(_sdl_controller.get(), to_sdl_axis_x(s)) / _stick_max,
+		        SDL_GameControllerGetAxis(_sdl_controller.get(), to_sdl_axis_y(s)) / _stick_max,
 		};
 
 		auto dz     = _stick_dead_zone;

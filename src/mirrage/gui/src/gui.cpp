@@ -257,7 +257,10 @@ namespace mirrage::gui {
 				io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
 				io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 				io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
-				io.IniFilename = nullptr;
+				io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+				io.KeyRepeatDelay = 1.0f;
+				io.KeyRepeatRate  = 0.25f;
+				io.IniFilename    = nullptr;
 
 				// Keyboard mapping. ImGui will use those indices to peek into the io.KeysDown[] array.
 				io.KeyMap[ImGuiKey_Tab]        = SDL_SCANCODE_TAB;
@@ -386,6 +389,50 @@ namespace mirrage::gui {
 						                      : _cursors[std::size_t(ImGuiMouseCursor_Arrow)].data);
 						SDL_ShowCursor(SDL_TRUE);
 					}
+				}
+
+				// update gamepad navigation
+				std::memset(io.NavInputs, 0, sizeof(io.NavInputs));
+				for(auto& gp : _input_mgr.list_gamepads()) {
+					if(!gp.main_input())
+						continue;
+
+					using input::Pad_button;
+					using input::Pad_stick;
+
+					auto map_button = [&](auto nav, auto button) {
+						auto v            = gp.button_down(button) ? 1.f : 0.f;
+						io.NavInputs[nav] = std::max(io.NavInputs[nav], v);
+					};
+					auto map_axis = [&](auto nav, auto axis_value) {
+						io.NavInputs[nav] = std::max(io.NavInputs[nav], axis_value > 0.8f ? 1.f : 0.f);
+					};
+
+					map_button(ImGuiNavInput_Activate, Pad_button::a);
+					map_button(ImGuiNavInput_Cancel, Pad_button::b);
+					map_button(ImGuiNavInput_Menu, Pad_button::x);
+					map_button(ImGuiNavInput_Input, Pad_button::y);
+					map_button(ImGuiNavInput_DpadLeft, Pad_button::d_pad_left);
+					map_button(ImGuiNavInput_DpadRight, Pad_button::d_pad_right);
+					map_button(ImGuiNavInput_DpadUp, Pad_button::d_pad_up);
+					map_button(ImGuiNavInput_DpadDown, Pad_button::d_pad_down);
+
+					map_button(ImGuiNavInput_DpadLeft, Pad_button::left_stick_left);
+					map_button(ImGuiNavInput_DpadRight, Pad_button::left_stick_right);
+					map_button(ImGuiNavInput_DpadUp, Pad_button::left_stick_up);
+					map_button(ImGuiNavInput_DpadDown, Pad_button::left_stick_down);
+
+					map_button(ImGuiNavInput_FocusPrev, Pad_button::left_shoulder);
+					map_button(ImGuiNavInput_FocusNext, Pad_button::right_shoulder);
+					map_button(ImGuiNavInput_TweakSlow, Pad_button::left_shoulder);
+					map_button(ImGuiNavInput_TweakFast, Pad_button::right_shoulder);
+
+					map_axis(ImGuiNavInput_LStickLeft, -gp.axis(Pad_stick::right).x);
+					map_axis(ImGuiNavInput_LStickRight, gp.axis(Pad_stick::right).x);
+					map_axis(ImGuiNavInput_LStickUp, -gp.axis(Pad_stick::right).y);
+					map_axis(ImGuiNavInput_LStickDown, gp.axis(Pad_stick::right).y);
+
+					io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
 				}
 
 				ImGui::NewFrame();

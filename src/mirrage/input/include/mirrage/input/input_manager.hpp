@@ -43,6 +43,50 @@ namespace mirrage::input {
 		Input_manager* _manager;
 	};
 
+	/// not thread-safe
+	class Gamepad {
+	  public:
+		Gamepad(Input_source src_id, SDL_GameController*, Input_mapper& mapper);
+
+		void force_feedback(float force) const;
+
+		auto button_pressed(Pad_button b) const noexcept -> bool;
+		auto button_released(Pad_button b) const noexcept -> bool;
+
+		auto button_down(Pad_button b) const noexcept -> bool;
+		auto button_up(Pad_button b) const noexcept -> bool;
+		auto trigger(Pad_button b) const noexcept -> float;
+
+		void update(util::Time dt);
+
+		auto axis(Pad_stick stick) const -> glm::vec2;
+
+		auto id() const noexcept { return _id; }
+		auto input_src() const noexcept { return _src_id; }
+
+		auto main_input() const noexcept { return _main_input; }
+
+	  private:
+		using Sdl_controller_ptr = std::unique_ptr<SDL_GameController, void (*)(SDL_GameController*)>;
+		using Sdl_haptic_ptr     = std::unique_ptr<SDL_Haptic, void (*)(SDL_Haptic*)>;
+
+		bool               _main_input = true;
+		Input_source       _src_id;
+		int                _id;
+		Sdl_controller_ptr _sdl_controller;
+		Sdl_haptic_ptr     _haptic;
+		Input_mapper*      _mapper;
+
+		uint8_t   _button_state[pad_button_count]{};
+		float     _button_value[pad_button_count]{};
+		glm::vec2 _stick_state[pad_stick_count]{};
+
+		float _stick_dead_zone = 0.2f, _stick_max = 32767.f;
+
+		mutable float      _current_force = 0.f;
+		mutable util::Time _force_reset_timer{0.f};
+	};
+
 	class Input_manager {
 	  private:
 		static constexpr auto _max_pointers = 2;
@@ -95,6 +139,8 @@ namespace mirrage::input {
 		void capture_mouse(bool enable);
 		auto capture_mouse() const noexcept { return _mouse_captured; }
 
+		auto list_gamepads() const noexcept -> const std::vector<Gamepad>& { return _gamepads; }
+
 	  private:
 		void _add_gamepad(int joystick_id);
 		void _remove_gamepad(int instance_id);
@@ -105,17 +151,16 @@ namespace mirrage::input {
 		void _handle_event(SDL_Event& event, bool filtered);
 
 	  private:
-		class Gamepad;
-
 		util::Mailbox_collection _mailbox;
 
-		glm::vec4                             _viewport;
-		SDL_Window*                           _sdl_window;
-		bool                                  _world_space_events = true;
-		bool                                  _mouse_captured     = false;
-		glm::vec2                             _mouse_capture_screen_pos;
-		std::function<glm::vec2(glm::vec2)>   _screen_to_world_coords;
-		std::vector<std::unique_ptr<Gamepad>> _gamepads;
+		glm::vec4                           _viewport;
+		SDL_Window*                         _sdl_window;
+		bool                                _world_space_events = true;
+		bool                                _mouse_captured     = false;
+		glm::vec2                           _mouse_capture_screen_pos;
+		std::function<glm::vec2(glm::vec2)> _screen_to_world_coords;
+		std::vector<Gamepad>                _gamepads;
+		Input_source                        _next_gamepad_id = 0;
 
 		std::vector<Sdl_event_filter*> _event_filter;
 

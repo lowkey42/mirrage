@@ -162,9 +162,19 @@ namespace mirrage::input {
 		d_pad_right    = SDL_CONTROLLER_BUTTON_DPAD_RIGHT,
 
 		left_trigger,
-		right_trigger
+		right_trigger,
+
+		left_stick_left,
+		left_stick_right,
+		left_stick_up,
+		left_stick_down,
+
+		right_stick_left,
+		right_stick_right,
+		right_stick_up,
+		right_stick_down
 	};
-	constexpr auto pad_button_count = static_cast<int8_t>(Pad_button::right_trigger) + 1;
+	constexpr auto pad_button_count = static_cast<int8_t>(Pad_button::right_stick_down) + 1;
 
 	using Mouse_button = uint8_t;
 
