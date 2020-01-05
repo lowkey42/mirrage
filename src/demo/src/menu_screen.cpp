@@ -30,7 +30,10 @@ namespace mirrage {
 
 
 	Menu_screen::Menu_screen(Engine& engine, bool clear_screen)
-	  : Screen(engine), _mailbox(engine.bus()), _gui(&engine.gui())
+	  : Screen(engine)
+	  , _mailbox(engine.bus())
+	  , _gui(&engine.gui())
+	  , _button(_gui->load_texture("tex:ui/button.png"_aid))
 	{
 		if(clear_screen) {
 			_renderer = dynamic_cast<Game_engine&>(engine).renderer_factory().create_renderer(
@@ -62,6 +65,12 @@ namespace mirrage {
 
 	void Menu_screen::_draw()
 	{
+
+		auto font = _gui->find_font("menu"_strid);
+		if(font.is_some()) {
+			ImGui::PushFont(font.get_or_throw());
+		}
+
 		if(_renderer)
 			_renderer->draw(); //< clear screen
 
@@ -69,28 +78,30 @@ namespace mirrage {
 			BackgroundImage(*_gui, _background.get(), ImGui::Image_scaling::fill_max);
 
 		ImGui::PositionNextWindow(
-		        glm::vec2(400, 600), ImGui::WindowPosition_X::center, ImGui::WindowPosition_Y::center);
+		        glm::vec2(600, 1000), ImGui::WindowPosition_X::center, ImGui::WindowPosition_Y::center);
 		if(ImGui::Begin("##menu",
 		                nullptr,
 		                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
 		                        | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollbar
 		                        | ImGuiWindowFlags_NoScrollWithMouse)) {
 
-			// TODO: texture button
-			if(ImGui::Button("Test Scene", ImVec2(380, 180))) {
+			if(ImGui::TexturedButton(*_gui, "Test Scene", _button.get(), glm::vec2(580, 0))) {
 				_engine.screens().enter<Test_screen>();
 			}
 
-			if(ImGui::Button("Animation Test Scene", ImVec2(380, 180))) {
+			if(ImGui::TexturedButton(*_gui, "Animation Test", _button.get(), glm::vec2(580, 0))) {
 				_engine.screens().enter<Test_animation_screen>();
 			}
 
-			//ImGui::SetCursorPos(ImVec2(150, 650));
-			if(ImGui::Button("Quit", ImVec2(380, 180))) {
+			if(ImGui::TexturedButton(*_gui, "Quit", _button.get(), glm::vec2(580, 0))) {
 				_engine.exit();
 			}
 		}
 		ImGui::End();
+
+		if(font.is_some()) {
+			ImGui::PopFont();
+		}
 	}
 
 } // namespace mirrage

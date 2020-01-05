@@ -9,6 +9,7 @@
 
 #include <SDL.h>
 #include <imgui.h>
+#include <imgui_internal.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 
@@ -87,10 +88,9 @@ namespace ImGui {
 		return v;
 	}
 
-	void DrawImage(
-	        mirrage::gui::Gui& gui, void* image, glm::vec2 center, glm::vec2 size, Image_scaling scaling)
-	{
-		gui.texture_size(image).process([&](auto& img_size) {
+	namespace {
+		auto scale_image(glm::vec2 img_size, glm::vec2 size, Image_scaling scaling)
+		{
 			switch(scaling) {
 				case Image_scaling::fill_min:
 					scaling = size.x < size.y ? Image_scaling::fill_x : Image_scaling::fill_y;
@@ -105,6 +105,16 @@ namespace ImGui {
 				case Image_scaling::fill_y: size.x = img_size.x * size.y / img_size.y; break;
 				default: break;
 			}
+
+			return size;
+		}
+	} // namespace
+
+	void DrawImage(
+	        mirrage::gui::Gui& gui, void* image, glm::vec2 center, glm::vec2 size, Image_scaling scaling)
+	{
+		gui.texture_size(image).process([&](auto& img_size) {
+			size = scale_image(img_size, size, scaling);
 
 			auto p_min = center - size / 2.f;
 			auto p_max = center + size / 2.f;
@@ -125,6 +135,53 @@ namespace ImGui {
 			DrawImage(gui, image, size / 2.f, size, scaling);
 		}
 		ImGui::End();
+	}
+
+	bool TexturedButton(mirrage::gui::Gui& gui,
+	                    const char*        label,
+	                    void*              texture_id,
+	                    glm::vec2          size,
+	                    Image_scaling      scaling)
+	{
+		return gui.texture_size(texture_id).process(false, [&](auto& img_size) {
+			if(size.x > 0 && size.y > 0)
+				size = scale_image(img_size, size, scaling);
+			else if(size.x > 0)
+				size.y = img_size.y * size.x / img_size.x;
+			else if(size.y > 0)
+				size.x = img_size.x * size.y / img_size.y;
+			else
+				size = img_size;
+
+			ImGuiWindow* window = GetCurrentWindow();
+			if(window->SkipItems)
+				return false;
+
+			const ImGuiID id         = window->GetID(label);
+			const ImVec2  label_size = CalcTextSize(label, NULL, true);
+
+			const ImRect bb(window->DC.CursorPos, window->DC.CursorPos + ImVec2(size));
+			ItemSize(bb);
+			if(!ItemAdd(bb, id))
+				return false;
+
+			bool hovered, held;
+			bool pressed = ButtonBehavior(bb, id, &hovered, &held);
+
+			// Render
+			if(hovered) {
+				window->DrawList->AddImage(texture_id, bb.Min, bb.Max, ImVec2(0, 0.5f), ImVec2(1, 1));
+			} else {
+				window->DrawList->AddImage(texture_id, bb.Min, bb.Max, ImVec2(0, 0), ImVec2(1, 0.5f));
+			}
+
+			auto text_pos_x = bb.Min.x + (bb.Max.x - bb.Min.x) / 2.f - label_size.x / 2.f;
+			auto text_pos_y = bb.Min.y + (bb.Max.y - bb.Min.y) / 2.f - label_size.y / 2.f;
+			window->DrawList->AddText(
+			        ImVec2(text_pos_x, text_pos_y), GetColorU32(ImGuiCol_Text), label, nullptr);
+
+			return pressed;
+		});
 	}
 } // namespace ImGui
 
@@ -220,7 +277,6 @@ bool ImGui::InputTextWithHint(const char*            label,
 	                         InputTextCallback,
 	                         &cb_user_data);
 }
-
 
 namespace mirrage::gui {
 

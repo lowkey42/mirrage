@@ -1,0 +1,9 @@
+{
+	"fonts": [
+		{
+			"id": "menu",
+			"aid": "font:ui/menu_font.ttf",
+			"size": 30
+		}
+	]
+}

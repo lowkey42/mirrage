@@ -18,6 +18,9 @@ target_include_directories(imgui SYSTEM INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/imgui>
 	$<INSTALL_INTERFACE:include>
 )
+
+target_compile_definitions(imgui PUBLIC IMGUI_DEFINE_MATH_OPERATORS)
+
 install(TARGETS imgui EXPORT imguiTargets
 	INCLUDES DESTINATION include
 	ARCHIVE DESTINATION lib

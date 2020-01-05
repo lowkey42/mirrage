@@ -33,6 +33,7 @@ namespace mirrage {
 		std::unique_ptr<mirrage::renderer::Deferred_renderer> _renderer;
 		mirrage::gui::Gui*                                    _gui;
 		std::shared_ptr<void>                                 _background;
+		std::shared_ptr<void>                                 _button;
 	};
 
 } // namespace mirrage

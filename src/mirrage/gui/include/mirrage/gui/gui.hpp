@@ -102,6 +102,12 @@ namespace ImGui {
 
 	void BackgroundImage(mirrage::gui::Gui&, void* image, Image_scaling scaling = Image_scaling::stretch);
 
+	bool TexturedButton(mirrage::gui::Gui& gui,
+	                    const char*        label,
+	                    void*              image,
+	                    glm::vec2          size    = {0, 0},
+	                    Image_scaling      scaling = Image_scaling::stretch);
+
 } // namespace ImGui
 
 struct ImFont;
