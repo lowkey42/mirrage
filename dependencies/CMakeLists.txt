@@ -61,27 +61,31 @@ if(MIRRAGE_PREFER_SYSTEM_SDL)
 	endif()
 endif()
 
+add_subdirectory(sf2)
+add_subdirectory(stb_image)
+
+if(MIRRAGE_BUILD_MESH_CONVERTER)
+	add_subdirectory(assimp)
+	set_property(TARGET assimp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/assimp/include")
+
+	include(crunch_interface.cmake)
+endif()
+
 if(NOT TARGET mirrage::deps::SDL2)
 	message("Building SDL2 from source")
-	add_subdirectory(SDL)
 	if(MSVC)
-		target_compile_options(SDL2 PRIVATE /wd4267 /wd4018)
-		target_compile_options(SDL2-static PRIVATE /wd4267 /wd4018)
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /wd4267 /wd4018")
 	endif()
+
+	add_subdirectory(SDL)
+
+	export(
+		EXPORT SDL2Targets
+		FILE "${CMAKE_CURRENT_BINARY_DIR}/SDL2Targets.cmake"
+	)
+	
 	add_library(mirrage::deps::SDL2 ALIAS SDL2-static)
 	add_library(mirrage::deps::SDL2main ALIAS SDL2main)
 endif()
 
-add_subdirectory(sf2)
 include(soloud_interface.cmake)
-add_subdirectory(stb_image)
-
-if(MIRRAGE_BUILD_MESH_CONVERTER)
-#	find_package(assimp 4.1)
-#	if(NOT assimp_FOUND)
-		add_subdirectory(assimp)
-		set_property(TARGET assimp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/assimp/include")
-#	endif()
-
-	include(crunch_interface.cmake)
-endif()

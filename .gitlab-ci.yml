@@ -92,16 +92,31 @@ build-mingw:
   <<: *windows-cache-spec
   <<: *artifact-spec
 
-build-msvc:
+build-msvc-gitlab:
   stage: build
+  tags:
+    - shared
+    - windows
+    - windows-1809
+  before_script:
+    #- choco install -y vulkan-sdk
+    - (New-Object System.Net.WebClient).DownloadFile("https://vulkan.lunarg.com/sdk/download/1.1.130.0/windows/VulkanSDK-1.1.130.0-Installer.exe?Human=true", "C:\VulkanSDK-Installer.exe")
+    - dir C:\
+    - C:\VulkanSDK-Installer.exe /S
+    - choco install -y visualstudio2019-workload-nativedesktop
+    - choco install -y visualstudio2019-workload-vctools
+    - choco install -y cmake.portable
+    - $env:VULKAN_SDK=[System.Environment]::GetEnvironmentVariable("VULKAN_SDK", "Machine")
+    - $env:PATH=[System.Environment]::GetEnvironmentVariable("PATH", "Machine")
+    - echo $env:VULKAN_SDK
+    - echo $env:PATH
   script:
     - cmake -E make_directory build
     - cd build
     - cmake -E remove_directory src
-    - cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DMIRRAGE_EXPORT_EXECUTABLE=ON -DMIRRAGE_ENABLE_BACKWARD=OFF ..
+    - cmake -G "Visual Studio 16 2019" -A x64 -DCMAKE_INSTALL_PREFIX:PATH=../../mirrage -DMIRRAGE_EXPORT_EXECUTABLE=ON -DMIRRAGE_ENABLE_BACKWARD=OFF ..
     - cmake --build . --config Release -- /m
     - cmake --build . --config Release --target src/install
     - cmake --build . --config Release --target RUN_TESTS
-  <<: *windows-task
   <<: *windows-cache-spec
   <<: *artifact-spec

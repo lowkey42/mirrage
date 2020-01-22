@@ -85,7 +85,7 @@ namespace mirrage::graphic {
 
 		auto surface = VkSurfaceKHR{};
 		SDL_Vulkan_CreateSurface(_window.get(), context.instance(), &surface);
-		_surface = vk::UniqueSurfaceKHR(surface, {context.instance()});
+		_surface = vk::UniqueSurfaceKHR(surface, context.instance());
 		sdl_error_check();
 	}
 
