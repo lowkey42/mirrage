@@ -119,4 +119,5 @@ build-msvc-gitlab:
     - cmake --build . --config Release --target src/install
     - cmake --build . --config Release --target RUN_TESTS
   <<: *windows-cache-spec
+  <<: *windows-task
   <<: *artifact-spec
