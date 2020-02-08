@@ -44,9 +44,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
@@ -78,7 +75,7 @@ namespace mirrage::renderer {
 
 
 	Gen_mipmap_pass::Gen_mipmap_pass(Deferred_renderer& renderer)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _gbuffer_sampler(renderer.device().create_sampler(renderer.gbuffer().mip_levels,
 	                                                      vk::SamplerAddressMode::eClampToBorder,
 	                                                      vk::BorderColor::eIntOpaqueBlack,
@@ -100,8 +97,9 @@ namespace mirrage::renderer {
 
 	void Gen_mipmap_pass::update(util::Time) {}
 
-	void Gen_mipmap_pass::draw(Frame_data& frame)
+	void Gen_mipmap_pass::post_draw(Frame_data& frame)
 	{
+		auto _ = _mark_subpass(frame);
 
 		const auto low_quality_levels = glm::clamp(_renderer.settings().gi_low_quality_mip_levels + 1,
 		                                           1,

@@ -39,8 +39,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eLineList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
 			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{
                     vk::PipelineDepthStencilStateCreateFlags{}, true, false, vk::CompareOp::eLess};
 			pipeline.rasterization.cullMode                = vk::CullModeFlagBits::eNone;
@@ -78,7 +76,7 @@ namespace mirrage::renderer {
 
 
 	Debug_draw_pass::Debug_draw_pass(Deferred_renderer& renderer, graphic::Render_target_2D& src)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _vertices(renderer.device(), 64 * sizeof(Debug_vertex), vk::BufferUsageFlagBits::eVertexBuffer)
 	  , _render_pass(build_render_pass(renderer, src, _framebuffer))
 	{
@@ -87,8 +85,10 @@ namespace mirrage::renderer {
 
 	void Debug_draw_pass::update(util::Time) {}
 
-	void Debug_draw_pass::draw(Frame_data& frame)
+	void Debug_draw_pass::post_draw(Frame_data& frame)
 	{
+		auto _ = _mark_subpass(frame);
+
 		if(frame.debug_geometry_queue.empty() || _renderer.active_camera().is_nothing())
 			return;
 

@@ -5,19 +5,11 @@
 
 #include <mirrage/renderer/deferred_renderer.hpp>
 
+#include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/graphic/render_pass.hpp>
 
 
 namespace mirrage::renderer {
-
-	struct Deferred_push_constants {
-		glm::mat4 model;
-		glm::vec4 light_color; //< for light-subpass; A=intensity
-		glm::vec4 light_data;  //< for light-subpass; R=src_radius, GBA=direction
-		glm::vec4 light_data2; //< for light-subpass; R=shadowmapID
-		glm::vec4 shadow_color;
-	};
-	static_assert(sizeof(Deferred_push_constants) <= 4096, "Too large for push constants!");
 
 	class Deferred_pass_factory;
 
@@ -32,15 +24,71 @@ namespace mirrage::renderer {
 		              graphic::Render_target_2D& color_target,
 		              graphic::Render_target_2D& color_target_diff);
 
+		// object handler for drawing that redirect request to geometry/light subpass
+		void handle_obj(Frame_data&                      fd,
+		                Culling_mask                     mask,
+		                ecs::Entity_facet                entity,
+		                ecs::components::Transform_comp& transform,
+		                Model_comp&                      model,
+		                const Sub_mesh&                  submesh)
+		{
+			_gpass.handle_obj(fd, mask, entity, transform, model, submesh);
+		}
+		void handle_obj(Frame_data&                      fd,
+		                Culling_mask                     mask,
+		                ecs::Entity_facet                entity,
+		                ecs::components::Transform_comp& transform,
+		                Model_comp&                      model,
+		                Skinning_type                    skinning,
+		                std::uint32_t                    pose_offset)
+		{
+			_gpass.handle_obj(fd, mask, entity, transform, model, skinning, pose_offset);
+		}
+
+		void handle_obj(Frame_data& fd, Culling_mask mask, Billboard& bb, glm::vec3 pos = {})
+		{
+			_gpass.handle_obj(fd, mask, bb, pos);
+		}
+		void handle_obj(Frame_data&                      fd,
+		                Culling_mask                     mask,
+		                Decal&                           decal,
+		                ecs::components::Transform_comp& transform)
+		{
+			_gpass.handle_obj(fd, mask, decal, transform);
+		}
+		void handle_obj(Frame_data&           fd,
+		                Culling_mask          mask,
+		                Particle_system_comp& sys,
+		                Particle_emitter&     emitter)
+		{
+			_gpass.handle_obj(fd, mask, sys, emitter);
+		}
+
+		void handle_obj(Frame_data&                      fd,
+		                Culling_mask                     mask,
+		                ecs::Entity_facet                entity,
+		                ecs::components::Transform_comp& transform,
+		                Directional_light_comp&          light)
+		{
+			_lpass.handle_obj(fd, mask, entity, transform, light);
+		}
+		void handle_obj(Frame_data&                      fd,
+		                Culling_mask                     mask,
+		                ecs::Entity_facet                entity,
+		                ecs::components::Transform_comp& transform,
+		                Point_light_comp&                light)
+		{
+			_lpass.handle_obj(fd, mask, entity, transform, light);
+		}
+
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "Deferred"; }
 
-	  private:
-		Deferred_renderer& _renderer;
 
+	  private:
 		Deferred_geometry_subpass _gpass;
 		Deferred_lighting_subpass _lpass;
 

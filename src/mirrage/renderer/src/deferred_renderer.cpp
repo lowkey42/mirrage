@@ -58,6 +58,7 @@ namespace mirrage::renderer {
 
 	Deferred_renderer::Deferred_renderer(Deferred_renderer_factory&        factory,
 	                                     std::vector<Render_pass_factory*> passes,
+	                                     Object_router_factory             router_factory,
 	                                     util::maybe<ecs::Entity_manager&> ecs,
 	                                     Engine&                           engine)
 	  : _engine(&engine)
@@ -74,6 +75,7 @@ namespace mirrage::renderer {
 	                          vk::DescriptorType::eStorageImage,
 	                          vk::DescriptorType::eSampledImage,
 	                          vk::DescriptorType::eSampler})
+	  , _secondary_command_buffer_pool(device(), "draw"_strid)
 	  , _gbuffer(gbuffer_required(passes) ? std::make_unique<GBuffer>(device(),
 	                                                                  _descriptor_set_pool,
 	                                                                  factory._window.width(),
@@ -100,17 +102,21 @@ namespace mirrage::renderer {
 	  , _noise_descriptor_set_layout(device(), *_noise_sampler, 1, vk::ShaderStageFlagBits::eFragment)
 	  , _billboard_model(create_billboard_model(*this))
 	  , _pass_factories(std::move(passes))
+	  , _router_factory(std::move(router_factory))
 	  , _passes(util::map(_pass_factories,
 	                      [&, write_first_pp_buffer = true](auto& factory) mutable {
 		                      return factory->create_pass(
 		                              *this, std::shared_ptr<void>{}, ecs, engine, write_first_pp_buffer);
 	                      }))
+	  , _router(_router_factory(_passes))
 	  , _cameras(ecs.is_some() ? util::justPtr(&ecs.get_or_throw().list<Camera_comp>()) : util::nothing)
 	{
 		if(ecs.is_some())
 			ecs.get_or_throw().register_component_type<Material_property_comp>();
 
 		ref_embedded_assets_mirrage_renderer();
+
+		_secondary_command_buffer_pool.register_thread();
 
 		_write_global_uniform_descriptor_set();
 
@@ -159,6 +165,8 @@ namespace mirrage::renderer {
 			_passes[i] = _pass_factories.at(i)->create_pass(
 			        *this, persisted_pass_states.at(i), _entity_manager, *_engine, write_first_pp_buffer);
 		}
+
+		_router = _router_factory(_passes);
 
 		_profiler = graphic::Profiler(device(), 128);
 
@@ -210,6 +218,14 @@ namespace mirrage::renderer {
 		if(active_camera().is_nothing())
 			return;
 
+		_secondary_command_buffer_pool.pre_frame();
+
+		// TODO: benchmark code -- remove before merge
+		static auto time_acc   = 0.f;
+		static auto time_count = 0;
+		auto        start      = std::chrono::high_resolution_clock::now();
+		// END TODO
+
 		auto main_command_buffer = _factory->queue_temporary_command_buffer();
 		main_command_buffer.begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 		_profiler.start(main_command_buffer);
@@ -224,20 +240,29 @@ namespace mirrage::renderer {
 		_frame_data.main_command_buffer = main_command_buffer;
 		_frame_data.global_uniform_set  = *_global_uniform_descriptor_set;
 		_frame_data.swapchain_image     = _factory->_aquire_next_image();
+		_frame_data.camera              = &active_camera().get_or_throw();
 
-		// draw subpasses
-		for(auto& pass : _passes) {
-			if(pass) {
-				auto q = graphic::Queue_debug_label(device().context(), main_command_buffer, pass->name());
-				auto _ = _profiler.push(pass->name());
-				pass->draw(_frame_data);
-			}
-		}
+		// draw
+		_router->pre_draw(_frame_data);
+		_router->on_draw(_frame_data);
+		_router->post_draw(_frame_data);
 
-		_frame_data.clear_queues();
+		_frame_data.debug_geometry_queue.clear();
 
 		// reset cached camera state
 		_active_camera = util::nothing;
+
+
+		// TODO: benchmark code -- remove before merge
+		time_acc += std::chrono::duration_cast<std::chrono::duration<float, std::micro>>(
+		                    std::chrono::high_resolution_clock::now() - start)
+		                    .count()
+		            / 1000.f;
+		time_count++;
+		if(time_count % 100 == 0) {
+			LOG(plog::info) << "Time: " << (time_acc / time_count);
+		}
+		// END TODO
 	}
 
 	void Deferred_renderer::shrink_to_fit()
@@ -497,10 +522,14 @@ namespace mirrage::renderer {
 	};
 
 	Deferred_renderer_factory::Deferred_renderer_factory(
-	        Engine& engine, graphic::Window& window, std::vector<std::unique_ptr<Render_pass_factory>> passes)
+	        Engine&                                           engine,
+	        graphic::Window&                                  window,
+	        std::vector<std::unique_ptr<Render_pass_factory>> passes,
+	        Object_router_factory                             router_factory)
 	  : _engine(engine)
 	  , _assets(engine.assets())
 	  , _pass_factories(std::move(passes))
+	  , _router_factory(std::move(router_factory))
 	  , _window(window)
 	  , _device(engine.graphics_context().instantiate_device(
 	            FOE_SELF(_rank_device), FOE_SELF(_init_device), {&_window}, true))
@@ -580,7 +609,7 @@ namespace mirrage::renderer {
 			}
 		}
 
-		return std::make_unique<Deferred_renderer>(*this, pass_factories, ecs, _engine);
+		return std::make_unique<Deferred_renderer>(*this, pass_factories, _router_factory, ecs, _engine);
 	}
 
 	void Deferred_renderer_factory::finish_frame()

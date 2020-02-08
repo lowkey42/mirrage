@@ -22,14 +22,13 @@ namespace mirrage::renderer {
 
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		void process_camera(Camera_state&) override;
 
 		auto name() const noexcept -> const char* override { return "TAA"; }
 
 	  private:
-		Deferred_renderer&                   _renderer;
 		graphic::Framebuffer                 _framebuffer;
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;

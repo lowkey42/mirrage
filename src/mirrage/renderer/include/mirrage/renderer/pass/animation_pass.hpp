@@ -2,7 +2,9 @@
 
 #include <mirrage/renderer/animation_comp.hpp>
 #include <mirrage/renderer/deferred_renderer.hpp>
+#include <mirrage/renderer/model_comp.hpp>
 
+#include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/graphic/streamed_buffer.hpp>
 
 #include <tsl/robin_map.h>
@@ -48,7 +50,28 @@ namespace mirrage::renderer {
 		Animation_pass(Deferred_renderer&, ecs::Entity_manager&);
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+
+		void pre_draw(Frame_data& fd);
+		template <typename... Passes>
+		bool handle_obj(Frame_data&,
+		                Object_router<Passes...>&        router,
+		                Culling_mask                     mask,
+		                ecs::Entity_facet                entity,
+		                ecs::components::Transform_comp& transform,
+		                Model_comp&                      model)
+		{
+			if(!model.model()->rigged())
+				return false;
+
+			if(auto ret = _add_pose(entity, model); ret.is_some()) {
+				auto [type, offset] = ret.get_or_throw();
+				router.process_always_visible_obj(mask, entity, transform, model, type, offset);
+				return true;
+			}
+
+			return false;
+		}
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "Animation"; }
 
@@ -56,12 +79,15 @@ namespace mirrage::renderer {
 		using Animation_key_cache =
 		        tsl::robin_map<detail::Animation_key_cache_key, util::small_vector<Animation_key, 60>>;
 
-		Deferred_renderer&   _renderer;
 		ecs::Entity_manager& _ecs;
 
 		// data for animation/pose update
 		std::unordered_set<detail::Animation_key_cache_key> _unused_animation_keys;
 		Animation_key_cache                                 _animation_key_cache;
+		std::int32_t                                        _next_pose_offset = 0;
+		const std::int32_t                                  _min_uniform_buffer_alignment;
+		std::int32_t                                        _max_pose_offset;
+		std::int32_t                                        _required_pose_offset = 0;
 
 		// data for pose upload
 		struct Animation_upload_queue_entry {
@@ -69,8 +95,8 @@ namespace mirrage::renderer {
 			const Pose_comp* pose;
 			std::int32_t     uniform_offset;
 
-			Animation_upload_queue_entry(const Model* model, Pose_comp& pose, std::int32_t uniform_offset)
-			  : model(model), pose(&pose), uniform_offset(uniform_offset)
+			Animation_upload_queue_entry(const Model& model, Pose_comp& pose, std::int32_t uniform_offset)
+			  : model(&model), pose(&pose), uniform_offset(uniform_offset)
 			{
 			}
 		};
@@ -82,8 +108,9 @@ namespace mirrage::renderer {
 		std::vector<Animation_upload_queue_entry>         _animation_uniform_queue;
 
 		void _update_animation(ecs::Entity_handle owner, Animation_comp& anim, Pose_comp&);
-		void _compute_poses(Frame_data&);
 		void _upload_poses(Frame_data&);
+		auto _add_pose(ecs::Entity_facet, Model_comp&)
+		        -> util::maybe<std::pair<Skinning_type, std::uint32_t>>;
 	};
 
 	class Animation_pass_factory : public Render_pass_factory {

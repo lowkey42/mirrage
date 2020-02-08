@@ -20,12 +20,11 @@ namespace mirrage::renderer {
 
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "Gen. Mipmaps"; }
 
 	  private:
-		Deferred_renderer&                   _renderer;
 		std::uint32_t                        _mip_count;
 		vk::UniqueSampler                    _gbuffer_sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;

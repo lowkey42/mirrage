@@ -17,12 +17,11 @@ namespace mirrage::renderer {
 		Debug_draw_pass(Deferred_renderer&, graphic::Render_target_2D& src);
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "Debug_draw"; }
 
 	  private:
-		Deferred_renderer&       _renderer;
 		graphic::Streamed_buffer _vertices;
 		graphic::Framebuffer     _framebuffer;
 		graphic::Render_pass     _render_pass;

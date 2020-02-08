@@ -61,6 +61,8 @@ namespace mirrage::graphic {
 		auto create_command_buffer_pool(Queue_tag queue_family,
 		                                bool      resetable   = true,
 		                                bool      short_lived = false) -> Command_buffer_pool;
+		auto create_vk_command_pool(Queue_tag queue_family, bool resetable = true, bool short_lived = false)
+		        -> vk::UniqueCommandPool;
 
 		auto create_descriptor_pool(std::int32_t chunk_size, std::initializer_list<vk::DescriptorType> types)
 		        -> Descriptor_pool;

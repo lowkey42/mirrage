@@ -15,20 +15,14 @@ namespace mirrage::renderer {
 	namespace {
 		constexpr auto shader_buffer_size = static_cast<vk::DeviceSize>(64 * 3 * 4 * int(sizeof(float)));
 		constexpr auto initial_animation_capacity = static_cast<vk::DeviceSize>(16 * shader_buffer_size);
-
-		auto animation_substance(util::Str_id substance_id, Skinning_type st)
-		{
-			switch(st) {
-				case Skinning_type::linear_blend_skinning: return substance_id;
-				case Skinning_type::dual_quaternion_skinning: return "dq_"_strid + substance_id;
-			}
-			return substance_id;
-		}
 	} // namespace
 
 	Animation_pass::Animation_pass(Deferred_renderer& r, ecs::Entity_manager& entities)
-	  : _renderer(r)
+	  : Render_pass(r)
 	  , _ecs(entities)
+	  , _min_uniform_buffer_alignment(
+	            r.device().physical_device_properties().limits.minUniformBufferOffsetAlignment)
+	  , _max_pose_offset(initial_animation_capacity - shader_buffer_size)
 	  , _animation_uniforms(r.device(), initial_animation_capacity, vk::BufferUsageFlagBits::eUniformBuffer)
 	{
 		_ecs.register_component_type<Pose_comp>();
@@ -124,15 +118,7 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void Animation_pass::draw(Frame_data& frame)
-	{
-		_compute_poses(frame);
-
-		// TODO: add Animation_listeners to intercept/replace computed poses before drawing
-
-		_upload_poses(frame);
-	}
-	void Animation_pass::_compute_poses(Frame_data& frame)
+	void Animation_pass::pre_draw(Frame_data&)
 	{
 		// mark all cached animations as unused
 		_unused_animation_keys.clear();
@@ -142,89 +128,17 @@ namespace mirrage::renderer {
 			_unused_animation_keys.emplace(key);
 		}
 
-		// update visible animations
-		for(auto& geo : frame.geometry_queue) {
-			_ecs.get(geo.entity).process([&](ecs::Entity_facet& entity) {
-				auto anim_mb = entity.get<Animation_comp>();
-				if(anim_mb.is_nothing())
-					return; // not animated
-
-				auto& anim = anim_mb.get_or_throw();
-				if(anim._animation_states.empty() || !anim._dirty)
-					return; // no animation playing
-
-				entity.get<Pose_comp>().process(
-				        [&](auto& skeleton) { _update_animation(geo.entity, anim, skeleton); });
-			});
-		}
-
-		// erase all unused animation keys from the cache
-		for(auto&& key : _unused_animation_keys) {
-			_animation_key_cache.erase(key);
-		}
-	}
-	void Animation_pass::_upload_poses(Frame_data& frame)
-	{
-		// upload skeleton pose
+		// clear last update queues
 		_animation_uniform_offsets.clear();
 		_animation_uniform_queue.clear();
-		auto required_size = std::int32_t(0);
-		auto alignment     = std::int32_t(
-                _renderer.device().physical_device_properties().limits.minUniformBufferOffsetAlignment);
-
-		auto aligned_byte_size = [&](auto bone_count) {
-			auto size = bone_count * std::int32_t(sizeof(Final_bone_transform));
-			return size < alignment ? alignment : size + (alignment - size % alignment);
-		};
-
-		for(auto& geo : frame.geometry_queue) {
-			if(!geo.model->rigged())
-				continue;
-
-			auto entity_mb = _ecs.get(geo.entity);
-			if(entity_mb.is_nothing())
-				continue;
-
-			auto entity = entity_mb.get_or_throw();
-			auto offset = gsl::narrow<std::uint32_t>(required_size);
-
-			auto upload_required = entity.get<Shared_pose_comp>().process(true, [&](auto& sp) {
-				auto pose_offset = util::find_maybe(_animation_uniform_offsets, sp.pose_owner);
-				offset           = pose_offset.get_or(offset);
-				_animation_uniform_offsets.emplace(geo.entity, pose_offset.get_or(offset));
-
-				entity = _ecs.get(sp.pose_owner).get_or_throw("Invalid entity in render queue");
-				entity.get<Pose_comp>().process([&](auto& pose) {
-					geo.substance_id = animation_substance(geo.substance_id, pose.skeleton().skinning_type());
-				});
-
-				if(pose_offset.is_some())
-					return false;
-
-				return true;
-			});
-
-			if(upload_required) {
-				entity.get<Pose_comp>().process([&](auto& pose) {
-					geo.substance_id = animation_substance(geo.substance_id, pose.skeleton().skinning_type());
-
-					auto [ex, success] = _animation_uniform_offsets.try_emplace(entity.handle(), offset);
-					offset             = ex->second;
-
-					if(success) {
-						_animation_uniform_queue.emplace_back(geo.model, pose, offset);
-						required_size += aligned_byte_size(geo.model->bone_count());
-					}
-				});
-			}
-
-			geo.animation_uniform_offset = offset;
-		}
+		_next_pose_offset     = 0;
+		_max_pose_offset      = util::max(_required_pose_offset, _max_pose_offset);
+		_required_pose_offset = 0;
 
 		// add padding to allow overstepping
-		required_size += gsl::narrow<std::uint32_t>(64u * 3u * 4u * sizeof(float));
+		auto uniform_buffer_size = _max_pose_offset + gsl::narrow<std::uint32_t>(shader_buffer_size);
 
-		if(_animation_uniforms.resize(required_size)) {
+		if(_animation_uniforms.resize(uniform_buffer_size)) {
 			// recreate DescriptorSet if the buffer has been recreated
 			auto anim_desc_buffer_write = vk::DescriptorBufferInfo{
 			        _animation_uniforms.write_buffer(), 0, vk::DeviceSize(64u * 3u * 4u * sizeof(float))};
@@ -240,6 +154,91 @@ namespace mirrage::renderer {
 			_renderer.device().vk_device()->updateDescriptorSets(1, &anim_desc_writes, 0, nullptr);
 		}
 
+		// tell the rest of the renderer what our next uniform buffer will be
+		_renderer.gbuffer().animation_data =
+		        *_animation_desc_sets.at(std::size_t(_animation_uniforms.write_buffer_index()));
+	}
+
+	auto Animation_pass::_add_pose(ecs::Entity_facet entity, Model_comp& model)
+	        -> util::maybe<std::pair<Skinning_type, std::uint32_t>>
+	{
+		auto pose_comp = entity.get<Pose_comp>();
+		pose_comp.process([&](auto& skeleton) {
+			// update animations
+			entity.get<Animation_comp>().process([&](auto& anim) {
+				if(!anim._animation_states.empty() && anim._dirty)
+					_update_animation(entity.handle(), anim, skeleton);
+			});
+		});
+
+
+		// prepare upload of poses
+		auto offset      = util::maybe<std::uint32_t>::nothing();
+		auto shared_pose = false;
+
+		auto upload_required =
+		        pose_comp.is_some() || entity.get<Shared_pose_comp>().process(true, [&](auto& sp) {
+			        auto pose_offset = util::find_maybe(_animation_uniform_offsets, sp.pose_owner);
+			        if(pose_offset.is_some())
+				        offset = pose_offset.get_or_throw();
+
+			        shared_pose = true;
+
+			        // our Pose_comp is in another ~~castle~~ entity => fetch it and continue with that
+			        entity    = _ecs.get(sp.pose_owner).get_or_throw("Invalid entity in render queue");
+			        pose_comp = entity.get<Pose_comp>();
+
+			        return pose_offset.is_nothing();
+		        });
+
+		if(upload_required) {
+			pose_comp.process([&](auto& pose) {
+				auto size = model.model()->bone_count() * std::int32_t(sizeof(Final_bone_transform));
+				if(size < _min_uniform_buffer_alignment)
+					size = _min_uniform_buffer_alignment;
+				else
+					size = size + (_min_uniform_buffer_alignment - size % _min_uniform_buffer_alignment);
+
+				if(_next_pose_offset + size <= _max_pose_offset) {
+					auto new_offset    = gsl::narrow<std::uint32_t>(_next_pose_offset);
+					auto [ex, success] = _animation_uniform_offsets.try_emplace(entity.handle(), new_offset);
+					if(success) {
+						_next_pose_offset += size;
+						_animation_uniform_queue.emplace_back(*model.model(), pose, ex->second);
+						offset = new_offset;
+					}
+
+				} else if(!shared_pose) {
+					_required_pose_offset += size;
+				}
+			});
+		}
+
+		if(offset.is_nothing())
+			return util::nothing;
+
+		return pose_comp.process([&](auto& skeleton) {
+			return std::make_pair(skeleton.skeleton().skinning_type(), offset.get_or_throw());
+		});
+	}
+
+	void Animation_pass::post_draw(Frame_data& frame)
+	{
+		auto _ = _mark_subpass(frame);
+
+		// erase all unused animation keys from the cache
+		for(auto&& key : _unused_animation_keys) {
+			_animation_key_cache.erase(key);
+		}
+
+		// TODO: add Animation_listeners to intercept/replace computed poses before drawing
+
+		_upload_poses(frame);
+	}
+
+	void Animation_pass::_upload_poses(Frame_data& frame)
+	{
+		// copy final pose transforms into gpu buffer
 		for(auto& upload : _animation_uniform_queue) {
 			_animation_uniforms.update_objects<Final_bone_transform>(upload.uniform_offset, [&](auto out) {
 				auto geo_matrices = out.subspan(0, upload.model->bone_count());
@@ -249,9 +248,6 @@ namespace mirrage::renderer {
 		_animation_uniforms.flush(frame.main_command_buffer,
 		                          vk::PipelineStageFlagBits::eVertexShader,
 		                          vk::AccessFlagBits::eUniformRead | vk::AccessFlagBits::eShaderRead);
-
-		_renderer.gbuffer().animation_data =
-		        *_animation_desc_sets.at(std::size_t(_animation_uniforms.read_buffer_index()));
 	}
 
 	void Animation_pass::_update_animation(ecs::Entity_handle owner,

@@ -20,7 +20,33 @@ namespace mirrage::graphic {
 		constant_buffer.insert(constant_buffer.end(), data.begin(), data.end());
 	}
 
-	Pipeline_description::Pipeline_description() { rasterization.lineWidth = 1.f; }
+	Pipeline_description::Pipeline_description()
+	  : vertex_input()
+	  , input_assembly({}, vk::PrimitiveTopology::eTriangleList, false)
+	  , rasterization({},
+	                  false,
+	                  false,
+	                  vk::PolygonMode::eFill,
+	                  vk::CullModeFlagBits::eNone,
+	                  vk::FrontFace::eCounterClockwise,
+	                  false,
+	                  0,
+	                  0,
+	                  0,
+	                  1.f)
+	  , color_blending({}, false, {})
+	  , tessellation({}, 1)
+	  , multisample({}, vk::SampleCountFlagBits::e1, false, 1.f, nullptr, false, false)
+	  , depth_stencil({},
+	                  false,
+	                  false,
+	                  vk::CompareOp::eAlways,
+	                  false,
+	                  false,
+	                  vk::StencilOpState{},
+	                  vk::StencilOpState{})
+	{
+	}
 	Pipeline_description::Pipeline_description(Pipeline_description&& rhs) noexcept
 	  : vertex_input(std::move(rhs.vertex_input))
 	  , input_assembly(std::move(rhs.input_assembly))
@@ -125,8 +151,6 @@ namespace mirrage::graphic {
 	}
 
 	namespace {
-
-		const auto default_viewport       = vk::Viewport{};
 		const auto default_viewport_state = vk::PipelineViewportStateCreateInfo{
 		        vk::PipelineViewportStateCreateFlags{}, 1, nullptr, 1, nullptr};
 		const vk::DynamicState default_dynamic_states[]{
@@ -188,15 +212,13 @@ namespace mirrage::graphic {
 		cinfo.pViewportState      = &default_viewport_state;
 		cinfo.pDynamicState       = &default_dynamic_state;
 
-		color_blending.process([&](auto& s) {
-			s.attachmentCount      = gsl::narrow<std::uint32_t>(color_blend_attachments.size());
-			s.pAttachments         = color_blend_attachments.data();
-			cinfo.pColorBlendState = &s;
-		});
+		color_blending.attachmentCount = gsl::narrow<std::uint32_t>(color_blend_attachments.size());
+		color_blending.pAttachments    = color_blend_attachments.data();
+		cinfo.pColorBlendState         = &color_blending;
 
-		tessellation.process([&](auto& s) { cinfo.pTessellationState = &s; });
-		multisample.process([&](auto& s) { cinfo.pMultisampleState = &s; });
-		depth_stencil.process([&](auto& s) { cinfo.pDepthStencilState = &s; });
+		cinfo.pTessellationState = &tessellation;
+		cinfo.pMultisampleState  = &multisample;
+		cinfo.pDepthStencilState = &depth_stencil;
 
 
 		if(base_index > 0) {
@@ -559,6 +581,49 @@ namespace mirrage::graphic {
 
 
 
+	void Render_pass_stage_ref::begin(vk::CommandBuffer cmd_buffer, const Framebuffer& fb) const
+	{
+		auto ii = vk::CommandBufferInheritanceInfo{
+		        _render_pass, static_cast<std::uint32_t>(subpass_index()), fb.vk_framebuffer()};
+		cmd_buffer.begin(
+		        vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit
+		                                           | vk::CommandBufferUsageFlagBits::eRenderPassContinue,
+		                                   &ii});
+
+		cmd_buffer.bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline());
+
+		cmd_buffer.setViewport(0, {fb.viewport()});
+		cmd_buffer.setScissor(0, {fb.scissor()});
+	}
+
+	void Render_pass_stage_ref::push_constant(const Command_buffer& cmb, gsl::span<const char> data) const
+	{
+		MIRRAGE_INVARIANT(data.size() == _range.size,
+		                  "Data passed to push_constant doesn't equal configured range. "
+		                  "Found: "
+		                          << data.size() << ", Expected: " << _range.size);
+
+		cmb.pushConstants(_pipeline_layout,
+		                  _range.stageFlags,
+		                  _range.offset,
+		                  vk::ArrayProxy<const char>(gsl::narrow<std::uint32_t>(data.size()), data.data()));
+	}
+
+	void Render_pass_stage_ref::bind_descriptor_sets(const Command_buffer&              cmb,
+	                                                 std::uint32_t                      first_set,
+	                                                 gsl::span<const vk::DescriptorSet> sets,
+	                                                 gsl::span<const std::uint32_t>     dynamic_offsets) const
+	{
+		cmb.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+		                       _pipeline_layout,
+		                       first_set,
+		                       gsl::narrow<std::uint32_t>(sets.size()),
+		                       sets.data(),
+		                       gsl::narrow<std::uint32_t>(dynamic_offsets.size()),
+		                       dynamic_offsets.empty() ? nullptr : dynamic_offsets.data());
+	}
+
+
 	Render_pass::Render_pass(Render_pass&&) = default;
 	Render_pass& Render_pass::operator=(Render_pass&&) = default;
 	Render_pass::~Render_pass()                        = default;
@@ -577,7 +642,7 @@ namespace mirrage::graphic {
 	}
 
 
-	void Render_pass::next_subpass(bool inline_contents)
+	void Render_pass::next_subpass(vk::SubpassContents contents)
 	{
 		auto& cmb =
 		        _current_command_buffer.get_or_throw("next_pass can only be called inside an execute block!");
@@ -587,8 +652,13 @@ namespace mirrage::graphic {
 		                  "Render_pass::next_subpass() called more often than there are subpasses: "
 		                          << _subpass_index << " vs " << _stages.size());
 
-		cmb.nextSubpass(inline_contents ? vk::SubpassContents::eInline
-		                                : vk::SubpassContents::eSecondaryCommandBuffers);
+		cmb.nextSubpass(contents);
+	}
+
+	void Render_pass::set_view(const Command_buffer& buffer, const Framebuffer& fb)
+	{
+		buffer.setViewport(0, {fb._viewport});
+		buffer.setScissor(0, {fb._scissor});
 	}
 
 	namespace {
@@ -626,6 +696,28 @@ namespace mirrage::graphic {
 		cmb.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipelines.at(pipeline_idx->second));
 	}
 
+	auto Render_pass::get_stage(std::size_t subpass_index, util::Str_id stage_id, util::Str_id constant_id)
+	        -> Render_pass_stage_ref
+	{
+		auto& stages       = _stages.at(subpass_index);
+		auto  pipeline_idx = stages.find(stage_id);
+		MIRRAGE_INVARIANT(pipeline_idx != stages.end(),
+		                  "Unknown render stage '" << stage_id.str() << "'! Expected one of "
+		                                           << print_stages(stages));
+
+		auto info =
+		        constant_id
+		                ? util::find_maybe(_push_constants[pipeline_idx->second], constant_id)
+		                          .get_or_throw("No push constant with name '", constant_id.str(), "' found")
+		                : vk::PushConstantRange();
+
+		return Render_pass_stage_ref{*_render_pass,
+		                             info,
+		                             *_pipelines.at(pipeline_idx->second),
+		                             *_pipeline_layouts.at(pipeline_idx->second),
+		                             subpass_index};
+	}
+
 	void Render_pass::push_constant(util::Str_id id, gsl::span<const char> data)
 	{
 		auto& cmb = _current_command_buffer.get_or_throw(
@@ -661,7 +753,7 @@ namespace mirrage::graphic {
 		                       dynamic_offsets.empty() ? nullptr : dynamic_offsets.data());
 	}
 
-	void Render_pass::_pre(const Command_buffer& cb, const Framebuffer& fb)
+	void Render_pass::_pre(const Command_buffer& cb, const Framebuffer& fb, vk::SubpassContents contents)
 	{
 		MIRRAGE_INVARIANT(_current_command_buffer.is_nothing(), "execute blocks can not be nested!");
 		_current_command_buffer = cb;
@@ -672,10 +764,12 @@ namespace mirrage::graphic {
 		rp_info.setClearValueCount(gsl::narrow<std::uint32_t>(fb._clear_values.size()));
 		rp_info.setPClearValues(fb._clear_values.data());
 
-		cb.beginRenderPass(&rp_info, vk::SubpassContents::eInline);
-		cb.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipelines[0]);
-		cb.setViewport(0, {fb._viewport});
-		cb.setScissor(0, {fb._scissor});
+		cb.beginRenderPass(&rp_info, contents);
+		if(contents != vk::SubpassContents::eSecondaryCommandBuffers) {
+			cb.bindPipeline(vk::PipelineBindPoint::eGraphics, *_pipelines[0]);
+			cb.setViewport(0, {fb._viewport});
+			cb.setScissor(0, {fb._scissor});
+		}
 	}
 
 	void Render_pass::_post()

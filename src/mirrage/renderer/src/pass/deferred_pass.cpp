@@ -105,9 +105,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 
 			pipeline.add_push_constant("dpc"_strid,
@@ -362,7 +359,7 @@ namespace mirrage::renderer {
 	                             ecs::Entity_manager&       entities,
 	                             graphic::Render_target_2D& color_target,
 	                             graphic::Render_target_2D& color_target_diff)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _gpass(renderer, entities)
 	  , _lpass(renderer, entities, renderer.gbuffer().depth_buffer)
 	  , _render_pass(build_render_pass(renderer,
@@ -373,6 +370,9 @@ namespace mirrage::renderer {
 	                                   _lpass,
 	                                   _gbuffer_framebuffer))
 	{
+
+		_gpass.on_render_pass_configured(_render_pass, _gbuffer_framebuffer);
+		_lpass.on_render_pass_configured(_render_pass, _gbuffer_framebuffer);
 	}
 
 
@@ -381,8 +381,10 @@ namespace mirrage::renderer {
 		_gpass.update(dt);
 		_lpass.update(dt);
 	}
-	void Deferred_pass::draw(Frame_data& frame)
+
+	void Deferred_pass::post_draw(Frame_data& frame)
 	{
+		auto _ = _mark_subpass(frame);
 
 		if(!_first_frame) {
 			graphic::blit_texture(frame.main_command_buffer,
@@ -410,17 +412,15 @@ namespace mirrage::renderer {
 			                       _renderer.gbuffer().mip_levels);
 		}
 
-		_gpass.pre_draw(frame);
-
-		_render_pass.execute(frame.main_command_buffer, _gbuffer_framebuffer, [&] {
-			_render_pass.bind_descriptor_sets(0, {&frame.global_uniform_set, 1});
-
-			_gpass.draw(frame, _render_pass);
-
-			_render_pass.next_subpass(true);
-
-			_lpass.draw(frame, _render_pass);
-		});
+		_render_pass.execute(frame.main_command_buffer,
+		                     _gbuffer_framebuffer,
+		                     vk::SubpassContents::eSecondaryCommandBuffers,
+		                     [&] {
+			                     _gpass.draw(frame, _render_pass);
+			                     _render_pass.next_subpass();
+			                     _render_pass.set_view(frame.main_command_buffer, _gbuffer_framebuffer);
+			                     _lpass.draw(frame, _render_pass);
+		                     });
 
 		if(_first_frame) {
 			_first_frame = false;

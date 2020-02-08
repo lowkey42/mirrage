@@ -3,11 +3,13 @@
 #include <mirrage/renderer/camera_comp.hpp>
 #include <mirrage/renderer/gbuffer.hpp>
 #include <mirrage/renderer/model.hpp>
+#include <mirrage/renderer/object_router.hpp>
 #include <mirrage/renderer/render_pass.hpp>
 
 #include <mirrage/graphic/context.hpp>
 #include <mirrage/graphic/device.hpp>
 #include <mirrage/graphic/profiler.hpp>
+#include <mirrage/graphic/thread_local_command_buffer_pool.hpp>
 
 #include <mirrage/utils/min_max.hpp>
 #include <mirrage/utils/small_vector.hpp>
@@ -117,7 +119,7 @@ namespace mirrage::renderer {
 	template <class T, class... Args>
 	auto make_pass_factory(Args&&... args)
 	{
-		return std::unique_ptr<Render_pass_factory>(new T(std::forward<Args>(args)...));
+		return std::unique_ptr<Render_pass_factory>(new typename T::Factory(std::forward<Args>(args)...));
 	}
 
 	using Render_pass_mask = std::vector<Render_pass_id>; // util::small_vector<Render_pass_id, 32>;
@@ -127,7 +129,8 @@ namespace mirrage::renderer {
 	  public:
 		Deferred_renderer_factory(Engine&          engine,
 		                          graphic::Window& window,
-		                          std::vector<std::unique_ptr<Render_pass_factory>>);
+		                          std::vector<std::unique_ptr<Render_pass_factory>>,
+		                          Object_router_factory router_factory);
 		~Deferred_renderer_factory();
 
 		auto create_renderer(util::maybe<ecs::Entity_manager&> = util::nothing,
@@ -173,6 +176,7 @@ namespace mirrage::renderer {
 		asset::Asset_manager&           _assets;
 		Settings_ptr                    _settings;
 		Pass_factories                  _pass_factories;
+		Object_router_factory           _router_factory;
 		graphic::Window&                _window;
 		graphic::Device_ptr             _device;
 		graphic::Swapchain&             _swapchain;
@@ -209,11 +213,20 @@ namespace mirrage::renderer {
 		auto _aquire_next_image() -> std::size_t;
 	};
 
+	template <class... Passes>
+	auto make_deferred_renderer_factory(Engine& engine, graphic::Window& window)
+	{
+		return std::make_unique<Deferred_renderer_factory>(engine,
+		                                                   window,
+		                                                   util::make_vector(make_pass_factory<Passes>()...),
+		                                                   make_object_router_factory<Passes...>());
+	}
 
 	class Deferred_renderer {
 	  public:
 		Deferred_renderer(Deferred_renderer_factory&,
 		                  std::vector<Render_pass_factory*>,
+		                  Object_router_factory router_factory,
 		                  util::maybe<ecs::Entity_manager&>,
 		                  Engine&);
 		Deferred_renderer(const Deferred_renderer&) = delete;
@@ -256,6 +269,28 @@ namespace mirrage::renderer {
 		auto compute_storage_buffer_layout() const { return _factory->compute_storage_buffer_layout(); }
 		auto compute_uniform_buffer_layout() const { return _factory->compute_uniform_buffer_layout(); }
 
+		/// thread-safe
+		auto reserve_secondary_command_buffer_group() -> graphic::Command_pool_group
+		{
+			return _secondary_command_buffer_pool.add_group();
+		}
+		/// thread-safe
+		auto get_secondary_command_buffer(graphic::Command_pool_group group)
+		{
+			return _secondary_command_buffer_pool.get(group);
+		}
+		/// thread-safe
+		template <typename F>
+		void foreach_secondary_command_buffer(graphic::Command_pool_group group, F&& callback)
+		{
+			_secondary_command_buffer_pool.foreach_in_group(group, callback);
+		}
+		/// thread-safe
+		void execute_group(graphic::Command_pool_group group, vk::CommandBuffer dst_buffer)
+		{
+			_secondary_command_buffer_pool.execute_group(group, dst_buffer);
+		}
+
 		auto active_camera() noexcept -> util::maybe<Camera_state&>;
 
 		auto settings() const -> auto& { return _factory->settings(); }
@@ -276,7 +311,6 @@ namespace mirrage::renderer {
 			}
 		}
 		void debug_draw_sphere(const glm::vec3& center, float radius, const util::Rgb&);
-		auto low_level_draw_queue() -> auto& { return _frame_data.geometry_queue; }
 
 
 		auto profiler() const noexcept -> auto& { return _profiler; }
@@ -289,6 +323,8 @@ namespace mirrage::renderer {
 		Deferred_renderer_factory*        _factory;
 		util::maybe<ecs::Entity_manager&> _entity_manager;
 		graphic::Descriptor_pool          _descriptor_set_pool;
+
+		graphic::Thread_local_command_buffer_pool _secondary_command_buffer_pool;
 
 		std::unique_ptr<GBuffer> _gbuffer;
 		Global_uniforms          _global_uniforms;
@@ -308,7 +344,9 @@ namespace mirrage::renderer {
 		Model _billboard_model;
 
 		std::vector<Render_pass_factory*>         _pass_factories;
+		Object_router_factory                     _router_factory;
 		std::vector<std::unique_ptr<Render_pass>> _passes;
+		Object_router_ptr                         _router;
 
 		util::maybe<Camera_comp::Pool&> _cameras;
 		util::maybe<Camera_state>       _active_camera;

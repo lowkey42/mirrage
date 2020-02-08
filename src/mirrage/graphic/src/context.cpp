@@ -516,6 +516,7 @@ namespace mirrage::graphic {
 				auto sc_info = vk::SwapchainCreateInfoKHR{};
 				sc_info.setSurface(window->surface());
 				sc_info.setClipped(true);
+				sc_info.setCompositeAlpha(vk::CompositeAlphaFlagBitsKHR::eOpaque);
 				sc_info.setPreTransform(capabilities.currentTransform);
 				sc_info.setImageSharingMode(vk::SharingMode::eExclusive);
 				sc_info.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment

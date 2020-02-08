@@ -177,77 +177,87 @@ namespace mirrage::renderer {
 
 		render_pass.set_stage("light_dir"_strid);
 
+		render_pass.bind_descriptor_set(0, frame.global_uniform_set);
 		render_pass.bind_descriptor_sets(1, {_input_attachment_descriptor_set.get_ptr(), 1});
 		render_pass.bind_descriptor_set(2, *_gbuffer.shadowmaps);
 
-		Deferred_push_constants dpc{};
-
-		auto inv_view = _renderer.global_uniforms().inv_view_mat;
-
-		auto ambient_factor = _renderer.settings().amient_light_intensity;
-
 		// directional light
-		for(auto& light : frame.light_queue) {
-			if(auto ll = std::get_if<Directional_light_comp*>(&light.light); ll) {
-				auto& light_data = **ll;
-
-				dpc.model        = light_data.calc_shadowmap_view_proj(*light.transform) * inv_view;
-				dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity() / 10000.0f);
-				dpc.shadow_color = glm::vec4(light_data.shadow_color(),
-				                             light_data.shadow_intensity() / 10000.0f * ambient_factor);
-				dpc.light_data.r = light_data.source_radius() / 1_m;
-				auto dir =
-				        _renderer.global_uniforms().view_mat * glm::vec4(-light.transform->direction(), 0.f);
-				auto dir_len      = glm::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
-				dpc.light_data.g  = dir.x / dir_len;
-				dpc.light_data.b  = dir.y / dir_len;
-				dpc.light_data.a  = dir.z / dir_len;
-				dpc.light_data2.r = gsl::narrow<float>(_gbuffer.shadowmaps ? light_data.shadowmap_id() : -1);
-
-				render_pass.push_constant("dpc"_strid, dpc);
-
-				frame.main_command_buffer.draw(3, 1, 0, 0);
-			}
-		}
-
-		static auto first = true;
-		if(first) {
-			first = false;
-			return;
+		for(auto& light : _directional_lights) {
+			render_pass.push_constant("dpc"_strid, light);
+			frame.main_command_buffer.draw(3, 1, 0, 0);
 		}
 
 		// point light
 		if(_point_light_mesh.ready()) {
 			auto first_point_light = true;
-
-			for(auto& light : frame.light_queue) {
-				if(auto ll = std::get_if<Point_light_comp*>(&light.light); ll) {
-					auto& light_data = **ll;
-
-					if(first_point_light) {
-						first_point_light = false;
-						render_pass.set_stage("light_point"_strid);
-						_point_light_mesh.bind(frame.main_command_buffer, 0);
-					}
-
-					dpc.model = _renderer.global_uniforms().view_proj_mat
-					            * glm::translate(glm::mat4(1), light.transform->position)
-					            * glm::scale(glm::mat4(1.f), glm::vec3(light_data.calc_radius()));
-					dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity() / 10000.0f);
-					dpc.light_data.r = light_data.source_radius() / 1_m;
-					auto pos =
-					        _renderer.global_uniforms().view_mat * glm::vec4(light.transform->position, 1.f);
-					pos /= pos.w;
-					dpc.light_data.g  = pos.x;
-					dpc.light_data.b  = pos.y;
-					dpc.light_data.a  = pos.z;
-					dpc.light_data2.g = gsl::narrow<float>(_gbuffer.colorA.width());
-					dpc.light_data2.b = gsl::narrow<float>(_gbuffer.colorA.height());
-					render_pass.push_constant("dpc"_strid, dpc);
-
-					frame.main_command_buffer.drawIndexed(_point_light_mesh.index_count(), 1, 0, 0, 0);
+			for(auto& light : _directional_lights) {
+				if(first_point_light) {
+					first_point_light = false;
+					render_pass.set_stage("light_point"_strid);
+					_point_light_mesh.bind(frame.main_command_buffer, 0);
 				}
+
+				render_pass.push_constant("dpc"_strid, light);
+
+				frame.main_command_buffer.drawIndexed(_point_light_mesh.index_count(), 1, 0, 0, 0);
 			}
 		}
+
+		_directional_lights.clear();
+		_point_lights.clear();
 	}
+
+	void Deferred_lighting_subpass::handle_obj(Frame_data&  frame,
+	                                           Culling_mask mask,
+	                                           ecs::Entity_facet,
+	                                           Transform_comp&         transform,
+	                                           Directional_light_comp& light_data)
+	{
+		if((mask & frame.camera_culling_mask) == 0)
+			return;
+
+		_directional_lights.emplace_back();
+		auto& dpc = _directional_lights.back();
+
+		const auto inv_view       = _renderer.global_uniforms().inv_view_mat;
+		const auto ambient_factor = _renderer.settings().amient_light_intensity;
+
+		dpc.model         = light_data.calc_shadowmap_view_proj(transform) * inv_view;
+		dpc.light_color   = glm::vec4(light_data.color(), light_data.intensity() / 10000.0f);
+		dpc.shadow_color  = glm::vec4(light_data.shadow_color(),
+                                     light_data.shadow_intensity() / 10000.0f * ambient_factor);
+		dpc.light_data.r  = light_data.source_radius() / 1_m;
+		auto dir          = _renderer.global_uniforms().view_mat * glm::vec4(-transform.direction(), 0.f);
+		auto dir_len      = glm::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
+		dpc.light_data.g  = dir.x / dir_len;
+		dpc.light_data.b  = dir.y / dir_len;
+		dpc.light_data.a  = dir.z / dir_len;
+		dpc.light_data2.r = gsl::narrow<float>(_gbuffer.shadowmaps ? light_data.shadowmap_id() : -1);
+	}
+	void Deferred_lighting_subpass::handle_obj(Frame_data&  frame,
+	                                           Culling_mask mask,
+	                                           ecs::Entity_facet,
+	                                           Transform_comp&   transform,
+	                                           Point_light_comp& light_data)
+	{
+		if((mask & frame.camera_culling_mask) == 0)
+			return;
+
+		_point_lights.emplace_back();
+		auto& dpc = _point_lights.back();
+
+		dpc.model = _renderer.global_uniforms().view_proj_mat
+		            * glm::translate(glm::mat4(1), transform.position)
+		            * glm::scale(glm::mat4(1.f), glm::vec3(light_data.calc_radius()));
+		dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity() / 10000.0f);
+		dpc.light_data.r = light_data.source_radius() / 1_m;
+		auto pos         = _renderer.global_uniforms().view_mat * glm::vec4(transform.position, 1.f);
+		pos /= pos.w;
+		dpc.light_data.g  = pos.x;
+		dpc.light_data.b  = pos.y;
+		dpc.light_data.a  = pos.z;
+		dpc.light_data2.g = gsl::narrow<float>(_gbuffer.colorA.width());
+		dpc.light_data2.b = gsl::narrow<float>(_gbuffer.colorA.height());
+	}
+
 } // namespace mirrage::renderer

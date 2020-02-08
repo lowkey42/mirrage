@@ -60,13 +60,13 @@ namespace mirrage::graphic {
 		Pipeline_description& operator=(const Pipeline_description&);
 
 
-		vk::PipelineVertexInputStateCreateInfo               vertex_input;
-		vk::PipelineInputAssemblyStateCreateInfo             input_assembly;
-		vk::PipelineRasterizationStateCreateInfo             rasterization;
-		util::maybe<vk::PipelineColorBlendStateCreateInfo>   color_blending;
-		util::maybe<vk::PipelineTessellationStateCreateInfo> tessellation;
-		util::maybe<vk::PipelineMultisampleStateCreateInfo>  multisample;
-		util::maybe<vk::PipelineDepthStencilStateCreateInfo> depth_stencil;
+		vk::PipelineVertexInputStateCreateInfo   vertex_input;
+		vk::PipelineInputAssemblyStateCreateInfo input_assembly;
+		vk::PipelineRasterizationStateCreateInfo rasterization;
+		vk::PipelineColorBlendStateCreateInfo    color_blending;
+		vk::PipelineTessellationStateCreateInfo  tessellation;
+		vk::PipelineMultisampleStateCreateInfo   multisample;
+		vk::PipelineDepthStencilStateCreateInfo  depth_stencil;
 
 
 		template <class T, class... Member>
@@ -310,13 +310,71 @@ namespace mirrage::graphic {
 
 
 
+	class Render_pass_stage_ref {
+	  public:
+		Render_pass_stage_ref() = default;
+
+		void begin(vk::CommandBuffer, const Framebuffer& fb) const;
+
+		void push_constant(const Command_buffer& buffer, gsl::span<const char> data) const;
+
+		template <class T>
+		void push_constant(const Command_buffer& buffer, const T& t) const
+		{
+			push_constant(buffer, gsl::span<const char>(reinterpret_cast<const char*>(&t), sizeof(T)));
+		}
+
+		void bind_descriptor_set(const Command_buffer&          buffer,
+		                         std::uint32_t                  firstSet,
+		                         vk::DescriptorSet              set,
+		                         gsl::span<const std::uint32_t> dynamic_offsets = {}) const
+		{
+			bind_descriptor_sets(buffer, firstSet, {&set, 1}, dynamic_offsets);
+		}
+		void bind_descriptor_sets(const Command_buffer& buffer,
+		                          std::uint32_t         firstSet,
+		                          gsl::span<const vk::DescriptorSet>,
+		                          gsl::span<const std::uint32_t> dynamic_offsets = {}) const;
+
+		auto pipeline() const { return _pipeline; }
+		auto pipeline_layout() const { return _pipeline_layout; }
+		auto subpass_index() const { return _subpass_index; }
+
+	  private:
+		friend class Render_pass;
+		Render_pass_stage_ref(vk::RenderPass        render_pass,
+		                      vk::PushConstantRange range,
+		                      vk::Pipeline          pipeline,
+		                      vk::PipelineLayout    pipeline_layout,
+		                      std::size_t           subpass_index)
+		  : _render_pass(render_pass)
+		  , _range(range)
+		  , _pipeline(pipeline)
+		  , _pipeline_layout(pipeline_layout)
+		  , _subpass_index(subpass_index)
+		{
+		}
+
+		vk::RenderPass        _render_pass;
+		vk::PushConstantRange _range;
+		vk::Pipeline          _pipeline;
+		vk::PipelineLayout    _pipeline_layout;
+		std::size_t           _subpass_index;
+	};
+
 	class Render_pass {
 	  public:
 		Render_pass(Render_pass&&);
 		Render_pass& operator=(Render_pass&&);
 		~Render_pass();
 
-		void next_subpass(bool inline_contents = true);
+		auto get_stage(std::size_t  subpass_index,
+		               util::Str_id stage_id,
+		               util::Str_id constant_id = util::Str_id{}) -> Render_pass_stage_ref;
+
+		void next_subpass(vk::SubpassContents = vk::SubpassContents::eInline);
+
+		void set_view(const Command_buffer& buffer, const Framebuffer& fb);
 
 		void set_stage(util::Str_id stage_id);
 
@@ -346,11 +404,24 @@ namespace mirrage::graphic {
 			_post();
 		}
 
-		void unsafe_begin_renderpass(const Command_buffer& buffer, const Framebuffer& fb)
+		template <typename F>
+		void execute(const Command_buffer& buffer, const Framebuffer& fb, vk::SubpassContents contents, F&& f)
 		{
-			_pre(buffer, fb);
+			_pre(buffer, fb, contents);
+			f();
+			_post();
+		}
+
+
+		void unsafe_begin_renderpass(const Command_buffer& buffer,
+		                             const Framebuffer&    fb,
+		                             vk::SubpassContents   contents = vk::SubpassContents::eInline)
+		{
+			_pre(buffer, fb, contents);
 		}
 		void unsafe_end_renderpass() { _post(); }
+
+		auto vk_render_pass() const { return *_render_pass; }
 
 
 	  private:
@@ -375,7 +446,9 @@ namespace mirrage::graphic {
 		            Stages                                stages,
 		            std::vector<Push_constant_map>        push_constants);
 
-		void _pre(const Command_buffer& buffer, const Framebuffer& fb);
+		void _pre(const Command_buffer& buffer,
+		          const Framebuffer&    fb,
+		          vk::SubpassContents = vk::SubpassContents::eInline);
 		void _post();
 	};
 

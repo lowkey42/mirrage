@@ -16,12 +16,11 @@ namespace mirrage::renderer {
 		Blit_pass(Deferred_renderer&, graphic::Render_target_2D& src);
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "Blit"; }
 
 	  private:
-		Deferred_renderer&                   _renderer;
 		graphic::Texture_2D&                 _src;
 		vk::UniqueSampler                    _sampler;
 		graphic::Image_descriptor_set_layout _descriptor_set_layout;

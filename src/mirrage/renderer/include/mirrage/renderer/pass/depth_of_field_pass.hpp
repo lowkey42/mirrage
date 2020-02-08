@@ -22,12 +22,11 @@ namespace mirrage::renderer {
 		                    graphic::Render_target_2D& target);
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "Depth of Fields"; }
 
 	  private:
-		Deferred_renderer&                   _renderer;
 		graphic::Render_target_2D&           _src;
 		graphic::Render_target_2D&           _target;
 		vk::UniqueSampler                    _gbuffer_sampler;

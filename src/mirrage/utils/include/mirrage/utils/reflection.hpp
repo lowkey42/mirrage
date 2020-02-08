@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <sstream>
 #include <string>
 #include <type_traits>
 #include <typeinfo>
@@ -19,6 +20,14 @@ namespace mirrage::util {
 	std::string type_name()
 	{
 		return demangle(typeid(T).name());
+	}
+
+	template <class... Ts>
+	std::string type_names()
+	{
+		std::stringstream ss;
+		(ss << ... << (demangle(typeid(Ts).name()) + ", "));
+		return ss.str();
 	}
 
 	using type_uid_t = int_fast32_t;

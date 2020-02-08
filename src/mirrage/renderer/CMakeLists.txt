@@ -67,6 +67,7 @@ add_library(mirrage_renderer STATIC
 	src/animation_comp.cpp
 	src/billboard.cpp
 	src/camera_comp.cpp
+	src/object_router.cpp
 	src/debug_ui.hpp
 	src/decal.cpp
 	src/deferred_renderer.cpp

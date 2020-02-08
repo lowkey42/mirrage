@@ -25,6 +25,7 @@ add_library(mirrage_graphic STATIC
 	src/swapchain.cpp
 	src/settings.cpp
 	src/texture.cpp
+	src/thread_local_command_buffer_pool.cpp
 	src/transfer_manager.cpp
 	src/vk_wrapper.cpp
 	src/window.cpp

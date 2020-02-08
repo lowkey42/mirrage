@@ -342,9 +342,6 @@ namespace mirrage::renderer {
 	{
 		const auto& bone_data = _bones.at(std::size_t(bone_idx));
 
-		if(bone_data.positions.empty() && bone_data.orientations.empty() && bone_data.scales.empty())
-			return def;
-
 		if(!bone_data.positions.empty()) {
 			float position_t = find_keyframe(bone_data.position_times,
 			                                 time,

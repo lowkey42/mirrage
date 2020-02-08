@@ -22,7 +22,7 @@ namespace mirrage::renderer {
 
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto load_texture(int width, int height, int channels, const std::uint8_t* data)
 		        -> std::shared_ptr<void> override;
@@ -87,7 +87,6 @@ namespace mirrage::renderer {
 			auto load_texture(const asset::AID&) -> std::shared_ptr<void>;
 		};
 
-		Deferred_renderer&                _renderer;
 		vk::UniqueSampler                 _sampler;
 		vk::UniqueDescriptorSetLayout     _descriptor_set_layout;
 		std::shared_ptr<Texture_cache>    _texture_cache;

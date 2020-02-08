@@ -304,6 +304,12 @@ namespace mirrage::graphic {
 	auto Device::create_command_buffer_pool(Queue_tag queue_family, bool resetable, bool short_lived)
 	        -> Command_buffer_pool
 	{
+
+		return {*_device, create_vk_command_pool(queue_family, resetable, short_lived)};
+	}
+	auto Device::create_vk_command_pool(Queue_tag queue_family, bool resetable, bool short_lived)
+	        -> vk::UniqueCommandPool
+	{
 		auto real_familiy = _queue_family_mappings.find(queue_family);
 		MIRRAGE_INVARIANT(real_familiy != _queue_family_mappings.end(),
 		                  "Unknown queue family tag: " << queue_family.str());
@@ -315,9 +321,8 @@ namespace mirrage::graphic {
 		if(short_lived)
 			flags = flags | vk::CommandPoolCreateFlagBits::eTransient;
 
-		return {*_device,
-		        _device->createCommandPoolUnique(
-		                vk::CommandPoolCreateInfo{flags, std::get<0>(real_familiy->second)})};
+		return _device->createCommandPoolUnique(
+		        vk::CommandPoolCreateInfo{flags, std::get<0>(real_familiy->second)});
 	}
 
 	auto Device::create_descriptor_set_layout(gsl::span<const vk::DescriptorSetLayoutBinding> bindings)

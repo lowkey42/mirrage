@@ -33,6 +33,17 @@ namespace mirrage {
 		                               .entity_builder("rotation_test_lbs")
 		                               .position({-4, 0, -0.5f + 1.f})
 		                               .create();
+
+		for(int x = 0; x < 10; x++) {
+			for(int y = 0; y < 10; y++) {
+				for(int z = 0; z < 10; z++) {
+					_meta_system.entities()
+					        .entity_builder("rotation_test")
+					        .position({x * 2, 10 + z * 2, y * 2})
+					        .create();
+				}
+			}
+		}
 	}
 
 	void Test_animation_screen::_draw()
@@ -113,9 +124,9 @@ namespace mirrage {
 
 
 				if(anim.paused())
-					anim.pause(!ImGui::Button("Continue"));
+					anim.pause(!ImGui::Button("Continue##monk"));
 				else
-					anim.pause(ImGui::Button("Pause"));
+					anim.pause(ImGui::Button("Pause##monk"));
 
 				ImGui::SameLine();
 
@@ -144,9 +155,9 @@ namespace mirrage {
 		ImGui::TextUnformatted("Rotation Test");
 		_animation_test2_dqs.get<renderer::Simple_animation_controller_comp>().process([&](auto& anim) {
 			if(anim.paused())
-				anim.pause(!ImGui::Button("Continue"));
+				anim.pause(!ImGui::Button("Continue##rot"));
 			else
-				anim.pause(ImGui::Button("Pause"));
+				anim.pause(ImGui::Button("Pause##rot"));
 
 			_animation_test2_lbs.get<renderer::Simple_animation_controller_comp>().process(
 			        [&](auto& anim_lbs) { anim_lbs.pause(anim.paused()); });

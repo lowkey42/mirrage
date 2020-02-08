@@ -24,9 +24,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(renderer.noise_descriptor_set_layout());
@@ -55,7 +52,7 @@ namespace mirrage::renderer {
 
 
 	Blit_pass::Blit_pass(Deferred_renderer& renderer, graphic::Render_target_2D& src)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _src(src)
 	  , _sampler(renderer.device().create_sampler(1,
 	                                              vk::SamplerAddressMode::eClampToEdge,
@@ -71,8 +68,9 @@ namespace mirrage::renderer {
 
 	void Blit_pass::update(util::Time) {}
 
-	void Blit_pass::draw(Frame_data& frame)
+	void Blit_pass::post_draw(Frame_data& frame)
 	{
+		auto _ = _mark_subpass(frame);
 
 		_render_pass.execute(frame.main_command_buffer, _framebuffers.at(frame.swapchain_image), [&] {
 			auto descriptor_sets = std::array<vk::DescriptorSet, 3>{

@@ -19,6 +19,9 @@
 
 namespace mirrage::renderer {
 
+	struct Particle_system_update_tag {
+	};
+
 	struct Particle {
 		glm::vec4 position; // xyz + ttl_left
 		glm::vec4 velocity; // xyz + ttl_initial

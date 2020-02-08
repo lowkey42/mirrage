@@ -16,12 +16,9 @@ namespace mirrage::renderer {
 		Clear_pass(Deferred_renderer&);
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "Clear"; }
-
-	  private:
-		Deferred_renderer& _renderer;
 	};
 
 	class Clear_pass_factory : public Render_pass_factory {

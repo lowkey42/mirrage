@@ -31,9 +31,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
@@ -114,7 +111,7 @@ namespace mirrage::renderer {
 	Taa_pass::Taa_pass(Deferred_renderer&         renderer,
 	                   graphic::Render_target_2D& write,
 	                   graphic::Texture_2D&       read)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _sampler(renderer.device().create_sampler(1,
 	                                              vk::SamplerAddressMode::eClampToEdge,
 	                                              vk::BorderColor::eIntOpaqueBlack,
@@ -143,8 +140,9 @@ namespace mirrage::renderer {
 
 	void Taa_pass::update(util::Time dt) { _time_acc += dt.value(); }
 
-	void Taa_pass::draw(Frame_data& frame)
+	void Taa_pass::post_draw(Frame_data& frame)
 	{
+		auto _ = _mark_subpass(frame);
 
 		if(_first_frame) {
 			_first_frame = false;

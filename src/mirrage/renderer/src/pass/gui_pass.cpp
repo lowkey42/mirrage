@@ -26,9 +26,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(desc_set_layout);
 
@@ -78,7 +75,7 @@ namespace mirrage::renderer {
 
 
 	Gui_pass::Gui_pass(Deferred_renderer& drenderer, Engine&, std::shared_ptr<void> last_state)
-	  : _renderer(drenderer)
+	  : Render_pass(drenderer)
 	  , _sampler(drenderer.device().create_sampler(1,
 	                                               vk::SamplerAddressMode::eClampToEdge,
 	                                               vk::BorderColor::eIntOpaqueBlack,
@@ -123,9 +120,11 @@ namespace mirrage::renderer {
 
 	void Gui_pass::update(util::Time) {}
 
-	void Gui_pass::draw(Frame_data& frame)
+	void Gui_pass::post_draw(Frame_data& frame)
 	{
 		MIRRAGE_INVARIANT(_current_command_buffer.is_nothing(), "Gui_pass::draw calls cannot be nested!");
+
+		auto _ = _mark_subpass(frame);
 
 		_current_command_buffer = frame.main_command_buffer;
 		_current_framebuffer    = _framebuffers.at(frame.swapchain_image);

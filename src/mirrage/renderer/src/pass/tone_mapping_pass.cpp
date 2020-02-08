@@ -43,9 +43,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
@@ -142,7 +139,7 @@ namespace mirrage::renderer {
 	Tone_mapping_pass::Tone_mapping_pass(Deferred_renderer&         renderer,
 	                                     graphic::Render_target_2D& src,
 	                                     graphic::Render_target_2D& target)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _src(src)
 	  , _target(target)
 
@@ -276,8 +273,10 @@ namespace mirrage::renderer {
 
 	void Tone_mapping_pass::update(util::Time) {}
 
-	void Tone_mapping_pass::draw(Frame_data& frame)
+	void Tone_mapping_pass::post_draw(Frame_data& frame)
 	{
+		auto _ = _mark_subpass(frame);
+
 		if(_first_frame) {
 			_first_frame = false;
 			// clear all internal storage on first exec

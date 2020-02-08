@@ -2,6 +2,7 @@
 
 #include <mirrage/renderer/light_comp.hpp>
 #include <mirrage/renderer/model_comp.hpp>
+#include <mirrage/renderer/pass/deferred_pass.hpp>
 
 #include <mirrage/ecs/entity_set_view.hpp>
 #include <mirrage/graphic/window.hpp>
@@ -50,8 +51,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
 			pipeline.depth_stencil =
 			        vk::PipelineDepthStencilStateCreateInfo({}, true, true, vk::CompareOp::eAlways);
 
@@ -126,9 +125,8 @@ namespace mirrage::renderer {
 			                                  vk::ImageLayout::eShaderReadOnlyOptimal});
 
 			auto pipeline                    = graphic::Pipeline_description{};
+			pipeline.rasterization.cullMode  = vk::CullModeFlagBits::eNone;
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
 			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{
                     vk::PipelineDepthStencilStateCreateFlags{}, true, false, vk::CompareOp::eLess};
 
@@ -246,9 +244,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
@@ -301,8 +296,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
 			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{
                     vk::PipelineDepthStencilStateCreateFlags{}, true, false, vk::CompareOp::eLess};
 
@@ -437,7 +430,7 @@ namespace mirrage::renderer {
 	Transparent_pass::Transparent_pass(Deferred_renderer&         renderer,
 	                                   ecs::Entity_manager&       ecs,
 	                                   graphic::Render_target_2D& target)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _ecs(ecs)
 	  , _revealage_format(get_revealage_format(renderer.device()))
 	  , _accum(renderer.device(),
@@ -482,6 +475,10 @@ namespace mirrage::renderer {
 	            vk::PipelineStageFlagBits::eFragmentShader,
 	            vk::AccessFlagBits::eShaderRead))
 	  , _light_uniforms_tmp(sizeof(Directional_light_uniforms) * 4 + 4 * 4)
+	  , _stages_particle_lit{_renderer.reserve_secondary_command_buffer_group(),
+	                         _accum_render_pass.get_stage(0, "particle_lit"_strid, "dpc"_strid)}
+	  , _stages_particle_unlit{_renderer.reserve_secondary_command_buffer_group(),
+	                           _accum_render_pass.get_stage(0, "particle"_strid, "dpc"_strid)}
 	{
 		auto light_data_info = vk::DescriptorBufferInfo(_light_uniforms.buffer(), 0, VK_WHOLE_SIZE);
 
@@ -595,16 +592,92 @@ namespace mirrage::renderer {
 	} // namespace mirrage::renderer
 
 
-	void Transparent_pass::update(util::Time) {}
-
-	void Transparent_pass::draw(Frame_data& frame)
+	void Transparent_pass::handle_obj(Frame_data&           frame,
+	                                  Culling_mask          mask,
+	                                  Particle_system_comp& particle_sys_comp,
+	                                  Particle_emitter&     particle_emitter)
 	{
-		Push_constants dpc{};
-
-		// TODO: contains duplicated code from deferred_geometry_subpass. Should be refactor-able after the culling-rewrite
-		if(!_renderer.billboard_model().ready())
+		if((mask & frame.camera_culling_mask) == 0 || !_renderer.billboard_model().ready()
+		   || !particle_emitter.drawable() || particle_emitter.particle_count() <= 0)
 			return;
 
+		auto& type_cfg = *particle_emitter.cfg().type;
+
+		auto* stage = &_stages_particle_lit;
+
+		if(type_cfg.blend == Particle_blend_mode::transparent_unlit) {
+			stage = &_stages_particle_unlit;
+		} else if(type_cfg.blend == Particle_blend_mode::transparent) {
+			stage = &_stages_particle_lit;
+		} else
+			return;
+
+		auto [cmd_buffer, _] = _get_cmd_buffer(frame, *stage);
+
+		auto desc_sets = std::array<vk::DescriptorSet, 2>{type_cfg.material->desc_set(),
+		                                                  particle_emitter.particle_uniforms()};
+		stage->stage.bind_descriptor_sets(cmd_buffer, 3, desc_sets);
+
+		// bind model
+		auto model = type_cfg.model ? &*type_cfg.model : &_renderer.billboard_model();
+		model->bind_mesh(cmd_buffer, 0);
+
+		// bind particle data
+		cmd_buffer.bindVertexBuffers(
+		        1,
+		        {particle_emitter.particle_buffer()},
+		        {vk::DeviceSize(particle_emitter.particle_offset()) * vk::DeviceSize(sizeof(Particle))});
+
+		Deferred_push_constants dpc{};
+		if(type_cfg.material->has_emission()) {
+			auto emissive_color = glm::vec4(1, 1, 1, 1000);
+			if(auto e = particle_sys_comp.owner(_ecs); e.is_some()) {
+				e.get_or_throw().process<Material_property_comp>(
+				        [&](auto& m) { emissive_color = m.emissive_color; });
+			}
+			emissive_color.a /= 10000.0f;
+			dpc.light_data = emissive_color;
+		} else {
+			dpc.light_data = glm::vec4(0, 0, 0, 0);
+		}
+
+		dpc.light_data2.w = static_cast<float>(_renderer.settings().transparent_particle_mip_level);
+		dpc.model         = glm::mat4(1);
+		if(type_cfg.geometry == Particle_geometry::billboard) {
+			dpc.model    = glm::inverse(_renderer.global_uniforms().view_mat);
+			dpc.model[3] = glm::vec4(0, 0, 0, 1);
+		}
+		stage->stage.push_constant(cmd_buffer, dpc);
+
+		// draw instanced
+		auto& sub_mesh = model->sub_meshes().at(0);
+		cmd_buffer.drawIndexed(sub_mesh.index_count,
+		                       std::uint32_t(particle_emitter.particle_count()),
+		                       sub_mesh.index_offset,
+		                       0,
+		                       0);
+	}
+
+	auto Transparent_pass::_get_cmd_buffer(Frame_data& frame, Stage_data& stage_ref)
+	        -> std::pair<vk::CommandBuffer, bool>
+	{
+		auto [cmd_buffer, empty] = _renderer.get_secondary_command_buffer(stage_ref.group);
+		if(empty) {
+			auto mip_level = _renderer.settings().transparent_particle_mip_level;
+
+			stage_ref.stage.begin(cmd_buffer, _accum_framebuffers.at(gsl::narrow<std::size_t>(mip_level)));
+
+			auto desc_sets = std::array<vk::DescriptorSet, 3>{frame.global_uniform_set,
+			                                                  *_accum_descriptor_sets.at(mip_level),
+			                                                  *_renderer.gbuffer().shadowmaps};
+			stage_ref.stage.bind_descriptor_sets(cmd_buffer, 0, desc_sets);
+		}
+
+		return {cmd_buffer, empty};
+	}
+
+	void Transparent_pass::pre_draw(Frame_data& frame)
+	{
 		// update _light_uniforms
 		auto light_uniforms_ptr = _light_uniforms_tmp.data();
 		auto lights_out         = gsl::span<Directional_light_uniforms>(
@@ -632,18 +705,14 @@ namespace mirrage::renderer {
 		*reinterpret_cast<std::int32_t*>(light_uniforms_ptr) = light_count;
 
 		_light_uniforms.update(frame.main_command_buffer, 0, _light_uniforms_tmp);
+	}
 
+	void Transparent_pass::post_draw(Frame_data& frame)
+	{
+		auto _ = _mark_subpass(frame);
 
-		// TODO: draw normal/anim models
-
-		auto particle_begin =
-		        std::find_if(frame.particle_queue.begin(), frame.particle_queue.end(), [&](auto& p) {
-			        return (p.type_cfg->blend == Particle_blend_mode::transparent
-			                || p.type_cfg->blend == Particle_blend_mode::transparent_unlit)
-			               && (p.culling_mask & 1) != 0 && p.emitter->drawable();
-		        });
-
-		if(particle_begin == frame.particle_queue.end())
+		// TODO: contains duplicated code from deferred_geometry_subpass. Should be refactor-able after the culling-rewrite
+		if(!_renderer.billboard_model().ready())
 			return;
 
 		auto mip_level = _renderer.settings().transparent_particle_mip_level;
@@ -685,79 +754,11 @@ namespace mirrage::renderer {
 		}
 
 		auto& fb = _accum_framebuffers.at(gsl::narrow<std::size_t>(mip_level));
-		_accum_render_pass.execute(frame.main_command_buffer, fb, [&] {
-			auto last_material = static_cast<const Material*>(nullptr);
-			auto last_model    = static_cast<const Model*>(nullptr);
-
-			auto desc_sets = std::array<vk::DescriptorSet, 3>{frame.global_uniform_set,
-			                                                  *_accum_descriptor_sets.at(mip_level),
-			                                                  *_renderer.gbuffer().shadowmaps};
-			_accum_render_pass.bind_descriptor_sets(0, desc_sets);
-
-			// draw particles
-			for(auto& particle : util::range(particle_begin, frame.particle_queue.end())) {
-				if((particle.culling_mask & 1) == 0 || !particle.emitter->drawable())
-					break;
-
-				if(particle.type_cfg->blend == Particle_blend_mode::transparent_unlit) {
-					_accum_render_pass.set_stage("particle"_strid);
-				} else if(particle.type_cfg->blend == Particle_blend_mode::transparent) {
-					_accum_render_pass.set_stage("particle_lit"_strid);
-				} else
-					break;
-
-				auto material = &*particle.type_cfg->material;
-				if(material != last_material) {
-					last_material = material;
-					last_material->bind(_accum_render_pass, 3);
-				}
-
-				// bind emitter data
-				_accum_render_pass.bind_descriptor_set(4, particle.emitter->particle_uniforms());
-
-				// bind model
-				auto model =
-				        particle.type_cfg->model ? &*particle.type_cfg->model : &_renderer.billboard_model();
-				if(model != last_model) {
-					last_model = model;
-					last_model->bind_mesh(frame.main_command_buffer, 0);
-				}
-
-				auto emissive_color = glm::vec4(1, 1, 1, 1000);
-				if(auto e = _ecs.get(particle.entity); e.is_some()) {
-					e.get_or_throw().process<Material_property_comp>(
-					        [&](auto& m) { emissive_color = m.emissive_color; });
-				}
-				emissive_color.a /= 10000.0f;
-				if(last_material && !last_material->has_emission()) {
-					emissive_color.a = 0;
-				}
-				dpc.light_data = emissive_color;
-
-				// bind particle data
-				frame.main_command_buffer.bindVertexBuffers(
-				        1,
-				        {particle.emitter->particle_buffer()},
-				        {vk::DeviceSize(particle.emitter->particle_offset())
-				         * vk::DeviceSize(sizeof(Particle))});
-
-				dpc.light_data2.w = static_cast<float>(mip_level);
-				dpc.model         = glm::mat4(1);
-				if(particle.type_cfg->geometry == Particle_geometry::billboard) {
-					dpc.model    = glm::inverse(_renderer.global_uniforms().view_mat);
-					dpc.model[3] = glm::vec4(0, 0, 0, 1);
-				}
-				_accum_render_pass.push_constant("dpc"_strid, dpc);
-
-				// draw instanced
-				auto& sub_mesh = last_model->sub_meshes().at(0);
-				frame.main_command_buffer.drawIndexed(sub_mesh.index_count,
-				                                      std::uint32_t(particle.emitter->particle_count()),
-				                                      sub_mesh.index_offset,
-				                                      0,
-				                                      0);
-			}
-		});
+		_accum_render_pass.execute(
+		        frame.main_command_buffer, fb, vk::SubpassContents::eSecondaryCommandBuffers, [&] {
+			        _renderer.execute_group(_stages_particle_lit.group, frame.main_command_buffer);
+			        _renderer.execute_group(_stages_particle_unlit.group, frame.main_command_buffer);
+		        });
 
 
 		if(mip_level > _renderer.settings().upsample_transparency_to_mip) {
@@ -792,6 +793,8 @@ namespace mirrage::renderer {
 
 			mip_level = target_mip;
 		}
+
+		// TODO: draw normal/anim models
 
 		// compose into frame
 		_compose_render_pass.execute(frame.main_command_buffer, _compose_framebuffer, [&] {
