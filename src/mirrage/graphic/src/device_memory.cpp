@@ -496,7 +496,7 @@ namespace mirrage::graphic {
 		auto Buddy_block_alloc<MinSize, MaxSize>::alloc(std::uint32_t size, std::uint32_t alignment)
 		        -> util::maybe<Device_memory>
 		{
-
+			// protected by the mutex locked in Device_memory_pool::alloc, that is the same as _free_mutex
 			if(size < alignment) {
 				size = alignment;
 			} else if(size % alignment != 0) {

@@ -47,7 +47,7 @@ namespace mirrage {
 
 		std::string default_output_directory = "output";
 
-		renderer::Skinning_type skinning_type = renderer::Skinning_type::linear_blend_skinning;
+		renderer::Skinning_type skinning_type = renderer::Skinning_type::dual_quaternion_skinning;
 
 		bool print_material_info = false;
 		bool print_animations    = false;

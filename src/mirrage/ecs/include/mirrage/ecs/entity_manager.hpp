@@ -49,6 +49,11 @@ namespace mirrage::ecs {
 			return *this;
 		}
 
+		auto scale(glm::vec3 v) -> Entity_builder&
+		{
+			_scale = v;
+			return *this;
+		}
 		auto position(glm::vec3 v) -> Entity_builder&
 		{
 			_position = v;
@@ -99,6 +104,7 @@ namespace mirrage::ecs {
 		std::string            _blueprint;
 		Rotation               _rotation;
 		util::maybe<glm::vec3> _position;
+		util::maybe<glm::vec3> _scale;
 		bool                   _look_at = false;
 	};
 

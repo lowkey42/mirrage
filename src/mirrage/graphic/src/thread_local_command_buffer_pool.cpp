@@ -24,11 +24,13 @@ namespace mirrage::graphic {
 
 	void Thread_local_command_buffer_pool::register_thread(std::thread::id id)
 	{
+		LOG(plog::debug) << "TLS thread registered: " << id;
+
 		auto _ = std::scoped_lock(_mutex);
 		for(auto& map : _per_thread) {
-			if(auto iter = map.find(std::this_thread::get_id()); iter == map.end()) {
+			if(auto iter = map.find(id); iter == map.end()) {
 				map.emplace(std::piecewise_construct,
-				            std::forward_as_tuple(std::this_thread::get_id()),
+				            std::forward_as_tuple(id),
 				            std::forward_as_tuple(_device.create_vk_command_pool(_queue, false, true)));
 			}
 		}

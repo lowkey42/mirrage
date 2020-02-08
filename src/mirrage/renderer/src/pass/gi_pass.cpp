@@ -1109,7 +1109,7 @@ namespace mirrage::renderer {
 	namespace {
 		bool is_zero(float v)
 		{
-			constexpr auto epsilon = 0.0000001f;
+			constexpr auto epsilon = 0.0001f;
 			return v > -epsilon && v < epsilon;
 		}
 	} // namespace

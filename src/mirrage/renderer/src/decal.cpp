@@ -26,7 +26,7 @@ namespace mirrage::renderer {
 	}
 
 	namespace {
-		auto near_zero(float v) { return std::abs(v) < 0.0000001f; }
+		auto near_zero(float v) { return std::abs(v) < 0.0001f; }
 	} // namespace
 	auto construct_push_constants(const Decal& bb, const glm::mat4& model) -> Decal_push_constants
 	{

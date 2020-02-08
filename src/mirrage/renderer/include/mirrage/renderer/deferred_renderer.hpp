@@ -14,6 +14,7 @@
 #include <mirrage/utils/min_max.hpp>
 #include <mirrage/utils/small_vector.hpp>
 
+#include <async++.h>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/vec3.hpp>
 #include <vulkan/vulkan.hpp>
@@ -165,6 +166,8 @@ namespace mirrage::renderer {
 		auto compute_storage_buffer_layout() const { return *_compute_storage_buffer_layout; }
 		auto compute_uniform_buffer_layout() const { return *_compute_uniform_buffer_layout; }
 
+		auto scheduler() -> auto& { return _scheduler; }
+		auto scheduler_threads() const -> auto& { return _scheduler_threads; }
 
 	  private:
 		friend class Deferred_renderer;
@@ -199,6 +202,9 @@ namespace mirrage::renderer {
 		vk::UniqueDescriptorSetLayout   _compute_uniform_buffer_layout;
 		std::unique_ptr<Asset_loaders>  _asset_loaders;
 		Render_pass_mask                _all_passes_mask;
+		std::mutex                      _scheduler_mutex;
+		std::vector<std::thread::id>    _scheduler_threads;
+		async::threadpool_scheduler     _scheduler;
 
 		class Profiler_menu;
 		class Settings_menu;
@@ -312,6 +318,8 @@ namespace mirrage::renderer {
 		}
 		void debug_draw_sphere(const glm::vec3& center, float radius, const util::Rgb&);
 
+		auto scheduler() -> auto& { return _factory->scheduler(); }
+		auto scheduler_threads() const -> auto& { return _factory->scheduler_threads(); }
 
 		auto profiler() const noexcept -> auto& { return _profiler; }
 		auto profiler() noexcept -> auto& { return _profiler; }

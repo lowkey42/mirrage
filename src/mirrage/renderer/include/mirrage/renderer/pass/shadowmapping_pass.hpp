@@ -3,6 +3,7 @@
 #include <mirrage/renderer/animation.hpp>
 #include <mirrage/renderer/deferred_renderer.hpp>
 #include <mirrage/renderer/light_comp.hpp>
+#include <mirrage/renderer/model_comp.hpp>
 #include <mirrage/renderer/object_router.hpp>
 
 #include <mirrage/ecs/components/transform_comp.hpp>
@@ -61,6 +62,7 @@ namespace mirrage::renderer {
 		                const glm::vec4& emissive_color,
 		                const glm::mat4& transform,
 		                const Model&,
+		                const Material_override&,
 		                const Sub_mesh&);
 		void handle_obj(Frame_data&,
 		                Culling_mask,
@@ -68,6 +70,7 @@ namespace mirrage::renderer {
 		                const glm::vec4& emissive_color,
 		                const glm::mat4& transform,
 		                const Model&,
+		                gsl::span<const Material_override>,
 		                Skinning_type skinning_type,
 		                std::uint32_t pose_offset);
 

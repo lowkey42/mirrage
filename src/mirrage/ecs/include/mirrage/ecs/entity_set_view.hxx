@@ -203,6 +203,20 @@ namespace mirrage::ecs {
 		}
 
 		template <class SortedPools, class UnsortedPools, class C1, class... Cs>
+		void Entity_set_iterator<SortedPools, UnsortedPools, C1, Cs...>::estimate_advance(std::size_t step)
+		{
+			util::foreach_in_tuple(_iterators, [&](auto index, auto& iter) {
+				constexpr auto I   = decltype(index)::value;
+				auto&&         end = std::get<I>(_iterator_ends);
+
+				if(iter != end)
+					iter += step; //std::advance(iter, step);
+			});
+
+			_find_next_valid();
+		}
+
+		template <class SortedPools, class UnsortedPools, class C1, class... Cs>
 		void Entity_set_iterator<SortedPools, UnsortedPools, C1, Cs...>::_find_next_valid()
 		{
 			auto entity = Entity_id(0);

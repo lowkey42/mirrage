@@ -38,7 +38,6 @@ namespace mirrage::renderer {
 		entities.register_component_type<Decal_comp>();
 		entities.register_component_type<Model_comp>();
 		entities.register_component_type<Pose_comp>();
-		entities.register_component_type<Shared_pose_comp>();
 
 		auto depth_info = vk::DescriptorImageInfo(
 		        vk::Sampler{}, r.gbuffer().depth.view(0), vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -277,19 +276,21 @@ namespace mirrage::renderer {
 		}
 	} // namespace
 
-	void Deferred_geometry_subpass::handle_obj(Frame_data&       frame,
-	                                           Culling_mask      mask,
-	                                           ecs::Entity_facet entity,
-	                                           const glm::vec4&  emissive_color,
-	                                           const glm::mat4&  transform,
-	                                           const Model&      model,
-	                                           const Sub_mesh&   sub_mesh)
+	void Deferred_geometry_subpass::handle_obj(Frame_data&              frame,
+	                                           Culling_mask             mask,
+	                                           ecs::Entity_facet        entity,
+	                                           const glm::vec4&         emissive_color,
+	                                           const glm::mat4&         transform,
+	                                           const Model&             model,
+	                                           const Material_override& material_override,
+	                                           const Sub_mesh&          sub_mesh)
 	{
 		if((mask & frame.camera_culling_mask) == 0)
 			return;
 
-		auto& material = *sub_mesh.material;
-		auto  pcs      = create_model_pcs(_renderer, entity, emissive_color, transform);
+		auto& material =
+		        material_override.material.ready() ? *material_override.material : *sub_mesh.material;
+		auto pcs = create_model_pcs(_renderer, entity, emissive_color, transform);
 
 		auto draw = [&](auto& stage) {
 			auto [cmd_buffer, _] = _get_cmd_buffer(frame, stage);
@@ -309,24 +310,28 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void Deferred_geometry_subpass::handle_obj(Frame_data&       frame,
-	                                           Culling_mask      mask,
-	                                           ecs::Entity_facet entity,
-	                                           const glm::vec4&  emissive_color,
-	                                           const glm::mat4&  transform,
-	                                           const Model&      model,
-	                                           Skinning_type     skinning_type,
-	                                           std::uint32_t     pose_offset)
+	void Deferred_geometry_subpass::handle_obj(Frame_data&                        frame,
+	                                           Culling_mask                       mask,
+	                                           ecs::Entity_facet                  entity,
+	                                           const glm::vec4&                   emissive_color,
+	                                           const glm::mat4&                   transform,
+	                                           const Model&                       model,
+	                                           gsl::span<const Material_override> material_overrides,
+	                                           Skinning_type                      skinning_type,
+	                                           std::uint32_t                      pose_offset)
 	{
 		if((mask & frame.camera_culling_mask) == 0)
 			return;
 
 		auto pcs = create_model_pcs(_renderer, entity, emissive_color, transform);
 
-		for(auto& sub_mesh : model.sub_meshes()) {
-			auto& material = *sub_mesh.material;
+		for(auto&& [index, sub_mesh] : util::with_index(model.sub_meshes())) {
+			auto mat_override =
+			        material_overrides.size() > index ? material_overrides[index] : Material_override{};
 
-			auto draw = [&](auto& stage_map) {
+			auto& material = mat_override.material.ready() ? *mat_override.material : *sub_mesh.material;
+
+			auto draw = [&, &sub_mesh = sub_mesh](auto& stage_map) {
 				auto substance = material.substance_id();
 				if(skinning_type == Skinning_type::dual_quaternion_skinning)
 					substance = "dq_"_strid + substance;

@@ -326,7 +326,8 @@ namespace mirrage::renderer {
 	                                    const glm::vec4&,
 	                                    const glm::mat4& transform,
 	                                    const Model&     model,
-	                                    const Sub_mesh&  sub_mesh)
+	                                    const Material_override&,
+	                                    const Sub_mesh& sub_mesh)
 	{
 		Shadowmapping_pass_impl_helper::handle_obj<Shadowpass_stage::normal>(
 		        *this, frame, mask, transform, [&](auto&& cmd_buffer, auto&& stage) {
@@ -342,8 +343,9 @@ namespace mirrage::renderer {
 	                                    const glm::vec4&,
 	                                    const glm::mat4& transform,
 	                                    const Model&     model,
-	                                    Skinning_type    skinning_type,
-	                                    std::uint32_t    pose_offset)
+	                                    gsl::span<const Material_override>,
+	                                    Skinning_type skinning_type,
+	                                    std::uint32_t pose_offset)
 	{
 		auto callback = [&](auto&& cmd_buffer, auto&& stage) {
 			auto first = true;

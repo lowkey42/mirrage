@@ -75,6 +75,7 @@ int main(int argc, char** argv)
 	        ("i,interactive", "Interactivly request paths for missing textures", cxxopts::value<bool>()->default_value("false"))
 	        ("a,interactive_all", "Interactivly request all texture paths", cxxopts::value<bool>()->default_value("false"))
 	        ("trim_bones", "Remove bones that are not referenced by any vertices or other bones", cxxopts::value<bool>())
+			("dq_skinning", "Enables dual quaternion skinning", cxxopts::value<bool>()->default_value("true"))
 	        ("only_animations", "Only convert animations and skip model, materials, ...", cxxopts::value<bool>())
 	        ("skip_materials", "Don't convert materials and textures", cxxopts::value<bool>())
 	        ("scale", "Global scale factor of the model (e.g. for Blender FBX export)", cxxopts::value<float>())
@@ -141,6 +142,12 @@ int main(int argc, char** argv)
 
 	dxt_level.process([&](auto l) { config.dxt_level = l; });
 
+	if(get_arg<bool>(options, "dq_skinning").get_or(true))
+		config.skinning_type = renderer::Skinning_type::dual_quaternion_skinning;
+	else
+		config.skinning_type = renderer::Skinning_type::linear_blend_skinning;
+		
+	
 	auto output = output_arg.get_or(config.default_output_directory);
 
 	create_directory(output);

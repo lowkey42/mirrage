@@ -11,7 +11,10 @@
 
 namespace mirrage::ecs::components {
 
-	struct Transform_comp : public ecs::Component<Transform_comp> {
+	struct Transform_comp : public ecs::Component<Transform_comp,
+	                                              ecs::Compact_index_policy,
+	                                              ecs::Pool_storage_policy<2048, 32, Transform_comp>> {
+
 		static constexpr const char* name() { return "Transform"; }
 		using Component::Component;
 

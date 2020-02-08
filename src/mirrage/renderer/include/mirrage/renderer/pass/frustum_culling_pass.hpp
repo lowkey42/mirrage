@@ -29,7 +29,8 @@ namespace mirrage::renderer {
 		auto name() const noexcept -> const char* override { return "Frustum_culling"; }
 
 	  private:
-		ecs::Entity_manager& _ecs;
+		ecs::Entity_manager&           _ecs;
+		std::vector<async::task<void>> _tasks;
 	};
 
 	class Frustum_culling_pass_factory : public Render_pass_factory {
@@ -122,39 +123,50 @@ namespace mirrage::renderer {
 
 
 		// models
-		for(auto& [entity, model_comp, transform] :
-		    _ecs.list<ecs::Entity_facet, Model_comp, Transform_comp>()) {
-			ecs::Entity_facet entity_    = entity;
-			auto&             transform_ = transform;
+		auto model_handler = [&](auto&& element) {
+			auto& [entity, model_comp, transform] = element;
 
-			auto&      model      = *model_comp.model();
+			ecs::Entity_facet entity_     = entity;
+			auto&             transform_  = transform;
+			auto&             model_comp_ = model_comp;
+
 			const auto entity_pos = transform.position;
 			const auto scale      = transform.scale;
 			const auto max_scale  = util::max(scale.x, scale.y, scale.z);
 			const auto cam_only   = !entity_.has<Shadowcaster_comp>();
 
-			const auto& sub_meshes = model.sub_meshes();
-			const auto  offset     = model.bounding_sphere_offset();
-			const auto  radius     = model.bounding_sphere_radius();
+			const auto offset = model_comp.bounding_sphere_offset();
+			const auto radius = model_comp.bounding_sphere_radius();
 
 			const auto sphere_center = entity_pos + glm::rotate(transform.orientation, offset * scale);
 			const auto sphere_radius = radius * max_scale;
 
 			router.process_sub_objs(sphere_center, sphere_radius, cam_only, [&](auto mask, auto&& draw) {
+				auto&       model      = *model_comp_.model();
+				const auto& sub_meshes = model.sub_meshes();
+
 				auto emissive = entity_.get<Material_property_comp>().process(
 				        glm::vec4(1, 1, 1, 1000), [](auto& m) { return m.emissive_color; });
 
-				const auto mat = transform_.to_mat4();
+				auto material_overrides = entity_.get<Material_override_comp>().process(
+				        gsl::span<Material_override>(),
+				        [&](auto& mo) { return gsl::span<Material_override>(mo.material_overrides); });
 
-				if(!router.process_always_visible_obj(mask, entity_, emissive, mat, model)) {
+				auto mat = transform_.to_mat4() * model_comp_.local_transform();
+
+				if(!router.process_always_visible_obj(
+				           mask, entity_, emissive, mat, model, material_overrides)) {
 					if(sub_meshes.size() <= 4) {
 						// skip sub-object culling if the number of sub-objects is low, to reduce culling overhead
-						for(auto& sub : sub_meshes) {
-							router.process_always_visible_obj(mask, entity_, emissive, mat, model, sub);
+						for(auto&& [index, sub] : util::with_index(sub_meshes)) {
+							auto material = material_overrides.size() > index ? material_overrides[index]
+							                                                  : Material_override{};
+							router.process_always_visible_obj(
+							        mask, entity_, emissive, mat, model, material, sub);
 						}
 
 					} else {
-						for(auto& sub : sub_meshes) {
+						for(auto&& [index, sub] : util::with_index(sub_meshes)) {
 							auto sub_offset = sub.bounding_sphere_offset;
 							auto sub_radius = sub.bounding_sphere_radius;
 
@@ -163,12 +175,26 @@ namespace mirrage::renderer {
 							;
 							const auto sub_sphere_radius = sub_radius * max_scale;
 
-							draw(sub_sphere_center, sub_sphere_radius, entity_, emissive, mat, model, sub);
+							auto material = material_overrides.size() > index ? material_overrides[index]
+							                                                  : Material_override{};
+							draw(sub_sphere_center,
+							     sub_sphere_radius,
+							     entity_,
+							     emissive,
+							     mat,
+							     model,
+							     material,
+							     sub);
 						}
 					}
 				}
 			});
-		}
+		};
+
+		auto model_view = _ecs.list<ecs::Entity_facet, Model_comp, Transform_comp>();
+		async::parallel_for(_renderer.scheduler(),
+		                    ecs::entity_set_partitioner(model_view, _renderer.scheduler_threads().size()),
+		                    model_handler);
 	}
 
 } // namespace mirrage::renderer

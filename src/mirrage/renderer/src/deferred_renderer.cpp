@@ -111,12 +111,16 @@ namespace mirrage::renderer {
 	  , _router(_router_factory(_passes))
 	  , _cameras(ecs.is_some() ? util::justPtr(&ecs.get_or_throw().list<Camera_comp>()) : util::nothing)
 	{
-		if(ecs.is_some())
+		if(ecs.is_some()) {
 			ecs.get_or_throw().register_component_type<Material_property_comp>();
+			ecs.get_or_throw().register_component_type<Material_override_comp>();
+		}
 
 		ref_embedded_assets_mirrage_renderer();
 
 		_secondary_command_buffer_pool.register_thread();
+		for(auto& thread : _factory->_scheduler_threads)
+			_secondary_command_buffer_pool.register_thread(thread);
 
 		_write_global_uniform_descriptor_set();
 
@@ -220,12 +224,6 @@ namespace mirrage::renderer {
 
 		_secondary_command_buffer_pool.pre_frame();
 
-		// TODO: benchmark code -- remove before merge
-		static auto time_acc   = 0.f;
-		static auto time_count = 0;
-		auto        start      = std::chrono::high_resolution_clock::now();
-		// END TODO
-
 		auto main_command_buffer = _factory->queue_temporary_command_buffer();
 		main_command_buffer.begin(vk::CommandBufferBeginInfo{vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
 		_profiler.start(main_command_buffer);
@@ -251,18 +249,6 @@ namespace mirrage::renderer {
 
 		// reset cached camera state
 		_active_camera = util::nothing;
-
-
-		// TODO: benchmark code -- remove before merge
-		time_acc += std::chrono::duration_cast<std::chrono::duration<float, std::micro>>(
-		                    std::chrono::high_resolution_clock::now() - start)
-		                    .count()
-		            / 1000.f;
-		time_count++;
-		if(time_count % 100 == 0) {
-			LOG(plog::info) << "Time: " << (time_acc / time_count);
-		}
-		// END TODO
 	}
 
 	void Deferred_renderer::shrink_to_fit()
@@ -521,6 +507,14 @@ namespace mirrage::renderer {
 		}
 	};
 
+	namespace {
+		auto calc_renderer_thread_count()
+		{
+			auto c = async::hardware_concurrency();
+			return util::max(c, c - 1u);
+		}
+	} // namespace
+
 	Deferred_renderer_factory::Deferred_renderer_factory(
 	        Engine&                                           engine,
 	        graphic::Window&                                  window,
@@ -572,9 +566,29 @@ namespace mirrage::renderer {
 	                                                   compute_storage_buffer_layout(),
 	                                                   compute_uniform_buffer_layout()))
 	  , _all_passes_mask(util::map(_pass_factories, [&](auto& f) { return f->id(); }))
+	  , _scheduler(
+	            calc_renderer_thread_count(),
+	            [&] {
+		            auto _ = std::scoped_lock(_scheduler_mutex);
+		            _scheduler_threads.emplace_back(std::this_thread::get_id());
+	            },
+	            [&] {})
 	  , _profiler_menu(std::make_unique<Profiler_menu>(_renderer_instances))
 	  , _settings_menu(std::make_unique<Settings_menu>(*this, _window))
 	{
+		using namespace std::chrono_literals;
+
+		const auto thread_count = calc_renderer_thread_count();
+
+		while(true) {
+			{
+				auto _ = std::scoped_lock(_scheduler_mutex);
+				if(thread_count == _scheduler_threads.size())
+					break;
+			}
+			std::this_thread::sleep_for(0.1s);
+		}
+
 		auto maybe_settings = _assets.load_maybe<Renderer_settings>("cfg:renderer"_aid);
 		if(maybe_settings.is_nothing()) {
 			_settings = asset::make_ready_asset("cfg:renderer"_aid, Renderer_settings{});

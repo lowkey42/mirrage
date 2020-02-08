@@ -294,14 +294,19 @@ namespace mirrage::asset {
 		auto bounding_sphere_offset = glm::vec3(header.bounding_sphere_offset_x,
 		                                        header.bounding_sphere_offset_y,
 		                                        header.bounding_sphere_offset_z);
-		return all_loaded.then(
-		        [model = renderer::Model(std::move(mesh),
-		                                 std::move(sub_meshes),
-		                                 header.bounding_sphere_radius,
-		                                 bounding_sphere_offset,
-		                                 rigged,
-		                                 bone_count,
-		                                 in.aid())](const Task_type&) mutable { return std::move(model); });
+		return all_loaded.then([model = renderer::Model(std::move(mesh),
+		                                                std::move(sub_meshes),
+		                                                header.bounding_sphere_radius,
+		                                                bounding_sphere_offset,
+		                                                rigged,
+		                                                bone_count,
+		                                                in.aid())](const Task_type&) mutable {
+			// force init of materials
+			for(auto& sm : model.sub_meshes())
+				sm.material.get_blocking();
+
+			return std::move(model);
+		});
 	}
 
 } // namespace mirrage::asset

@@ -1,6 +1,5 @@
 {
 	"Transform":{
-		"scale": {"x": 0.018, "y": 0.018, "z": 0.018}
 	},
 	"Model": {
 		"aid": "model:monk.mmf"

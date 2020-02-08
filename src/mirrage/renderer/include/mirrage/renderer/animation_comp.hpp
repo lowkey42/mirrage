@@ -20,27 +20,17 @@ namespace mirrage::renderer {
 		Pose_comp() = default;
 		Pose_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
 
-		auto bone_transforms() const -> gsl::span<const Local_bone_transform> { return _bone_transforms; }
-		auto bone_transforms() -> gsl::span<Local_bone_transform> { return _bone_transforms; }
+		auto bone_transforms() const -> const Pose_transforms& { return _bone_transforms; }
+		auto bone_transforms() -> Pose_transforms& { return _bone_transforms; }
 
 		auto skeleton() const -> const Skeleton& { return *_skeleton; }
 
 	  private:
 		friend class Animation_pass;
 
-		asset::AID                        _skeleton_id;
-		asset::Ptr<Skeleton>              _skeleton;
-		std::vector<Local_bone_transform> _bone_transforms;
-	};
-
-	class Shared_pose_comp : public ecs::Component<Shared_pose_comp> {
-	  public:
-		static constexpr const char* name() { return "Shared_pose"; }
-
-		Shared_pose_comp() = default;
-		Shared_pose_comp(ecs::Entity_handle owner, ecs::Entity_manager& em) : Component(owner, em) {}
-
-		ecs::Entity_handle pose_owner;
+		asset::AID           _skeleton_id;
+		asset::Ptr<Skeleton> _skeleton;
+		Pose_transforms      _bone_transforms;
 	};
 
 
@@ -48,6 +38,7 @@ namespace mirrage::renderer {
 		util::Str_id          animation_id;
 		asset::Ptr<Animation> animation;
 		float                 blend_weight;
+		int                   frame_idx_hint = 0; // approximated index of next keyframe
 
 		float        time;
 		std::uint8_t speed;

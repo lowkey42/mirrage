@@ -110,8 +110,9 @@ namespace mirrage::renderer {
 			auto stage = vk::PipelineShaderStageCreateInfo{
 			        {}, vk::ShaderStageFlagBits::eCompute, **module, "main", &spec_info};
 
-			return device.vk_device()->createComputePipelineUnique(
+			auto pipeline = device.vk_device()->createComputePipelineUnique(
 			        device.pipeline_cache(), vk::ComputePipelineCreateInfo{{}, stage, layout});
+			return pipeline;
 		}
 
 		auto get_luminance_format(graphic::Device& device)

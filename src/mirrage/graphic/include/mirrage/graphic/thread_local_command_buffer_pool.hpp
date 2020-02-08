@@ -45,8 +45,10 @@ namespace mirrage::graphic {
 		{
 			auto& map      = _per_thread[_per_thread_head];
 			auto  tls_iter = map.find(std::this_thread::get_id());
-			MIRRAGE_INVARIANT(tls_iter != map.end(), "Called get from unregistered thread");
-			auto& tls = tls_iter.value();
+			auto& tls      = tls_iter.value();
+
+			MIRRAGE_INVARIANT(tls_iter != map.end(),
+			                  "Called get from unregistered thread: " << std::this_thread::get_id());
 
 			MIRRAGE_INVARIANT(group > 0
 			                          && group <= static_cast<Command_pool_group>(tls.command_buffers.size()),
@@ -105,7 +107,7 @@ namespace mirrage::graphic {
 			{
 				using std::swap;
 				swap(lhs.pool, rhs.pool);
-				swap(lhs.pool, rhs.pool);
+				swap(lhs.command_buffers, rhs.command_buffers);
 			}
 		};
 

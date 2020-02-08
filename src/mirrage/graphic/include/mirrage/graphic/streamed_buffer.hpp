@@ -58,6 +58,12 @@ namespace mirrage::graphic {
 			return _read_buffer_idx.get_or_throw("flush() has never been called on this buffer!");
 		}
 
+		auto write_buffer_mem() noexcept
+		{
+			auto& buffer = _buffers[gsl::narrow<std::size_t>(_current_buffer_idx)];
+			return gsl::span<char>(buffer.data, _capacity);
+		}
+
 		auto write_buffer() const noexcept { return buffer(std::size_t(write_buffer_index())); }
 		auto read_buffer() const noexcept
 		{

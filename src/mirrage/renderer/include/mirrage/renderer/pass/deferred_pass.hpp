@@ -4,6 +4,7 @@
 #include <mirrage/renderer/pass/deferred_lighting_subpass.hpp>
 
 #include <mirrage/renderer/deferred_renderer.hpp>
+#include <mirrage/renderer/model_comp.hpp>
 
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/graphic/render_pass.hpp>
@@ -25,26 +26,28 @@ namespace mirrage::renderer {
 		              graphic::Render_target_2D& color_target_diff);
 
 		// object handler for drawing that redirect request to geometry/light subpass
-		void handle_obj(Frame_data&       fd,
-		                Culling_mask      mask,
-		                ecs::Entity_facet entity,
-		                const glm::vec4&  emissive_color,
-		                const glm::mat4&  transform,
-		                const Model&      model,
-		                const Sub_mesh&   submesh)
+		void handle_obj(Frame_data&              fd,
+		                Culling_mask             mask,
+		                ecs::Entity_facet        entity,
+		                const glm::vec4&         emissive_color,
+		                const glm::mat4&         transform,
+		                const Model&             model,
+		                const Material_override& mat,
+		                const Sub_mesh&          submesh)
 		{
-			_gpass.handle_obj(fd, mask, entity, emissive_color, transform, model, submesh);
+			_gpass.handle_obj(fd, mask, entity, emissive_color, transform, model, mat, submesh);
 		}
-		void handle_obj(Frame_data&       fd,
-		                Culling_mask      mask,
-		                ecs::Entity_facet entity,
-		                const glm::vec4&  emissive_color,
-		                const glm::mat4&  transform,
-		                const Model&      model,
-		                Skinning_type     skinning,
-		                std::uint32_t     pose_offset)
+		void handle_obj(Frame_data&                        fd,
+		                Culling_mask                       mask,
+		                ecs::Entity_facet                  entity,
+		                const glm::vec4&                   emissive_color,
+		                const glm::mat4&                   transform,
+		                const Model&                       model,
+		                gsl::span<const Material_override> mat,
+		                Skinning_type                      skinning,
+		                std::uint32_t                      pose_offset)
 		{
-			_gpass.handle_obj(fd, mask, entity, emissive_color, transform, model, skinning, pose_offset);
+			_gpass.handle_obj(fd, mask, entity, emissive_color, transform, model, mat, skinning, pose_offset);
 		}
 
 		void handle_obj(Frame_data& fd, Culling_mask mask, const Billboard& bb, const glm::vec3& pos = {})

@@ -17,12 +17,13 @@ namespace mirrage::renderer {
 		Transparent_pass(Deferred_renderer&, ecs::Entity_manager& ecs, graphic::Render_target_2D& target);
 
 		// TODO
-		//void handle_obj(Frame_data&, Culling_mask, ecs::Entity_facet, Transform_comp&, Model_comp&, Sub_mesh&);
+		//void handle_obj(Frame_data&, Culling_mask, ecs::Entity_facet, Transform_comp&, Model_comp&, const Material_override&, Sub_mesh&);
 		//void handle_obj(Frame_data&,
 		//                Culling_mask,
 		//                ecs::Entity_facet,
 		//                Transform_comp&,
 		//                Model_comp&,
+		//                gsl::span<const Material_override&
 		//                Skinning_type,
 		//                std::int32_t pose_offset);
 		void handle_obj(Frame_data&,
