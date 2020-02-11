@@ -51,21 +51,23 @@ namespace mirrage::renderer {
 		void handle_obj(Frame_data&,
 		                Object_router<Passes...>& router,
 		                Culling_mask,
-		                ecs::Entity_facet,
-		                ecs::components::Transform_comp&,
+		                const glm::quat& orientation,
+		                const glm::vec3& position,
 		                Directional_light_comp&);
 
 		void handle_obj(Frame_data&,
 		                Culling_mask,
 		                ecs::Entity_facet,
-		                ecs::components::Transform_comp&,
-		                Model_comp&,
+		                const glm::vec4& emissive_color,
+		                const glm::mat4& transform,
+		                const Model&,
 		                const Sub_mesh&);
 		void handle_obj(Frame_data&,
 		                Culling_mask,
 		                ecs::Entity_facet,
-		                ecs::components::Transform_comp&,
-		                Model_comp&,
+		                const glm::vec4& emissive_color,
+		                const glm::mat4& transform,
+		                const Model&,
 		                Skinning_type skinning_type,
 		                std::uint32_t pose_offset);
 
@@ -117,9 +119,9 @@ namespace mirrage::renderer {
 	void Shadowmapping_pass::handle_obj(Frame_data&,
 	                                    Object_router<Passes...>& router,
 	                                    Culling_mask,
-	                                    ecs::Entity_facet                entity,
-	                                    ecs::components::Transform_comp& transform,
-	                                    Directional_light_comp&          light)
+	                                    const glm::quat&        orientation,
+	                                    const glm::vec3&        position,
+	                                    Directional_light_comp& light)
 	{
 		if(_renderer.gbuffer().shadowmapping_enabled && light.color().length() * light.intensity() > 0.0001f
 		   && light.shadowcaster() && light.needs_update()) {
@@ -131,7 +133,7 @@ namespace mirrage::renderer {
 				if(next_free_shadowmap != _shadowmaps.end()) {
 					light.shadowmap_id(
 					        static_cast<int>(std::distance(_shadowmaps.begin(), next_free_shadowmap)));
-					next_free_shadowmap->owner = entity.handle();
+					next_free_shadowmap->owner = light.owner_handle();
 
 				} else {
 					return;
@@ -139,11 +141,11 @@ namespace mirrage::renderer {
 			}
 
 			light.on_update();
-			auto& shadowmap        = _shadowmaps[light.shadowmap_id()];
-			shadowmap.culling_mask = router.add_viewer(light.calc_shadowmap_view_proj(transform), false);
-			shadowmap.light_source_position    = transform.position;
-			shadowmap.light_source_orientation = transform.orientation;
-			shadowmap.view_proj                = light.calc_shadowmap_view_proj(transform);
+			auto& shadowmap                    = _shadowmaps[light.shadowmap_id()];
+			shadowmap.light_source_position    = position;
+			shadowmap.light_source_orientation = orientation;
+			shadowmap.view_proj                = light.calc_shadowmap_view_proj(position, orientation);
+			shadowmap.culling_mask             = router.add_viewer(shadowmap.view_proj, false);
 
 			if(!shadowmap.model_group)
 				shadowmap.model_group = _renderer.reserve_secondary_command_buffer_group();

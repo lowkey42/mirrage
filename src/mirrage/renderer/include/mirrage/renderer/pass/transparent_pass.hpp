@@ -25,7 +25,11 @@ namespace mirrage::renderer {
 		//                Model_comp&,
 		//                Skinning_type,
 		//                std::int32_t pose_offset);
-		void handle_obj(Frame_data&, Culling_mask, Particle_system_comp&, Particle_emitter&);
+		void handle_obj(Frame_data&,
+		                Culling_mask,
+		                const glm::vec4& emissive_color,
+		                const Particle_system&,
+		                const Particle_emitter&);
 
 		void pre_draw(Frame_data&);
 		void post_draw(Frame_data&);

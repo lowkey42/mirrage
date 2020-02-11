@@ -18,7 +18,7 @@ namespace mirrage::renderer {
 		Billboard_pass(Deferred_renderer&, ecs::Entity_manager&, graphic::Render_target_2D& target);
 
 		void pre_draw(Frame_data&);
-		void handle_obj(Frame_data&, Culling_mask, Billboard&, glm::vec3 pos = {});
+		void handle_obj(Frame_data&, Culling_mask, const Billboard&, const glm::vec3& pos = {});
 		void post_draw(Frame_data&);
 
 		template <typename... Passes>

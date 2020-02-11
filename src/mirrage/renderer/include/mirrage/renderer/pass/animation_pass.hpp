@@ -54,18 +54,20 @@ namespace mirrage::renderer {
 		void pre_draw(Frame_data& fd);
 		template <typename... Passes>
 		bool handle_obj(Frame_data&,
-		                Object_router<Passes...>&        router,
-		                Culling_mask                     mask,
-		                ecs::Entity_facet                entity,
-		                ecs::components::Transform_comp& transform,
-		                Model_comp&                      model)
+		                Object_router<Passes...>& router,
+		                Culling_mask              mask,
+		                ecs::Entity_facet         entity,
+		                const glm::vec4&          emissive_color,
+		                const glm::mat4&          transform,
+		                const Model&              model)
 		{
-			if(!model.model()->rigged())
+			if(!entity || !model.rigged())
 				return false;
 
 			if(auto ret = _add_pose(entity, model); ret.is_some()) {
 				auto [type, offset] = ret.get_or_throw();
-				router.process_always_visible_obj(mask, entity, transform, model, type, offset);
+				router.process_always_visible_obj(
+				        mask, entity, emissive_color, transform, model, type, offset);
 				return true;
 			}
 
@@ -109,7 +111,7 @@ namespace mirrage::renderer {
 
 		void _update_animation(ecs::Entity_handle owner, Animation_comp& anim, Pose_comp&);
 		void _upload_poses(Frame_data&);
-		auto _add_pose(ecs::Entity_facet, Model_comp&)
+		auto _add_pose(ecs::Entity_facet, const Model&)
 		        -> util::maybe<std::pair<Skinning_type, std::uint32_t>>;
 	};
 

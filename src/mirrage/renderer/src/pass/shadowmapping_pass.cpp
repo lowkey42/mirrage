@@ -282,11 +282,11 @@ namespace mirrage::renderer {
 		static void handle_obj(Shadowmapping_pass& self,
 		                       Frame_data&         frame,
 		                       Culling_mask        mask,
-		                       Transform_comp&     transform,
+		                       const glm::mat4&    transform,
 		                       F&&                 callback)
 		{
 			auto pcs  = Push_constants{};
-			pcs.model = transform.to_mat4();
+			pcs.model = transform;
 
 			const auto& stage_ref =
 			        stage == Shadowpass_stage::normal
@@ -323,14 +323,15 @@ namespace mirrage::renderer {
 	void Shadowmapping_pass::handle_obj(Frame_data&  frame,
 	                                    Culling_mask mask,
 	                                    ecs::Entity_facet,
-	                                    Transform_comp& transform,
-	                                    Model_comp&     model,
-	                                    const Sub_mesh& sub_mesh)
+	                                    const glm::vec4&,
+	                                    const glm::mat4& transform,
+	                                    const Model&     model,
+	                                    const Sub_mesh&  sub_mesh)
 	{
 		Shadowmapping_pass_impl_helper::handle_obj<Shadowpass_stage::normal>(
 		        *this, frame, mask, transform, [&](auto&& cmd_buffer, auto&& stage) {
 			        stage.bind_descriptor_set(cmd_buffer, 1, sub_mesh.material->desc_set());
-			        model.model()->bind_mesh(cmd_buffer, 0);
+			        model.bind_mesh(cmd_buffer, 0);
 
 			        cmd_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
 		        });
@@ -338,21 +339,22 @@ namespace mirrage::renderer {
 	void Shadowmapping_pass::handle_obj(Frame_data&  frame,
 	                                    Culling_mask mask,
 	                                    ecs::Entity_facet,
-	                                    Transform_comp& transform,
-	                                    Model_comp&     model,
-	                                    Skinning_type   skinning_type,
-	                                    std::uint32_t   pose_offset)
+	                                    const glm::vec4&,
+	                                    const glm::mat4& transform,
+	                                    const Model&     model,
+	                                    Skinning_type    skinning_type,
+	                                    std::uint32_t    pose_offset)
 	{
 		auto callback = [&](auto&& cmd_buffer, auto&& stage) {
 			auto first = true;
-			for(auto& sub_mesh : model.model()->sub_meshes()) {
+			for(auto& sub_mesh : model.sub_meshes()) {
 				stage.bind_descriptor_set(cmd_buffer, 1, sub_mesh.material->desc_set());
 
 				if(first) {
 					first        = false;
 					auto offsets = std::array<std::uint32_t, 1>{pose_offset};
 					stage.bind_descriptor_set(cmd_buffer, 2, _renderer.gbuffer().animation_data, offsets);
-					model.model()->bind_mesh(cmd_buffer, 0);
+					model.bind_mesh(cmd_buffer, 0);
 				}
 
 				cmd_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);

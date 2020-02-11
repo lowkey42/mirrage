@@ -159,7 +159,7 @@ namespace mirrage::renderer {
 		        *_animation_desc_sets.at(std::size_t(_animation_uniforms.write_buffer_index()));
 	}
 
-	auto Animation_pass::_add_pose(ecs::Entity_facet entity, Model_comp& model)
+	auto Animation_pass::_add_pose(ecs::Entity_facet entity, const Model& model)
 	        -> util::maybe<std::pair<Skinning_type, std::uint32_t>>
 	{
 		auto pose_comp = entity.get<Pose_comp>();
@@ -193,7 +193,7 @@ namespace mirrage::renderer {
 
 		if(upload_required) {
 			pose_comp.process([&](auto& pose) {
-				auto size = model.model()->bone_count() * std::int32_t(sizeof(Final_bone_transform));
+				auto size = model.bone_count() * std::int32_t(sizeof(Final_bone_transform));
 				if(size < _min_uniform_buffer_alignment)
 					size = _min_uniform_buffer_alignment;
 				else
@@ -204,7 +204,7 @@ namespace mirrage::renderer {
 					auto [ex, success] = _animation_uniform_offsets.try_emplace(entity.handle(), new_offset);
 					if(success) {
 						_next_pose_offset += size;
-						_animation_uniform_queue.emplace_back(*model.model(), pose, ex->second);
+						_animation_uniform_queue.emplace_back(model, pose, ex->second);
 						offset = new_offset;
 					}
 

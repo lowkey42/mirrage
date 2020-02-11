@@ -25,60 +25,59 @@ namespace mirrage::renderer {
 		              graphic::Render_target_2D& color_target_diff);
 
 		// object handler for drawing that redirect request to geometry/light subpass
-		void handle_obj(Frame_data&                      fd,
-		                Culling_mask                     mask,
-		                ecs::Entity_facet                entity,
-		                ecs::components::Transform_comp& transform,
-		                Model_comp&                      model,
-		                const Sub_mesh&                  submesh)
+		void handle_obj(Frame_data&       fd,
+		                Culling_mask      mask,
+		                ecs::Entity_facet entity,
+		                const glm::vec4&  emissive_color,
+		                const glm::mat4&  transform,
+		                const Model&      model,
+		                const Sub_mesh&   submesh)
 		{
-			_gpass.handle_obj(fd, mask, entity, transform, model, submesh);
+			_gpass.handle_obj(fd, mask, entity, emissive_color, transform, model, submesh);
 		}
-		void handle_obj(Frame_data&                      fd,
-		                Culling_mask                     mask,
-		                ecs::Entity_facet                entity,
-		                ecs::components::Transform_comp& transform,
-		                Model_comp&                      model,
-		                Skinning_type                    skinning,
-		                std::uint32_t                    pose_offset)
+		void handle_obj(Frame_data&       fd,
+		                Culling_mask      mask,
+		                ecs::Entity_facet entity,
+		                const glm::vec4&  emissive_color,
+		                const glm::mat4&  transform,
+		                const Model&      model,
+		                Skinning_type     skinning,
+		                std::uint32_t     pose_offset)
 		{
-			_gpass.handle_obj(fd, mask, entity, transform, model, skinning, pose_offset);
+			_gpass.handle_obj(fd, mask, entity, emissive_color, transform, model, skinning, pose_offset);
 		}
 
-		void handle_obj(Frame_data& fd, Culling_mask mask, Billboard& bb, glm::vec3 pos = {})
+		void handle_obj(Frame_data& fd, Culling_mask mask, const Billboard& bb, const glm::vec3& pos = {})
 		{
 			_gpass.handle_obj(fd, mask, bb, pos);
 		}
-		void handle_obj(Frame_data&                      fd,
-		                Culling_mask                     mask,
-		                Decal&                           decal,
-		                ecs::components::Transform_comp& transform)
+		void handle_obj(Frame_data& fd, Culling_mask mask, const Decal& decal, const glm::mat4& transform)
 		{
 			_gpass.handle_obj(fd, mask, decal, transform);
 		}
-		void handle_obj(Frame_data&           fd,
-		                Culling_mask          mask,
-		                Particle_system_comp& sys,
-		                Particle_emitter&     emitter)
+		void handle_obj(Frame_data&             fd,
+		                Culling_mask            mask,
+		                const glm::vec4&        emissive_color,
+		                const Particle_system&  sys,
+		                const Particle_emitter& emitter)
 		{
-			_gpass.handle_obj(fd, mask, sys, emitter);
+			_gpass.handle_obj(fd, mask, emissive_color, sys, emitter);
 		}
 
-		void handle_obj(Frame_data&                      fd,
-		                Culling_mask                     mask,
-		                ecs::Entity_facet                entity,
-		                ecs::components::Transform_comp& transform,
-		                Directional_light_comp&          light)
+		void handle_obj(Frame_data&                   fd,
+		                Culling_mask                  mask,
+		                const glm::quat&              orientation,
+		                const glm::vec3&              position,
+		                const Directional_light_comp& light)
 		{
-			_lpass.handle_obj(fd, mask, entity, transform, light);
+			_lpass.handle_obj(fd, mask, orientation, position, light);
 		}
-		void handle_obj(Frame_data&                      fd,
-		                Culling_mask                     mask,
-		                ecs::Entity_facet                entity,
-		                ecs::components::Transform_comp& transform,
-		                Point_light_comp&                light)
+		void handle_obj(Frame_data&             fd,
+		                Culling_mask            mask,
+		                const glm::vec3&        position,
+		                const Point_light_comp& light)
 		{
-			_lpass.handle_obj(fd, mask, entity, transform, light);
+			_lpass.handle_obj(fd, mask, position, light);
 		}
 
 

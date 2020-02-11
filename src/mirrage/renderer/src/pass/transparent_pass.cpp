@@ -592,10 +592,11 @@ namespace mirrage::renderer {
 	} // namespace mirrage::renderer
 
 
-	void Transparent_pass::handle_obj(Frame_data&           frame,
-	                                  Culling_mask          mask,
-	                                  Particle_system_comp& particle_sys_comp,
-	                                  Particle_emitter&     particle_emitter)
+	void Transparent_pass::handle_obj(Frame_data&             frame,
+	                                  Culling_mask            mask,
+	                                  const glm::vec4&        emissive_color,
+	                                  const Particle_system&  particle_sys_comp,
+	                                  const Particle_emitter& particle_emitter)
 	{
 		if((mask & frame.camera_culling_mask) == 0 || !_renderer.billboard_model().ready()
 		   || !particle_emitter.drawable() || particle_emitter.particle_count() <= 0)
@@ -630,13 +631,8 @@ namespace mirrage::renderer {
 
 		Deferred_push_constants dpc{};
 		if(type_cfg.material->has_emission()) {
-			auto emissive_color = glm::vec4(1, 1, 1, 1000);
-			if(auto e = particle_sys_comp.owner(_ecs); e.is_some()) {
-				e.get_or_throw().process<Material_property_comp>(
-				        [&](auto& m) { emissive_color = m.emissive_color; });
-			}
-			emissive_color.a /= 10000.0f;
 			dpc.light_data = emissive_color;
+			dpc.light_data.a /= 10000.0f;
 		} else {
 			dpc.light_data = glm::vec4(0, 0, 0, 0);
 		}
@@ -688,7 +684,8 @@ namespace mirrage::renderer {
 		for(auto [transform, light] : _ecs.list<ecs::components::Transform_comp, Directional_light_comp>()) {
 			if(light.light_particles()) {
 				lights_out[light_count].light_space =
-				        light.calc_shadowmap_view_proj(transform) * _renderer.global_uniforms().inv_view_mat;
+				        light.calc_shadowmap_view_proj(transform.position, transform.orientation)
+				        * _renderer.global_uniforms().inv_view_mat;
 				lights_out[light_count].radiance =
 				        glm::vec4(light.color() * light.intensity() / 10000.0f, 1.f);
 				lights_out[light_count].shadow_radiance = glm::vec4(

@@ -265,19 +265,13 @@ namespace mirrage::renderer {
 	namespace {
 		auto create_model_pcs(Deferred_renderer& renderer,
 		                      ecs::Entity_facet  entity,
-		                      Transform_comp&    transform,
-		                      bool               emissive)
+		                      const glm::vec4&   emissive_color,
+		                      const glm::mat4&   transform)
 		{
 			Deferred_push_constants dpc{};
-			dpc.model    = glm::toMat4(transform.orientation) * glm::scale(glm::mat4(1.f), transform.scale);
-			dpc.model[3] = glm::vec4(transform.position, 1.f);
-			dpc.model    = renderer.global_uniforms().view_mat * dpc.model;
-
-			if(emissive) {
-				dpc.light_data = entity.get<Material_property_comp>().process(
-				        glm::vec4(1, 1, 1, 1000), [](auto& m) { return m.emissive_color; });
-				dpc.light_data.a /= 10000.0f;
-			}
+			dpc.model      = renderer.global_uniforms().view_mat * transform;
+			dpc.light_data = emissive_color;
+			dpc.light_data.a /= 10000.0f;
 
 			return dpc;
 		}
@@ -286,22 +280,23 @@ namespace mirrage::renderer {
 	void Deferred_geometry_subpass::handle_obj(Frame_data&       frame,
 	                                           Culling_mask      mask,
 	                                           ecs::Entity_facet entity,
-	                                           Transform_comp&   transform,
-	                                           Model_comp&       model_comp,
+	                                           const glm::vec4&  emissive_color,
+	                                           const glm::mat4&  transform,
+	                                           const Model&      model,
 	                                           const Sub_mesh&   sub_mesh)
 	{
 		if((mask & frame.camera_culling_mask) == 0)
 			return;
 
 		auto& material = *sub_mesh.material;
-		auto  pcs      = create_model_pcs(_renderer, entity, transform, material.has_emission());
+		auto  pcs      = create_model_pcs(_renderer, entity, emissive_color, transform);
 
 		auto draw = [&](auto& stage) {
 			auto [cmd_buffer, _] = _get_cmd_buffer(frame, stage);
 
 			stage.stage.bind_descriptor_set(cmd_buffer, 1, material.desc_set());
 
-			model_comp.model()->bind_mesh(cmd_buffer, 0);
+			model.bind_mesh(cmd_buffer, 0);
 
 			stage.stage.push_constant(cmd_buffer, pcs);
 
@@ -317,19 +312,19 @@ namespace mirrage::renderer {
 	void Deferred_geometry_subpass::handle_obj(Frame_data&       frame,
 	                                           Culling_mask      mask,
 	                                           ecs::Entity_facet entity,
-	                                           Transform_comp&   transform,
-	                                           Model_comp&       model_comp,
+	                                           const glm::vec4&  emissive_color,
+	                                           const glm::mat4&  transform,
+	                                           const Model&      model,
 	                                           Skinning_type     skinning_type,
 	                                           std::uint32_t     pose_offset)
 	{
 		if((mask & frame.camera_culling_mask) == 0)
 			return;
 
-		auto& model = *model_comp.model();
+		auto pcs = create_model_pcs(_renderer, entity, emissive_color, transform);
 
 		for(auto& sub_mesh : model.sub_meshes()) {
 			auto& material = *sub_mesh.material;
-			auto  pcs      = create_model_pcs(_renderer, entity, transform, material.has_emission());
 
 			auto draw = [&](auto& stage_map) {
 				auto substance = material.substance_id();
@@ -359,10 +354,10 @@ namespace mirrage::renderer {
 		}
 	}
 
-	void Deferred_geometry_subpass::handle_obj(Frame_data&  frame,
-	                                           Culling_mask mask,
-	                                           Billboard&   bb,
-	                                           glm::vec3    pos)
+	void Deferred_geometry_subpass::handle_obj(Frame_data&      frame,
+	                                           Culling_mask     mask,
+	                                           const Billboard& bb,
+	                                           const glm::vec3& pos)
 	{
 		if((mask & frame.camera_culling_mask) == 0 || !bb.dynamic_lighting)
 			return;
@@ -378,10 +373,10 @@ namespace mirrage::renderer {
 		cmd_buffer.draw(4, 1, 0, 0);
 	}
 
-	void Deferred_geometry_subpass::handle_obj(Frame_data&     frame,
-	                                           Culling_mask    mask,
-	                                           Decal&          decal,
-	                                           Transform_comp& transform)
+	void Deferred_geometry_subpass::handle_obj(Frame_data&      frame,
+	                                           Culling_mask     mask,
+	                                           const Decal&     decal,
+	                                           const glm::mat4& transform)
 	{
 		if((mask & frame.camera_culling_mask) == 0)
 			return;
@@ -403,17 +398,17 @@ namespace mirrage::renderer {
 		}
 		cmd_buffer.setBlendConstants(blend.data());
 
-		auto pcs =
-		        construct_push_constants(decal, _renderer.global_uniforms().view_mat * transform.to_mat4());
+		auto pcs = construct_push_constants(decal, _renderer.global_uniforms().view_mat * transform);
 
 		_stage_decals.stage.push_constant(cmd_buffer, pcs);
 		cmd_buffer.draw(14, 1, 0, 0);
 	}
 
-	void Deferred_geometry_subpass::handle_obj(Frame_data&           frame,
-	                                           Culling_mask          mask,
-	                                           Particle_system_comp& particle_sys_comp,
-	                                           Particle_emitter&     particle_emitter)
+	void Deferred_geometry_subpass::handle_obj(Frame_data&  frame,
+	                                           Culling_mask mask,
+	                                           const glm::vec4&,
+	                                           const Particle_system&  particle_sys_comp,
+	                                           const Particle_emitter& particle_emitter)
 	{
 		auto& type_cfg = *particle_emitter.cfg().type;
 

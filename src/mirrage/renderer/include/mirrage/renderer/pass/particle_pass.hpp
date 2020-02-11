@@ -22,14 +22,14 @@ namespace mirrage::renderer {
 
 		void handle_obj(Frame_data&,
 		                Culling_mask,
-		                Particle_system_comp& comp,
-		                Particle_emitter&     emitter,
+		                Particle_system&  sys,
+		                Particle_emitter& emitter,
 		                Particle_system_update_tag)
 		{
 			auto& p     = _next_update_queue.emplace_back();
 			p.emitter   = &emitter;
-			p.system    = &comp.particle_system;
-			p.effectors = comp.particle_system.effectors();
+			p.system    = &sys;
+			p.effectors = sys.effectors();
 		}
 
 		void update(util::Time dt) override;

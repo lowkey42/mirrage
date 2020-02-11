@@ -207,11 +207,11 @@ namespace mirrage::renderer {
 		_point_lights.clear();
 	}
 
-	void Deferred_lighting_subpass::handle_obj(Frame_data&  frame,
-	                                           Culling_mask mask,
-	                                           ecs::Entity_facet,
-	                                           Transform_comp&         transform,
-	                                           Directional_light_comp& light_data)
+	void Deferred_lighting_subpass::handle_obj(Frame_data&                   frame,
+	                                           Culling_mask                  mask,
+	                                           const glm::quat&              orientation,
+	                                           const glm::vec3&              position,
+	                                           const Directional_light_comp& light_data)
 	{
 		if((mask & frame.camera_culling_mask) == 0)
 			return;
@@ -222,23 +222,23 @@ namespace mirrage::renderer {
 		const auto inv_view       = _renderer.global_uniforms().inv_view_mat;
 		const auto ambient_factor = _renderer.settings().amient_light_intensity;
 
-		dpc.model         = light_data.calc_shadowmap_view_proj(transform) * inv_view;
-		dpc.light_color   = glm::vec4(light_data.color(), light_data.intensity() / 10000.0f);
-		dpc.shadow_color  = glm::vec4(light_data.shadow_color(),
-                                     light_data.shadow_intensity() / 10000.0f * ambient_factor);
-		dpc.light_data.r  = light_data.source_radius() / 1_m;
-		auto dir          = _renderer.global_uniforms().view_mat * glm::vec4(-transform.direction(), 0.f);
+		dpc.model        = light_data.calc_shadowmap_view_proj(position, orientation) * inv_view;
+		dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity() / 10000.0f);
+		dpc.shadow_color = glm::vec4(light_data.shadow_color(),
+		                             light_data.shadow_intensity() / 10000.0f * ambient_factor);
+		dpc.light_data.r = light_data.source_radius() / 1_m;
+		auto dir         = _renderer.global_uniforms().view_mat
+		           * glm::vec4(glm::rotate(orientation, glm::vec3(0, 0, 1)), 0.f);
 		auto dir_len      = glm::sqrt(dir.x * dir.x + dir.y * dir.y + dir.z * dir.z);
 		dpc.light_data.g  = dir.x / dir_len;
 		dpc.light_data.b  = dir.y / dir_len;
 		dpc.light_data.a  = dir.z / dir_len;
 		dpc.light_data2.r = gsl::narrow<float>(_gbuffer.shadowmaps ? light_data.shadowmap_id() : -1);
 	}
-	void Deferred_lighting_subpass::handle_obj(Frame_data&  frame,
-	                                           Culling_mask mask,
-	                                           ecs::Entity_facet,
-	                                           Transform_comp&   transform,
-	                                           Point_light_comp& light_data)
+	void Deferred_lighting_subpass::handle_obj(Frame_data&             frame,
+	                                           Culling_mask            mask,
+	                                           const glm::vec3&        position,
+	                                           const Point_light_comp& light_data)
 	{
 		if((mask & frame.camera_culling_mask) == 0)
 			return;
@@ -246,12 +246,11 @@ namespace mirrage::renderer {
 		_point_lights.emplace_back();
 		auto& dpc = _point_lights.back();
 
-		dpc.model = _renderer.global_uniforms().view_proj_mat
-		            * glm::translate(glm::mat4(1), transform.position)
+		dpc.model = _renderer.global_uniforms().view_proj_mat * glm::translate(glm::mat4(1), position)
 		            * glm::scale(glm::mat4(1.f), glm::vec3(light_data.calc_radius()));
 		dpc.light_color  = glm::vec4(light_data.color(), light_data.intensity() / 10000.0f);
 		dpc.light_data.r = light_data.source_radius() / 1_m;
-		auto pos         = _renderer.global_uniforms().view_mat * glm::vec4(transform.position, 1.f);
+		auto pos         = _renderer.global_uniforms().view_mat * glm::vec4(position, 1.f);
 		pos /= pos.w;
 		dpc.light_data.g  = pos.x;
 		dpc.light_data.b  = pos.y;

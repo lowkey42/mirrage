@@ -80,9 +80,12 @@ namespace mirrage::renderer {
 
 	void Billboard_pass::pre_draw(Frame_data&) { _queue.clear(); }
 
-	void Billboard_pass::handle_obj(Frame_data& frame, Culling_mask mask, Billboard& bb, glm::vec3 pos)
+	void Billboard_pass::handle_obj(Frame_data&      frame,
+	                                Culling_mask     mask,
+	                                const Billboard& bb,
+	                                const glm::vec3& pos)
 	{
-		if(mask == frame.camera_culling_mask && !bb.dynamic_lighting) {
+		if((mask & frame.camera_culling_mask) != 0 && !bb.dynamic_lighting) {
 			_queue.emplace_back(bb);
 			_queue.back().offset += pos;
 		}

@@ -50,20 +50,26 @@ namespace mirrage::renderer {
 		void handle_obj(Frame_data&,
 		                Culling_mask,
 		                ecs::Entity_facet,
-		                ecs::components::Transform_comp&,
-		                Model_comp&,
+		                const glm::vec4& emissive_color,
+		                const glm::mat4& transform,
+		                const Model&,
 		                const Sub_mesh&);
 		void handle_obj(Frame_data&,
 		                Culling_mask,
 		                ecs::Entity_facet,
-		                ecs::components::Transform_comp&,
-		                Model_comp&,
+		                const glm::vec4& emissive_color,
+		                const glm::mat4& transform,
+		                const Model&,
 		                Skinning_type,
 		                std::uint32_t pose_offset);
 
-		void handle_obj(Frame_data&, Culling_mask, Billboard&, glm::vec3 pos = {});
-		void handle_obj(Frame_data&, Culling_mask, Decal&, ecs::components::Transform_comp&);
-		void handle_obj(Frame_data&, Culling_mask, Particle_system_comp&, Particle_emitter&);
+		void handle_obj(Frame_data&, Culling_mask, const Billboard&, const glm::vec3& pos = {});
+		void handle_obj(Frame_data&, Culling_mask, const Decal&, const glm::mat4&);
+		void handle_obj(Frame_data&,
+		                Culling_mask,
+		                const glm::vec4& emissive_color,
+		                const Particle_system&,
+		                const Particle_emitter&);
 
 	  private:
 		struct Stage_data {

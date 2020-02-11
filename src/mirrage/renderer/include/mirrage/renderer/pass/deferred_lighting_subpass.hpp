@@ -34,14 +34,10 @@ namespace mirrage::renderer {
 
 		void handle_obj(Frame_data&,
 		                Culling_mask,
-		                ecs::Entity_facet,
-		                ecs::components::Transform_comp&,
-		                Directional_light_comp&);
-		void handle_obj(Frame_data&,
-		                Culling_mask,
-		                ecs::Entity_facet,
-		                ecs::components::Transform_comp&,
-		                Point_light_comp&);
+		                const glm::quat& orientation,
+		                const glm::vec3& position,
+		                const Directional_light_comp&);
+		void handle_obj(Frame_data&, Culling_mask, const glm::vec3& position, const Point_light_comp&);
 
 
 	  private:

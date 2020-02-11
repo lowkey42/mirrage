@@ -65,18 +65,17 @@ namespace mirrage::renderer {
 		using mirrage::ecs::components::Transform_comp;
 
 		// directional lights
-		for(auto& [entity, light, transform] :
-		    _ecs.list<ecs::Entity_facet, Directional_light_comp, Transform_comp>()) {
+		for(auto& [light, transform] : _ecs.list<Directional_light_comp, Transform_comp>()) {
 			if(light.color().length() * light.intensity() > 0.000001f) {
-				router.process_always_visible_obj(~Culling_mask(0), entity, transform, light);
+				router.process_always_visible_obj(
+				        ~Culling_mask(0), transform.orientation, transform.position, light);
 			}
 		}
 
 		// point lights
-		for(auto& [entity, light, transform] :
-		    _ecs.list<ecs::Entity_facet, Point_light_comp, Transform_comp>()) {
+		for(auto& [light, transform] : _ecs.list<Point_light_comp, Transform_comp>()) {
 			if(light.color().length() * light.intensity() > 0.000001f) {
-				router.process_obj(transform.position, light.calc_radius(), true, entity, transform, light);
+				router.process_obj(transform.position, light.calc_radius(), true, transform.position, light);
 			}
 		}
 
@@ -89,7 +88,7 @@ namespace mirrage::renderer {
 				auto range = glm::length(glm::vec3(dc.size, dc.thickness));
 
 				if(dc.active && dc.material.ready()) {
-					router.process_obj(pos, range, true, dc, transform);
+					router.process_obj(pos, range, true, dc, transform.to_mat4());
 				}
 			}
 		}
@@ -97,24 +96,25 @@ namespace mirrage::renderer {
 
 		// particle systems
 		if(_renderer.settings().particles) {
-			for(auto& particle_sys : _ecs.list<Particle_system_comp>()) {
+			for(auto& [owner, particle_sys] : _ecs.list<ecs::Entity_facet, Particle_system_comp>()) {
 				if(!particle_sys.particle_system.cfg().ready())
 					continue;
 
+				auto emissive = owner.template get<Material_property_comp>().process(
+				        glm::vec4(1, 1, 1, 1000), [](auto& m) { return m.emissive_color; });
+
 				for(auto&& emitter : particle_sys.particle_system.emitters()) {
 					if(emitter.active()) {
-						auto pos          = particle_sys.particle_system.emitter_position(emitter);
-						auto update_range = emitter.cfg().type->update_range;
-						auto draw_range   = emitter.cfg().type->draw_range;
-						auto cam_only     = !emitter.cfg().type->shadowcaster;
+						auto& sys          = particle_sys.particle_system;
+						auto  pos          = sys.emitter_position(emitter);
+						auto& type         = *emitter.cfg().type;
+						auto  update_range = type.update_range;
+						auto  draw_range   = type.draw_range;
+						auto  cam_only     = !type.shadowcaster;
 
-						router.process_obj(pos,
-						                   update_range,
-						                   cam_only,
-						                   particle_sys,
-						                   emitter,
-						                   Particle_system_update_tag{});
-						router.process_obj(pos, draw_range, cam_only, particle_sys, emitter);
+						router.process_obj(
+						        pos, update_range, cam_only, sys, emitter, Particle_system_update_tag{});
+						router.process_obj(pos, draw_range, cam_only, emissive, sys, emitter);
 					}
 				}
 			}
@@ -122,29 +122,35 @@ namespace mirrage::renderer {
 
 
 		// models
-		for(auto& [entity, model, transform] : _ecs.list<ecs::Entity_facet, Model_comp, Transform_comp>()) {
-			auto              entity_pos = transform.position;
-			auto              dir_mat    = transform.to_mat3();
-			auto              scale      = util::max(transform.scale.x, transform.scale.y, transform.scale.z);
-			ecs::Entity_facet e          = entity;
-			const auto        cam_only   = !e.has<Shadowcaster_comp>();
+		for(auto& [entity, model_comp, transform] :
+		    _ecs.list<ecs::Entity_facet, Model_comp, Transform_comp>()) {
+			ecs::Entity_facet entity_    = entity;
+			auto&             transform_ = transform;
 
-			auto& sub_meshes = model.model()->sub_meshes();
-			auto  offset     = model.model()->bounding_sphere_offset();
-			auto  radius     = model.model()->bounding_sphere_radius();
+			auto&      model      = *model_comp.model();
+			const auto entity_pos = transform.position;
+			const auto scale      = transform.scale;
+			const auto max_scale  = util::max(scale.x, scale.y, scale.z);
+			const auto cam_only   = !entity_.has<Shadowcaster_comp>();
 
-			const auto sphere_center = entity_pos + dir_mat * offset;
-			const auto sphere_radius = radius * scale;
+			const auto& sub_meshes = model.sub_meshes();
+			const auto  offset     = model.bounding_sphere_offset();
+			const auto  radius     = model.bounding_sphere_radius();
 
-			auto& model_     = model;
-			auto& transform_ = transform;
+			const auto sphere_center = entity_pos + glm::rotate(transform.orientation, offset * scale);
+			const auto sphere_radius = radius * max_scale;
 
 			router.process_sub_objs(sphere_center, sphere_radius, cam_only, [&](auto mask, auto&& draw) {
-				if(!router.process_always_visible_obj(mask, e, transform_, model_)) {
+				auto emissive = entity_.get<Material_property_comp>().process(
+				        glm::vec4(1, 1, 1, 1000), [](auto& m) { return m.emissive_color; });
+
+				const auto mat = transform_.to_mat4();
+
+				if(!router.process_always_visible_obj(mask, entity_, emissive, mat, model)) {
 					if(sub_meshes.size() <= 4) {
 						// skip sub-object culling if the number of sub-objects is low, to reduce culling overhead
 						for(auto& sub : sub_meshes) {
-							router.process_always_visible_obj(mask, e, transform_, model_, sub);
+							router.process_always_visible_obj(mask, entity_, emissive, mat, model, sub);
 						}
 
 					} else {
@@ -152,10 +158,12 @@ namespace mirrage::renderer {
 							auto sub_offset = sub.bounding_sphere_offset;
 							auto sub_radius = sub.bounding_sphere_radius;
 
-							const auto sub_sphere_center = entity_pos + dir_mat * sub_offset;
-							const auto sub_sphere_radius = sub_radius * scale;
+							const auto sub_sphere_center =
+							        glm::rotate(transform_.orientation, sub_offset * scale);
+							;
+							const auto sub_sphere_radius = sub_radius * max_scale;
 
-							draw(sub_sphere_center, sub_sphere_radius, e, transform_, model_, sub);
+							draw(sub_sphere_center, sub_sphere_radius, entity_, emissive, mat, model, sub);
 						}
 					}
 				}

@@ -39,7 +39,7 @@ namespace mirrage::renderer {
 		void light_particles(bool b) noexcept { _light_particles = b; }
 		auto light_particles() const noexcept { return _light_particles; }
 
-		auto calc_shadowmap_view_proj(ecs::components::Transform_comp& transform) const -> glm::mat4;
+		auto calc_shadowmap_view_proj(glm::vec3 position, glm::quat orientation) const -> glm::mat4;
 
 		auto needs_update() { return _shadow_last_update >= _shadow_update_frequency; }
 		auto on_update()
