@@ -1,6 +1,6 @@
 {
 	"Transform":{
-		"scale": {"x": 0.003, "y": 0.003, "z": 0.003}
+		"scale": {"x": 0.3, "y": 0.3, "z": 0.3}
 	},
 	"Model": {
 		"aid": "model:rotation.mmf"

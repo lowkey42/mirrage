@@ -17,12 +17,11 @@ namespace mirrage::renderer {
 
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "SSGI"; }
 
 	  private:
-		Deferred_renderer&                   _renderer;
 		const std::int32_t                   _highres_base_mip_level;
 		const std::int32_t                   _base_mip_level;
 		const std::int32_t                   _max_mip_level;

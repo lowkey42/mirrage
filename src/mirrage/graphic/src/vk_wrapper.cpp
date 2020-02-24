@@ -35,7 +35,7 @@ namespace mirrage::graphic {
 	void   Fence::wait()
 	{
 		if(_device->waitForFences({*_fence}, true, 4'000'000'000) == vk::Result::eTimeout) {
-			LOG(plog::error) << "Fence didn't get signaled after 4 seconds!";
+			MIRRAGE_FAIL("Fence didn't get signaled after 4 seconds!");
 		}
 	}
 

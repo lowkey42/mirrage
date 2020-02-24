@@ -38,7 +38,6 @@ namespace mirrage::renderer {
 		entities.register_component_type<Decal_comp>();
 		entities.register_component_type<Model_comp>();
 		entities.register_component_type<Pose_comp>();
-		entities.register_component_type<Shared_pose_comp>();
 
 		auto depth_info = vk::DescriptorImageInfo(
 		        vk::Sampler{}, r.gbuffer().depth.view(0), vk::ImageLayout::eShaderReadOnlyOptimal);
@@ -56,7 +55,7 @@ namespace mirrage::renderer {
 	void Deferred_geometry_subpass::configure_pipeline(Deferred_renderer&             renderer,
 	                                                   graphic::Pipeline_description& p)
 	{
-		p.rasterization.cullMode = vk::CullModeFlagBits::eNone;
+		p.rasterization.cullMode = vk::CullModeFlagBits::eNone; //
 		p.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 		p.vertex<Model_vertex>(
 		        0, false, 0, &Model_vertex::position, 1, &Model_vertex::normal, 2, &Model_vertex::tex_coords);
@@ -147,7 +146,7 @@ namespace mirrage::renderer {
 	void Deferred_geometry_subpass::configure_billboard_pipeline(Deferred_renderer&             renderer,
 	                                                             graphic::Pipeline_description& p)
 	{
-		p.rasterization.cullMode  = vk::CullModeFlagBits::eNone;
+		p.rasterization.cullMode  = vk::CullModeFlagBits::eBack;
 		p.input_assembly.topology = vk::PrimitiveTopology::eTriangleStrip;
 		p.add_descriptor_set_layout(renderer.model_descriptor_set_layout());
 	}
@@ -196,208 +195,276 @@ namespace mirrage::renderer {
 		        .shader("vert_shader:particle"_aid, graphic::Shader_stage::vertex);
 	}
 
-	void Deferred_geometry_subpass::update(util::Time) {}
-
-	void Deferred_geometry_subpass::pre_draw(Frame_data& frame)
+	void Deferred_geometry_subpass::on_render_pass_configured(graphic::Render_pass& pass,
+	                                                          graphic::Framebuffer& framebuffer)
 	{
-		// select relevant draw commands and partition into normal and rigged geometry
-		auto geo_range = frame.partition_geometry(1u);
+		auto set = [&](auto& dst, int subpass, util::Str_id stage) {
+			dst = {_renderer.reserve_secondary_command_buffer_group(),
+			       pass.get_stage(subpass, stage, "dpc"_strid)};
+		};
 
-		auto rigged_begin = std::find_if(
-		        geo_range.begin(), geo_range.end(), [](auto& geo) { return geo.model->rigged(); });
+		set(_stages_model_static["default"_strid], 0, "default"_strid);
+		set(_stages_model_static["alphatest"_strid], 0, "alphatest"_strid);
 
-		_geometry_range        = util::range(geo_range.begin(), rigged_begin);
-		_rigged_geometry_range = util::range(rigged_begin, geo_range.end());
+		set(_stages_model_anim["default"_strid], 1, "default"_strid);
+		set(_stages_model_anim["alphatest"_strid], 1, "alphatest"_strid);
+		set(_stages_model_anim["dq_default"_strid], 1, "dq_default"_strid);
+		set(_stages_model_anim["dq_alphatest"_strid], 1, "dq_alphatest"_strid);
+
+		set(_stages_model_static_emissive["default"_strid], 2, "default"_strid);
+		set(_stages_model_static_emissive["alphatest"_strid], 2, "alphatest"_strid);
+
+		set(_stages_model_anim_emissive["default"_strid], 3, "default"_strid);
+		set(_stages_model_anim_emissive["alphatest"_strid], 3, "alphatest"_strid);
+		set(_stages_model_anim_emissive["dq_default"_strid], 3, "dq_default"_strid);
+		set(_stages_model_anim_emissive["dq_alphatest"_strid], 3, "dq_alphatest"_strid);
+
+		set(_stage_decals, 4, "default"_strid);
+		set(_stage_billboards, 5, "default"_strid);
+		set(_stage_particles, 6, "default"_strid);
+
+		_render_pass = pass;
+		_framebuffer = framebuffer;
 	}
+
+
+	void Deferred_geometry_subpass::update(util::Time) {}
 
 	void Deferred_geometry_subpass::draw(Frame_data& frame, graphic::Render_pass& render_pass)
 	{
-		auto _ = _renderer.profiler().push("Geometry");
+		auto commands = frame.main_command_buffer;
 
-		Deferred_push_constants dpc{};
-
-		auto last_substance_id = ""_strid;
-		auto last_material     = static_cast<const Material*>(nullptr);
-		auto last_model        = static_cast<const Model*>(nullptr);
-
-		auto prepare_draw = [&](auto& geo, bool emissive) {
-			auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
-
-			if(geo.substance_id != last_substance_id) {
-				last_substance_id = geo.substance_id;
-				render_pass.set_stage(geo.substance_id);
-			}
-
-			if(&*sub_mesh.material != last_material) {
-				last_material = &*sub_mesh.material;
-				last_material->bind(render_pass);
-			}
-
-			if(geo.model != last_model) {
-				last_model = geo.model;
-				geo.model->bind_mesh(frame.main_command_buffer, 0);
-			}
-
-			dpc.model    = glm::toMat4(geo.orientation) * glm::scale(glm::mat4(1.f), geo.scale);
-			dpc.model[3] = glm::vec4(geo.position, 1.f);
-			dpc.model    = _renderer.global_uniforms().view_mat * dpc.model;
-
-			if(emissive) {
-				auto emissive_color = glm::vec4(1, 1, 1, 1000);
-
-				if(auto entity = _ecs.get(geo.entity); entity.is_some()) {
-					emissive_color = entity.get_or_throw().template get<Material_property_comp>().process(
-					        emissive_color, [](auto& m) { return m.emissive_color; });
-				}
-
-				emissive_color.a /= 10000.0f;
-				dpc.light_data = emissive_color;
-			}
+		auto execute = [&](auto& group_map) {
+			for(auto&& [_, g] : group_map)
+				_renderer.execute_group(g.group, commands);
 		};
 
-		auto next_sub_pass = [&] {
-			render_pass.next_subpass();
-			last_substance_id = ""_strid;
-			last_material     = static_cast<const Material*>(nullptr);
-			last_model        = static_cast<const Model*>(nullptr);
+		execute(_stages_model_static);
+
+		render_pass.next_subpass(vk::SubpassContents::eSecondaryCommandBuffers);
+		execute(_stages_model_anim);
+
+		render_pass.next_subpass(vk::SubpassContents::eSecondaryCommandBuffers);
+		execute(_stages_model_static_emissive);
+
+		render_pass.next_subpass(vk::SubpassContents::eSecondaryCommandBuffers);
+		execute(_stages_model_anim_emissive);
+
+		render_pass.next_subpass(vk::SubpassContents::eSecondaryCommandBuffers);
+		_renderer.execute_group(_stage_decals.group, commands);
+
+		render_pass.next_subpass(vk::SubpassContents::eSecondaryCommandBuffers);
+		_renderer.execute_group(_stage_billboards.group, commands);
+
+		render_pass.next_subpass(vk::SubpassContents::eSecondaryCommandBuffers);
+		_renderer.execute_group(_stage_particles.group, commands);
+	}
+
+
+	namespace {
+		auto create_model_pcs(Deferred_renderer& renderer,
+		                      ecs::Entity_facet  entity,
+		                      const glm::vec4&   emissive_color,
+		                      const glm::mat4&   transform)
+		{
+			Deferred_push_constants dpc{};
+			dpc.model      = renderer.global_uniforms().view_mat * transform;
+			dpc.light_data = emissive_color;
+			dpc.light_data.a /= 10000.0f;
+
+			return dpc;
+		}
+	} // namespace
+
+	void Deferred_geometry_subpass::handle_obj(Frame_data&              frame,
+	                                           Culling_mask             mask,
+	                                           ecs::Entity_facet        entity,
+	                                           const glm::vec4&         emissive_color,
+	                                           const glm::mat4&         transform,
+	                                           const Model&             model,
+	                                           const Material_override& material_override,
+	                                           const Sub_mesh&          sub_mesh)
+	{
+		if((mask & frame.camera_culling_mask) == 0)
+			return;
+
+		auto& material =
+		        material_override.material.ready() ? *material_override.material : *sub_mesh.material;
+		auto pcs = create_model_pcs(_renderer, entity, emissive_color, transform);
+
+		auto draw = [&](auto& stage) {
+			auto [cmd_buffer, _] = _get_cmd_buffer(frame, stage);
+
+			stage.stage.bind_descriptor_set(cmd_buffer, 1, material.desc_set());
+
+			model.bind_mesh(cmd_buffer, 0);
+
+			stage.stage.push_constant(cmd_buffer, pcs);
+
+			cmd_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
 		};
 
-		for(bool emissive_pass : {false, true}) {
-			// draw all static models
-			for(auto& geo : _geometry_range) {
-				auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
-				if(emissive_pass && !sub_mesh.material->has_emission())
-					continue;
-
-				prepare_draw(geo, emissive_pass);
-				render_pass.push_constant("dpc"_strid, dpc);
-				frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
-			}
-
-			next_sub_pass();
-
-			// draw all animated models in a new subpass
-			for(auto& geo : _rigged_geometry_range) {
-				if(geo.animation_uniform_offset.is_nothing())
-					continue;
-
-				auto& sub_mesh = geo.model->sub_meshes().at(geo.sub_mesh);
-				if(emissive_pass && !sub_mesh.material->has_emission())
-					continue;
-
-				prepare_draw(geo, emissive_pass);
-
-				render_pass.push_constant("dpc"_strid, dpc);
-
-				auto uniform_offset = geo.animation_uniform_offset.get_or_throw();
-				render_pass.bind_descriptor_set(2, _renderer.gbuffer().animation_data, {&uniform_offset, 1u});
-
-				frame.main_command_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
-			}
-
-			next_sub_pass();
+		draw(_stages_model_static[material.substance_id()]);
+		if(material.has_emission()) {
+			draw(_stages_model_static_emissive[material.substance_id()]);
 		}
+	}
 
-		// draw decals
-		std::sort(frame.decal_queue.begin(), frame.decal_queue.end(), [](auto& lhs, auto& rhs) {
-			return &*std::get<0>(lhs).material < &*std::get<0>(rhs).material;
-		});
-		render_pass.set_stage("default"_strid);
-		render_pass.bind_descriptor_set(2, *_decal_input_attachment_descriptor_set);
-		for(auto&& [decal, model_mat] : frame.decal_queue) {
-			if(&*decal.material != last_material) {
-				last_material = &*decal.material;
-				last_material->bind(render_pass);
+	void Deferred_geometry_subpass::handle_obj(Frame_data&                        frame,
+	                                           Culling_mask                       mask,
+	                                           ecs::Entity_facet                  entity,
+	                                           const glm::vec4&                   emissive_color,
+	                                           const glm::mat4&                   transform,
+	                                           const Model&                       model,
+	                                           gsl::span<const Material_override> material_overrides,
+	                                           Skinning_type                      skinning_type,
+	                                           std::uint32_t                      pose_offset)
+	{
+		if((mask & frame.camera_culling_mask) == 0)
+			return;
 
-				auto blend = std::array<float, 4>{0, 0, 0, 0};
-				if(decal.material->has_normal())
-					blend[0] = blend[1] = decal.normal_alpha;
-				if(decal.material->has_brdf()) {
-					blend[2] = decal.roughness_alpha;
-					blend[3] = decal.metallic_alpha;
-				}
-				frame.main_command_buffer.setBlendConstants(blend.data());
-			}
+		auto pcs = create_model_pcs(_renderer, entity, emissive_color, transform);
 
-			auto pcs = construct_push_constants(decal, _renderer.global_uniforms().view_mat * model_mat);
+		for(auto&& [index, sub_mesh] : util::with_index(model.sub_meshes())) {
+			auto mat_override =
+			        material_overrides.size() > index ? material_overrides[index] : Material_override{};
 
-			render_pass.push_constant("dpc"_strid, pcs);
-			frame.main_command_buffer.draw(14, 1, 0, 0);
-		}
-		next_sub_pass();
+			auto& material = mat_override.material.ready() ? *mat_override.material : *sub_mesh.material;
 
-		// draw billboards
-		std::sort(frame.billboard_queue.begin(), frame.billboard_queue.end(), [](auto& lhs, auto& rhs) {
-			return std::make_pair(lhs.dynamic_lighting ? 0 : 1, &*lhs.material)
-			       < std::make_pair(rhs.dynamic_lighting ? 0 : 1, &*rhs.material);
-		});
-		render_pass.set_stage("default"_strid);
-		for(auto&& bb : frame.billboard_queue) {
-			if(!bb.dynamic_lighting)
-				break;
+			auto draw = [&, &sub_mesh = sub_mesh](auto& stage_map) {
+				auto substance = material.substance_id();
+				if(skinning_type == Skinning_type::dual_quaternion_skinning)
+					substance = "dq_"_strid + substance;
 
-			if(&*bb.material != last_material) {
-				last_material = &*bb.material;
-				last_material->bind(render_pass);
-			}
+				auto& stage = stage_map[substance];
 
-			auto pcs = construct_push_constants(
-			        bb, _renderer.global_uniforms().view_mat, _renderer.window().viewport());
+				auto [cmd_buffer, _] = _get_cmd_buffer(frame, stage);
 
-			render_pass.push_constant("dpc"_strid, pcs);
-			frame.main_command_buffer.draw(4, 1, 0, 0);
-		}
-		next_sub_pass();
+				stage.stage.bind_descriptor_set(cmd_buffer, 1, material.desc_set());
 
-		render_pass.set_stage("default"_strid);
-		if(_renderer.billboard_model().ready()) {
-			for(auto&& particle : frame.particle_queue) {
-				MIRRAGE_INVARIANT(particle.emitter->particle_count() >= 0,
-				                  "negative particle count: " << particle.emitter->particle_count());
+				stage.stage.bind_descriptor_set(
+				        cmd_buffer, 2, _renderer.gbuffer().animation_data, {&pose_offset, 1u});
 
-				if(particle.type_cfg->blend != Particle_blend_mode::solid || (particle.culling_mask & 1) == 0
-				   || !particle.emitter->drawable() || particle.emitter->particle_count() <= 0)
-					break;
+				model.bind_mesh(cmd_buffer, 0);
 
-				auto material = &*particle.type_cfg->material;
-				if(material != last_material) {
-					last_material = material;
-					last_material->bind(render_pass);
-				}
+				stage.stage.push_constant(cmd_buffer, pcs);
 
-				// bind emitter data
-				render_pass.bind_descriptor_set(2, particle.emitter->particle_uniforms());
+				cmd_buffer.drawIndexed(sub_mesh.index_count, 1, sub_mesh.index_offset, 0, 0);
+			};
 
-				// bind model
-				auto model =
-				        particle.type_cfg->model ? &*particle.type_cfg->model : &_renderer.billboard_model();
-				if(model != last_model) {
-					last_model = model;
-					last_model->bind_mesh(frame.main_command_buffer, 0);
-				}
-
-				// bind particle data
-				frame.main_command_buffer.bindVertexBuffers(
-				        1,
-				        {particle.emitter->particle_buffer()},
-				        {vk::DeviceSize(particle.emitter->particle_offset())
-				         * vk::DeviceSize(sizeof(Particle))});
-
-				dpc.model = glm::mat4(1);
-				if(particle.type_cfg->geometry == Particle_geometry::billboard) {
-					dpc.model    = glm::inverse(_renderer.global_uniforms().view_mat);
-					dpc.model[3] = glm::vec4(0, 0, 0, 1);
-				}
-				render_pass.push_constant("dpc"_strid, dpc);
-
-				// draw instanced
-				auto& sub_mesh = last_model->sub_meshes().at(0);
-				frame.main_command_buffer.drawIndexed(sub_mesh.index_count,
-				                                      std::uint32_t(particle.emitter->particle_count()),
-				                                      sub_mesh.index_offset,
-				                                      0,
-				                                      0);
+			draw(_stages_model_anim);
+			if(material.has_emission()) {
+				draw(_stages_model_anim_emissive);
 			}
 		}
 	}
+
+	void Deferred_geometry_subpass::handle_obj(Frame_data&      frame,
+	                                           Culling_mask     mask,
+	                                           const Billboard& bb,
+	                                           const glm::vec3& pos)
+	{
+		if((mask & frame.camera_culling_mask) == 0 || !bb.dynamic_lighting)
+			return;
+
+		auto [cmd_buffer, _] = _get_cmd_buffer(frame, _stage_billboards);
+
+		_stage_billboards.stage.bind_descriptor_set(cmd_buffer, 1, bb.material->desc_set());
+
+		auto pcs = construct_push_constants(
+		        bb, pos, _renderer.global_uniforms().view_mat, _renderer.window().viewport());
+
+		_stage_billboards.stage.push_constant(cmd_buffer, pcs);
+		cmd_buffer.draw(4, 1, 0, 0);
+	}
+
+	void Deferred_geometry_subpass::handle_obj(Frame_data&      frame,
+	                                           Culling_mask     mask,
+	                                           const Decal&     decal,
+	                                           const glm::mat4& transform)
+	{
+		if((mask & frame.camera_culling_mask) == 0)
+			return;
+
+		auto [cmd_buffer, fresh] = _get_cmd_buffer(frame, _stage_decals);
+
+		_stage_decals.stage.bind_descriptor_set(cmd_buffer, 1, decal.material->desc_set());
+
+		if(fresh) {
+			_stage_decals.stage.bind_descriptor_set(cmd_buffer, 2, *_decal_input_attachment_descriptor_set);
+		}
+
+		auto blend = std::array<float, 4>{0, 0, 0, 0};
+		if(decal.material->has_normal())
+			blend[0] = blend[1] = decal.normal_alpha;
+		if(decal.material->has_brdf()) {
+			blend[2] = decal.roughness_alpha;
+			blend[3] = decal.metallic_alpha;
+		}
+		cmd_buffer.setBlendConstants(blend.data());
+
+		auto pcs = construct_push_constants(decal, _renderer.global_uniforms().view_mat * transform);
+
+		_stage_decals.stage.push_constant(cmd_buffer, pcs);
+		cmd_buffer.draw(14, 1, 0, 0);
+	}
+
+	void Deferred_geometry_subpass::handle_obj(Frame_data&  frame,
+	                                           Culling_mask mask,
+	                                           const glm::vec4&,
+	                                           const Particle_system&  particle_sys_comp,
+	                                           const Particle_emitter& particle_emitter)
+	{
+		auto& type_cfg = *particle_emitter.cfg().type;
+
+		if((mask & frame.camera_culling_mask) == 0 || !_renderer.billboard_model().ready()
+		   || type_cfg.blend != Particle_blend_mode::solid || !particle_emitter.drawable()
+		   || particle_emitter.particle_count() <= 0)
+			return;
+
+		auto [cmd_buffer, _] = _get_cmd_buffer(frame, _stage_particles);
+
+		auto desc_sets = std::array<vk::DescriptorSet, 2>{type_cfg.material->desc_set(),
+		                                                  particle_emitter.particle_uniforms()};
+		_stage_particles.stage.bind_descriptor_sets(cmd_buffer, 1, desc_sets);
+
+		// bind model
+		auto model = type_cfg.model ? &*type_cfg.model : &_renderer.billboard_model();
+		model->bind_mesh(cmd_buffer, 0);
+
+		// bind particle data
+		cmd_buffer.bindVertexBuffers(
+		        1,
+		        {particle_emitter.particle_buffer()},
+		        {vk::DeviceSize(particle_emitter.particle_offset()) * vk::DeviceSize(sizeof(Particle))});
+
+		Deferred_push_constants dpc{};
+		dpc.model = glm::mat4(1);
+		if(type_cfg.geometry == Particle_geometry::billboard) {
+			dpc.model    = glm::inverse(_renderer.global_uniforms().view_mat);
+			dpc.model[3] = glm::vec4(0, 0, 0, 1);
+		}
+		_stage_particles.stage.push_constant(cmd_buffer, dpc);
+
+		// draw instanced
+		auto& sub_mesh = model->sub_meshes().at(0);
+		cmd_buffer.drawIndexed(sub_mesh.index_count,
+		                       std::uint32_t(particle_emitter.particle_count()),
+		                       sub_mesh.index_offset,
+		                       0,
+		                       0);
+	}
+
+	auto Deferred_geometry_subpass::_get_cmd_buffer(Frame_data& frame, Stage_data& stage_ref)
+	        -> std::pair<vk::CommandBuffer, bool>
+	{
+		auto [cmd_buffer, empty] = _renderer.get_secondary_command_buffer(stage_ref.group);
+		if(empty) {
+			stage_ref.stage.begin(cmd_buffer, _framebuffer.get_or_throw());
+			stage_ref.stage.bind_descriptor_set(cmd_buffer, 0, frame.global_uniform_set);
+		}
+
+		return {cmd_buffer, empty};
+	}
+
 } // namespace mirrage::renderer

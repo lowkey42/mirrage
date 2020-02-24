@@ -167,7 +167,7 @@ namespace mirrage::renderer {
 	}
 
 	Particle_pass::Particle_pass(Deferred_renderer& renderer, ecs::Entity_manager& ecs)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _ecs(ecs)
 	  , _rand(util::construct_random_engine())
 	  , _storage_buffer_offset_alignment(
@@ -179,7 +179,7 @@ namespace mirrage::renderer {
 	                                                            renderer.compute_uniform_buffer_layout()))
 	  , _update_fence(renderer.device().create_fence(false))
 	  , _per_frame_data(util::build_vector<Per_frame_data>(
-	            renderer.device().max_frames_in_flight() + 1, [&](auto, auto& vec) {
+	            renderer.device().max_frames_in_flight() + 2, [&](auto, auto& vec) {
 		            vec.emplace_back().reserve(renderer,
 		                                       initial_particle_capacity,
 		                                       initial_particle_type_capacity,
@@ -206,8 +206,10 @@ namespace mirrage::renderer {
 		_dt += dt.value();
 	}
 
-	void Particle_pass::draw(Frame_data& frame)
+	void Particle_pass::post_draw(Frame_data& frame)
 	{
+		auto _ = _mark_subpass(frame);
+
 		if(_update_submitted && _update_fence) {
 			_update_fence.wait();
 			_update_fence.reset();
@@ -250,7 +252,7 @@ namespace mirrage::renderer {
 
 		if(!_update_submitted) {
 			// sort for update
-			std::sort(frame.particle_queue.begin(), frame.particle_queue.end(), [&](auto& lhs, auto& rhs) {
+			std::sort(_next_update_queue.begin(), _next_update_queue.end(), [&](auto& lhs, auto& rhs) {
 				return std::make_tuple(&*lhs.emitter->cfg().type, lhs.effectors.empty())
 				       < std::make_tuple(&*lhs.emitter->cfg().type, rhs.effectors.empty());
 			});
@@ -258,30 +260,12 @@ namespace mirrage::renderer {
 			_submit_update(frame);
 		}
 
-		// sort for draw
-		std::sort(frame.particle_queue.begin(), frame.particle_queue.end(), [&](auto& lhs, auto& rhs) {
-			auto lhs_draw = (lhs.culling_mask & 1) != 0 && lhs.emitter->drawable();
-			auto rhs_draw = (lhs.culling_mask & 1) != 0 && rhs.emitter->drawable();
-			if(lhs_draw != rhs_draw)
-				return lhs_draw;
-
-			auto& lhs_type = *lhs.emitter->cfg().type;
-			auto& rhs_type = *rhs.emitter->cfg().type;
-
-			return std::make_tuple(lhs_type.blend,
-			                       lhs_type.geometry,
-			                       &*lhs_type.material,
-			                       lhs_type.model ? &*lhs_type.model : nullptr)
-			       < std::make_tuple(rhs_type.blend,
-			                         rhs_type.geometry,
-			                         &*rhs_type.material,
-			                         rhs_type.model ? &*rhs_type.model : nullptr);
-		});
+		_next_update_queue.clear();
 	}
 
 	void Particle_pass::_submit_update(Frame_data& frame)
 	{
-		if(frame.particle_queue.empty())
+		if(_next_update_queue.empty())
 			return;
 
 		MIRRAGE_INVARIANT(_emitter_gpu_data.empty(),
@@ -323,9 +307,9 @@ namespace mirrage::renderer {
 		auto global_effector_count = _ecs.list<Particle_effector_comp>().size();
 		auto effector_count        = global_effector_count;
 
-		_emitter_gpu_data.reserve(frame.particle_queue.size());
-		for(auto i = std::size_t(0); i < frame.particle_queue.size(); i++) {
-			auto& p = frame.particle_queue[i];
+		_emitter_gpu_data.reserve(_next_update_queue.size());
+		for(auto i = std::size_t(0); i < _next_update_queue.size(); i++) {
+			auto& p = _next_update_queue[i];
 
 			effector_count += gsl::narrow<std::int32_t>(p.effectors.size());
 
@@ -393,7 +377,7 @@ namespace mirrage::renderer {
 		for(auto [e, t] : _ecs.list<Particle_effector_comp, Transform_comp>()) {
 			effector_to_uniform(e.effector, t.position, t.orientation, uniform_effectors[i++]);
 		}
-		for(auto& p : frame.particle_queue) {
+		for(auto& p : _next_update_queue) {
 			for(auto& e : p.effectors) {
 				effector_to_uniform(e, p.system->position(), p.system->rotation(), uniform_effectors[i++]);
 			}
@@ -444,9 +428,9 @@ namespace mirrage::renderer {
 	        -> std::tuple<gsl::span<Emitter_range>, gsl::span<std::uint32_t>>
 	{
 		auto last_feedback_buffer_size = _feedback_buffer_size;
-		if(frame.particle_queue.size() > _feedback_buffer_size) {
+		if(_next_update_queue.size() > _feedback_buffer_size) {
 			// resize feedback_buffer
-			_feedback_buffer_size = frame.particle_queue.size() + 32u;
+			_feedback_buffer_size = _next_update_queue.size() + 32u;
 			auto mapping_offset   = align(vk::DeviceSize(_feedback_buffer_size * sizeof(Emitter_range)),
                                         _storage_buffer_offset_alignment);
 			auto feedback_size_bytes =
@@ -558,17 +542,17 @@ namespace mirrage::renderer {
 		};
 
 		auto submit_batch = [&](auto&& begin, auto&& end, const Particle_type_config& type) {
-			if(begin != frame.particle_queue.end()) {
+			if(begin != _next_update_queue.end()) {
 				auto desc_set = update_uniforms(type);
 				for(auto& p : util::range(begin, end))
 					p.emitter->gpu_data()->next_uniforms(desc_set);
 			}
 		};
 
-		auto batch_begin = frame.particle_queue.end();
+		auto batch_begin = _next_update_queue.end();
 		auto batch_type  = static_cast<const Particle_type_config*>(nullptr);
 
-		for(auto iter = frame.particle_queue.begin(); iter != frame.particle_queue.end(); iter++) {
+		for(auto iter = _next_update_queue.begin(); iter != _next_update_queue.end(); iter++) {
 			auto type = &*iter->emitter->cfg().type;
 
 			if(type != batch_type) {
@@ -580,9 +564,9 @@ namespace mirrage::renderer {
 			}
 		}
 
-		submit_batch(batch_begin, frame.particle_queue.end(), *batch_type);
+		submit_batch(batch_begin, _next_update_queue.end(), *batch_type);
 
-		for(auto& p : frame.particle_queue) {
+		for(auto& p : _next_update_queue) {
 			MIRRAGE_INVARIANT(p.emitter->gpu_data()->next_uniforms(), "no particle uniform set");
 		}
 	}
@@ -619,7 +603,7 @@ namespace mirrage::renderer {
 		auto idx    = std::int32_t(0);
 		auto offset = std::int32_t(0);
 
-		for(auto& p : frame.particle_queue) {
+		for(auto& p : _next_update_queue) {
 			const auto to_spawn = p.emitter->particles_to_spawn();
 
 			if(to_spawn > 0) {
@@ -739,7 +723,7 @@ namespace mirrage::renderer {
 
 		auto effector_offset = std::int32_t(_ecs.list<Particle_effector_comp>().size());
 
-		for(auto& p : frame.particle_queue) {
+		for(auto& p : _next_update_queue) {
 			auto& gpu_data = *p.emitter->gpu_data();
 			if(!gpu_data.batch_able() || !p.effectors.empty()) {
 				gpu_data.batch_able(false);

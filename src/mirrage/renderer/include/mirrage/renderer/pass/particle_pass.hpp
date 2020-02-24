@@ -20,13 +20,29 @@ namespace mirrage::renderer {
 
 		Particle_pass(Deferred_renderer&, ecs::Entity_manager&);
 
+		void handle_obj(Frame_data&,
+		                Culling_mask,
+		                Particle_system&  sys,
+		                Particle_emitter& emitter,
+		                Particle_system_update_tag)
+		{
+			auto& p     = _next_update_queue.emplace_back();
+			p.emitter   = &emitter;
+			p.system    = &sys;
+			p.effectors = sys.effectors();
+		}
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "Particle"; }
 
 	  private:
+		struct Update_queue {
+			Particle_emitter*                   emitter;
+			Particle_system*                    system;
+			gsl::span<Particle_effector_config> effectors;
+		};
 		struct Update_uniform_buffer {
 			graphic::Backed_buffer buffer;
 			graphic::DescriptorSet desc_set;
@@ -59,7 +75,6 @@ namespace mirrage::renderer {
 
 		using Emitter_gpu_data = std::vector<std::weak_ptr<Particle_emitter_gpu_data>>;
 
-		Deferred_renderer&            _renderer;
 		ecs::Entity_manager&          _ecs;
 		util::default_rand            _rand;
 		vk::DeviceSize                _storage_buffer_offset_alignment;
@@ -79,6 +94,8 @@ namespace mirrage::renderer {
 		std::vector<Per_frame_data> _per_frame_data;
 		std::int32_t                _current_frame = 0;
 		bool                        _first_frame   = true;
+
+		std::vector<Update_queue> _next_update_queue;
 
 		void _submit_update(Frame_data&);
 		void _build_update_commands(Frame_data&, Per_frame_data&);

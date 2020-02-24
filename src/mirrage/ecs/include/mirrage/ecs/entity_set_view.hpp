@@ -89,6 +89,15 @@ namespace mirrage::ecs {
 			                    SortedPools&    sorted,
 			                    UnsortedPools&  unsorted,
 			                    bool            begin_iterator);
+			Entity_set_iterator(const Entity_set_iterator&) noexcept = default;
+
+			auto& operator=(const Entity_set_iterator& rhs) noexcept
+			{
+				_iterators = rhs._iterators;
+				_entity    = rhs._entity;
+				_values    = rhs._values;
+				return *this;
+			}
 
 			auto operator*() noexcept -> value_type& { return get(); }
 			auto operator-> () noexcept -> value_type* { return &get(); }
@@ -112,6 +121,9 @@ namespace mirrage::ecs {
 			{
 				return !(lhs == rhs);
 			}
+
+			/// skips approximatly the given number of elements
+			void estimate_advance(std::size_t);
 
 		  private:
 			Entity_manager&        _entities;
@@ -153,6 +165,20 @@ namespace mirrage::ecs {
 		auto begin();
 		auto end();
 
+		/// returns an upper bound for the size of this view
+		auto estimate_size() const noexcept -> std::size_t
+		{
+			auto size = std::numeric_limits<std::size_t>::max();
+			util::foreach_in_tuple(_sorted_pools, [&](auto, auto& pool) {
+				size = std::min(size, static_cast<std::size_t>(pool->size()));
+			});
+			util::foreach_in_tuple(_unsorted_pools, [&](auto, auto& pool) {
+				size = std::min(size, static_cast<std::size_t>(pool->size()));
+			});
+
+			return size;
+		}
+
 	  private:
 		Entity_manager* _entities;
 		Sorted_pools    _sorted_pools;
@@ -164,6 +190,43 @@ namespace mirrage::ecs {
 	auto Entity_manager::list() -> Entity_set_view<Cs...>
 	{
 		return {*this};
+	}
+
+	/// for parallel iteration with async++
+	template <typename Iter>
+	class entity_set_partitioner_impl {
+	  public:
+		entity_set_partitioner_impl(Iter begin, Iter end, std::size_t range_size, std::size_t grain)
+		  : _iter_begin(begin), _iter_end(end), _range_size(range_size), _grain(grain)
+		{
+		}
+
+		Iter begin() const { return _iter_begin; }
+		Iter end() const { return _iter_end; }
+		auto split() -> entity_set_partitioner_impl
+		{
+			if(_range_size <= _grain)
+				return {_iter_end, _iter_end, 0, _grain};
+
+			auto new_begin = _iter_begin;
+			_range_size /= 2;
+			_iter_begin.estimate_advance(_range_size);
+
+			return entity_set_partitioner_impl{new_begin, _iter_begin, _range_size, _grain};
+		}
+
+	  private:
+		Iter        _iter_begin, _iter_end;
+		std::size_t _range_size;
+		std::size_t _grain;
+	};
+
+	template <typename ESV>
+	auto entity_set_partitioner(ESV& esv, std::size_t pool_num_threads = async::hardware_concurrency())
+	{
+		const auto size  = esv.estimate_size();
+		const auto grain = std::clamp(size / (4 * pool_num_threads), std::size_t(64), std::size_t(512));
+		return entity_set_partitioner_impl(esv.begin(), esv.end(), size, grain);
 	}
 
 } // namespace mirrage::ecs

@@ -36,8 +36,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleStrip;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
 			pipeline.rasterization.cullMode  = vk::CullModeFlagBits::eNone;
 			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{
                     vk::PipelineDepthStencilStateCreateFlags{}, true, false, vk::CompareOp::eLess};
@@ -71,30 +69,53 @@ namespace mirrage::renderer {
 	Billboard_pass::Billboard_pass(Deferred_renderer&         renderer,
 	                               ecs::Entity_manager&       entities,
 	                               graphic::Render_target_2D& src)
-	  : _renderer(renderer), _entities(entities), _render_pass(build_render_pass(renderer, src, _framebuffer))
+	  : Render_pass(renderer)
+	  , _entities(entities)
+	  , _render_pass(build_render_pass(renderer, src, _framebuffer))
 	{
 	}
 
 
 	void Billboard_pass::update(util::Time) {}
 
-	void Billboard_pass::draw(Frame_data& frame)
+	void Billboard_pass::pre_draw(Frame_data&) { _queue.clear(); }
+
+	void Billboard_pass::handle_obj(Frame_data&      frame,
+	                                Culling_mask     mask,
+	                                const Billboard& bb,
+	                                const glm::vec3& pos)
 	{
+		if((mask & frame.camera_culling_mask) != 0 && !bb.dynamic_lighting) {
+			_queue.emplace_back(bb);
+			_queue.back().offset += pos;
+		}
+	}
+
+	void Billboard_pass::post_draw(Frame_data& frame)
+	{
+		auto _ = _mark_subpass(frame);
+
+		if(_queue.empty())
+			return;
+
+		std::sort(_queue.begin(), _queue.end(), [](auto& lhs, auto& rhs) {
+			return &*lhs.material < &*rhs.material;
+		});
+
 		_render_pass.execute(frame.main_command_buffer, _framebuffer, [&] {
 			_render_pass.bind_descriptor_set(0, frame.global_uniform_set);
 
 			auto last_material = static_cast<const Material*>(nullptr);
-			for(auto&& bb : frame.billboard_queue) {
-				if(bb.dynamic_lighting)
-					continue;
-
+			for(auto&& bb : _queue) {
 				if(&*bb.material != last_material) {
 					last_material = &*bb.material;
 					last_material->bind(_render_pass);
 				}
 
-				auto pcs = construct_push_constants(
-				        bb, _renderer.global_uniforms().view_mat, _renderer.window().viewport());
+				auto pcs = construct_push_constants(bb,
+				                                    glm::vec3(0, 0, 0),
+				                                    _renderer.global_uniforms().view_mat,
+				                                    _renderer.window().viewport());
 
 				_render_pass.push_constant("dpc"_strid, pcs);
 				frame.main_command_buffer.draw(4, 1, 0, 0);

@@ -22,7 +22,7 @@ namespace mirrage::renderer {
 		for(auto& model : _loading_models) {
 			if(model.model().ready()) {
 				model.owner(_ecs).process([&](auto& owner) {
-					owner.template emplace<Model_comp>(model.model());
+					owner.template emplace<Model_comp>(model.model(), model.local_transform());
 					owner.template erase<Model_loading_comp>();
 				});
 			}
@@ -32,7 +32,8 @@ namespace mirrage::renderer {
 	void Loading_system::_load(Model_unloaded_comp& model)
 	{
 		model.owner(_ecs).process([&](auto& owner) {
-			owner.template emplace<Model_loading_comp>(_assets.load<Model>(model.model_aid()));
+			owner.template emplace<Model_loading_comp>(_assets.load<Model>(model.model_aid()),
+			                                           model.local_transform());
 			owner.template erase<Model_unloaded_comp>();
 		});
 	}
@@ -40,7 +41,7 @@ namespace mirrage::renderer {
 	void Loading_system::_unload(Model_comp& model)
 	{
 		model.owner(_ecs).process([&](auto& owner) {
-			owner.template emplace<Model_unloaded_comp>(model.model_aid());
+			owner.template emplace<Model_unloaded_comp>(model.model_aid(), model.local_transform());
 			owner.template erase<Model_comp>();
 		});
 	}

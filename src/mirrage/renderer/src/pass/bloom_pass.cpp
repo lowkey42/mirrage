@@ -29,9 +29,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
@@ -77,9 +74,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
@@ -122,7 +116,7 @@ namespace mirrage::renderer {
 
 
 	Bloom_pass::Bloom_pass(Deferred_renderer& renderer, graphic::Render_target_2D& src)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _src(src)
 	  , _sampler(renderer.device().create_sampler(12,
 	                                              vk::SamplerAddressMode::eClampToEdge,
@@ -180,8 +174,10 @@ namespace mirrage::renderer {
 
 	void Bloom_pass::update(util::Time) {}
 
-	void Bloom_pass::draw(Frame_data& frame)
+	void Bloom_pass::post_draw(Frame_data& frame)
 	{
+		auto _ = _mark_subpass(frame);
+
 		if(_first_frame) {
 			_first_frame = false;
 

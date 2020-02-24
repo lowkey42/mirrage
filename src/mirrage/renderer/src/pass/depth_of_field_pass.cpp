@@ -37,9 +37,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
@@ -68,7 +65,7 @@ namespace mirrage::renderer {
 	Depth_of_field_pass::Depth_of_field_pass(Deferred_renderer&         renderer,
 	                                         graphic::Render_target_2D& src,
 	                                         graphic::Render_target_2D& target)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _src(src)
 	  , _target(target)
 	  , _gbuffer_sampler(renderer.device().create_sampler(renderer.gbuffer().mip_levels,
@@ -109,8 +106,10 @@ namespace mirrage::renderer {
 
 	void Depth_of_field_pass::update(util::Time) {}
 
-	void Depth_of_field_pass::draw(Frame_data& frame)
+	void Depth_of_field_pass::post_draw(Frame_data& frame)
 	{
+		auto _ = _mark_subpass(frame);
+
 		auto pcs = Push_constants{};
 		_renderer.active_camera().process([&](auto& camera) {
 			pcs.arguments.r = camera.dof_focus;
@@ -166,14 +165,16 @@ namespace mirrage::renderer {
 			});
 		}
 
-		auto _ = _renderer.profiler().push("Apply");
+		{
+			auto _ = _renderer.profiler().push("Apply");
 
-		_apply_renderpass.execute(frame.main_command_buffer, _apply_framebuffer, [&] {
-			_apply_renderpass.bind_descriptor_set(1, *_apply_descriptor_set);
+			_apply_renderpass.execute(frame.main_command_buffer, _apply_framebuffer, [&] {
+				_apply_renderpass.bind_descriptor_set(1, *_apply_descriptor_set);
 
-			_apply_renderpass.push_constant("pcs"_strid, pcs);
-			frame.main_command_buffer.draw(3, 1, 0, 0);
-		});
+				_apply_renderpass.push_constant("pcs"_strid, pcs);
+				frame.main_command_buffer.draw(3, 1, 0, 0);
+			});
+		}
 	}
 
 

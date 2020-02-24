@@ -115,6 +115,13 @@ namespace mirrage::util {
 
 			return *this;
 		}
+		void reset()
+		{
+			if(_valid) {
+				_data.~T();
+				_valid = false;
+			}
+		}
 
 		static maybe nothing() noexcept { return maybe(); }
 
@@ -322,6 +329,7 @@ namespace mirrage::util {
 			std::swap(_ref = nullptr, o._ref);
 			return *this;
 		}
+		void reset() { _ref = nullptr; }
 
 		static maybe nothing() noexcept { return maybe(); }
 

@@ -16,12 +16,11 @@ namespace mirrage::renderer {
 		Ssao_pass(Deferred_renderer&);
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "SAO"; }
 
 	  private:
-		Deferred_renderer&        _renderer;
 		vk::Format                _ao_format;
 		graphic::Render_target_2D _ao_result_buffer;
 		graphic::Render_target_2D _blur_buffer;

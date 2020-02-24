@@ -19,7 +19,7 @@ namespace mirrage::renderer {
 
 
 		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		void post_draw(Frame_data&);
 
 		auto last_histogram() const noexcept -> auto& { return _last_result_data; }
 		auto max_histogram_size() const noexcept { return _last_max_histogram_size; }
@@ -27,7 +27,6 @@ namespace mirrage::renderer {
 		auto name() const noexcept -> const char* override { return "Tone Mapping"; }
 
 	  private:
-		Deferred_renderer&         _renderer;
 		graphic::Render_target_2D& _src;
 		graphic::Render_target_2D& _target;
 		bool                       _first_frame = true;

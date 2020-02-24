@@ -34,32 +34,29 @@ namespace mirrage {
 	                         char**                   env)
 	  : Engine(org, title, std::move(base_dir), version_major, version_minor, debug, false, argc, argv, env)
 	  , _debug_ui(assets(), gui(), bus())
-	  , _renderer_factory(std::make_unique<renderer::Deferred_renderer_factory>(
-	            *this,
-	            window(),
-	            util::make_vector(renderer::make_pass_factory<renderer::Frustum_culling_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Particle_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Animation_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Shadowmapping_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Clear_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Deferred_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Gen_mipmap_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Ssao_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Gi_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Transparent_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Taa_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Depth_of_field_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Bloom_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Tone_mapping_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Billboard_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Debug_draw_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Blit_pass_factory>(),
-	                              renderer::make_pass_factory<renderer::Gui_pass_factory>())))
-	  , _global_render(_renderer_factory->create_renderer<renderer::Gui_pass_factory>())
+	  , _renderer_factory(renderer::make_deferred_renderer_factory<renderer::Frustum_culling_pass,
+	                                                               renderer::Particle_pass,
+	                                                               renderer::Animation_pass,
+	                                                               renderer::Shadowmapping_pass,
+	                                                               renderer::Clear_pass,
+	                                                               renderer::Deferred_pass,
+	                                                               renderer::Gen_mipmap_pass,
+	                                                               renderer::Ssao_pass,
+	                                                               renderer::Gi_pass,
+	                                                               renderer::Transparent_pass,
+	                                                               renderer::Taa_pass,
+	                                                               renderer::Depth_of_field_pass,
+	                                                               renderer::Bloom_pass,
+	                                                               renderer::Tone_mapping_pass,
+	                                                               renderer::Billboard_pass,
+	                                                               renderer::Debug_draw_pass,
+	                                                               renderer::Blit_pass,
+	                                                               renderer::Gui_pass>(*this, window()))
+	  , _global_render(_renderer_factory->create_renderer<renderer::Gui_pass>())
 	  , _render_pass_mask(_renderer_factory->all_passes_mask())
 	{
-		util::erase_fast(_render_pass_mask, renderer::render_pass_id_of<renderer::Clear_pass_factory>());
-		util::erase_fast(_render_pass_mask, renderer::render_pass_id_of<renderer::Gui_pass_factory>());
+		util::erase_fast(_render_pass_mask, renderer::render_pass_id_of<renderer::Clear_pass>());
+		util::erase_fast(_render_pass_mask, renderer::render_pass_id_of<renderer::Gui_pass>());
 	}
 
 	Game_engine::~Game_engine()

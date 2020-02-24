@@ -36,7 +36,7 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 		option(MIRRAGE_SAN "Build with sanitizers" OFF)
 		if(MIRRAGE_SAN)
 			MESSAGE("Building with sanitizers")
-			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fsanitize=integer -fsanitize=undefined -fsanitize-address-use-after-scope ")
+			set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=integer -fsanitize=undefined -fsanitize=address ")
 		endif()
 		
 	else()
@@ -44,16 +44,30 @@ if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 	endif()
 endif()
 
+option(MIRRAGE_WERROR "Enables -Werror" ON)
+
 # Default compiler flags
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic -Wextra-semi
-		-Wzero-as-null-pointer-constant -Wold-style-cast -Werror
+		-Wzero-as-null-pointer-constant -Wold-style-cast 
 		-Wno-unused-parameter -Wno-unused-private-field -Wno-missing-braces -Wno-error-unused-command-line-argument)
+	
+	if(${MIRRAGE_WERROR})
+		set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS} -Werror)
+	endif()
+	
+	set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS} -mavx2 -mrecip=all -fno-math-errno -fassociative-math -freciprocal-math -fno-signed-zeros -fno-trapping-math -fdenormal-fp-math=positive-zero -ffp-contract=fast )
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS -Wextra -Wall -pedantic
-		-Wlogical-op -Werror -Wno-unused-parameter
+		-Wlogical-op -Wno-unused-parameter
 		-Wno-missing-braces)
+		
+	if(${MIRRAGE_WERROR})
+		set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS} -Werror)
+	endif()
+	
+	set(MIRRAGE_DEFAULT_COMPILER_ARGS ${MIRRAGE_DEFAULT_COMPILER_ARGS} -mavx2 -mrecip=all -fno-math-errno -funsafe-math-optimizations -fcx-limited-range -fexcess-precision=fast)
 
 elseif(MSVC)
 	set(MIRRAGE_DEFAULT_COMPILER_ARGS /DWIN32_LEAN_AND_MEAN /DNOMINMAX /MP /W3 /WX)
@@ -63,14 +77,25 @@ endif()
 
 # Select optimal linker
 if (UNIX AND NOT APPLE)
-	execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=lld -Wl,--version ERROR_QUIET OUTPUT_VARIABLE ld_version)
-	if ("${ld_version}" MATCHES "LLD")
-		message("using LLD linker")
-		set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld -Wl,--threads,--build-id=none")
-		set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=lld -Wl,--threads,--build-id=none")
+	if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+		execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=lld -Wl,--version ERROR_QUIET OUTPUT_VARIABLE ld_version)
+		if ("${ld_version}" MATCHES "LLD")
+			message("using LLD linker")
+			set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=lld -Wl,--threads,--build-id=none")
+			set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=lld -Wl,--threads,--build-id=none")
 
+		else()
+			message("OUT ${ld_version}")
+			execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=gold -Wl,--version ERROR_QUIET OUTPUT_VARIABLE ld_version)
+			if ("${ld_version}" MATCHES "GNU gold")
+				message("using gold linker")
+				set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fuse-ld=gold -Wl,--disable-new-dtags")
+				set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fuse-ld=gold -Wl,--disable-new-dtags")
+			else()
+				message("using default linker")
+			endif()
+		endif()
 	else()
-		message("OUT ${ld_version}")
 		execute_process(COMMAND ${CMAKE_C_COMPILER} -fuse-ld=gold -Wl,--version ERROR_QUIET OUTPUT_VARIABLE ld_version)
 		if ("${ld_version}" MATCHES "GNU gold")
 			message("using gold linker")

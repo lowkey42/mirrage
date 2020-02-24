@@ -31,7 +31,7 @@ namespace mirrage::asset {
 	template <class R>
 	auto Ptr<R>::ready() const -> bool
 	{
-		return _task.ready();
+		return _task.valid() && _task.ready();
 	}
 
 	template <class R>

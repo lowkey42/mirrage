@@ -3,11 +3,27 @@
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/renderer/animation_comp.hpp>
 
+#include <mirrage/utils/random.hpp>
+
 
 namespace mirrage {
 	using namespace ecs::components;
 	using namespace util::unit_literals;
 	using namespace graphic;
+
+	namespace {
+		constexpr auto animations_strs = std::array<const char*, 9>{
+		        {"[None]", "Attack", "Dance", "Die", "Flee", "Idle", "Sad", "Sleep", "Walk"}};
+		constexpr auto animations_ids = std::array<util::Str_id, 9>{{""_strid,
+		                                                             "attack"_strid,
+		                                                             "dance"_strid,
+		                                                             "die"_strid,
+		                                                             "flee"_strid,
+		                                                             "idle"_strid,
+		                                                             "sad"_strid,
+		                                                             "sleep"_strid,
+		                                                             "walk"_strid}};
+	} // namespace
 
 	Test_animation_screen::Test_animation_screen(Engine& engine) : Test_screen(engine)
 	{
@@ -23,7 +39,6 @@ namespace mirrage {
 		                              .direction(glm::vec3{-1, 0, 0})
 		                              .create();
 
-
 		_animation_test2_dqs = _meta_system.entities()
 		                               .entity_builder("rotation_test")
 		                               .position({-4, 0, -0.5f - 1.f})
@@ -33,6 +48,25 @@ namespace mirrage {
 		                               .entity_builder("rotation_test_lbs")
 		                               .position({-4, 0, -0.5f + 1.f})
 		                               .create();
+
+		static auto rand = util::construct_random_engine();
+
+		for(int x = 0; x < 70; x++) {
+			for(int z = 0; z < 70; z++) {
+				_meta_system.entities()
+				        .entity_builder("monk")
+				        .position({x * 0.3f, 15, z * 0.3f})
+				        .post_create([=](ecs::Entity_facet e) {
+					        e.process([=](renderer::Simple_animation_controller_comp& anim) {
+						        anim.play(animations_ids.at(std::uniform_int_distribution<int>(1, 8)(rand)),
+						                  std::uniform_real_distribution<float>(0.75f, 1.6f)(rand));
+						        anim.current().get_or_throw().time +=
+						                std::uniform_real_distribution<float>(0.0f, 6.0f)(rand);
+					        });
+				        })
+				        .create();
+			}
+		}
 	}
 
 	void Test_animation_screen::_draw()
@@ -48,19 +82,6 @@ namespace mirrage {
 		        {300, 500}, ImGui::WindowPosition_X::right, ImGui::WindowPosition_Y::center);
 		if(ImGui::Begin("Animation")) {
 			ImGui::TextUnformatted("Animation");
-
-			auto animations_strs = std::array<const char*, 9>{
-			        {"[None]", "Attack", "Dance", "Die", "Flee", "Idle", "Sad", "Sleep", "Walk"}};
-			auto animations_ids = std::array<util::Str_id, 9>{{""_strid,
-			                                                   "attack"_strid,
-			                                                   "dance"_strid,
-			                                                   "die"_strid,
-			                                                   "flee"_strid,
-			                                                   "idle"_strid,
-			                                                   "sad"_strid,
-			                                                   "sleep"_strid,
-			                                                   "walk"_strid}};
-			(void) animations_ids;
 
 			auto curr_animation_id = anim.animation_id().get_or(""_strid);
 			auto curr_idx          = int(std::distance(
@@ -113,9 +134,9 @@ namespace mirrage {
 
 
 				if(anim.paused())
-					anim.pause(!ImGui::Button("Continue"));
+					anim.pause(!ImGui::Button("Continue##monk"));
 				else
-					anim.pause(ImGui::Button("Pause"));
+					anim.pause(ImGui::Button("Pause##monk"));
 
 				ImGui::SameLine();
 
@@ -144,9 +165,9 @@ namespace mirrage {
 		ImGui::TextUnformatted("Rotation Test");
 		_animation_test2_dqs.get<renderer::Simple_animation_controller_comp>().process([&](auto& anim) {
 			if(anim.paused())
-				anim.pause(!ImGui::Button("Continue"));
+				anim.pause(!ImGui::Button("Continue##rot"));
 			else
-				anim.pause(ImGui::Button("Pause"));
+				anim.pause(ImGui::Button("Pause##rot"));
 
 			_animation_test2_lbs.get<renderer::Simple_animation_controller_comp>().process(
 			        [&](auto& anim_lbs) { anim_lbs.pause(anim.paused()); });

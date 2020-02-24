@@ -57,11 +57,11 @@ namespace mirrage::renderer {
 		_shadow_color = temperature_to_color(kelvin);
 	}
 
-	auto Directional_light_comp::calc_shadowmap_view_proj(ecs::components::Transform_comp& transform) const
+	auto Directional_light_comp::calc_shadowmap_view_proj(glm::vec3 position, glm::quat orientation) const
 	        -> glm::mat4
 	{
-		auto inv_view = glm::toMat4(transform.orientation);
-		inv_view[3]   = glm::vec4(transform.position, 1.f);
+		auto inv_view = glm::toMat4(orientation);
+		inv_view[3]   = glm::vec4(position, 1.f);
 		return glm::ortho(-_shadow_size,
 		                  _shadow_size,
 		                  -_shadow_size,

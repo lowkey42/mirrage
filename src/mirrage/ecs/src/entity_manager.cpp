@@ -54,6 +54,9 @@ namespace mirrage::ecs {
 			if(_position.is_some())
 				transform.position = _position.get_or_throw();
 
+			if(_scale.is_some())
+				transform.scale = _scale.get_or_throw();
+
 			if(auto r = std::get_if<glm::vec3>(&_rotation)) {
 				if(_look_at)
 					transform.look_at(*r);

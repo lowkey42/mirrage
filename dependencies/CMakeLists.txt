@@ -7,7 +7,6 @@ if(${MIRRAGE_ENABLE_BACKWARD})
 	add_subdirectory(backward-cpp)
 endif()
 
-add_subdirectory(cxxopts)
 add_subdirectory(enet)
 add_subdirectory(indicators)
 include(glm_interface.cmake)
@@ -62,14 +61,6 @@ if(MIRRAGE_PREFER_SYSTEM_SDL)
 endif()
 
 add_subdirectory(sf2)
-add_subdirectory(stb_image)
-
-if(MIRRAGE_BUILD_MESH_CONVERTER)
-	add_subdirectory(assimp)
-	set_property(TARGET assimp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/assimp/include")
-
-	include(crunch_interface.cmake)
-endif()
 
 if(NOT TARGET mirrage::deps::SDL2)
 	message("Building SDL2 from source")
@@ -89,3 +80,15 @@ if(NOT TARGET mirrage::deps::SDL2)
 endif()
 
 include(soloud_interface.cmake)
+
+add_subdirectory(stb_image)
+
+if(MIRRAGE_BUILD_MESH_CONVERTER)
+	set(CXXOPTS_BUILD_TESTS OFF)
+	add_subdirectory(cxxopts)
+	add_subdirectory(assimp)
+	set_property(TARGET assimp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/assimp/include")
+
+	include(crunch_interface.cmake)
+endif()
+

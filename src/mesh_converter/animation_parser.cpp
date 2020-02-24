@@ -47,10 +47,11 @@ namespace mirrage {
 			auto scale_count       = std::size_t(0);
 			auto orientation_count = std::size_t(0);
 			for(auto channel : gsl::span(anim->mChannels, anim->mNumChannels)) {
-				time_count = channel->mNumPositionKeys + channel->mNumScalingKeys + channel->mNumRotationKeys;
-				position_count    = channel->mNumPositionKeys;
-				scale_count       = channel->mNumScalingKeys;
-				orientation_count = channel->mNumRotationKeys;
+				time_count +=
+				        channel->mNumPositionKeys + channel->mNumScalingKeys + channel->mNumRotationKeys;
+				position_count += channel->mNumPositionKeys;
+				scale_count += channel->mNumScalingKeys;
+				orientation_count += channel->mNumRotationKeys;
 			}
 
 			times.reserve(time_count);
@@ -58,23 +59,6 @@ namespace mirrage {
 			scales.reserve(scale_count);
 			orientations.reserve(orientation_count);
 		}
-
-		struct Bone_anim {
-			Behaviour pre_behaviour  = Behaviour::clamp;
-			Behaviour post_behaviour = Behaviour::clamp;
-
-			std::size_t position_count     = 0;
-			std::size_t position_times_idx = 0;
-			std::size_t positions_idx      = 0;
-
-			std::size_t scale_count     = 0;
-			std::size_t scale_times_idx = 0;
-			std::size_t scales_idx      = 0;
-
-			std::size_t orientation_count     = 0;
-			std::size_t orientation_times_idx = 0;
-			std::size_t orientations_idx      = 0;
-		};
 	} // namespace
 
 	void parse_animations(const std::string&              model_name,
@@ -92,21 +76,22 @@ namespace mirrage {
 
 		auto animations = gsl::span(scene.mAnimations, scene.mNumAnimations);
 		for(auto anim : animations) {
+			auto animation = renderer::detail::Animation_data_v1();
+
 			auto anim_name = std::string(anim->mName.C_Str());
 			anim_name.erase(std::remove_if(anim_name.begin(), anim_name.end(), invalid_char),
 			                anim_name.end());
 
-			auto times        = std::vector<float>();
-			auto positions    = std::vector<glm::vec3>();
-			auto scales       = std::vector<glm::vec3>();
-			auto orientations = std::vector<glm::quat>();
+			auto& times        = animation.times;
+			auto& positions    = animation.positions;
+			auto& scales       = animation.scales;
+			auto& orientations = animation.orientations;
 			reserve_result_buffers(anim, times, positions, scales, orientations);
 
-			auto bones = std::vector<Bone_anim>();
+			auto& bones = animation.bones;
 			bones.resize(skeleton.bones.size());
 
-			float duration = static_cast<float>(anim->mDuration / anim->mTicksPerSecond);
-
+			animation.duration = static_cast<float>(anim->mDuration / anim->mTicksPerSecond);
 
 			for(auto channel : gsl::span(anim->mChannels, anim->mNumChannels)) {
 				auto bone_name = std::string(channel->mNodeName.C_Str());
@@ -130,38 +115,44 @@ namespace mirrage {
 				per_bone_data.post_behaviour = to_our_behaviour(channel->mPostState);
 
 
-				if(channel->mNumPositionKeys > per_bone_data.position_count && cfg.animate_translation) {
-					// positions
-					per_bone_data.position_count     = channel->mNumPositionKeys;
-					per_bone_data.position_times_idx = times.size();
-					per_bone_data.positions_idx      = positions.size();
-					for(auto& p : gsl::span(channel->mPositionKeys, channel->mNumPositionKeys)) {
+				// positions
+				if(channel->mNumPositionKeys > per_bone_data.positions.size() && cfg.animate_translation) {
+					const auto time_idx     = times.size();
+					const auto position_idx = positions.size();
+					const auto count        = long(channel->mNumPositionKeys);
+					for(auto& p : gsl::span(channel->mPositionKeys, count)) {
 						times.emplace_back(static_cast<float>(p.mTime / anim->mTicksPerSecond));
 						positions.emplace_back(glm::vec3(p.mValue.x, p.mValue.y, p.mValue.z)
 						                       * retarget_scale);
 					}
+					per_bone_data.position_times = {times.data() + time_idx, count};
+					per_bone_data.positions      = {positions.data() + position_idx, count};
 				}
 
-				if(channel->mNumScalingKeys > per_bone_data.scale_count && cfg.animate_scale) {
-					// scales
-					per_bone_data.scale_count     = channel->mNumScalingKeys;
-					per_bone_data.scale_times_idx = times.size();
-					per_bone_data.scales_idx      = scales.size();
-					for(auto& p : gsl::span(channel->mScalingKeys, channel->mNumScalingKeys)) {
+				// scales
+				if(channel->mNumScalingKeys > per_bone_data.scales.size() && cfg.animate_scale) {
+					const auto time_idx  = times.size();
+					const auto scale_idx = scales.size();
+					const auto count     = long(channel->mNumScalingKeys);
+					for(auto& p : gsl::span(channel->mScalingKeys, count)) {
 						times.emplace_back(static_cast<float>(p.mTime / anim->mTicksPerSecond));
 						scales.emplace_back(p.mValue.x, p.mValue.y, p.mValue.z);
 					}
+					per_bone_data.scale_times = {times.data() + time_idx, count};
+					per_bone_data.scales      = {scales.data() + scale_idx, count};
 				}
 
-				if(channel->mNumRotationKeys > per_bone_data.orientation_count && cfg.animate_orientation) {
-					// orientations
-					per_bone_data.orientation_count     = channel->mNumRotationKeys;
-					per_bone_data.orientation_times_idx = times.size();
-					per_bone_data.orientations_idx      = orientations.size();
-					for(auto& p : gsl::span(channel->mRotationKeys, channel->mNumRotationKeys)) {
+				// orientations
+				if(channel->mNumRotationKeys > per_bone_data.orientations.size() && cfg.animate_orientation) {
+					const auto time_idx        = times.size();
+					const auto orientation_idx = orientations.size();
+					const auto count           = long(channel->mNumRotationKeys);
+					for(auto& p : gsl::span(channel->mRotationKeys, count)) {
 						times.emplace_back(static_cast<float>(p.mTime / anim->mTicksPerSecond));
 						orientations.emplace_back(p.mValue.w, p.mValue.x, p.mValue.y, p.mValue.z);
 					}
+					per_bone_data.orientation_times = {times.data() + time_idx, count};
+					per_bone_data.orientations      = {orientations.data() + orientation_idx, count};
 				}
 			}
 
@@ -173,42 +164,11 @@ namespace mirrage {
 			auto file = std::ofstream(filename);
 			MIRRAGE_INVARIANT(file, "Couldn't open output animation file for: " << anim_name);
 
-			// write animation data
-			file.write("MAFF", 4);
-			constexpr auto version = std::uint16_t(1);
-			write(file, version);
-			write(file, std::uint16_t(0));
-
-			write(file, float(duration));
-			write(file, std::uint32_t(bones.size()));
-			write(file, std::uint32_t(times.size()));
-			write(file, std::uint32_t(positions.size()));
-			write(file, std::uint32_t(scales.size()));
-			write(file, std::uint32_t(orientations.size()));
-
-			write(file, times);
-			write(file, positions);
-			write(file, scales);
-			write(file, orientations);
-
-			for(auto& bone : bones) {
-				write(file, std::uint16_t(bone.pre_behaviour));
-				write(file, std::uint16_t(bone.post_behaviour));
-
-				write(file, std::uint32_t(bone.position_count));
-				write(file, std::uint32_t(bone.position_times_idx));
-				write(file, std::uint32_t(bone.positions_idx));
-
-				write(file, std::uint32_t(bone.scale_count));
-				write(file, std::uint32_t(bone.scale_times_idx));
-				write(file, std::uint32_t(bone.scales_idx));
-
-				write(file, std::uint32_t(bone.orientation_count));
-				write(file, std::uint32_t(bone.orientation_times_idx));
-				write(file, std::uint32_t(bone.orientations_idx));
+			auto default_transforms = std::vector<renderer::Local_bone_transform>();
+			for(auto& bone : skeleton.bones) {
+				default_transforms.emplace_back(bone.local_node_transform);
 			}
-
-			file.write("MAFF", 4);
+			renderer::save_animation(file, resample_animation(animation, default_transforms));
 		}
 	}
 

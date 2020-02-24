@@ -77,40 +77,29 @@ namespace mirrage::util {
 		return reinterpret_cast<std::size_t>(&(dummy.*member)) - reinterpret_cast<std::size_t>(&dummy);
 	}
 
-	template <typename F>
-	inline void apply(F&&)
+	template <typename F, typename... Args>
+	inline void apply(F&& func, Args&&... args)
 	{
-	}
-	template <typename F, typename FirstArg, typename... Arg>
-	inline void apply(F&& func, FirstArg&& first, Arg&&... arg)
-	{
-		func(std::forward<FirstArg>(first));
-		util::apply(std::forward<F>(func), std::forward<Arg>(arg)...);
+		(func(std::forward<Args>(args)), ...);
 	}
 
 	namespace detail {
-		template <std::size_t I, typename F>
-		inline void foreach_in_tuple_impl(F&&)
+		template <class F, class Tuple, std::size_t... I>
+		constexpr void foreach_in_tuple_impl(F&& f, Tuple&& t, std::index_sequence<I...>)
 		{
+			(std::forward<F>(f)(std::integral_constant<std::size_t, I>{},
+			                    std::get<I>(std::forward<Tuple>(t))),
+			 ...);
 		}
-		template <std::size_t I, typename F, typename Arg1, typename... Args>
-		inline void foreach_in_tuple_impl(F&& func, Arg1&& head, Args&&... tail)
-		{
-			std::invoke(func, std::integral_constant<std::size_t, I>{}, std::forward<Arg1>(head));
-			if constexpr(sizeof...(Args) > 0)
-				foreach_in_tuple_impl<I + 1>(func, std::forward<Args>(tail)...);
-		}
-
 	} // namespace detail
 
-	template <typename F, typename Tuple>
-	inline void foreach_in_tuple(Tuple&& tuple, F&& func)
+	template <class F, class Tuple>
+	constexpr void foreach_in_tuple(Tuple&& t, F&& f)
 	{
-		std::apply(
-		        [&](auto&&... args) {
-			        detail::foreach_in_tuple_impl<0>(func, std::forward<decltype(args)>(args)...);
-		        },
-		        std::forward<Tuple>(tuple));
+		return detail::foreach_in_tuple_impl(
+		        std::forward<F>(f),
+		        std::forward<Tuple>(t),
+		        std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<Tuple>>>{});
 	}
 
 	template <typename F>

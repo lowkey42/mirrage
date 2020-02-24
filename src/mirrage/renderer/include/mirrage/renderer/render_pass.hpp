@@ -2,9 +2,12 @@
 
 #include <mirrage/renderer/billboard.hpp>
 #include <mirrage/renderer/decal.hpp>
+#include <mirrage/renderer/object_router.hpp>
 #include <mirrage/renderer/particle_system.hpp>
 
 #include <mirrage/ecs/entity_handle.hpp>
+#include <mirrage/graphic/context.hpp>
+#include <mirrage/graphic/profiler.hpp>
 #include <mirrage/utils/maybe.hpp>
 #include <mirrage/utils/ranges.hpp>
 #include <mirrage/utils/reflection.hpp>
@@ -48,59 +51,6 @@ namespace mirrage::renderer {
 namespace mirrage::renderer {
 	using Command_buffer_source = std::function<vk::CommandBuffer()>;
 
-	struct Geometry {
-		ecs::Entity_handle         entity;
-		glm::vec3                  position{0, 0, 0};
-		glm::quat                  orientation{1, 0, 0, 0};
-		glm::vec3                  scale{1.f, 1.f, 1.f};
-		const Model*               model;
-		util::Str_id               substance_id;
-		std::uint32_t              sub_mesh;
-		std::uint32_t              culling_mask;
-		util::maybe<std::uint32_t> animation_uniform_offset;
-
-		Geometry() = default;
-		Geometry(ecs::Entity_handle entity,
-		         glm::vec3          position,
-		         glm::quat          orientation,
-		         glm::vec3          scale,
-		         const Model*       model,
-		         util::Str_id       substance_id,
-		         std::uint32_t      sub_mesh,
-		         std::uint32_t      culling_mask)
-		  : entity(entity)
-		  , position(position)
-		  , orientation(orientation)
-		  , scale(scale)
-		  , model(model)
-		  , substance_id(substance_id)
-		  , sub_mesh(sub_mesh)
-		  , culling_mask(culling_mask)
-		{
-		}
-	};
-
-	struct Light {
-		using Transform_comp = mirrage::ecs::components::Transform_comp;
-		using Light_comp     = std::variant<Directional_light_comp*, Point_light_comp*>;
-
-		ecs::Entity_handle entity;
-		Transform_comp*    transform;
-		Light_comp         light;
-		std::uint32_t      shadow_culling_mask;
-
-		Light() = default;
-		template <class L>
-		Light(ecs::Entity_handle entity,
-		      Transform_comp&    transform,
-		      L&                 light,
-		      std::uint32_t      shadow_culling_mask)
-		  : entity(entity), transform(&transform), light(&light), shadow_culling_mask(shadow_culling_mask)
-		{
-		}
-	};
-
-
 	struct Debug_geometry {
 		glm::vec3 start;
 		glm::vec3 end;
@@ -113,69 +63,50 @@ namespace mirrage::renderer {
 		}
 	};
 
-	struct Particle_draw {
-		ecs::Entity_handle                  entity;
-		Particle_emitter*                   emitter;
-		Particle_system*                    system;
-		const Particle_type_config*         type_cfg;
-		gsl::span<Particle_effector_config> effectors;
-		std::uint32_t                       culling_mask;
-
-		Particle_draw() = default;
-		Particle_draw(ecs::Entity_handle                  entity,
-		              Particle_emitter&                   emitter,
-		              Particle_system&                    system,
-		              gsl::span<Particle_effector_config> effectors,
-		              std::uint32_t                       culling_mask)
-		  : entity(entity)
-		  , emitter(&emitter)
-		  , system(&system)
-		  , type_cfg(&*emitter.cfg().type)
-		  , effectors(effectors)
-		  , culling_mask(culling_mask)
-		{
-		}
-	};
-
 	class Frame_data {
 	  public:
 		vk::CommandBuffer main_command_buffer;
 		vk::DescriptorSet global_uniform_set;
 		std::size_t       swapchain_image;
+		Camera_state*     camera;
+		Culling_mask      camera_culling_mask;
 
-		std::vector<Geometry>                     geometry_queue;
-		std::vector<Light>                        light_queue;
-		std::vector<Debug_geometry>               debug_geometry_queue;
-		std::vector<Billboard>                    billboard_queue;
-		std::vector<std::tuple<Decal, glm::mat4>> decal_queue;
-		std::vector<Particle_draw>                particle_queue;
-
-		auto partition_geometry(std::uint32_t mask) -> util::vector_range<Geometry>;
-		void clear_queues()
-		{
-			geometry_queue.clear();
-			light_queue.clear();
-			debug_geometry_queue.clear();
-			billboard_queue.clear();
-			decal_queue.clear();
-			particle_queue.clear();
-		}
+		std::vector<Debug_geometry> debug_geometry_queue;
 	};
 
 	class Render_pass {
 	  public:
+		Render_pass(Deferred_renderer& r) : _renderer(r) {}
 		virtual ~Render_pass() = default;
 
-		virtual void update(util::Time dt) = 0;
-		virtual void draw(Frame_data&)     = 0;
+		virtual void update(util::Time dt) {}
 
 		virtual void process_camera(Camera_state&) {} //< allows passes to modify the current camera
+
+		// template<typename... P> void pre_draw (Frame_data&, Object_router<P...>&);
+		//                         void pre_draw (Frame_data&);
+		// template<typename... P> void post_draw(Frame_data&, Object_router<P...>&);
+		//                         void post_draw(Frame_data&);
+		// template<typename... P> void on_draw  (Frame_data&, Object_router<P...>&);
+		//                         void on_draw  (Frame_data&);
+		//                         void handle_obj(Frame_data&, Culling_mask, ...);
+		// template<typename... P> void handle_obj(Frame_data&, Object_router<P...>&, Culling_mask, ...);
 
 		virtual auto name() const noexcept -> const char* = 0;
 
 		/// API to allow render passes to save some of their state (e.g. loaded textures/data)
 		///   across pipeline/renderer recreation
 		virtual auto extract_persistent_state() -> std::shared_ptr<void> { return {}; }
+
+	  protected:
+		Deferred_renderer& _renderer;
+
+		struct Raii_marker {
+			graphic::Queue_debug_label   label;
+			graphic::Profiler::Push_raii profiler;
+		};
+
+		auto _mark_subpass(Frame_data&) -> Raii_marker;
 	};
 
 	using Render_pass_id = util::type_uid_t;

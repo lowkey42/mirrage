@@ -48,6 +48,7 @@ namespace mirrage::renderer {
 		         util::Str_id         substance_id);
 
 		void bind(graphic::Render_pass& pass, int bind_point = 1) const;
+		auto desc_set() const { return *_descriptor_set; }
 
 		auto substance_id() const noexcept { return _substance_id; }
 		auto has_albedo() const noexcept { return _has_albedo; }

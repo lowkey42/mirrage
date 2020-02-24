@@ -269,7 +269,6 @@ namespace mirrage::graphic {
 		// fill buffer
 		auto ptr = staging_buffer.memory().mapped_addr().get_or_throw("Staging GPU memory is not mapped!");
 
-		std::memset(ptr, 42, std::size_t(size));
 		write_data(ptr);
 
 		return staging_buffer;

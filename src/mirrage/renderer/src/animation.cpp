@@ -21,10 +21,11 @@ namespace mirrage::renderer {
 			return v;
 		}
 		template <class T>
-		void read(asset::istream& in, std::size_t size, std::vector<T>& out)
+		void read(asset::istream& in, std::size_t size, T& out)
 		{
 			out.resize(size);
-			in.read(reinterpret_cast<char*>(out.data()), std::streamsize(sizeof(T) * size));
+			in.read(reinterpret_cast<char*>(out.data()),
+			        std::streamsize(sizeof(typename T::value_type) * size));
 		}
 	} // namespace
 
@@ -59,13 +60,11 @@ namespace mirrage::renderer {
 		_skinning_type = static_cast<Skinning_type>(flags & 0b11);
 
 		auto bone_count = read<std::uint32_t>(file);
+		MIRRAGE_INVARIANT(bone_count <= 128,
+		                  "Number of bones per model is currently limited to 128. Found "
+		                          << bone_count << " in " << file.aid().str());
 
 		_inv_root_transform = read<Final_bone_transform>(file);
-
-		_inv_bind_poses.resize(bone_count);
-		_node_transforms.resize(bone_count);
-		_parent_ids.resize(bone_count);
-		_names.resize(bone_count);
 
 		read(file, bone_count, _inv_bind_poses);
 		read(file, bone_count, _node_transforms);
@@ -83,31 +82,42 @@ namespace mirrage::renderer {
 	}
 
 	namespace {
-		auto default_final_transform(Skinning_type st)
-		{
-			switch(st) {
-				case Skinning_type::linear_blend_skinning: {
-					auto r = Final_bone_transform();
-					r.lbs  = glm::mat3x4(1);
-					return r;
-				}
-				case Skinning_type::dual_quaternion_skinning: {
-					auto r      = Final_bone_transform();
-					r.dqs.dq    = glm::dual_quat_identity<float, glm::defaultp>();
-					r.dqs.scale = glm::vec4(1, 1, 1, 1);
-					return r;
-				}
-			}
-
-			MIRRAGE_FAIL("Unknown Skinning_type: " << int(st));
-		}
-
 		auto to_bone_transform(const Local_bone_transform& t) -> Final_bone_transform
 		{
-			auto r = Final_bone_transform();
-			r.lbs  = compress_bone_transform(glm::translate(glm::mat4(1), t.translation)
-                                            * glm::mat4_cast(glm::normalize(t.orientation))
-                                            * glm::scale(glm::mat4(1.f), t.scale));
+			const auto q = glm::normalize(t.orientation);
+
+			const float qxx(q.x * q.x);
+			const float qyy(q.y * q.y);
+			const float qzz(q.z * q.z);
+			const float qxz(q.x * q.z);
+			const float qxy(q.x * q.y);
+			const float qyz(q.y * q.z);
+			const float qwx(q.w * q.x);
+			const float qwy(q.w * q.y);
+			const float qwz(q.w * q.z);
+
+			auto r  = Final_bone_transform();
+			r[0][0] = 1.f - 2.f * (qyy + qzz);
+			r[1][0] = 2.f * (qxy + qwz);
+			r[2][0] = 2.f * (qxz - qwy);
+
+			r[0][1] = 2.f * (qxy - qwz);
+			r[1][1] = 1.f - 2.f * (qxx + qzz);
+			r[2][1] = 2.f * (qyz + qwx);
+
+			r[0][2] = 2.f * (qxz + qwy);
+			r[1][2] = 2.f * (qyz - qwx);
+			r[2][2] = 1.f - 2.f * (qxx + qyy);
+
+			const auto s = glm::vec4(t.scale, 1.f);
+			r[0] *= s;
+			r[1] *= s;
+			r[2] *= s;
+
+			r[0][3] = t.translation[0];
+			r[1][3] = t.translation[1];
+			r[2][3] = t.translation[2];
+
 			return r;
 		}
 
@@ -115,71 +125,124 @@ namespace mirrage::renderer {
 		{
 			// Bone_transform is a mat4x4 with the last row cut of and transposed
 			// since (A^T B^T)^T = BA => switch lhs and rhs and multiply
-			const auto src_A0 = lhs.lbs[0];
-			const auto src_A1 = lhs.lbs[1];
-			const auto src_A2 = lhs.lbs[2];
-			const auto src_B0 = rhs.lbs[0];
-			const auto src_B1 = rhs.lbs[1];
-			const auto src_B2 = rhs.lbs[2];
+			const auto& src_A0 = lhs[0];
+			const auto& src_A1 = lhs[1];
+			const auto& src_A2 = lhs[2];
+			const auto& src_B0 = rhs[0];
+			const auto& src_B1 = rhs[1];
+			const auto& src_B2 = rhs[2];
 
 			Final_bone_transform r;
-			r.lbs[0] = src_A0 * src_B0[0] + src_A1 * src_B0[1] + src_A2 * src_B0[2]
-			           + glm::vec4(0, 0, 0, 1) * src_B0[3];
-			r.lbs[1] = src_A0 * src_B1[0] + src_A1 * src_B1[1] + src_A2 * src_B1[2]
-			           + glm::vec4(0, 0, 0, 1) * src_B1[3];
-			r.lbs[2] = src_A0 * src_B2[0] + src_A1 * src_B2[1] + src_A2 * src_B2[2]
-			           + glm::vec4(0, 0, 0, 1) * src_B2[3];
+			r[0] = src_A0 * src_B0[0] + src_A1 * src_B0[1] + src_A2 * src_B0[2];
+			r[0][3] += src_B0[3];
+			r[1] = src_A0 * src_B1[0] + src_A1 * src_B1[1] + src_A2 * src_B1[2];
+			r[1][3] += src_B1[3];
+			r[2] = src_A0 * src_B2[0] + src_A1 * src_B2[1] + src_A2 * src_B2[2];
+			r[2][3] += src_B2[3];
 
 			return r;
 		}
 
-		void to_dualquat(Final_bone_transform& inout)
+		auto to_dualquat(Final_bone_transform& m) -> Final_bone_transform
 		{
-			auto m2 = glm::mat4(1.f);
-			m2[0]   = inout.lbs[0];
-			m2[1]   = inout.lbs[1];
-			m2[2]   = inout.lbs[2];
-			m2[3]   = glm::vec4(0.f, 0.f, 0.f, 1.f);
+			// decompose
+			const auto translation = glm::vec3(m[0][3], m[1][3], m[2][3]);
+			const auto scale =
+			        glm::sqrt(glm::vec3(m[0][0] * m[0][0] + m[1][0] * m[1][0] + m[2][0] * m[2][0],
+			                            m[0][1] * m[0][1] + m[1][1] * m[1][1] + m[2][1] * m[2][1],
+			                            m[0][2] * m[0][2] + m[1][2] * m[1][2] + m[2][2] * m[2][2]));
 
-			auto scale       = glm::vec3(1.f, 1.f, 1.f);
-			auto orientation = glm::quat(1.f, 0.f, 0.f, 0.f);
-			auto translation = glm::vec3(0.f, 0.f, 0.f);
-			auto skew        = glm::vec3(0.f, 0.f, 0.f);
-			auto perspective = glm::vec4(0.f, 0.f, 0.f, 0.f);
-			glm::decompose(glm::transpose(m2), scale, orientation, translation, skew, perspective);
+			const auto recp_scale = glm::vec4(1.f / scale, 1.f);
+			m[0] *= recp_scale;
+			m[1] *= recp_scale;
+			m[2] *= recp_scale;
 
-			inout.dqs.dq    = glm::dualquat(orientation, translation);
-			inout.dqs.scale = glm::vec4(scale, 1);
+			auto       orientation = glm::quat();
+			const auto trace       = m[0][0] + m[1][1] + m[2][2];
+			if(trace > 0.f) {
+				const auto r    = glm::sqrt(trace + 1.f);
+				orientation.w   = 0.5f * r;
+				const auto root = 0.5f / r;
+				orientation.x   = root * (m[2][1] - m[1][2]);
+				orientation.y   = root * (m[0][2] - m[2][0]);
+				orientation.z   = root * (m[1][0] - m[0][1]);
+			} else {
+				constexpr int next[3] = {1, 2, 0};
+				auto          i       = m[1][1] > m[0][0] ? 1 : 0;
+
+				if(m[2][2] > m[i][i])
+					i = 2;
+
+				const auto j = next[i];
+				const auto k = next[j];
+
+				const auto r = glm::sqrt(m[i][i] - m[j][j] - m[k][k] + 1.f);
+
+				const auto root = 0.5f / r;
+
+				orientation[i] = 0.5f * r;
+				orientation[j] = root * (m[j][i] + m[i][j]);
+				orientation[k] = root * (m[k][i] + m[i][k]);
+				orientation.w  = root * (m[k][j] - m[j][k]);
+			}
+
+			return {orientation.x,
+			        orientation.y,
+			        orientation.z,
+			        orientation.w,
+			        +0.5f
+			                * (translation.x * orientation.w + translation.y * orientation.z
+			                   - translation.z * orientation.y),
+			        +0.5f
+			                * (-translation.x * orientation.z + translation.y * orientation.w
+			                   + translation.z * orientation.x),
+			        +0.5f
+			                * (translation.x * orientation.y - translation.y * orientation.x
+			                   + translation.z * orientation.w),
+			        -0.5f
+			                * (translation.x * orientation.x + translation.y * orientation.y
+			                   + translation.z * orientation.z),
+			        scale.x,
+			        scale.y,
+			        scale.z,
+			        1.f};
 		}
 	} // namespace
 
-	void Skeleton::to_final_transforms(gsl::span<const Local_bone_transform> in_span,
-	                                   gsl::span<Final_bone_transform>       out_span) const
+	void Skeleton::to_final_transforms(const Pose_transforms&          in_span,
+	                                   gsl::span<Final_bone_transform> out_span) const
 	{
-		if(out_span.empty())
-			return;
+		const auto size = int(in_span.size());
+		auto*      out  = out_span.data();
 
-		if(in_span.size() != out_span.size()) {
-			std::fill(out_span.begin(), out_span.end(), default_final_transform(_skinning_type));
-			return;
-		}
+		MIRRAGE_INVARIANT(size == int(out_span.size()) && size == int(_inv_bind_poses.size()),
+		                  "Mismatching array sizes in Skeleton::to_final_transforms: "
+		                          << in_span.size() << " vs. " << out_span.size() << " vs. "
+		                          << _inv_bind_poses.size());
+
+		Final_bone_transform tmp_buffer[128];
 
 		// root
-		out_span[0] = to_bone_transform(in_span[0]);
+		tmp_buffer[0] = to_bone_transform(in_span[0]);
 
-		for(auto [in, parent_id, out] : util::skip(1, util::join(in_span, _parent_ids, out_span))) {
-			out = mul(out_span[parent_id], to_bone_transform(in));
-		}
-
-		for(auto [transform, inv_bind_pose] : util::join(out_span, _inv_bind_poses)) {
-			transform = mul(mul(_inv_root_transform, transform), inv_bind_pose);
+		for(auto i = 1; i < size; i++) {
+			tmp_buffer[i] = mul(tmp_buffer[_parent_ids[i]], to_bone_transform(in_span[i]));
 		}
 
 		switch(_skinning_type) {
-			case Skinning_type::linear_blend_skinning: break;
 			case Skinning_type::dual_quaternion_skinning:
-				for(auto& transform : out_span) {
-					to_dualquat(transform);
+				for(auto i = 0; i < size; i++) {
+					tmp_buffer[i] = mul(mul(_inv_root_transform, tmp_buffer[i]), _inv_bind_poses[i]);
+				}
+				for(auto i = 0; i < size; i++) {
+					out[i] = to_dualquat(tmp_buffer[i]);
+				}
+				break;
+
+			case Skinning_type::linear_blend_skinning:
+			default:
+				for(auto i = 0; i < size; i++) {
+					out[i] = mul(mul(_inv_root_transform, tmp_buffer[i]), _inv_bind_poses[i]);
 				}
 				break;
 		}
@@ -187,196 +250,94 @@ namespace mirrage::renderer {
 
 
 	// ANIMATION
-	Animation::Animation(asset::istream& file)
-	{
-		auto header = std::array<char, 4>();
-		file.read(header.data(), header.size());
-		MIRRAGE_INVARIANT(header[0] == 'M' && header[1] == 'A' && header[2] == 'F' && header[3] == 'F',
-		                  "Mirrage bone file '" << file.aid().str() << "' corrupted (header).");
-
-		auto version = read<std::uint16_t>(file);
-		MIRRAGE_INVARIANT(version == 1, "Unsupported bone file version " << version << ". Expected 1");
-
-		// skip reserved
-		read<std::uint16_t>(file);
-
-		_duration              = read<float>(file);
-		auto bone_count        = read<std::uint32_t>(file);
-		auto time_count        = read<std::uint32_t>(file);
-		auto position_count    = read<std::uint32_t>(file);
-		auto scale_count       = read<std::uint32_t>(file);
-		auto orientation_count = read<std::uint32_t>(file);
-
-		read(file, time_count, _times);
-		read(file, position_count, _positions);
-		read(file, scale_count, _scales);
-		read(file, orientation_count, _orientations);
-
-		_bones.reserve(bone_count);
-		for(auto i : util::range(bone_count)) {
-			(void) i;
-
-			auto& bone          = _bones.emplace_back();
-			bone.pre_behaviour  = static_cast<detail::Behaviour>(read<std::uint16_t>(file));
-			bone.post_behaviour = static_cast<detail::Behaviour>(read<std::uint16_t>(file));
-
-			auto pos_count      = read<std::uint32_t>(file);
-			auto pos_time_start = read<std::uint32_t>(file);
-			auto pos_start      = read<std::uint32_t>(file);
-			bone.position_times = gsl::span(&_times[pos_time_start], pos_count);
-			bone.positions      = gsl::span(&_positions[pos_start], pos_count);
-
-			auto scale_count      = read<std::uint32_t>(file);
-			auto scale_time_start = read<std::uint32_t>(file);
-			auto scale_start      = read<std::uint32_t>(file);
-			bone.scale_times      = gsl::span(&_times[scale_time_start], scale_count);
-			bone.scales           = gsl::span(&_scales[scale_start], scale_count);
-
-			auto orientation_count      = read<std::uint32_t>(file);
-			auto orientation_time_start = read<std::uint32_t>(file);
-			auto orientation_start      = read<std::uint32_t>(file);
-			bone.orientation_times      = gsl::span(&_times[orientation_time_start], orientation_count);
-			bone.orientations           = gsl::span(&_orientations[orientation_start], orientation_count);
-		}
-
-		file.read(header.data(), header.size());
-		MIRRAGE_INVARIANT(header[0] == 'M' && header[1] == 'A' && header[2] == 'F' && header[3] == 'F',
-		                  "Mirrage bone file '" << file.aid().str() << "' corrupted (footer).");
-	}
+	Animation::Animation(asset::istream& in) : _data(load_animation(in)) {}
 
 	namespace {
 		using detail::Behaviour;
 
-		template <class T>
-		auto interpolate(gsl::span<T> keyframes, float t, std::int16_t key) -> T
+		// TODO: more interesting interpolation curves
+		template <typename T>
+		auto interpolate(const T& a, const T& b, float t) -> T
 		{
-			auto& a = keyframes[key];
-			auto& b = keyframes[(key + 1) % keyframes.size()];
-
-			// TODO: more interesting interpolation curves
-
-			if constexpr(std::is_same_v<glm::vec3, T>) {
-				return glm::mix(a, b, t);
-			} else {
-				return glm::normalize(glm::slerp(a, b, t));
-			}
+			return glm::mix(a, b, t);
+		}
+		auto interpolate(const glm::quat& a, const glm::quat& b, float t) -> glm::quat
+		{
+			return glm::normalize(glm::slerp(a, b, t));
+		}
+		auto interpolate(const Local_bone_transform& a, const Local_bone_transform& b, float t)
+		        -> Local_bone_transform
+		{
+			return {interpolate(a.orientation, b.orientation, t),
+			        interpolate(a.translation, b.translation, t),
+			        interpolate(a.scale, b.scale, t)};
 		}
 
-		/// returns the index of the last element not >= value or the top/bottom if out of range
-		/// performs an interpolation search starting at a given index
-		/// O(1)         if the given index is already near the solution
-		/// O(log log N) if the data is nearly uniformly distributed
-		/// O(N)         else (worst case)
-		auto interpolation_search(gsl::span<const float> container, float value, std::int16_t i)
-		        -> std::int16_t
+		auto linear_search(const gsl::span<const float> frame_times,
+		                   const float                  max_frame_time,
+		                   const float                  time,
+		                   const int                    frame_idx_hint)
 		{
-			auto high = std::int16_t(container.size() - 2);
-			auto low  = std::int16_t(0);
-			i         = std::min(high, std::max(low, i));
+			if(frame_times.size() <= 1)
+				return std::make_tuple(0, 0, 0.f);
 
-			do {
-				if(container[i] > value) {
-					high = i - 1;
-				} else if(container[i + 1] <= value) {
-					low = i + 1;
-				} else {
-					return i;
-				}
+			const auto v = std::clamp(time, 0.f, max_frame_time);
 
-				auto new_i =
-				        low + ((value - container[low]) * (high - low)) / (container[high] - container[low]);
-				i = static_cast<std::int16_t>(std::min(float(high), new_i));
+			const auto* data = frame_times.data();
+			auto        i    = std::clamp(frame_idx_hint, 1, int(frame_times.size()) - 2);
 
-			} while(high > low);
+			if(data[i] >= v) { // right side is in our future => search the left
+				while(data[i - 1] > v)
+					i--;
 
-			return low;
-		}
-
-		/// finds the first keyframe and returns the interpolation factor
-		/// Post-Conditions:
-		///		0 <= index <= times.size()-2
-		///		time ~= times[index] * (1-RETURN) + times[index] * RETURN
-		///			depending on pre_behaviour/post_behaviour
-		auto find_keyframe(gsl::span<const float> times,
-		                   float                  time,
-		                   std::int16_t&          index,
-		                   detail::Behaviour      pre_behaviour,
-		                   detail::Behaviour      post_behaviour) -> float
-		{
-			if(times.size() < 2) {
-				index = 0;
-				return 0.f;
+			} else { // right side is in our past => search the right
+				while(data[i] < v)
+					i++;
 			}
 
-			auto start_time = times[0];
-			auto end_time   = times[times.size() - 1];
+			const auto frame_a = i - 1;
+			const auto frame_b = i;
+			const auto time_a  = frame_times.at(frame_a);
+			const auto time_b  = frame_times.at(frame_b);
+			const auto t       = (time - time_a) / (time_b - time_a);
 
-			if(time < start_time) {
-				switch(pre_behaviour) {
-					case Behaviour::clamp: index = 0; return 0.f;
-					case Behaviour::linear: break;
-					case Behaviour::repeat: time = end_time + std::fmod(time, end_time - start_time); break;
-				}
-
-			} else if(time >= end_time && post_behaviour == Behaviour::repeat) {
-				switch(post_behaviour) {
-					case Behaviour::clamp: index = std::int16_t(times.size() - 2); return 1.f;
-					case Behaviour::linear: break;
-					case Behaviour::repeat: time = start_time + std::fmod(time, end_time - start_time); break;
-				}
-			}
-
-
-			index = std::clamp(interpolation_search(times, time, index),
-			                   std::int16_t(0),
-			                   std::int16_t(times.size() - 2));
-			return (time - times[index]) / (times[index + 1] - times[index]);
+			return std::make_tuple(frame_a, frame_b, t);
 		}
 
 	} // namespace
 
-	auto Animation::bone_transform(Bone_id              bone_idx,
-	                               float                time,
-	                               Animation_key&       key,
-	                               Local_bone_transform def) const -> Local_bone_transform
+	void Animation::bone_transforms(const float                     time,
+	                                const float                     weight,
+	                                int&                            frame_idx_hint,
+	                                gsl::span<Local_bone_transform> in_out) const
 	{
-		const auto& bone_data = _bones.at(std::size_t(bone_idx));
+		const auto [frame_a, frame_b, t] =
+		        linear_search(_data.frame_times, _data.duration, time, frame_idx_hint);
+		const auto begin_index_a = frame_a * _data.dynamic_bone_count;
+		const auto begin_index_b = frame_b * _data.dynamic_bone_count;
+		const auto size          = int(in_out.size());
 
-		if(bone_data.positions.empty() && bone_data.orientations.empty() && bone_data.scales.empty())
-			return def;
+		frame_idx_hint = frame_b;
 
-		if(!bone_data.positions.empty()) {
-			float position_t = find_keyframe(bone_data.position_times,
-			                                 time,
-			                                 key.position_key,
-			                                 bone_data.pre_behaviour,
-			                                 bone_data.post_behaviour);
+		MIRRAGE_INVARIANT(size == int(_data.static_transforms.size() + _data.dynamic_bone_count),
+		                  "Mismatching array sizes in Animation::bone_transforms: "
+		                          << size << " vs. "
+		                          << (_data.static_transforms.size() + _data.dynamic_bone_count));
 
-			def.translation = interpolate(bone_data.positions, position_t, key.position_key);
+		auto static_offset  = 0;
+		auto dynamic_offset = 0;
+		for(auto i = 0; i < size; i++) {
+			if(_data.is_bone_static[i]) {
+				in_out[i] += weight * _data.static_transforms[static_offset++];
+
+			} else {
+				const auto offset = dynamic_offset++;
+				in_out[i] += weight
+				             * interpolate(_data.dynamic_transforms[begin_index_a + offset],
+				                           _data.dynamic_transforms[begin_index_b + offset],
+				                           t);
+			}
 		}
-
-		if(!bone_data.scales.empty()) {
-			float scale_t = find_keyframe(bone_data.scale_times,
-			                              time,
-			                              key.scale_key,
-			                              bone_data.pre_behaviour,
-			                              bone_data.post_behaviour);
-
-			def.scale = interpolate(bone_data.scales, scale_t, key.scale_key);
-		}
-
-		if(!bone_data.orientations.empty()) {
-			float orientation_t = find_keyframe(bone_data.orientation_times,
-			                                    time,
-			                                    key.orientation_key,
-			                                    bone_data.pre_behaviour,
-			                                    bone_data.post_behaviour);
-
-			def.orientation = interpolate(bone_data.orientations, orientation_t, key.orientation_key);
-		}
-
-		return def;
 	}
-
 
 } // namespace mirrage::renderer

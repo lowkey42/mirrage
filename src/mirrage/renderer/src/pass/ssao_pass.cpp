@@ -37,9 +37,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
@@ -86,9 +83,6 @@ namespace mirrage::renderer {
 
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
-			pipeline.multisample             = vk::PipelineMultisampleStateCreateInfo{};
-			pipeline.color_blending          = vk::PipelineColorBlendStateCreateInfo{};
-			pipeline.depth_stencil           = vk::PipelineDepthStencilStateCreateInfo{};
 
 			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
@@ -134,7 +128,7 @@ namespace mirrage::renderer {
 
 
 	Ssao_pass::Ssao_pass(Deferred_renderer& renderer)
-	  : _renderer(renderer)
+	  : Render_pass(renderer)
 	  , _ao_format(get_ao_format(renderer.device()))
 	  , _ao_result_buffer(
 	            renderer.device(),
@@ -186,9 +180,8 @@ namespace mirrage::renderer {
 
 	void Ssao_pass::update(util::Time) {}
 
-	void Ssao_pass::draw(Frame_data& frame)
+	void Ssao_pass::post_draw(Frame_data& frame)
 	{
-
 		if(!_renderer.settings().ssao) {
 			graphic::clear_texture(frame.main_command_buffer,
 			                       _ao_result_buffer,
@@ -199,6 +192,8 @@ namespace mirrage::renderer {
 			                       1);
 			return;
 		}
+
+		auto _ = _mark_subpass(frame);
 
 
 		auto descriptor_sets =

@@ -23,11 +23,13 @@ namespace mirrage::renderer {
 		state.write_virtual(sf2::vmember("billboards", billboards));
 	}
 
-	auto construct_push_constants(const Billboard& bb, const glm::mat4& view, const glm::vec4& viewport)
-	        -> Billboard_push_constants
+	auto construct_push_constants(const Billboard& bb,
+	                              const glm::vec3& pos,
+	                              const glm::mat4& view,
+	                              const glm::vec4& viewport) -> Billboard_push_constants
 	{
 		auto pcs     = Billboard_push_constants{};
-		pcs.position = glm::vec4(bb.offset, 1.f);
+		pcs.position = glm::vec4(bb.offset + pos, 1.f);
 		if(!bb.absolute_screen_space) {
 			pcs.position = view * pcs.position;
 			pcs.position /= pcs.position.w;

@@ -95,9 +95,18 @@ namespace mirrage::renderer {
 
 				auto duration = state.animation->duration();
 				if(state.looped) {
-					state.time = std::fmod(state.time, duration);
-					if(state.time < 0.f)
-						state.time = duration + state.time;
+					if(!state.reversed) {
+						if(state.time >= duration) {
+							state.time           = std::fmod(state.time, duration);
+							state.frame_idx_hint = 1;
+						}
+					} else {
+						if(state.time < 0) {
+							state.time           = duration + std::fmod(state.time, duration);
+							state.frame_idx_hint = std::numeric_limits<int>::max();
+						}
+					}
+
 				} else {
 					state.time = glm::clamp(state.time, 0.f, duration);
 				}

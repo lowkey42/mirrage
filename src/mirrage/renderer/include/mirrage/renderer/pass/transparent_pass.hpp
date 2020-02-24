@@ -16,13 +16,33 @@ namespace mirrage::renderer {
 
 		Transparent_pass(Deferred_renderer&, ecs::Entity_manager& ecs, graphic::Render_target_2D& target);
 
-		void update(util::Time dt) override;
-		void draw(Frame_data&) override;
+		// TODO
+		//void handle_obj(Frame_data&, Culling_mask, ecs::Entity_facet, Transform_comp&, Model_comp&, const Material_override&, Sub_mesh&);
+		//void handle_obj(Frame_data&,
+		//                Culling_mask,
+		//                ecs::Entity_facet,
+		//                Transform_comp&,
+		//                Model_comp&,
+		//                gsl::span<const Material_override&
+		//                Skinning_type,
+		//                std::int32_t pose_offset);
+		void handle_obj(Frame_data&,
+		                Culling_mask,
+		                const glm::vec4& emissive_color,
+		                const Particle_system&,
+		                const Particle_emitter&);
+
+		void pre_draw(Frame_data&);
+		void post_draw(Frame_data&);
 
 		auto name() const noexcept -> const char* override { return "Transparent"; }
 
 	  private:
-		Deferred_renderer&        _renderer;
+		struct Stage_data {
+			graphic::Command_pool_group    group;
+			graphic::Render_pass_stage_ref stage;
+		};
+
 		ecs::Entity_manager&      _ecs;
 		vk::Format                _revealage_format;
 		graphic::Render_target_2D _accum;
@@ -52,6 +72,16 @@ namespace mirrage::renderer {
 
 		graphic::Dynamic_buffer _light_uniforms;
 		std::vector<char>       _light_uniforms_tmp;
+
+		Stage_data _stages_particle_lit;   // [render_pass 1, subpass 0]
+		Stage_data _stages_particle_unlit; // [render_pass 1, subpass 0]
+
+		// TODO:
+		// model_static N		[render_pass 2, subpass 0]
+		// model_anim N			[render_pass 2, subpass 1]
+		// billboards			[render_pass 2, subpass 2]
+
+		auto _get_cmd_buffer(Frame_data& frame, Stage_data& stage_ref) -> std::pair<vk::CommandBuffer, bool>;
 	};
 
 	class Transparent_pass_factory : public Render_pass_factory {

@@ -259,6 +259,10 @@ namespace mirrage::graphic {
 		              float        min_depth = 0.f,
 		              float        max_depth = 1.f);
 
+		auto vk_framebuffer() const { return *_fb; }
+		auto viewport() const { return _viewport; }
+		auto scissor() const { return _scissor; }
+
 	  private:
 		friend class Render_pass;
 		friend class Render_pass_builder;
