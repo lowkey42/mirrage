@@ -167,6 +167,15 @@ namespace mirrage::renderer {
 				_update_animation(entity.handle(), anim, pose);
 		});
 
+		if(int(pose.bone_transforms().size()) != pose.skeleton().node_transforms().size()) {
+			auto  default_transforms = pose.skeleton().node_transforms();
+			auto& transforms         = pose.bone_transforms();
+			transforms.resize(default_transforms.size());
+			for(auto i = 0; i < int(transforms.size()); i++) {
+				transforms[i] = default_transforms[i];
+			}
+		}
+
 		// TODO: add Animation_listeners to intercept/replace computed poses before drawing
 
 		// upload pose

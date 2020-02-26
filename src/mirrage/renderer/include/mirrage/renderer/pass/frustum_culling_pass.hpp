@@ -129,17 +129,15 @@ namespace mirrage::renderer {
 			ecs::Entity_facet entity_     = entity;
 			auto&             transform_  = transform;
 			auto&             model_comp_ = model_comp;
-
-			const auto entity_pos = transform.position;
-			const auto scale      = transform.scale;
-			const auto max_scale  = util::max(scale.x, scale.y, scale.z);
-			const auto cam_only   = !entity_.has<Shadowcaster_comp>();
+			const auto        cam_only    = !entity_.has<Shadowcaster_comp>();
 
 			const auto offset = model_comp.bounding_sphere_offset();
 			const auto radius = model_comp.bounding_sphere_radius();
 
-			const auto sphere_center = entity_pos + glm::rotate(transform.orientation, offset * scale);
-			const auto sphere_radius = radius * max_scale;
+			const auto mat = transform_.to_mat4() * model_comp_.local_transform();
+
+			const auto sphere_center = glm::vec3(mat * glm::vec4(offset, 1.f));
+			const auto sphere_radius = glm::length(glm::vec3(mat * glm::vec4(radius, 0.f, 0.f, 0.f)));
 
 			router.process_sub_objs(sphere_center, sphere_radius, cam_only, [&](auto mask, auto&& draw) {
 				auto&       model      = *model_comp_.model();
@@ -151,8 +149,6 @@ namespace mirrage::renderer {
 				auto material_overrides = entity_.get<Material_override_comp>().process(
 				        gsl::span<Material_override>(),
 				        [&](auto& mo) { return gsl::span<Material_override>(mo.material_overrides); });
-
-				auto mat = transform_.to_mat4() * model_comp_.local_transform();
 
 				if(!router.process_always_visible_obj(
 				           mask, entity_, emissive, mat, model, material_overrides)) {
@@ -170,10 +166,9 @@ namespace mirrage::renderer {
 							auto sub_offset = sub.bounding_sphere_offset;
 							auto sub_radius = sub.bounding_sphere_radius;
 
-							const auto sub_sphere_center =
-							        glm::rotate(transform_.orientation, sub_offset * scale);
-							;
-							const auto sub_sphere_radius = sub_radius * max_scale;
+							const auto sub_sphere_center = glm::vec3(mat * glm::vec4(sub_offset, 1.f));
+							const auto sub_sphere_radius =
+							        glm::length(glm::vec3(mat * glm::vec4(sub_radius, 0.f, 0.f, 0.f)));
 
 							auto material = material_overrides.size() > index ? material_overrides[index]
 							                                                  : Material_override{};

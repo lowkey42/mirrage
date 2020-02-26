@@ -20,6 +20,15 @@ layout(set=1, binding = 1) uniform sampler2D normal_sampler;
 layout(set=1, binding = 2) uniform sampler2D brdf_sampler;
 layout(set=1, binding = 3) uniform sampler2D emission_sampler;
 
+layout(std140, set=1, binding = 4) uniform Material_uniforms {
+    vec4 albedo;
+    vec4 emission;
+    float roughness;
+    float metallic;
+    float refraction;
+    float has_normals;
+} material;
+
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
 	vec4 light_color;
@@ -33,48 +42,11 @@ vec3 decode_tangent_normal(vec2 tn);
 vec3 tangent_space_to_world(vec3 N);
 
 void main() {
-	vec4 albedo = texture(albedo_sampler, tex_coords);
-	vec3  N    = tangent_space_to_world(decode_tangent_normal(texture(normal_sampler, tex_coords).rg));
-
-	vec4 brdf = texture(brdf_sampler, tex_coords);
-	float roughness = brdf.r;
-	float metallic  = brdf.g;
-	roughness = mix(0.01, 0.99, roughness*roughness);
+	vec4 albedo = texture(albedo_sampler, tex_coords) * material.albedo;
 
 	float emissive_power = texture(emission_sampler, tex_coords).r;
+	albedo.rgb *= material.emission.rgb * material.emission.a;
 
 	color_out     = vec4(albedo.rgb *  model_uniforms.material_properties.rgb * emissive_power * model_uniforms.material_properties.a * albedo.a, 0.0);
 	color_diffuse_out = color_out;
 }
-
-
-vec3 decode_tangent_normal(vec2 tn) {
-	if(dot(tn,tn)<0.00001)
-		return vec3(0,0,1);
-
-	vec3 N = vec3(tn*2-1, 0);
-	N.z = sqrt(1 - dot(N.xy, N.xy));
-	return N;
-}
-
-vec3 tangent_space_to_world(vec3 N) {
-	vec3 VN = normalize(normal);
-
-	// calculate tangent
-	vec3 p_dx = dFdx(view_pos);
-	vec3 p_dy = dFdy(view_pos);
-
-	vec2 tc_dx = dFdx(tex_coords);
-	vec2 tc_dy = dFdy(tex_coords);
-
-	vec3 p_dy_N = cross(p_dy, VN);
-	vec3 p_dx_N = cross(VN, p_dx);
-
-	vec3 T = p_dy_N * tc_dx.x + p_dx_N * tc_dy.x;
-	vec3 B = p_dy_N * tc_dx.y + p_dx_N * tc_dy.y;
-
-	float inv_max = inversesqrt(max(dot(T,T), dot(B,B)));
-	mat3 TBN = mat3(T*inv_max, B*inv_max, VN);
-	return normalize(TBN * N);
-}
-

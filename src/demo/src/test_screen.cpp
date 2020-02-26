@@ -93,6 +93,8 @@ namespace mirrage {
 
 		_meta_system.entities().entity_builder("decal").position({-8, 0, -0.5f}).create();
 
+		_meta_system.entities().entity_builder("chest_gold").position({6, 0, -2}).create();
+
 		_sun = _meta_system.entities().entity_builder("sun").create();
 
 		_camera = _meta_system.entities()

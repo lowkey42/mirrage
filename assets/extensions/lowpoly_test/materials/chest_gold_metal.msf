@@ -1,0 +1,20 @@
+{
+    "substance_id": "default",
+    "albedo_aid": "white",
+    "brdf_aid": "white",
+    "albedo_color": {
+        "x": 0.061592,
+        "y": 0.054661,
+        "z": 0.091946,
+        "w": 1
+    },
+    "emission_color": {
+        "x": 0,
+        "y": 0,
+        "z": 0,
+        "w": 1
+    },
+    "roughness": 0.493374,
+    "metallic": 1,
+    "refraction": 1
+}

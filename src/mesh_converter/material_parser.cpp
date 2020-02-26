@@ -463,127 +463,164 @@ namespace mirrage {
 		auto texture_dir = output + "/textures/";
 
 		auto material_file         = renderer::Material_data{};
-		material_file.substance_id = util::Str_id("default"); // TODO: decide alpha-test / alpha-blend
+		material_file.substance_id = util::Str_id("default");
 
-		// convert albedo
-		auto albedo_name = resolve_path(
-		        name,
-		        base_dir,
-		        find_texture(name, material, cfg, Texture_type::albedo, interactive, interactive_all));
-
-		auto albedo              = load_texture2d(albedo_name);
-		material_file.albedo_aid = name + "_albedo.ktx";
-
-		// determine substance type
-		auto uses_alpha_mask  = std::int_fast32_t(0);
-		auto uses_alpha_blend = std::int_fast32_t(0);
-		albedo.foreach([&](auto& pixel, auto level, auto, auto) {
-			if(level == 0) {
-				auto mask = pixel.a < 254.f / 255.f;
-				uses_alpha_mask += mask ? 1 : 0;
-				uses_alpha_blend += mask && pixel.a > 2.f / 255.f ? 1 : 0;
+		if(cfg.use_material_colors) {
+			auto albedo    = aiColor3D(1, 1, 1);
+			auto opacity   = 1.f;
+			auto metalness = 0.f;
+			material.Get(AI_MATKEY_COLOR_DIFFUSE, albedo);
+			material.Get(AI_MATKEY_OPACITY, opacity);
+			if(albedo.IsBlack()) {
+				metalness = 1.f;
+				material.Get(AI_MATKEY_COLOR_SPECULAR, albedo);
 			}
-		});
-		auto alpha_cutoff = std::clamp<std::int_fast32_t>((albedo.width * albedo.height) / 100, 10, 200);
-		if(uses_alpha_blend > alpha_cutoff)
-			material_file.substance_id = util::Str_id("alphatest"); // TODO: alphablend
-		else if(uses_alpha_mask > alpha_cutoff)
-			material_file.substance_id = util::Str_id("alphatest");
 
-		store_texture_async(texture_dir + material_file.albedo_aid,
-		                    Texture_format::s_rgba,
-		                    cfg.dxt_level,
-		                    progress,
-		                    [albedo = std::move(albedo)]() mutable {
-			                    generate_mip_maps(albedo, [](auto a, auto b, auto c, auto d) {
-				                    return (a + b + c + d) / 4.f;
-			                    });
-			                    return std::move(albedo);
-		                    });
+			float refraction_index = 1.f;
+			material.Get(AI_MATKEY_REFRACTI, refraction_index);
 
-		// convert normal
-		auto normal_name =
-		        find_texture(name, material, cfg, Texture_type::normal, interactive, interactive_all);
-		auto normal_gen = [path = resolve_path(name, base_dir, normal_name)]() mutable {
-			auto normal = load_texture2d(path, false);
-			normal.foreach([&](auto& pixel, auto level, auto x, auto y) {
-				// generate mip levels
-				if(level > 0) {
-					auto n_00 = normal.pixel(level - 1, x * 2, y * 2);
-					auto n_10 = normal.pixel(level - 1, x * 2 + 1, y * 2);
-					auto n_11 = normal.pixel(level - 1, x * 2 + 1, y * 2 + 1);
-					auto n_01 = normal.pixel(level - 1, x * 2, y * 2 + 1);
+			float shininess = 0.f;
+			material.Get(AI_MATKEY_SHININESS, shininess);
 
-					auto n = glm::normalize(glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
-					         + glm::normalize(glm::vec3(n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
-					         + glm::normalize(glm::vec3(n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
-					         + glm::normalize(glm::vec3(n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
+			auto emission_color = aiColor3D(1, 1, 1);
+			material.Get(AI_MATKEY_COLOR_EMISSIVE, emission_color);
 
-					n       = glm::normalize(n / 4.f);
-					pixel.r = n.x * 0.5f + 0.5f;
-					pixel.g = n.y * 0.5f + 0.5f;
-					pixel.b = n.z * 0.5f + 0.5f;
-					pixel.a = 1;
+			material_file.albedo_color   = {albedo.r, albedo.g, albedo.b, opacity};
+			material_file.emission_color = {emission_color.r, emission_color.g, emission_color.b, 1.f};
+			material_file.roughness =
+			        1.f - (shininess <= 0.0001 ? 0.f : std::min(1.f, std::log2(shininess) / 13.f));
+			material_file.metallic   = metalness;
+			material_file.refraction = refraction_index;
+		}
+
+		if(cfg.ignore_textures) {
+			material_file.albedo_aid = "default_white";
+			material_file.brdf_aid   = "default_white";
+
+		} else {
+			// convert albedo
+			auto albedo_name = resolve_path(
+			        name,
+			        base_dir,
+			        find_texture(name, material, cfg, Texture_type::albedo, interactive, interactive_all));
+
+			auto albedo              = load_texture2d(albedo_name);
+			material_file.albedo_aid = name + "_albedo.ktx";
+
+			// determine substance type
+			auto uses_alpha_mask  = std::int_fast32_t(0);
+			auto uses_alpha_blend = std::int_fast32_t(0);
+			albedo.foreach([&](auto& pixel, auto level, auto, auto) {
+				if(level == 0) {
+					auto mask = pixel.a < 254.f / 255.f;
+					uses_alpha_mask += mask ? 1 : 0;
+					uses_alpha_blend += mask && pixel.a > 2.f / 255.f ? 1 : 0;
 				}
 			});
-			return normal;
-		};
-		material_file.normal_aid = name + "_normal.ktx";
-		store_texture_async(texture_dir + material_file.normal_aid,
-		                    Texture_format::rg,
-		                    cfg.dxt_level,
-		                    progress,
-		                    normal_gen);
+			auto alpha_cutoff = std::clamp<std::int_fast32_t>((albedo.width * albedo.height) / 100, 10, 200);
+			if(uses_alpha_blend > alpha_cutoff)
+				material_file.substance_id = util::Str_id("alphatest"); // TODO: alphablend
+			else if(uses_alpha_mask > alpha_cutoff)
+				material_file.substance_id = util::Str_id("alphatest");
 
-		// convert brdf
-		auto metallic_name =
-		        find_texture(name, material, cfg, Texture_type::metalness, interactive, interactive_all);
-		auto roughness_name =
-		        find_texture(name, material, cfg, Texture_type::roughness, interactive, interactive_all);
-		auto mat_gen = [metallic_path  = resolve_path(name, base_dir, metallic_name),
-		                roughness_path = resolve_path(name, base_dir, roughness_name)]() mutable {
-			auto metallic  = load_texture2d(metallic_path, false);
-			auto roughness = load_texture2d(roughness_path, false);
+			store_texture_async(texture_dir + material_file.albedo_aid,
+			                    Texture_format::s_rgba,
+			                    cfg.dxt_level,
+			                    progress,
+			                    [albedo = std::move(albedo)]() mutable {
+				                    generate_mip_maps(albedo, [](auto a, auto b, auto c, auto d) {
+					                    return (a + b + c + d) / 4.f;
+				                    });
+				                    return std::move(albedo);
+			                    });
 
-			if(roughness.width == metallic.width && roughness.height == metallic.height)
-				roughness.foreach_in_level(0, [&](auto& pixel, auto level, auto x, auto y) {
-					pixel.g = metallic.pixel(level, x, y).r;
+			// convert normal
+			auto normal_name =
+			        find_texture(name, material, cfg, Texture_type::normal, interactive, interactive_all);
+			auto normal_gen = [path = resolve_path(name, base_dir, normal_name)]() mutable {
+				auto normal = load_texture2d(path, false);
+				normal.foreach([&](auto& pixel, auto level, auto x, auto y) {
+					// generate mip levels
+					if(level > 0) {
+						auto n_00 = normal.pixel(level - 1, x * 2, y * 2);
+						auto n_10 = normal.pixel(level - 1, x * 2 + 1, y * 2);
+						auto n_11 = normal.pixel(level - 1, x * 2 + 1, y * 2 + 1);
+						auto n_01 = normal.pixel(level - 1, x * 2, y * 2 + 1);
+
+						auto n = glm::normalize(glm::vec3(n_00.r * 2 - 1, n_00.g * 2 - 1, n_00.b * 2 - 1))
+						         + glm::normalize(glm::vec3(n_10.r * 2 - 1, n_10.g * 2 - 1, n_10.b * 2 - 1))
+						         + glm::normalize(glm::vec3(n_11.r * 2 - 1, n_11.g * 2 - 1, n_11.b * 2 - 1))
+						         + glm::normalize(glm::vec3(n_01.r * 2 - 1, n_01.g * 2 - 1, n_01.b * 2 - 1));
+
+						n       = glm::normalize(n / 4.f);
+						pixel.r = n.x * 0.5f + 0.5f;
+						pixel.g = n.y * 0.5f + 0.5f;
+						pixel.b = n.z * 0.5f + 0.5f;
+						pixel.a = 1;
+					}
 				});
-			else {
-				auto width_scale  = float(metallic.width) / float(roughness.width);
-				auto height_scale = float(metallic.height) / float(roughness.height);
-				roughness.foreach_in_level(0, [&](auto& pixel, auto level, auto x, auto y) {
-					pixel.g = metallic.pixel(level,
-					                         std::int32_t(x * width_scale),
-					                         std::int32_t(y * height_scale))
-					                  .r;
-				});
-			}
-
-			generate_mip_maps(roughness,
-			                  [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
-
-			return roughness;
-		};
-		material_file.brdf_aid = name + "_brdf.ktx";
-		store_texture_async(
-		        texture_dir + material_file.brdf_aid, Texture_format::rg, cfg.dxt_level, progress, mat_gen);
-
-		// convert emissive
-		try_find_texture(name, material, cfg, Texture_type::emission).process([&](auto& emission_name) {
-			material_file.emission_aid = name + "_emission.ktx";
-			store_texture_async(texture_dir + material_file.emission_aid,
+				return normal;
+			};
+			material_file.normal_aid = name + "_normal.ktx";
+			store_texture_async(texture_dir + material_file.normal_aid,
 			                    Texture_format::rg,
 			                    cfg.dxt_level,
 			                    progress,
-			                    [path = resolve_path(name, base_dir, emission_name)]() mutable {
-				                    auto emission = load_texture2d(path, false);
-				                    generate_mip_maps(emission, [](auto a, auto b, auto c, auto d) {
-					                    return (a + b + c + d) / 4.f;
+			                    normal_gen);
+
+			// convert brdf
+			auto metallic_name =
+			        find_texture(name, material, cfg, Texture_type::metalness, interactive, interactive_all);
+			auto roughness_name =
+			        find_texture(name, material, cfg, Texture_type::roughness, interactive, interactive_all);
+			auto mat_gen = [metallic_path  = resolve_path(name, base_dir, metallic_name),
+			                roughness_path = resolve_path(name, base_dir, roughness_name)]() mutable {
+				auto metallic  = load_texture2d(metallic_path, false);
+				auto roughness = load_texture2d(roughness_path, false);
+
+				if(roughness.width == metallic.width && roughness.height == metallic.height)
+					roughness.foreach_in_level(0, [&](auto& pixel, auto level, auto x, auto y) {
+						pixel.g = metallic.pixel(level, x, y).r;
+					});
+				else {
+					auto width_scale  = float(metallic.width) / float(roughness.width);
+					auto height_scale = float(metallic.height) / float(roughness.height);
+					roughness.foreach_in_level(0, [&](auto& pixel, auto level, auto x, auto y) {
+						pixel.g = metallic.pixel(level,
+						                         std::int32_t(x * width_scale),
+						                         std::int32_t(y * height_scale))
+						                  .r;
+					});
+				}
+
+				generate_mip_maps(roughness,
+				                  [](auto a, auto b, auto c, auto d) { return (a + b + c + d) / 4.f; });
+
+				return roughness;
+			};
+			material_file.brdf_aid = name + "_brdf.ktx";
+			store_texture_async(texture_dir + material_file.brdf_aid,
+			                    Texture_format::rg,
+			                    cfg.dxt_level,
+			                    progress,
+			                    mat_gen);
+
+			// convert emissive
+			try_find_texture(name, material, cfg, Texture_type::emission).process([&](auto& emission_name) {
+				material_file.emission_aid = name + "_emission.ktx";
+				store_texture_async(texture_dir + material_file.emission_aid,
+				                    Texture_format::rg,
+				                    cfg.dxt_level,
+				                    progress,
+				                    [path = resolve_path(name, base_dir, emission_name)]() mutable {
+					                    auto emission = load_texture2d(path, false);
+					                    generate_mip_maps(emission, [](auto a, auto b, auto c, auto d) {
+						                    return (a + b + c + d) / 4.f;
+					                    });
+					                    return emission;
 				                    });
-				                    return emission;
-			                    });
-		});
+			});
+		}
 
 		// store results
 		auto filename = output + "/materials/" + util::to_lower(name) + ".msf";

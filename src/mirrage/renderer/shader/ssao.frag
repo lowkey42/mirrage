@@ -10,11 +10,11 @@ layout(location = 0) in Vertex_data {
 
 layout(location = 0) out vec4 out_color;
 
-layout (constant_id = 0) const int SAMPLES = 16;
+layout (constant_id = 0) const int SAMPLES = 21;
 layout (constant_id = 1) const int LOG_MAX_OFFSET = 4;
 layout (constant_id = 2) const int SPIRAL_TURNS = 7;
-layout (constant_id = 3) const float RADIUS = 1.0;
-layout (constant_id = 4) const float BIAS = 0.03;
+layout (constant_id = 3) const float RADIUS = 0.4;
+layout (constant_id = 4) const float BIAS = 0.001;
 
 layout(set=1, binding = 0) uniform sampler2D depth_sampler;
 layout(set=1, binding = 1) uniform sampler2D mat_data_sampler;

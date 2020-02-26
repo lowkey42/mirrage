@@ -86,7 +86,11 @@ int main(int argc, char** argv)
 	        ("print_animations", "Display informations about animations.", cxxopts::value<bool>())
 	        ("animate_scale", "Allow animations to modify bone scales", cxxopts::value<bool>())
 	        ("animate_translation", "Allow animations to modify bone translations", cxxopts::value<bool>())
-	        ("animate_orientation", "Allow animations to modify bone orientations", cxxopts::value<bool>());
+	        ("animate_orientation", "Allow animations to modify bone orientations", cxxopts::value<bool>())
+			("use_material_colors", "Export material colors", cxxopts::value<bool>())
+			("ignore_textures", "Set all textures to default_white", cxxopts::value<bool>())
+			("discard_normals", "Discard existing normals and regenerate them", cxxopts::value<bool>())
+			("smooth_normal_angle", "Maximum angle between to normals that should still be smoothed", cxxopts::value<float>());
 	// clang-format on
 
 	options_def.parse_positional({"input"});
@@ -136,6 +140,10 @@ int main(int argc, char** argv)
 	config.animate_orientation =
 	        get_arg<bool>(options, "animate_orientation").get_or(config.animate_orientation);
 
+	config.use_material_colors =
+	        get_arg<bool>(options, "use_material_colors").get_or(config.use_material_colors);
+	config.ignore_textures = get_arg<bool>(options, "ignore_textures").get_or(config.ignore_textures);
+
 	auto interactive     = get_arg<bool>(options, "interactive").get_or(false);
 	auto interactive_all = get_arg<bool>(options, "interactive_all").get_or(false);
 	interactive |= interactive_all;
@@ -146,8 +154,11 @@ int main(int argc, char** argv)
 		config.skinning_type = renderer::Skinning_type::dual_quaternion_skinning;
 	else
 		config.skinning_type = renderer::Skinning_type::linear_blend_skinning;
-		
-	
+
+	config.discard_normals = get_arg<bool>(options, "discard_normals").get_or(config.discard_normals);
+	config.smooth_normal_angle =
+	        get_arg<float>(options, "smooth_normal_angle").get_or(config.smooth_normal_angle);
+
 	auto output = output_arg.get_or(config.default_output_directory);
 
 	create_directory(output);

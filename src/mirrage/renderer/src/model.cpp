@@ -18,7 +18,7 @@ namespace mirrage::renderer {
 	auto create_material_descriptor_set_layout(Device& device, vk::Sampler sampler)
 	        -> vk::UniqueDescriptorSetLayout
 	{
-		auto bindings = std::array<vk::DescriptorSetLayoutBinding, material_textures>();
+		auto bindings = std::array<vk::DescriptorSetLayoutBinding, material_textures + 1>();
 		auto samplers = std::array<vk::Sampler, material_textures>();
 
 		std::fill_n(samplers.begin(), material_textures, sampler);
@@ -35,6 +35,9 @@ namespace mirrage::renderer {
 			bindings[i].binding = i;
 		}
 
+		bindings[material_textures] = vk::DescriptorSetLayoutBinding{
+		        material_textures, vk::DescriptorType::eUniformBuffer, 1, vk::ShaderStageFlagBits::eAll};
+
 		return device.create_descriptor_set_layout(bindings);
 	}
 
@@ -45,37 +48,59 @@ namespace mirrage::renderer {
 	                   graphic::Texture_ptr   normal,
 	                   graphic::Texture_ptr   brdf,
 	                   graphic::Texture_ptr   emission,
+	                   graphic::Static_buffer uniform_buffer,
 	                   bool                   has_albedo,
 	                   bool                   has_normal,
 	                   bool                   has_brdf,
 	                   bool                   has_emission,
-	                   util::Str_id           substance_id)
-	  : _descriptor_set(std::move(descriptor_set))
-	  , _albedo(std::move(albedo))
+	                   util::Str_id           substance_id,
+	                   glm::vec4              albedo_color,
+	                   glm::vec4              emission_color,
+	                   float                  roughness,
+	                   float                  metallic,
+	                   float                  refraction)
+
+	  : _albedo(std::move(albedo))
 	  , _normal(std::move(normal))
 	  , _brdf(std::move(brdf))
 	  , _emission(std::move(emission))
+	  , _uniform_buffer(std::move(uniform_buffer))
+	  , _descriptor_set(std::move(descriptor_set))
 	  , _substance_id(substance_id ? substance_id : "default"_strid)
 	  , _has_albedo(has_albedo)
 	  , _has_normal(has_normal)
 	  , _has_brdf(has_brdf)
 	  , _has_emission(has_emission)
+	  , _albedo_color(albedo_color)
+	  , _emission_color(emission_color)
+	  , _roughness(roughness)
+	  , _metallic(metallic)
+	  , _refraction(refraction)
 	{
-
 		auto desc_images = std::array<vk::DescriptorImageInfo, material_textures>{
 		        vk::DescriptorImageInfo{sampler, _albedo->view(), vk::ImageLayout::eShaderReadOnlyOptimal},
 		        vk::DescriptorImageInfo{sampler, _normal->view(), vk::ImageLayout::eShaderReadOnlyOptimal},
 		        vk::DescriptorImageInfo{sampler, _brdf->view(), vk::ImageLayout::eShaderReadOnlyOptimal},
 		        vk::DescriptorImageInfo{sampler, _emission->view(), vk::ImageLayout::eShaderReadOnlyOptimal}};
 
-		auto desc_write = vk::WriteDescriptorSet{*_descriptor_set,
-		                                         0,
-		                                         0,
-		                                         material_textures,
-		                                         vk::DescriptorType::eCombinedImageSampler,
-		                                         desc_images.data(),
-		                                         nullptr};
-		device.vk_device()->updateDescriptorSets(1, &desc_write, 0, nullptr);
+		auto desc_buffer = vk::DescriptorBufferInfo{_uniform_buffer.buffer(), 0, VK_WHOLE_SIZE};
+
+		auto desc_writes = std::array<vk::WriteDescriptorSet, 2>{
+		        vk::WriteDescriptorSet{*_descriptor_set,
+		                               0,
+		                               0,
+		                               material_textures,
+		                               vk::DescriptorType::eCombinedImageSampler,
+		                               desc_images.data(),
+		                               nullptr},
+		        vk::WriteDescriptorSet{*_descriptor_set,
+		                               material_textures,
+		                               0,
+		                               1,
+		                               vk::DescriptorType::eUniformBuffer,
+		                               nullptr,
+		                               &desc_buffer}};
+		device.vk_device()->updateDescriptorSets(desc_writes.size(), desc_writes.data(), 0, nullptr);
 	}
 
 	void Material::bind(graphic::Render_pass& pass, int bind_point) const
@@ -122,19 +147,49 @@ namespace mirrage::asset {
 	Loader<renderer::Material>::Loader(graphic::Device&        device,
 	                                   asset::Asset_manager&   assets,
 	                                   vk::Sampler             sampler,
-	                                   vk::DescriptorSetLayout layout)
+	                                   vk::DescriptorSetLayout layout,
+	                                   std::uint32_t           queue_family)
 	  : _device(device)
 	  , _assets(assets)
 	  , _sampler(sampler)
 	  , _descriptor_set_layout(layout)
 	  , _descriptor_set_pool(*device.vk_device(), 256, {vk::DescriptorType::eCombinedImageSampler})
+	  , _queue_family(queue_family)
 	{
+	}
+
+	auto create_material_uniform_buffer(Device&       device,
+	                                    std::uint32_t queue_family,
+	                                    glm::vec4     albedo_color,
+	                                    glm::vec4     emission_color,
+	                                    float         roughness,
+	                                    float         metallic,
+	                                    float         refraction,
+	                                    bool          has_normals) -> graphic::Static_buffer
+	{
+		auto data     = std::array<char, sizeof(float) * (4 * 2 + 4)>();
+		auto data_ptr = data.data();
+		memcpy(data_ptr, &albedo_color, sizeof(float) * 4);
+		data_ptr += sizeof(float) * 4;
+		memcpy(data_ptr, &emission_color, sizeof(float) * 4);
+		data_ptr += sizeof(float) * 4;
+		memcpy(data_ptr, &roughness, sizeof(float));
+		data_ptr += sizeof(float);
+		memcpy(data_ptr, &metallic, sizeof(float));
+		data_ptr += sizeof(float);
+		memcpy(data_ptr, &refraction, sizeof(float));
+		data_ptr += sizeof(float);
+		float has_normals_f = has_normals ? 1.f : 0.f;
+		memcpy(data_ptr, &has_normals_f, sizeof(float));
+
+		return device.transfer().upload_buffer(vk::BufferUsageFlagBits::eUniformBuffer, queue_family, data);
 	}
 
 	auto Loader<renderer::Material>::load(istream in) -> async::task<renderer::Material>
 	{
 		auto load_tex = [&](auto&& id, asset::AID placeholder) {
-			return _assets.load<graphic::Texture_2D>(id.empty() ? placeholder : asset::AID("tex"_strid, id));
+			return _assets.load<graphic::Texture_2D>(id.empty() ? std::move(placeholder)
+			                                                    : asset::AID("tex"_strid, id));
 		};
 
 		auto desc_set =
@@ -146,14 +201,24 @@ namespace mirrage::asset {
 			auto normal   = _assets.load<graphic::Texture_2D>("tex:default_normal"_aid);
 			auto brdf     = _assets.load<graphic::Texture_2D>("tex:default_brdf"_aid);
 			auto emission = _assets.load<graphic::Texture_2D>("tex:placeholder"_aid);
+			auto uniforms = create_material_uniform_buffer(_device,
+			                                               _queue_family,
+			                                               glm::vec4{1, 1, 1, 1},
+			                                               glm::vec4(1, 1, 1, 1),
+			                                               0.5f,
+			                                               0.f,
+			                                               1.f,
+			                                               false);
 
 			auto all_loaded = async::when_all(albedo.internal_task(),
 			                                  normal.internal_task(),
 			                                  brdf.internal_task(),
-			                                  emission.internal_task());
+			                                  emission.internal_task(),
+			                                  uniforms.transfer_task());
 			using Task_type = decltype(all_loaded)::result_type;
 
-			return all_loaded.then([=, desc_set = std::move(desc_set)](const Task_type&) mutable {
+			return all_loaded.then([=, desc_set = std::move(desc_set), uniforms = std::move(uniforms)](
+			                               const Task_type&) mutable {
 				return renderer::Material(_device,
 				                          std::move(desc_set),
 				                          _sampler,
@@ -161,11 +226,17 @@ namespace mirrage::asset {
 				                          normal,
 				                          brdf,
 				                          emission,
+				                          std::move(uniforms),
 				                          true,
 				                          false,
 				                          false,
 				                          false,
-				                          "default"_strid);
+				                          "default"_strid,
+				                          glm::vec4{1, 1, 1, 1},
+				                          glm::vec4(1, 1, 1, 1),
+				                          0.5f,
+				                          0.f,
+				                          1.f);
 			});
 		}
 
@@ -177,14 +248,24 @@ namespace mirrage::asset {
 		auto normal   = load_tex(data.normal_aid, "tex:default_normal"_aid);
 		auto brdf     = load_tex(data.brdf_aid, "tex:default_brdf"_aid);
 		auto emission = load_tex(data.emission_aid, "tex:placeholder"_aid);
+		auto uniforms = create_material_uniform_buffer(_device,
+		                                               _queue_family,
+		                                               data.albedo_color,
+		                                               data.emission_color,
+		                                               data.roughness,
+		                                               data.metallic,
+		                                               data.refraction,
+		                                               !data.normal_aid.empty());
 
 		auto all_loaded = async::when_all(albedo.internal_task(),
 		                                  normal.internal_task(),
 		                                  brdf.internal_task(),
-		                                  emission.internal_task());
+		                                  emission.internal_task(),
+		                                  uniforms.transfer_task());
 		using Task_type = decltype(all_loaded)::result_type;
 
-		return all_loaded.then([=, desc_set = std::move(desc_set)](const Task_type&) mutable {
+		return all_loaded.then([=, desc_set = std::move(desc_set), uniforms = std::move(uniforms)](
+		                               const Task_type&) mutable {
 			return renderer::Material(_device,
 			                          std::move(desc_set),
 			                          _sampler,
@@ -192,11 +273,17 @@ namespace mirrage::asset {
 			                          normal,
 			                          brdf,
 			                          emission,
+			                          std::move(uniforms),
 			                          !data.albedo_aid.empty(),
 			                          !data.normal_aid.empty(),
 			                          !data.brdf_aid.empty(),
 			                          !data.emission_aid.empty(),
-			                          sub_id);
+			                          sub_id,
+			                          data.albedo_color,
+			                          data.emission_color,
+			                          data.roughness,
+			                          data.metallic,
+			                          data.refraction);
 		});
 	}
 

@@ -491,7 +491,8 @@ namespace mirrage::renderer {
 		              vk::DescriptorSetLayout uniform_buffer)
 		  : assets(assets)
 		{
-			assets.create_stateful_loader<Material>(device, assets, material_sampler, material_layout);
+			assets.create_stateful_loader<Material>(
+			        device, assets, material_sampler, material_layout, draw_queue);
 			assets.create_stateful_loader<Model>(device, assets, draw_queue);
 			assets.create_stateful_loader<Particle_script>(device, storage_buffer, uniform_buffer);
 			assets.create_stateful_loader<Particle_system_config>();
@@ -510,8 +511,12 @@ namespace mirrage::renderer {
 	namespace {
 		auto calc_renderer_thread_count()
 		{
+#ifdef _NDEBUG
 			auto c = async::hardware_concurrency();
 			return util::max(c, c - 1u);
+#else
+			return std::size_t(1);
+#endif
 		}
 	} // namespace
 

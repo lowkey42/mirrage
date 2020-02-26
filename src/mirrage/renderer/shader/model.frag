@@ -21,6 +21,15 @@ layout(set=1, binding = 1) uniform sampler2D normal_sampler;
 layout(set=1, binding = 2) uniform sampler2D brdf_sampler;
 layout(set=1, binding = 3) uniform sampler2D emission_sampler;
 
+layout(std140, set=1, binding = 4) uniform Material_uniforms {
+    vec4 albedo;
+    vec4 emission;
+    float roughness;
+    float metallic;
+    float refraction;
+    float has_normals;
+} material;
+
 layout(push_constant) uniform Per_model_uniforms {
 	mat4 model;
 	vec4 light_color;
@@ -34,13 +43,14 @@ vec3 decode_tangent_normal(vec2 tn);
 vec3 tangent_space_to_world(vec3 N);
 
 void main() {
-	vec4 albedo = texture(albedo_sampler, tex_coords);
+	vec4 albedo = texture(albedo_sampler, tex_coords) * material.albedo;
 
-	vec3  N    = tangent_space_to_world(decode_tangent_normal(texture(normal_sampler, tex_coords).rg));
+	vec3 N = material.has_normals < 0.1 ? normalize(normal)
+	                                    : tangent_space_to_world(decode_tangent_normal(texture(normal_sampler, tex_coords).rg));
 
 	vec4 brdf = texture(brdf_sampler, tex_coords);
-	float roughness = brdf.r;
-	float metallic  = brdf.g;
+	float roughness = brdf.r * material.roughness;
+	float metallic  = brdf.g * material.metallic;
 	roughness = mix(0.01, 0.99, roughness*roughness);
 
 	depth_out         = vec4(-view_pos.z / global_uniforms.proj_planes.y, 0,0,1);
@@ -58,6 +68,7 @@ vec3 decode_tangent_normal(vec2 tn) {
 }
 
 vec3 tangent_space_to_world(vec3 N) {
+
 	vec3 VN = normalize(normal);
 
 	// calculate tangent

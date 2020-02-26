@@ -2,6 +2,7 @@
 
 #include <mirrage/graphic/mesh.hpp>
 #include <mirrage/graphic/texture.hpp>
+#include <mirrage/utils/sf2_glm.hpp>
 
 #include <vulkan/vulkan.hpp>
 
@@ -24,10 +25,25 @@ namespace mirrage::renderer {
 		std::string  normal_aid;   // RG: normal
 		std::string  brdf_aid;     // R:roughness, G:metallic
 		std::string  emission_aid; // R:emissive intensity
+		glm::vec4    albedo_color   = {1, 1, 1, 1};
+		glm::vec4    emission_color = {1, 1, 1, 1};
+		float        roughness      = 1.0f;
+		float        metallic       = 1.f;
+		float        refraction     = 1.f;
 	};
 
 #ifdef sf2_structDef
-	sf2_structDef(Material_data, substance_id, albedo_aid, normal_aid, brdf_aid, emission_aid);
+	sf2_structDef(Material_data,
+	              substance_id,
+	              albedo_aid,
+	              normal_aid,
+	              brdf_aid,
+	              emission_aid,
+	              albedo_color,
+	              emission_color,
+	              roughness,
+	              metallic,
+	              refraction);
 #endif
 
 
@@ -37,15 +53,21 @@ namespace mirrage::renderer {
 		Material(graphic::Device&,
 		         graphic::DescriptorSet,
 		         vk::Sampler,
-		         graphic::Texture_ptr albedo,
-		         graphic::Texture_ptr normal,
-		         graphic::Texture_ptr brdf,
-		         graphic::Texture_ptr emission,
-		         bool                 has_albedo,
-		         bool                 has_normal,
-		         bool                 has_brdf,
-		         bool                 has_emission,
-		         util::Str_id         substance_id);
+		         graphic::Texture_ptr   albedo,
+		         graphic::Texture_ptr   normal,
+		         graphic::Texture_ptr   brdf,
+		         graphic::Texture_ptr   emission,
+		         graphic::Static_buffer uniform_buffer,
+		         bool                   has_albedo,
+		         bool                   has_normal,
+		         bool                   has_brdf,
+		         bool                   has_emission,
+		         util::Str_id           substance_id,
+		         glm::vec4              albedo_color,
+		         glm::vec4              emission_color,
+		         float                  roughness,
+		         float                  metallic,
+		         float                  refraction);
 
 		void bind(graphic::Render_pass& pass, int bind_point = 1) const;
 		auto desc_set() const { return *_descriptor_set; }
@@ -57,16 +79,22 @@ namespace mirrage::renderer {
 		auto has_emission() const noexcept { return _has_emission; }
 
 	  private:
-		graphic::DescriptorSet _descriptor_set;
 		graphic::Texture_ptr   _albedo;
 		graphic::Texture_ptr   _normal;
 		graphic::Texture_ptr   _brdf;
 		graphic::Texture_ptr   _emission;
+		graphic::Static_buffer _uniform_buffer;
+		graphic::DescriptorSet _descriptor_set;
 		util::Str_id           _substance_id;
 		bool                   _has_albedo;
 		bool                   _has_normal;
 		bool                   _has_brdf;
 		bool                   _has_emission;
+		glm::vec4              _albedo_color;
+		glm::vec4              _emission_color;
+		float                  _roughness;
+		float                  _metallic;
+		float                  _refraction;
 	};
 	using Material_ptr = asset::Ptr<Material>;
 
@@ -259,7 +287,11 @@ namespace mirrage::asset {
 	template <>
 	struct Loader<renderer::Material> {
 	  public:
-		Loader(graphic::Device& device, asset::Asset_manager& assets, vk::Sampler, vk::DescriptorSetLayout);
+		Loader(graphic::Device&      device,
+		       asset::Asset_manager& assets,
+		       vk::Sampler,
+		       vk::DescriptorSetLayout,
+		       std::uint32_t queue_family);
 
 		auto load(istream in) -> async::task<renderer::Material>;
 		void save(ostream, const renderer::Material&) { MIRRAGE_FAIL("Save of materials is not supported!"); }
@@ -270,6 +302,7 @@ namespace mirrage::asset {
 		vk::Sampler              _sampler;
 		vk::DescriptorSetLayout  _descriptor_set_layout;
 		graphic::Descriptor_pool _descriptor_set_pool;
+		std::uint32_t            _queue_family;
 	};
 
 	template <>

@@ -62,6 +62,12 @@ namespace mirrage {
 		bool animate_scale       = true;
 		bool animate_translation = true;
 		bool animate_orientation = true;
+
+		bool use_material_colors = false;
+		bool ignore_textures     = false;
+
+		float smooth_normal_angle = 80.f;
+		bool  discard_normals     = false;
 	};
 	sf2_structDef(Mesh_converted_config,
 	              texture_mappings,
@@ -76,7 +82,11 @@ namespace mirrage {
 	              trim_bones,
 	              only_animations,
 	              skip_materials,
-	              scale);
+	              scale,
+	              use_material_colors,
+	              ignore_textures,
+	              smooth_normal_angle,
+	              discard_normals);
 
 
 	template <typename T>

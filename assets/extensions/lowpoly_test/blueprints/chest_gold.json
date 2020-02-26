@@ -1,0 +1,10 @@
+{
+	"Transform":{
+		"orientation": {"roll":3.14159, "pitch":4.71}
+	},
+	"Model": {
+		"aid": "model:chest_gold.mmf"
+	},
+	"Pose": {"skeleton": "skel:models/chest_gold.mbf"},
+	"Shadowcaster": {}
+}
