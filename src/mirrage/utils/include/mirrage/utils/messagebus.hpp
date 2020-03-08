@@ -10,7 +10,9 @@
 #include <mirrage/utils/func_traits.hpp>
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/maybe.hpp>
+#include <mirrage/utils/ranges.hpp>
 #include <mirrage/utils/reflection.hpp>
+#include <mirrage/utils/small_vector.hpp>
 #include <mirrage/utils/template_utils.hpp>
 
 #include <concurrentqueue.h>
@@ -19,6 +21,7 @@
 #include <atomic>
 #include <cassert>
 #include <functional>
+#include <shared_mutex>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -28,51 +31,40 @@ namespace mirrage::util {
 
 	class Message_bus;
 
-	constexpr auto default_mailbox_size   = 128;
-	constexpr auto default_msg_batch_size = 4;
+	namespace detail {
+		constexpr auto default_mailbox_size   = 16;
+		constexpr auto default_msg_batch_size = 2;
 
-	template <class T>
-	class Mailbox {
-	  public:
-		Mailbox(Message_bus& bus, std::size_t size = default_msg_batch_size);
-		Mailbox(Message_bus&&) = delete;
-		~Mailbox();
+		template <typename T>
+		class Mailbox;
+	} // namespace detail
 
-		void send(const T& v);
-		auto receive() -> maybe<T>;
-		template <std::size_t Size>
-		auto receive(T (&target)[Size]) -> std::size_t;
 
-		auto empty() const noexcept -> bool;
-
-		void enable() { _active.store(true); }
-		void disable() { _active.store(false); }
-
-	  private:
-		moodycamel::ConcurrentQueue<T> _queue;
-		Message_bus&                   _bus;
-		std::atomic<bool>              _active{true};
-	};
-
+	/// A collection of messages handlers registered on a central Message_bus.
+	/// Messages for the subscriptions are processed synchronously when update_subscriptions() is called.
+	///
+	/// All methods in this class are thread-safe when executed on different instances using the same Message_bus
+	///   but access to the same instance needs to be externally synchronized.
 	class Mailbox_collection {
 	  public:
-		Mailbox_collection(Message_bus& bus);
+		Mailbox_collection(Message_bus& bus) : _bus(bus) {}
 
 		auto& bus() noexcept { return _bus; }
 
-		template <class T, std::size_t bulk_size, typename Func>
+		/// Subscribe to messages of type T, calling the given handler for each of them.
+		/// The queue_size is used as a hint for the temporary storage of unprocessed messages.
+		/// The batch_size is the estimated number of messages delivered on a call to update_subscriptions().
+		template <class T, std::size_t batch_size, typename Func>
 		void subscribe(std::size_t queue_size, Func handler = {});
 
-		template <std::size_t bulk_size  = default_msg_batch_size,
-		          std::size_t queue_size = default_mailbox_size,
+		/// Subscribe to a list of messages deduced from the argument types of the given handlers.
+		template <std::size_t batch_size = detail::default_msg_batch_size,
+		          std::size_t queue_size = detail::default_mailbox_size,
 		          typename... Func>
 		void subscribe_to(Func&&... handler);
 
 		template <class T>
 		void unsubscribe();
-
-		template <class T, std::size_t size, typename Func>
-		void receive(Func handler);
 
 		void update_subscriptions();
 
@@ -102,64 +94,61 @@ namespace mirrage::util {
 
 	class Message_bus {
 	  public:
-		Message_bus();
-		Message_bus(Message_bus&&) = default;
-		~Message_bus();
-		auto create_child() -> Message_bus;
-
-		template <typename T>
-		void register_mailbox(Mailbox<T>& mailbox);
-		template <typename T>
-		void unregister_mailbox(Mailbox<T>& mailbox);
-
-		void update();
-
+		/// thread-safe
 		template <typename Msg, typename... Arg>
 		void send(Arg&&... arg)
 		{
 			send_msg(Msg{std::forward<Arg>(arg)...});
 		}
 
+		/// thread-safe
 		template <typename Msg>
-		void send_msg(const Msg& msg, void* self = nullptr);
+		void send_msg(const Msg& msg, const void* self = nullptr);
 
 	  private:
-		Message_bus(Message_bus* parent);
+		template <typename T>
+		friend class detail::Mailbox;
 
 		struct Mailbox_ref {
+			Mailbox_ref() = default;
 			template <typename T>
-			Mailbox_ref(Mailbox<T>& mailbox);
+			Mailbox_ref(std::shared_ptr<detail::Mailbox<T>> mailbox);
 
 			template <typename T>
-			void exec_send(const T& m, void* src);
+			void exec_send(const T& m, const void* src) const;
 
-			bool operator==(const Mailbox_ref& rhs) const noexcept
-			{
-				return _type == rhs._type && _mailbox == rhs._mailbox;
-			}
-
-			type_uid_t                              _type;
-			void*                                   _mailbox;
+			std::weak_ptr<void>                     _mailbox;
 			std::function<void(void*, const void*)> _send;
-			bool                                    _deleted = false;
 		};
 
-		auto& group(type_uid_t id)
-		{
-			if(std::size_t(id) >= _mb_groups.size()) {
-				_mb_groups.resize(id + 1);
-				_mb_groups.back().reserve(4);
+		struct Mailbox_array {
+			Mailbox_array() : data(), size(0) {}
+			Mailbox_array(std::size_t size)
+			  : data(new Mailbox_ref[size], std::default_delete<Mailbox_ref[]>()), size(size)
+			{
 			}
-			return _mb_groups[id];
-		}
 
-		Message_bus*              _parent;
-		std::vector<Message_bus*> _children;
+			template <typename... Ts>
+			auto with(Ts&&... args) -> Mailbox_array;
 
-		std::vector<std::vector<Mailbox_ref>> _mb_groups;
+			template <typename T>
+			auto without(std::weak_ptr<detail::Mailbox<T>> e) -> Mailbox_array;
 
-		std::vector<Mailbox_ref> _add_queue;
-		std::vector<Mailbox_ref> _remove_queue;
+			std::shared_ptr<Mailbox_ref> data;
+			std::size_t                  size;
+		};
+
+		std::shared_mutex          _mutex;
+		std::vector<Mailbox_array> _groups;
+
+
+		/// thread-safe
+		template <typename T>
+		void register_mailbox(std::shared_ptr<detail::Mailbox<T>> mailbox);
+
+		/// thread-safe
+		template <typename T>
+		void unregister_mailbox(std::weak_ptr<detail::Mailbox<T>> mailbox);
 	};
 } // namespace mirrage::util
 

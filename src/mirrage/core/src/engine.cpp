@@ -195,8 +195,6 @@ namespace mirrage {
 			_input_manager->viewport(_graphics_main_window.get_or_throw().viewport());
 		}
 
-		_bus.update();
-
 		if(interruptRequested) {
 			interruptRequested = false;
 			exit();

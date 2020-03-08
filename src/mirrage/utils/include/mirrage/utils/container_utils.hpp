@@ -26,6 +26,17 @@ namespace mirrage::util {
 			c.pop_back();
 		}
 	}
+	template <typename C, typename F>
+	void erase_fast_if(C& c, F&& f)
+	{
+		using std::swap;
+
+		auto e = std::find_if(c.begin(), c.end(), std::forward<F>(f));
+		if(e != c.end()) {
+			swap(*e, c.back());
+			c.pop_back();
+		}
+	}
 	template <typename C, typename K>
 	void erase_fast_stable(C& c, const K& v)
 	{
