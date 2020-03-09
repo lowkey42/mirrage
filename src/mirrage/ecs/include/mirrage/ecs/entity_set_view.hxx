@@ -210,7 +210,8 @@ namespace mirrage::ecs {
 				auto&&         end = std::get<I>(_iterator_ends);
 
 				if(iter != end)
-					iter += step; //std::advance(iter, step);
+					iter += static_cast<typename std::remove_reference_t<decltype(iter)>::difference_type>(
+					        step);
 			});
 
 			_find_next_valid();
