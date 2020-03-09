@@ -8,119 +8,142 @@
 namespace mirrage::util {
 
 	namespace detail {
-		template <typename T>
-		class Mailbox : public std::enable_shared_from_this<Mailbox<T>> {
+		constexpr auto default_msg_batch_size = 2;
+
+		class Mailbox_base {
 		  public:
-			Mailbox(Message_bus& bus, std::size_t size = default_mailbox_size);
-			~Mailbox();
+			Mailbox_base()          = default;
+			virtual ~Mailbox_base() = default;
 
-			void register_mailbox();
+			/// two-phase init because of shared_from_this
+			virtual void register_mailbox() = 0;
+			virtual void process()          = 0;
+			virtual void enable()           = 0;
+			virtual void disable()          = 0;
+		};
 
-			void send(const T& v);
-			auto receive() -> maybe<T>;
-			template <std::size_t Size>
-			auto receive(T (&target)[Size]) -> std::size_t;
+		template <typename T>
+		class Mailbox : public Mailbox_base, public std::enable_shared_from_this<Mailbox<T>> {
+		  public:
+			template <typename Handler>
+			Mailbox(Message_bus& bus, Handler&& handler, std::size_t size = default_mailbox_size)
+			  : _queue(size, 0, 4)
+			  , _bus(bus)
+			  , _processor([h = std::forward<Handler>(handler)](Mailbox<T>& self) {
+				  T    msg[default_msg_batch_size];
+				  auto count = std::size_t(0);
+				  do {
+					  count = self._queue.try_dequeue_bulk(msg, default_msg_batch_size);
+					  std::for_each(std::begin(msg), std::begin(msg) + count, h);
+				  } while(count > 0);
+			  })
+			{
+			}
+			~Mailbox() { _bus.unregister_mailbox(this->weak_from_this()); }
 
-			void enable() { _active.store(true); }
-			void disable() { _active.store(false); }
+			void send(const T& v)
+			{
+				if(_active.load())
+					_queue.enqueue(v);
+			}
+
+			void register_mailbox() override { _bus.register_mailbox(this->shared_from_this()); }
+
+			void enable() override { _active.store(true); }
+			void disable() override { _active.store(false); }
+
+			void process() override { _processor(*this); }
 
 		  private:
-			moodycamel::ConcurrentQueue<T> _queue;
-			Message_bus&                   _bus;
-			std::atomic<bool>              _active{true};
+			moodycamel::ConcurrentQueue<T>   _queue;
+			Message_bus&                     _bus;
+			std::atomic<bool>                _active{true};
+			std::function<void(Mailbox<T>&)> _processor;
 		};
 
 		template <typename T>
-		Mailbox<T>::Mailbox(Message_bus& bus, std::size_t size) : _queue(size, 0, 4), _bus(bus)
-		{
-		}
+		class Response_mailbox : public Mailbox<T> {
+		  public:
+			Response_mailbox(Message_bus& bus, std::size_t size = default_mailbox_size)
+			  : Mailbox<T>(
+			          bus,
+			          [this](const T& msg) {
+				          if(auto iter = _mapping.find(msg.request_id); iter != _mapping.end()) {
+					          iter->second.set_value(msg);
+					          _mapping.erase(iter);
+				          }
+			          },
+			          size)
+			{
+			}
 
-		template <typename T>
-		Mailbox<T>::~Mailbox()
-		{
-			_bus.unregister_mailbox(this->weak_from_this());
-		}
+			auto get_response(Request_id id) { return _mapping[id].get_future(); }
 
-		template <typename T>
-		void Mailbox<T>::register_mailbox()
-		{
-			_bus.register_mailbox(this->shared_from_this());
-		}
-
-		template <typename T>
-		void Mailbox<T>::send(const T& v)
-		{
-			if(_active.load())
-				_queue.enqueue(v);
-		}
-
-		template <typename T>
-		auto Mailbox<T>::receive() -> maybe<T>
-		{
-			maybe<T> ret = T{};
-
-			if(!_queue.try_dequeue(ret.get_or_throw()))
-				ret = nothing;
-
-			return ret;
-		}
-
-		template <typename T>
-		template <std::size_t Size>
-		auto Mailbox<T>::receive(T (&target)[Size]) -> std::size_t
-		{
-			return _queue.try_dequeue_bulk(target, Size);
-		}
-
-
-		template <typename T, std::size_t size, typename Func>
-		void receive_bulk(void* box, Func& handler)
-		{
-			using namespace std;
-
-			MIRRAGE_INVARIANT(box, "No subscription for given type");
-
-			T     msg[size];
-			auto& cbox = *static_cast<Mailbox<T>*>(box);
-
-			auto count = std::size_t(0);
-			do {
-				count = cbox.receive(msg);
-
-				for_each(begin(msg), begin(msg) + count, handler);
-			} while(count > 0);
-		}
+		  private:
+			std::unordered_map<Request_id, std::promise<T>> _mapping;
+		};
 	} // namespace detail
 
-	template <typename T, std::size_t batch_size, typename Func>
-	void Mailbox_collection::subscribe(std::size_t queue_size, Func handler)
+	template <typename T, std::size_t queue_size, typename Func>
+	void Mailbox_collection::subscribe(Func&& handler)
 	{
-		using namespace std;
-
 		MIRRAGE_INVARIANT(_boxes.find(type_uid_of<T>()) == _boxes.end(), "Listener already registered!");
 
-		auto& box     = _boxes[type_uid_of<T>()];
-		auto  mailbox = make_shared<detail::Mailbox<T>>(_bus, queue_size);
-		mailbox->register_mailbox();
-		box.box       = std::move(mailbox);
-		box.handler   = [handler](Sub& s) { detail::receive_bulk<T, batch_size>(s.box.get(), handler); };
-		box.activator = [](Sub& s, bool active) {
-			auto mb = static_cast<detail::Mailbox<T>*>(s.box.get());
-			if(active)
-				mb->enable();
-			else
-				mb->disable();
-		};
+		using result_t = std::remove_reference_t<decltype(handler(std::declval<T&>()))>;
+
+		if constexpr(is_request_message<T>) {
+			static_assert(std::is_same_v<result_t, typename T::response_type>,
+			              "Message handlers for request messages have to return the type specified in "
+			              "Request::response_type");
+		}
+
+		if constexpr(std::is_void_v<result_t>) {
+			auto box = std::make_shared<detail::Mailbox<T>>(_bus, std::forward<Func>(handler), queue_size);
+			box->register_mailbox();
+			_boxes.emplace(type_uid_of<T>(), std::move(box));
+
+		} else {
+			auto handler_wrapper = [handler = std::forward<Func>(handler), this](T& msg) {
+				if constexpr(is_request_message<T>) {
+					auto resp       = handler(msg);
+					resp.request_id = msg.request_id;
+					_bus.send_msg(std::move(resp));
+				} else {
+					send_msg(handler(msg));
+				}
+			};
+
+			auto box = std::make_shared<detail::Mailbox<T>>(_bus, std::move(handler_wrapper), queue_size);
+			box->register_mailbox();
+			_boxes.emplace(type_uid_of<T>(), std::move(box));
+		}
 	}
-	template <std::size_t batch_size, std::size_t queue_size, typename... Func>
+
+	template <std::size_t queue_size, typename... Func>
 	void Mailbox_collection::subscribe_to(Func&&... handler)
 	{
 		apply(
 		        [&](auto&& h) {
 			        using T = std::decay_t<nth_func_arg_t<std::remove_reference_t<decltype(h)>, 0>>;
-			        this->subscribe<T, batch_size>(queue_size, std::forward<decltype(h)>(h));
+			        this->subscribe<T, queue_size>(std::forward<decltype(h)>(h));
 		        },
 		        std::forward<Func>(handler)...);
+	}
+
+	template <typename Msg>
+	auto Mailbox_collection::_subscribe_to_response(Request_id id) -> std::future<typename Msg::response_type>
+	{
+		using T = typename Msg::response_type;
+
+		auto& box = _boxes[type_uid_of<T>()];
+		if(!box) {
+			box = std::make_shared<detail::Response_mailbox<T>>(_bus, detail::default_mailbox_size);
+			box->register_mailbox();
+		}
+
+		auto resp_box = dynamic_cast<detail::Response_mailbox<T>*>(box.get());
+		MIRRAGE_INVARIANT(resp_box, "A response message has been used in a normal subscription!");
+		return resp_box->get_response(id);
 	}
 
 	template <typename T>
@@ -131,30 +154,35 @@ namespace mirrage::util {
 
 	inline void Mailbox_collection::update_subscriptions()
 	{
-		for(auto& b : _boxes)
-			if(b.second.handler)
-				b.second.handler(b.second);
+		for(auto&& [_, box] : _boxes)
+			box->process();
 	}
 
 	template <typename Msg>
-	void Mailbox_collection::send_msg(const Msg& msg)
+	auto Mailbox_collection::send_msg(const Msg& msg) -> message_result_t<Msg>
 	{
-		auto self = _boxes.find(type_uid_of<Msg>());
+		if constexpr(is_request_message<Msg>) {
+			auto response = _subscribe_to_response<Msg>(msg.request_id);
+			_bus.send_msg(msg); // include self in receivers
+			return response;
 
-		_bus.send_msg(msg, self != _boxes.end() ? self->second.box.get() : nullptr);
+		} else {
+			auto self = _boxes.find(type_uid_of<Msg>());
+			_bus.send_msg(msg, self != _boxes.end() ? self->second.get() : nullptr);
+		}
 	}
 
 	inline void Mailbox_collection::enable()
 	{
-		for(auto& b : _boxes) {
-			b.second.activator(b.second, true);
+		for(auto&& [_, box] : _boxes) {
+			box->enable();
 		}
 	}
 
 	inline void Mailbox_collection::disable()
 	{
-		for(auto& b : _boxes) {
-			b.second.activator(b.second, false);
+		for(auto&& [_, box] : _boxes) {
+			box->disable();
 		}
 	}
 

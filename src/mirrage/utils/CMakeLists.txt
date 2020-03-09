@@ -14,6 +14,7 @@ add_library(mirrage_utils STATIC
 	src/defer.cpp
 	src/log.cpp
 	src/md5.cpp
+	src/messagebus.cpp
 	src/pool.cpp
 	src/purgatory.cpp
 	src/reflection.cpp

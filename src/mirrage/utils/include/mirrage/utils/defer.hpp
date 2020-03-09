@@ -10,6 +10,7 @@
 #include <mirrage/utils/units.hpp>
 
 #include <functional>
+#include <future>
 #include <vector>
 
 
@@ -23,6 +24,14 @@ namespace mirrage::util {
 		{
 			_defered_actions.emplace_back([f] { return f.ready(); },
 			                              [f, callback = std::move(callback)] { callback(*f); });
+		}
+		template <class T, class F>
+		void defer(std::future<T> f, F&& callback)
+		{
+			auto sf = f.share();
+			_defered_actions.emplace_back(
+			        [sf] { return sf.wait_for(std::chrono::seconds(0)) == std::future_status::ready; },
+			        [sf, callback = std::move(callback)] { callback(sf.get()); });
 		}
 
 		void update(util::Time dt);

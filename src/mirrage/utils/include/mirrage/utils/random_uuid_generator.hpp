@@ -4,6 +4,8 @@
 #ifndef MIRRAGE_UTIL_RANDOM_UUID_GENERATOR_INCLUDED
 #define MIRRAGE_UTIL_RANDOM_UUID_GENERATOR_INCLUDED
 
+#include <mirrage/utils/uuid.hpp>
+
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -13,7 +15,6 @@
 #include <mutex>
 #include <random>
 #include <type_traits>
-#include "uuid.hpp"
 
 namespace mirrage::util {
 

@@ -91,7 +91,7 @@ namespace mirrage::input {
 
 		SDL_RecordGesture(-1);
 
-		_mailbox.subscribe<Force_feedback, 4>(8, [&](auto& m) {
+		_mailbox.subscribe<Force_feedback, 8>([&](auto& m) {
 #ifdef EMSCRIPTEN
 			if(m.src == 0 && m.force > 0.5)
 				emscripten_vibrate(200);

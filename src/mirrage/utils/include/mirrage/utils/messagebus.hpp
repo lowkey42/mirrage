@@ -14,6 +14,7 @@
 #include <mirrage/utils/reflection.hpp>
 #include <mirrage/utils/small_vector.hpp>
 #include <mirrage/utils/template_utils.hpp>
+#include <mirrage/utils/uuid.hpp>
 
 #include <concurrentqueue.h>
 
@@ -21,6 +22,7 @@
 #include <atomic>
 #include <cassert>
 #include <functional>
+#include <future>
 #include <shared_mutex>
 #include <unordered_map>
 #include <utility>
@@ -31,14 +33,51 @@ namespace mirrage::util {
 
 	class Message_bus;
 
+	using Request_id = uuid;
+
+	extern auto create_request_id() -> Request_id;
+
 	namespace detail {
-		constexpr auto default_mailbox_size   = 16;
-		constexpr auto default_msg_batch_size = 2;
+		constexpr auto default_mailbox_size = 16;
+
+		class Mailbox_base;
 
 		template <typename T>
 		class Mailbox;
+
+		template <typename T>
+		using has_response_type = typename T::response_type;
+
+		template <typename T, typename = void>
+		struct is_request_message : std::false_type {
+		};
+		// clang-format off
+		template <typename T>
+		struct is_request_message<
+		        T,
+		        std::enable_if_t<
+		                util::is_detected_v<has_response_type, T> &&
+		                std::is_same_v<Request_id, std::decay_t<decltype(std::declval<T>().request_id)>>
+		        > >
+		  : std::true_type {
+		};
+		// clang-format on
+
+		template <typename T, typename = void>
+		struct message_result {
+			using type = void;
+		};
+		template <typename T>
+		struct message_result<T, std::enable_if_t<is_request_message<T>::value>> {
+			using type = std::future<typename T::response_type>;
+		};
 	} // namespace detail
 
+	template <typename T>
+	constexpr bool is_request_message = detail::is_request_message<T>::value;
+
+	template <typename T>
+	using message_result_t = typename detail::message_result<T>::type;
 
 	/// A collection of messages handlers registered on a central Message_bus.
 	/// Messages for the subscriptions are processed synchronously when update_subscriptions() is called.
@@ -53,14 +92,11 @@ namespace mirrage::util {
 
 		/// Subscribe to messages of type T, calling the given handler for each of them.
 		/// The queue_size is used as a hint for the temporary storage of unprocessed messages.
-		/// The batch_size is the estimated number of messages delivered on a call to update_subscriptions().
-		template <class T, std::size_t batch_size, typename Func>
-		void subscribe(std::size_t queue_size, Func handler = {});
+		template <class T, std::size_t queue_size = detail::default_mailbox_size, typename Func>
+		void subscribe(Func&& handler);
 
 		/// Subscribe to a list of messages deduced from the argument types of the given handlers.
-		template <std::size_t batch_size = detail::default_msg_batch_size,
-		          std::size_t queue_size = detail::default_mailbox_size,
-		          typename... Func>
+		template <std::size_t queue_size = detail::default_mailbox_size, typename... Func>
 		void subscribe_to(Func&&... handler);
 
 		template <class T>
@@ -69,26 +105,22 @@ namespace mirrage::util {
 		void update_subscriptions();
 
 		template <typename Msg, typename... Arg>
-		void send(Arg&&... arg)
+		auto send(Arg&&... arg) -> message_result_t<Msg>
 		{
-			send_msg(Msg{std::forward<Arg>(arg)...});
+			return send_msg(Msg{std::forward<Arg>(arg)...});
 		}
-
 		template <typename Msg>
-		void send_msg(const Msg& msg);
+		auto send_msg(const Msg& msg) -> message_result_t<Msg>;
 
 		void enable();
 		void disable();
 
 	  private:
-		struct Sub {
-			std::shared_ptr<void>           box;
-			std::function<void(Sub&)>       handler;
-			std::function<void(Sub&, bool)> activator;
-		};
+		Message_bus&                                                          _bus;
+		std::unordered_map<type_uid_t, std::shared_ptr<detail::Mailbox_base>> _boxes;
 
-		Message_bus&                        _bus;
-		std::unordered_map<type_uid_t, Sub> _boxes;
+		template <typename Msg>
+		auto _subscribe_to_response(Request_id) -> std::future<typename Msg::response_type>;
 	};
 
 
