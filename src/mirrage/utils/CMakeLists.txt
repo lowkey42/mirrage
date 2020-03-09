@@ -59,7 +59,10 @@ if(MIRRAGE_ENABLE_TESTS)
 		file(APPEND "${PROJECT_BINARY_DIR}/generated_test.cpp" "#include <${file_include_path}>\n")
 	endforeach(file)
 
-	add_executable(mirrage_utils_tests generated_test.cpp)
+	add_executable(mirrage_utils_tests
+		generated_test.cpp
+		test/random_uuid_generator.test.cpp
+	)
 	target_link_libraries(mirrage_utils_tests doctest mirrage_utils)
 	
 	if(${MIRRAGE_ENABLE_BACKWARD})
