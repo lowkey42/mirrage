@@ -1,5 +1,8 @@
+#include <sf2/sf2.hpp>
+
 #include <mirrage/audio/audio_source_comp.hpp>
 
+#include <mirrage/utils/str_id.hpp>
 
 namespace mirrage::audio {
 
