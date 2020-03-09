@@ -58,7 +58,7 @@ build-clang:
     CXX: "clang++"
   <<: *build-ninja-linux
 
-build-scanbuild:
+.build-scanbuild:
   stage: build
   script: 
     - export CC=clang
@@ -100,7 +100,7 @@ build-msvc-gitlab:
     - windows-1809
   before_script:
     #- choco install -y vulkan-sdk
-    - (New-Object System.Net.WebClient).DownloadFile("https://vulkan.lunarg.com/sdk/download/1.1.130.0/windows/VulkanSDK-1.1.130.0-Installer.exe?Human=true", "C:\VulkanSDK-Installer.exe")
+    - (New-Object System.Net.WebClient).DownloadFile("https://vulkan.lunarg.com/sdk/download/1.2.131.2/windows/VulkanSDK-1.2.131.2-Installer.exe?Human=true", "C:\VulkanSDK-Installer.exe")
     - dir C:\
     - C:\VulkanSDK-Installer.exe /S
     - choco install -y visualstudio2019-workload-nativedesktop
