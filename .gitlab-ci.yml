@@ -75,7 +75,7 @@ build-clang:
     expire_in: 1 week
     when: always
 
-build-mingw:
+.build-mingw:
   stage: build
   script:
     - cmake -E make_directory build
