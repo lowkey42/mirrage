@@ -21,7 +21,7 @@ namespace mirrage::renderer {
 	  : Render_pass(r)
 	  , _ecs(entities)
 	  , _min_uniform_buffer_alignment(
-	            r.device().physical_device_properties().limits.minUniformBufferOffsetAlignment)
+	            std::int32_t(r.device().physical_device_properties().limits.minUniformBufferOffsetAlignment))
 	  , _max_pose_offset(initial_animation_capacity - shader_buffer_size)
 	  , _animation_uniforms(r.device(), initial_animation_capacity, vk::BufferUsageFlagBits::eUniformBuffer)
 	{

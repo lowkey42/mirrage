@@ -292,7 +292,7 @@ namespace mirrage::renderer {
 		for(auto i = 0; i < int(data.is_bone_static.size()); i += 8) {
 			auto bits = std::uint8_t(0);
 			for(auto j = 0; j < 8; j++) {
-				bits = bits << 1 | data.is_bone_static[i + j];
+				bits = (bits << 1) | (data.is_bone_static[i + j] ? 1 : 0);
 			}
 			out.put(bits);
 		}
@@ -337,7 +337,7 @@ namespace mirrage::renderer {
 			}
 		}
 
-		out.dynamic_bone_count = in.bones.size() - out.static_transforms.size();
+		out.dynamic_bone_count = static_cast<Bone_id>(in.bones.size() - out.static_transforms.size());
 		out.dynamic_transforms.reserve(out.frame_times.size() * out.dynamic_bone_count);
 
 		// take sample at each keyframe
