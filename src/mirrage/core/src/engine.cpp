@@ -11,6 +11,7 @@
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/time.hpp>
 #include <mirrage/utils/units.hpp>
+#include <mirrage/utils/console_command.hpp>
 
 #include <chrono>
 #include <stdexcept>
@@ -115,6 +116,7 @@ namespace mirrage {
 	                           : std::make_unique<Engine_event_filter>(*this))
 	  , _net_manager(std::make_unique<net::Net_manager>())
 	  , _audio_manager(std::make_unique<audio::Audio_manager>(*_asset_manager, !headless))
+	  , _console_commands(std::make_unique<util::Console_command_container>())
 	  , _current_time(SDL_GetTicks() / 1000.0)
 	  , _headless(headless)
 	{
@@ -126,6 +128,17 @@ namespace mirrage {
 
 			_gui = std::make_unique<gui::Gui>(window.viewport(), *_asset_manager, *_input_manager);
 		});
+		
+		_console_commands->add("screen.leave <count> | Pops the top <count> screens",
+		                     [&](std::uint8_t depth) { screens().leave(depth); });
+		                     
+		_console_commands->add(
+		        "screen.print | Prints the currently open screens (=> update+draw next, D> only draw, S> "
+		        "don't update+draw)",
+		        [&]() {
+			        auto screen_list = screens().print_stack();
+			        LOG(plog::info) << "Open Screens: " << screen_list;
+		        });
 
 		if(headless) {
 #ifdef _WIN32

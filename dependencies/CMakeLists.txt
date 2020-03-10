@@ -82,10 +82,10 @@ endif()
 include(soloud_interface.cmake)
 
 add_subdirectory(stb_image)
+	add_subdirectory(cxxopts)
 
 if(MIRRAGE_BUILD_MESH_CONVERTER)
 	set(CXXOPTS_BUILD_TESTS OFF)
-	add_subdirectory(cxxopts)
 	add_subdirectory(assimp)
 	set_property(TARGET assimp PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/assimp/include" "${CMAKE_CURRENT_BINARY_DIR}/assimp/include")
 

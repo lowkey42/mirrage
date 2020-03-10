@@ -13,6 +13,7 @@ file(GLOB_RECURSE HEADER_FILES
 add_library(mirrage STATIC 
 	${CMAKE_CURRENT_BINARY_DIR}/info.cpp
 	src/engine.cpp
+	src/entry_point.cpp
 	src/screen.cpp
 	src/translation.cpp
 	${HEADER_FILES}

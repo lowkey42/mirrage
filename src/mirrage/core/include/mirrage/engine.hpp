@@ -42,6 +42,9 @@ namespace mirrage {
 	namespace net {
 		class Net_manager;
 	}
+	namespace util {
+		class Console_command_container;
+	}
 	class Translator;
 	struct Engine_event_filter;
 
@@ -104,6 +107,8 @@ namespace mirrage {
 		std::unique_ptr<net::Net_manager>     _net_manager;
 		std::unique_ptr<audio::Audio_manager> _audio_manager;
 		std::unique_ptr<gui::Gui>             _gui;
+		
+		std::unique_ptr<util::Console_command_container> _console_commands;
 
 		double _current_time = 0;
 		double _last_time    = 0;
