@@ -96,8 +96,9 @@ add_library(soloud STATIC
 	soloud/src/audiosource/wav/soloud_wavstream.cpp
 	soloud/src/audiosource/wav/stb_vorbis.h
 
-	soloud/src/backend/sdl2_static/soloud_sdl2_static.cpp
 	soloud/src/backend/null/soloud_null.cpp
+	
+	soloud_sdl2_static.cpp
 )
 add_library(soloud::soloud ALIAS soloud)
 
