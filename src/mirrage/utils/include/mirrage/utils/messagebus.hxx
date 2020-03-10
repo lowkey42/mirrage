@@ -77,10 +77,33 @@ namespace mirrage::util {
 			{
 			}
 
-			auto get_response(Request_id id) { return _mapping[id].get_future(); }
+			auto get_response(Request_id id)
+			{
+				auto [iter, success] =
+				        _mapping.emplace(id, Entry{{}, std::chrono::steady_clock::now() + timeout});
+				MIRRAGE_INVARIANT(success,
+				                  "The response mapping already contains an entry for this UUID: " << id);
+				return iter->second.promise.get_future();
+			}
+
+			void process() override
+			{
+				Mailbox<T>::process();
+
+				// remove mapping that reached their timeout without getting a response
+				auto now = std::chrono::steady_clock::now();
+				util::erase_if(_mapping, [&](auto& e) { return e.second.timeout_timepoint <= now; });
+			}
 
 		  private:
-			std::unordered_map<Request_id, std::promise<T>> _mapping;
+			using Time = std::chrono::time_point<std::chrono::steady_clock>;
+			struct Entry {
+				std::promise<T> promise;
+				Time            timeout_timepoint;
+			};
+
+			static constexpr auto                 timeout = std::chrono::seconds(30);
+			std::unordered_map<Request_id, Entry> _mapping;
 		};
 	} // namespace detail
 
@@ -161,14 +184,16 @@ namespace mirrage::util {
 	template <typename Msg>
 	auto Mailbox_collection::send_msg(const Msg& msg) -> message_result_t<Msg>
 	{
+		const auto self     = _boxes.find(type_uid_of<Msg>());
+		const auto self_ptr = self != _boxes.end() ? self->second.get() : nullptr;
+
 		if constexpr(is_request_message<Msg>) {
 			auto response = _subscribe_to_response<Msg>(msg.request_id);
-			_bus.send_msg(msg); // include self in receivers
+			_bus.send_msg(msg, self_ptr);
 			return response;
 
 		} else {
-			auto self = _boxes.find(type_uid_of<Msg>());
-			_bus.send_msg(msg, self != _boxes.end() ? self->second.get() : nullptr);
+			_bus.send_msg(msg, self_ptr);
 		}
 	}
 

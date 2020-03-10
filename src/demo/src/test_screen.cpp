@@ -32,18 +32,6 @@ namespace mirrage {
 	using namespace util::unit_literals;
 	using namespace graphic;
 
-	struct Test_response_msg {
-		std::string      text;
-		util::Request_id request_id{};
-	};
-	struct Test_request_msg {
-		using response_type = Test_response_msg;
-
-		std::string      name;
-		util::Request_id request_id = util::create_request_id();
-	};
-	static_assert(util::is_request_message<Test_request_msg>);
-
 	struct Preset {
 		glm::vec3 camera_position;
 		float     camera_yaw;
@@ -118,15 +106,6 @@ namespace mirrage {
 		_cmd_commands.add("test.sound | Plays a test sound", [&, billboard]() mutable {
 			billboard.get<audio::Audio_source_comp>().get_or_throw().play_once("example"_strid, 4.f);
 		});
-
-
-		_mailbox.subscribe_to([&](Test_request_msg& e) {
-			LOG(plog::info) << "Received request from: " << e.name;
-			return Test_response_msg{"Hello " + e.name};
-		});
-
-		defer(_mailbox.send<Test_request_msg>("world"),
-		      [](const Test_response_msg& e) { LOG(plog::info) << "Received response: " << e.text; });
 
 		_mailbox.subscribe_to([&](input::Once_action& e) {
 			switch(e.id) {
