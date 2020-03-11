@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
 
 project(mirrage)
 
-include(version_info.cmake)
-
 # need to be specified with the sources for correct syntax highlighting in some IDEs
 file(GLOB_RECURSE HEADER_FILES
 	RELATIVE ${CMAKE_CURRENT_SOURCE_DIR}
@@ -11,9 +9,7 @@ file(GLOB_RECURSE HEADER_FILES
 )
 
 add_library(mirrage STATIC 
-	${CMAKE_CURRENT_BINARY_DIR}/info.cpp
 	src/engine.cpp
-	src/entry_point.cpp
 	src/screen.cpp
 	src/translation.cpp
 	${HEADER_FILES}
@@ -48,6 +44,7 @@ target_include_directories(mirrage PUBLIC
 
 target_link_libraries(mirrage
 	PUBLIC
+		mirrage::info
 		mirrage::utils
 		mirrage::deps::SDL2
 		mirrage::asset
