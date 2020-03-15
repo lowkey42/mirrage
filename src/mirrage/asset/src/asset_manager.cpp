@@ -189,9 +189,9 @@ namespace mirrage::asset {
 
 		return PHYSFS_getPrefDir(org_name.c_str(), app_name.c_str());
 	}
-	
+
 	const std::string default_archives_list_filename = "archives.lst";
-	
+
 	Asset_manager::Asset_manager(const std::string&       exe_name,
 	                             const std::string&       org_name,
 	                             const std::string&       app_name,
@@ -239,16 +239,16 @@ namespace mirrage::asset {
 			}
 
 			if(lost) {
-				LOG(plog::fatal) << "No archives.lst found. printing search-path...\n";
+				LOG(plog::fatal) << "No " << archives_list_filename << " found. printing search-path...\n";
 				print_dir_recursiv("/", 0, [](auto&& path) { LOG(plog::fatal) << path; });
 
 				throw std::system_error(static_cast<Asset_error>(PHYSFS_getLastErrorCode()),
-				                        "No archives.lst found.");
+				                        "No \"<<archives_list_filename<<\" found.");
 			} else {
-				LOG(plog::info) << "No archives.lst found. Using defaults.";
+				LOG(plog::info) << "No \"<<archives_list_filename<<\" found. Using defaults.";
 			}
 		} else {
-			auto in = _open("cfg:archives.lst"_aid, archives_list_filename);
+			auto in = _open(AID("cfg"_strid, archives_list_filename), archives_list_filename);
 
 			// load other archives
 			for(auto&& l : in.lines()) {
