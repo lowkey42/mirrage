@@ -8,10 +8,10 @@
 #include <mirrage/input/input_manager.hpp>
 #include <mirrage/net/net_manager.hpp>
 #include <mirrage/translations.hpp>
+#include <mirrage/utils/console_command.hpp>
 #include <mirrage/utils/log.hpp>
 #include <mirrage/utils/time.hpp>
 #include <mirrage/utils/units.hpp>
-#include <mirrage/utils/console_command.hpp>
 
 #include <chrono>
 #include <stdexcept>
@@ -93,12 +93,14 @@ namespace mirrage {
 	               std::uint32_t            version_major,
 	               std::uint32_t            version_minor,
 	               bool                     debug,
-	               bool                     headless,
 	               int                      argc,
 	               char**                   argv,
-	               char**)
+	               char**,
+	               const std::string& archives_list_filename,
+	               bool               headless)
 	  : _screens(*this)
-	  , _asset_manager(std::make_unique<asset::Asset_manager>(argc > 0 ? argv[0] : "", org, title, base_dir))
+	  , _asset_manager(std::make_unique<asset::Asset_manager>(
+	            argc > 0 ? argv[0] : "", org, title, base_dir, archives_list_filename))
 	  , _translator(std::make_unique<Translator>(*_asset_manager))
 	  , _sdl(headless)
 	  , _graphics_context(headless ? std::unique_ptr<graphic::Context>()
@@ -128,10 +130,10 @@ namespace mirrage {
 
 			_gui = std::make_unique<gui::Gui>(window.viewport(), *_asset_manager, *_input_manager);
 		});
-		
+
 		_console_commands->add("screen.leave <count> | Pops the top <count> screens",
-		                     [&](std::uint8_t depth) { screens().leave(depth); });
-		                     
+		                       [&](std::uint8_t depth) { screens().leave(depth); });
+
 		_console_commands->add(
 		        "screen.print | Prints the currently open screens (=> update+draw next, D> only draw, S> "
 		        "don't update+draw)",

@@ -58,10 +58,11 @@ namespace mirrage {
 		       std::uint32_t            version_major,
 		       std::uint32_t            version_minor,
 		       bool                     debug,
-		       bool                     headless,
 		       int                      argc,
 		       char**                   argv,
-		       char**                   env);
+		       char**                   env,
+		       const std::string&       archives_list_filename,
+		       bool                     headless);
 		virtual ~Engine() noexcept;
 
 		bool running() const noexcept { return !_quit; }
@@ -107,7 +108,7 @@ namespace mirrage {
 		std::unique_ptr<net::Net_manager>     _net_manager;
 		std::unique_ptr<audio::Audio_manager> _audio_manager;
 		std::unique_ptr<gui::Gui>             _gui;
-		
+
 		std::unique_ptr<util::Console_command_container> _console_commands;
 
 		double _current_time = 0;

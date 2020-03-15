@@ -98,7 +98,7 @@ namespace {
 		return files;
 	}
 
-	bool exists_file(const std::string path)
+	bool exists_file(const std::string& path)
 	{
 		if(!PHYSFS_exists(path.c_str()))
 			return false;
@@ -109,7 +109,7 @@ namespace {
 
 		return stat.filetype == PHYSFS_FILETYPE_REGULAR;
 	}
-	bool exists_dir(const std::string path)
+	bool exists_dir(const std::string& path)
 	{
 		if(!PHYSFS_exists(path.c_str()))
 			return false;
@@ -189,11 +189,14 @@ namespace mirrage::asset {
 
 		return PHYSFS_getPrefDir(org_name.c_str(), app_name.c_str());
 	}
-
+	
+	const std::string default_archives_list_filename = "archives.lst";
+	
 	Asset_manager::Asset_manager(const std::string&       exe_name,
 	                             const std::string&       org_name,
 	                             const std::string&       app_name,
-	                             util::maybe<std::string> additional_search_path)
+	                             util::maybe<std::string> additional_search_path,
+	                             const std::string&       archives_list_filename)
 	{
 		init_physicsfs(exe_name, additional_search_path);
 
@@ -221,7 +224,7 @@ namespace mirrage::asset {
 				                        "Error adding custom archive: "s + path);
 		};
 
-		if(!exists_file("archives.lst")) {
+		if(!exists_file(archives_list_filename)) {
 			bool lost = true;
 			for(auto& s : default_source) {
 				const char* path;
@@ -245,7 +248,7 @@ namespace mirrage::asset {
 				LOG(plog::info) << "No archives.lst found. Using defaults.";
 			}
 		} else {
-			auto in = _open("cfg:archives.lst"_aid, "archives.lst");
+			auto in = _open("cfg:archives.lst"_aid, archives_list_filename);
 
 			// load other archives
 			for(auto&& l : in.lines()) {

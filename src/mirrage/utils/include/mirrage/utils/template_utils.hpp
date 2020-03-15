@@ -90,6 +90,24 @@ namespace mirrage::util {
 	template <template <typename> class Predicate, typename List>
 	using filter_list = decltype(detail::filter_helper_list<Predicate>(std::declval<List>()));
 
+	template <typename T>
+	struct Type_wrapper {
+		using type = T;
+	};
+
+	template <typename F, typename... Ts>
+	void foreach_type(list<Ts...>, F&& consumer)
+	{
+		(consumer(Type_wrapper<Ts>{}), ...);
+	}
+
+	template <template <typename...> class T, typename>
+	struct instanciate_from_type_list;
+	template <template <typename...> class T, typename... Ts>
+	struct instanciate_from_type_list<T, list<Ts...>> {
+		using type = T<Ts...>;
+	};
+
 
 	// ON_EXIT {...}; (mainly for interaction with C-Code)
 	template <class Func>

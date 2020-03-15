@@ -101,7 +101,9 @@ namespace mirrage {
 	                 std::uint32_t      version_minor,
 	                 const std::string& org_name,
 	                 const std::string& app_name,
-	                 bool               project_based = true) -> std::unique_ptr<Engine>
+	                 bool               project_based          = true,
+	                 const std::string& archives_list_filename = asset::default_archives_list_filename,
+	                 bool               headless               = false) -> std::unique_ptr<Engine>
 	{
 		auto base_dir = detail::get_base_dir(project_based);
 		if(!detail::init_logging(argc, argv, env, version_major, version_minor, org_name, app_name, base_dir))
@@ -115,7 +117,9 @@ namespace mirrage {
 		                                detail::is_debug_mode(argc, argv, env),
 		                                argc,
 		                                argv,
-		                                env);
+		                                env,
+		                                archives_list_filename,
+		                                headless);
 	}
 
 } // namespace mirrage

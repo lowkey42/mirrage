@@ -134,13 +134,15 @@ namespace mirrage::asset {
 		};
 	} // namespace detail
 
+	extern const std::string default_archives_list_filename;
 
 	class Asset_manager {
 	  public:
 		Asset_manager(const std::string&       exe_name,
 		              const std::string&       org_name,
 		              const std::string&       app_name,
-		              util::maybe<std::string> additional_search_path);
+		              util::maybe<std::string> additional_search_path,
+		              const std::string&       archives_list_filename = default_archives_list_filename);
 		~Asset_manager();
 
 		void reload();
