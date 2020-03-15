@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
 project(mirrage_demo LANGUAGES CXX ASM)
 
@@ -47,14 +47,15 @@ if (WIN32)
 	)
 endif()
 
+if(MIRRAGE_ENABLE_PCH)
+	target_link_libraries(demo PRIVATE mirrage::pch)
+	target_precompile_headers(demo REUSE_FROM mirrage::pch)
+endif()
+
 option(MIRRAGE_EXPORT_EXECUTABLE "Export executable" OFF)
 if(MIRRAGE_EXPORT_EXECUTABLE)
 	install(DIRECTORY ${MIRRAGE_ROOT_DIR}/assets/ DESTINATION bin)
 	install(TARGETS demo RUNTIME DESTINATION bin)
-endif()
-
-if(COMMAND cotire)
-	cotire(demo)
 endif()
 
 if(MSVC_IDE)

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
 project(mirrage_input)
 
@@ -33,6 +33,11 @@ target_link_libraries(mirrage_input
 		mirrage::deps::SDL2
 		sf2
 )
+
+if(MIRRAGE_ENABLE_PCH)
+	target_link_libraries(mirrage_input PRIVATE mirrage::pch)
+	target_precompile_headers(mirrage_input REUSE_FROM mirrage::pch)
+endif()
    
 
 install(TARGETS mirrage_input EXPORT mirrage_input_targets
@@ -48,7 +53,3 @@ install(EXPORT mirrage_input_targets
 	DESTINATION lib/cmake/mirrage
 )
 
-
-if(COMMAND cotire)
-	cotire(mirrage_input)
-endif()

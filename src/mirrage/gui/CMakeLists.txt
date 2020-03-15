@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
 project(mirrage_gui)
 
@@ -48,6 +48,11 @@ target_link_libraries(mirrage_gui
 		mirrage::input
 		sf2
 )
+
+if(MIRRAGE_ENABLE_PCH)
+	target_link_libraries(mirrage_gui PRIVATE mirrage::pch)
+	target_precompile_headers(mirrage_gui REUSE_FROM mirrage::pch)
+endif()
    
 
 install(TARGETS mirrage_gui EXPORT mirrage_gui_targets
@@ -63,7 +68,3 @@ install(EXPORT mirrage_gui_targets
 	DESTINATION lib/cmake/mirrage
 )
 
-
-if(COMMAND cotire)
-	cotire(mirrage_gui)
-endif()

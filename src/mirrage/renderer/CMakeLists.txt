@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
 project(mirrage_renderer)
 
@@ -124,6 +124,11 @@ target_link_libraries(mirrage_renderer
 		robin-map
 )
 
+if(MIRRAGE_ENABLE_PCH)
+	target_link_libraries(mirrage_renderer PRIVATE mirrage::pch)
+	target_precompile_headers(mirrage_renderer REUSE_FROM mirrage::pch)
+endif()
+
 install(TARGETS mirrage_renderer EXPORT mirrage_renderer_targets
 	INCLUDES DESTINATION include
 	ARCHIVE DESTINATION lib
@@ -137,7 +142,3 @@ install(EXPORT mirrage_renderer_targets
 	DESTINATION lib/cmake/mirrage
 )
 
-
-if(COMMAND cotire)
-	cotire(mirrage_renderer)
-endif()

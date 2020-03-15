@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
 project(mirrage_net)
 
@@ -38,6 +38,11 @@ target_link_libraries(mirrage_net
 		boost::pfr
 )
 
+if(MIRRAGE_ENABLE_PCH)
+	target_link_libraries(mirrage_net PRIVATE mirrage::pch)
+	target_precompile_headers(mirrage_net REUSE_FROM mirrage::pch)
+endif()
+
 
 install(TARGETS mirrage_net EXPORT mirrage_net_targets
 	INCLUDES DESTINATION include
@@ -52,7 +57,3 @@ install(EXPORT mirrage_net_targets
 	DESTINATION lib/cmake/mirrage
 )
 
-
-if(COMMAND cotire)
-	cotire(mirrage_net)
-endif()

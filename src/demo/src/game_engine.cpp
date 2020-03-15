@@ -32,7 +32,7 @@ namespace mirrage {
 	                         int                      argc,
 	                         char**                   argv,
 	                         char**                   env)
-	  : Engine(org, title, std::move(base_dir), version_major, version_minor, debug, false, argc, argv, env)
+	  : Engine(org, title, std::move(base_dir), version_major, version_minor, debug, argc, argv, env, asset::default_archives_list_filename, false)
 	  , _debug_ui(assets(), gui(), bus())
 	  , _renderer_factory(renderer::make_deferred_renderer_factory<renderer::Frustum_culling_pass,
 	                                                               renderer::Particle_pass,

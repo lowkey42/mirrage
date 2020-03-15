@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
 project(mirrage_mesh_converter LANGUAGES CXX)
 
@@ -44,3 +44,9 @@ target_link_libraries(mesh_converter
 		cxxopts::cxxopts
 		indica::indica
 )
+
+if(MIRRAGE_ENABLE_PCH)
+	target_link_libraries(mesh_converter PRIVATE mirrage::pch)
+	target_precompile_headers(mesh_converter REUSE_FROM mirrage::pch)
+endif()
+

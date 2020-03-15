@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
 project(mirrage_utils)
 
@@ -53,6 +53,11 @@ target_link_libraries(mirrage_utils
 		doctest
 )
 
+if(MIRRAGE_ENABLE_PCH)
+	target_link_libraries(mirrage_utils PRIVATE mirrage::pch)
+	target_precompile_headers(mirrage_utils REUSE_FROM mirrage::pch)
+endif()
+
 if(MIRRAGE_ENABLE_TESTS)
 	file(WRITE "${PROJECT_BINARY_DIR}/generated_test.cpp" "#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN\n#include <doctest.h>\n\n")
 	foreach(file ${HEADER_FILES})
@@ -86,7 +91,3 @@ install(EXPORT mirrage_utils_targets
 	DESTINATION lib/cmake/mirrage
 )
 
-
-if(COMMAND cotire)
-	cotire(mirrage_utils)
-endif()

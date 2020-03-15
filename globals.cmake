@@ -121,22 +121,6 @@ if(${MIRRAGE_OPTIMIZE_NATIVE})
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 endif()
 
-option(MIRRAGE_ENABLE_COTIRE "Enable cotire" ON)
-if(MIRRAGE_ENABLE_COTIRE)
-	include(cotire OPTIONAL)
-
-	if(COMMAND cotire)
-		add_definitions(-DGLM_FORCE_RADIANS -DGLM_FORCE_DEPTH_ZERO_TO_ON -DGLM_ENABLE_EXPERIMENTAL -DGLM_FORCE_CXX14)
-		if(NOT MSVC)
-			add_compile_options(-pthread)
-		endif()
-		set_property(GLOBAL PROPERTY COTIRE_PREFIX_HEADER_INCLUDE_PATH "${MIRRAGE_ROOT_DIR}/dependencies")
-		set_property(GLOBAL PROPERTY COTIRE_PREFIX_HEADER_IGNORE_PATH "${MIRRAGE_ROOT_DIR}/dependencies/imgui;${MIRRAGE_ROOT_DIR}/src;${MIRRAGE_ROOT_DIR}/dependencies/moodycamel/concurrentqueue.h")
-		set_property(GLOBAL PROPERTY COTIRE_ADD_UNITY_BUILD FALSE)
-	endif()
-endif()
-
-
 option(MIRRAGE_ENABLE_TESTS "Enable unit tests" ON)
 if(MIRRAGE_ENABLE_TESTS)
 	enable_testing()

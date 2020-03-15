@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
 project(mirrage_audio)
 
@@ -39,6 +39,11 @@ target_link_libraries(mirrage_audio
 		robin-map
 )
 
+if(MIRRAGE_ENABLE_PCH)
+	target_link_libraries(mirrage_audio PRIVATE mirrage::pch)
+	target_precompile_headers(mirrage_audio REUSE_FROM mirrage::pch)
+endif()
+
 install(TARGETS mirrage_audio EXPORT mirrage_audio_targets
 	INCLUDES DESTINATION include
 	ARCHIVE DESTINATION lib
@@ -52,7 +57,3 @@ install(EXPORT mirrage_audio_targets
 	DESTINATION lib/cmake/mirrage
 )
 
-
-if(COMMAND cotire)
-	cotire(mirrage_audio)
-endif()

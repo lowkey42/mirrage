@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.9 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.16 FATAL_ERROR)
 
 project(mirrage)
 
@@ -57,6 +57,11 @@ target_link_libraries(mirrage
 		glm::glm
 )
 
+if(MIRRAGE_ENABLE_PCH)
+	target_link_libraries(mirrage PRIVATE mirrage::pch)
+	target_precompile_headers(mirrage REUSE_FROM mirrage::pch)
+endif()
+
 
 install(TARGETS mirrage EXPORT mirrage_targets
 	INCLUDES DESTINATION include
@@ -71,7 +76,3 @@ install(EXPORT mirrage_targets
 	DESTINATION lib/cmake/mirrage
 )
 
-
-if(COMMAND cotire)
-	cotire(mirrage)
-endif()
