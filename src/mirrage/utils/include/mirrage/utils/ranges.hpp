@@ -279,7 +279,13 @@ namespace mirrage::util {
 
 	template <class T>
 	class numeric_range {
-		struct iterator : std::iterator<std::random_access_iterator_tag, T, T> {
+		struct iterator {
+			using iterator_category = std::random_access_iterator_tag;
+			using value_type        = T;
+			using difference_type   = std::ptrdiff_t;
+			using pointer           = T*;
+			using reference         = T&;
+
 			T p;
 			T s;
 			constexpr iterator(T v, T s = 1) noexcept : p(v), s(s) {}
