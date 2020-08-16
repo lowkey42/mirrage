@@ -281,7 +281,7 @@ namespace mirrage::renderer {
 		// submit to async compute queue
 		data.commands->end();
 		auto submit = vk::SubmitInfo{0, nullptr, nullptr, 1, &*data.commands};
-		_renderer.compute_queue().submit(submit, _update_fence.vk_fence());
+		_renderer.compute_queue().submit(submit, _update_fence.pass_to_queue());
 		_update_submitted = true;
 
 		_current_frame = (_current_frame + 1) % std::int32_t(_per_frame_data.size());

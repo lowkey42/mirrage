@@ -125,10 +125,10 @@ namespace mirrage::graphic {
 		}
 
 		auto finish_frame(vk::CommandBuffer transfer_barriers)
-		        -> std::tuple<vk::Fence, util::maybe<vk::Semaphore>>
+		        -> std::tuple<Fence*, util::maybe<vk::Semaphore>>
 		{
 			auto semaphore = _transfer_manager.next_frame(transfer_barriers);
-			return std::make_tuple(_delete_queue.start_new_frame(), std::move(semaphore));
+			return std::make_tuple(&_delete_queue.start_new_frame(), std::move(semaphore));
 		}
 
 		void shrink_to_fit() { _memory_allocator.shrink_to_fit(); }

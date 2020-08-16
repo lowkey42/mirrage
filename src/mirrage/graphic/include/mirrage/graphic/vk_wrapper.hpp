@@ -122,9 +122,15 @@ namespace mirrage::graphic {
 	  public:
 		Fence(Fence&&) = default;
 		Fence& operator=(Fence&&) = default;
-		~Fence()                  = default;
+		Fence(const Fence&)       = delete;
+		Fence& operator=(const Fence&) = delete;
+		~Fence()                       = default;
 
-		auto     vk_fence() const { return *_fence; }
+		auto pass_to_queue()
+		{
+			_queued = true;
+			return *_fence;
+		}
 		explicit operator bool() const;
 		void     reset();
 		void     wait();
@@ -134,6 +140,7 @@ namespace mirrage::graphic {
 
 		const vk::Device* _device;
 		vk::UniqueFence   _fence;
+		bool              _queued;
 
 		Fence(const vk::Device& device, bool signaled);
 	};
@@ -182,7 +189,7 @@ namespace mirrage::graphic {
 			_callback(current());
 		}
 
-		auto start_new_frame() -> vk::Fence
+		auto start_new_frame() -> Fence&
 		{
 			// free unused data from prev frames
 			_queues.pop_while([&](auto& e) {
@@ -209,7 +216,7 @@ namespace mirrage::graphic {
 
 			fence.reset();
 
-			return fence.vk_fence();
+			return fence;
 		}
 
 		auto current() -> T& { return _queues.head().data; }

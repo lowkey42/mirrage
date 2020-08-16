@@ -665,9 +665,7 @@ namespace mirrage::renderer {
 
 		auto transfer_barriers =
 		        *_device->destroy_after_frame(std::move(_command_buffer_pool.create_primary()[0]));
-		auto  ff                 = _device->finish_frame(transfer_barriers);
-		auto& frame_fence        = std::get<0>(ff);
-		auto& transfer_semaphore = std::get<1>(ff);
+		auto [frame_fence, transfer_semaphore] = _device->finish_frame(transfer_barriers);
 
 		// submit queue
 		auto wait_semaphores = std::array<vk::Semaphore, 2>{};
@@ -691,7 +689,7 @@ namespace mirrage::renderer {
 		                                  1,
 		                                  &*_image_presented};
 
-		_draw_queue.submit({submit_info}, frame_fence);
+		_draw_queue.submit({submit_info}, frame_fence->pass_to_queue());
 		_queued_commands.clear();
 
 		// present

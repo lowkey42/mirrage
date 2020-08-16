@@ -31,9 +31,15 @@ namespace mirrage::graphic {
 
 
 	Fence::operator bool() const { return _device->getFenceStatus(*_fence) == vk::Result::eSuccess; }
-	void   Fence::reset() { _device->resetFences({*_fence}); }
-	void   Fence::wait()
+	void   Fence::reset()
 	{
+		_device->resetFences({*_fence});
+		_queued = false;
+	}
+	void Fence::wait()
+	{
+		MIRRAGE_INVARIANT(_queued, "Fence::wait() called on a fence that will never be signaled!");
+
 		if(_device->waitForFences({*_fence}, true, 4'000'000'000) == vk::Result::eTimeout) {
 			MIRRAGE_FAIL("Fence didn't get signaled after 4 seconds!");
 		}
@@ -43,6 +49,7 @@ namespace mirrage::graphic {
 	  : _device(&device)
 	  , _fence(_device->createFenceUnique({signaled ? vk::FenceCreateFlags{vk::FenceCreateFlagBits::eSignaled}
 	                                                : vk::FenceCreateFlags{}}))
+	  , _queued(signaled)
 	{
 	}
 

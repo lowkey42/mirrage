@@ -449,7 +449,7 @@ namespace mirrage::graphic {
 		main_queue_commands.end();
 
 		auto submit_info = vk::SubmitInfo{0, nullptr, nullptr, 1, &command_buffer, 1, &*_semaphore};
-		_queue.submit({submit_info}, _command_buffers.start_new_frame());
+		_queue.submit({submit_info}, _command_buffers.start_new_frame().pass_to_queue());
 
 		// signal waiting tasks that the transfer will be done in this frame
 		_tranfer_done_event.set();
