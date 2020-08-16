@@ -142,7 +142,8 @@ namespace mirrage::graphic {
 			return extensions;
 		}
 
-		auto check_layers(const std::vector<const char*>& requested) -> std::vector<const char*>
+		[[maybe_unused]] auto check_layers(const std::vector<const char*>& requested)
+		        -> std::vector<const char*>
 		{
 			auto validation_layers = std::vector<const char*>();
 			validation_layers.reserve(requested.size());
@@ -280,11 +281,7 @@ namespace mirrage::graphic {
 		if(debug) {
 			required_extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 
-			_enabled_layers = check_layers({"VK_LAYER_LUNARG_parameter_validation",
-			                                "VK_LAYER_LUNARG_standard_validation",
-			                                "VK_LAYER_GOOGLE_unique_objects",
-			                                "VK_LAYER_GOOGLE_threading",
-			                                "VK_LAYER_KHRONOS_validation"});
+			_enabled_layers = check_layers({"VK_LAYER_KHRONOS_validation"});
 		}
 
 		sort_and_unique(required_extensions);
@@ -312,7 +309,25 @@ namespace mirrage::graphic {
 		instanceCreateInfo.setPpEnabledExtensionNames(extensions.data());
 		instanceCreateInfo.setEnabledLayerCount(gsl::narrow<uint32_t>(_enabled_layers.size()));
 		instanceCreateInfo.setPpEnabledLayerNames(_enabled_layers.data());
-		_instance = vk::createInstanceUnique(instanceCreateInfo);
+
+		if(debug) {
+			// Enable GPU-Assisted Validation
+			// see: https://www.lunarg.com/wp-content/uploads/2019/02/GPU-Assisted-Validation_v3_02_22_19.pdf
+
+			auto enabled = std::array<vk::ValidationFeatureEnableEXT, 3>{
+			        vk::ValidationFeatureEnableEXT::eGpuAssisted,
+			        vk::ValidationFeatureEnableEXT::eGpuAssistedReserveBindingSlot,
+			        vk::ValidationFeatureEnableEXT::eBestPractices};
+
+			auto feature = vk::ValidationFeaturesEXT(enabled);
+			instanceCreateInfo.setPNext(&feature);
+
+			_instance = vk::createInstanceUnique(instanceCreateInfo);
+
+		} else {
+			_instance = vk::createInstanceUnique(instanceCreateInfo);
+		}
+
 
 		if(debug) {
 			auto create_info = vk::DebugUtilsMessengerCreateInfoEXT{
@@ -522,7 +537,7 @@ namespace mirrage::graphic {
 				sc_info.setImageUsage(vk::ImageUsageFlagBits::eColorAttachment
 				                      | vk::ImageUsageFlagBits::eTransferDst);
 				sc_info.setImageArrayLayers(1);
-				sc_info.setMinImageCount(std::max(2u, capabilities.minImageCount));
+				sc_info.setMinImageCount(std::max(3u, capabilities.minImageCount));
 				if(capabilities.maxImageCount > 0 && capabilities.maxImageCount < sc_info.minImageCount) {
 					sc_info.setMinImageCount(capabilities.maxImageCount);
 				}
