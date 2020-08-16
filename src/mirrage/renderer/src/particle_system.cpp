@@ -193,8 +193,11 @@ namespace mirrage::asset {
 		auto stage = vk::PipelineShaderStageCreateInfo{
 		        {}, vk::ShaderStageFlagBits::eCompute, *module, "main", nullptr};
 
-		return renderer::Particle_script{_device.vk_device()->createComputePipelineUnique(
-		        _device.pipeline_cache(), vk::ComputePipelineCreateInfo{{}, stage, *_layout})};
+		return renderer::Particle_script{
+		        _device.vk_device()
+		                ->createComputePipelineUnique(_device.pipeline_cache(),
+		                                              vk::ComputePipelineCreateInfo{{}, stage, *_layout})
+		                .value};
 	}
 
 

@@ -110,8 +110,11 @@ namespace mirrage::renderer {
 			auto stage = vk::PipelineShaderStageCreateInfo{
 			        {}, vk::ShaderStageFlagBits::eCompute, **module, "main", &spec_info};
 
-			auto pipeline = device.vk_device()->createComputePipelineUnique(
-			        device.pipeline_cache(), vk::ComputePipelineCreateInfo{{}, stage, layout});
+			auto pipeline =
+			        device.vk_device()
+			                ->createComputePipelineUnique(device.pipeline_cache(),
+			                                              vk::ComputePipelineCreateInfo{{}, stage, layout})
+			                .value;
 			return pipeline;
 		}
 

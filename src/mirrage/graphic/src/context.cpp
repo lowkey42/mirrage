@@ -161,7 +161,7 @@ namespace mirrage::graphic {
 				if(!layer_requested) {
 					LOG(plog::verbose) << "Additional validation layer is available, that hasn't been "
 					                      "requested: "
-					                   << l.layerName;
+					                   << static_cast<std::string_view>(l.layerName);
 				}
 			}
 
@@ -600,7 +600,8 @@ namespace mirrage::graphic {
 			MIRRAGE_FAIL("Couldn't find a GPU that supports vulkan and all required features.");
 		}
 
-		LOG(plog::info) << "Selected GPU: " << top_gpu.getProperties().deviceName;
+		LOG(plog::info) << "Selected GPU: "
+		                << static_cast<std::string_view>(top_gpu.getProperties().deviceName);
 
 		auto cfg = vk::DeviceCreateInfo{};
 		cfg.setEnabledLayerCount(gsl::narrow<uint32_t>(_enabled_layers.size()));
