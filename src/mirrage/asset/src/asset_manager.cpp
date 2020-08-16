@@ -297,6 +297,8 @@ namespace mirrage::asset {
 		}
 	}
 
+	void Asset_manager::clear() { _containers.clear(); }
+
 	void Asset_manager::reload()
 	{
 		_reload_dispatchers();

@@ -154,7 +154,9 @@ namespace mirrage::asset {
 	  , _assets(assets)
 	  , _sampler(sampler)
 	  , _descriptor_set_layout(layout)
-	  , _descriptor_set_pool(*device.vk_device(), 256, {vk::DescriptorType::eCombinedImageSampler})
+	  , _descriptor_set_pool(*device.vk_device(),
+	                         256,
+	                         {vk::DescriptorType::eCombinedImageSampler, vk::DescriptorType::eUniformBuffer})
 	  , _queue_family(queue_family)
 	{
 	}

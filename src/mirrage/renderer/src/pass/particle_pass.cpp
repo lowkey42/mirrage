@@ -189,6 +189,15 @@ namespace mirrage::renderer {
 		ecs.register_component_type<Particle_system_comp>();
 	}
 
+	Particle_pass::~Particle_pass()
+	{
+		for(auto& ps : _ecs.list<Particle_system_comp>()) {
+			for(auto& emitter : ps.particle_system.emitters()) {
+				emitter.reset_gpu_data();
+			}
+		}
+	}
+
 
 	void Particle_pass::update(util::Time dt)
 	{
@@ -685,8 +694,8 @@ namespace mirrage::renderer {
 
 		auto batch_any_elem    = static_cast<Particle_emitter*>(nullptr);
 		auto batch_type        = static_cast<const Particle_type_config*>(nullptr);
-		auto batch_range_begin = std::numeric_limits<std::int32_t>::max();
-		auto batch_range_end   = std::numeric_limits<std::int32_t>::min();
+		auto batch_range_begin = std::numeric_limits<std::int32_t>::max() - 1;
+		auto batch_range_end   = std::int32_t(0);
 
 		auto submit_batch = [&] {
 			auto count = batch_range_end - batch_range_begin;
@@ -700,8 +709,8 @@ namespace mirrage::renderer {
 			// reset
 			batch_any_elem    = nullptr;
 			batch_type        = nullptr;
-			batch_range_begin = std::numeric_limits<std::int32_t>::max();
-			batch_range_end   = std::numeric_limits<std::int32_t>::min();
+			batch_range_begin = std::numeric_limits<std::int32_t>::max() - 1;
+			batch_range_end   = std::int32_t(0);
 		};
 		auto add_to_batch = [&](auto& p) {
 			auto type  = &*p.emitter->cfg().type;

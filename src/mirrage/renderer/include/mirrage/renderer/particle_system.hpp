@@ -315,6 +315,7 @@ namespace mirrage::renderer {
 		auto last_timestep() const noexcept { return _last_timestep; }
 
 		auto gpu_data() -> std::shared_ptr<Particle_emitter_gpu_data>;
+		void reset_gpu_data() { _gpu_data.reset(); }
 
 		auto cfg() const noexcept -> auto& { return *_cfg; }
 

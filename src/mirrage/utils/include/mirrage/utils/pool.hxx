@@ -311,6 +311,9 @@ namespace mirrage::util {
 	MIRRAGE_POOL_HEADER
 	T* MIRRAGE_POOL::_chunk_end(T* begin, IndexType chunk_idx) noexcept
 	{
+		if(!begin)
+			return nullptr;
+
 		if(chunk_idx < _used_elements / chunk_len) {
 			return begin + chunk_len;
 		} else {

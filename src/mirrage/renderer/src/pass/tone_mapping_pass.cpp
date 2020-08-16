@@ -92,15 +92,15 @@ namespace mirrage::renderer {
 			auto module = assets.load<graphic::Shader_module>(shader);
 
 			auto spec_entries =
-			        std::array<vk::SpecializationMapEntry, 4>{vk::SpecializationMapEntry{0, 0 * 32, 32},
-			                                                  vk::SpecializationMapEntry{1, 1 * 32, 32},
-			                                                  vk::SpecializationMapEntry{2, 2 * 32, 32},
-			                                                  vk::SpecializationMapEntry{3, 3 * 32, 32}};
-			auto spec_data                                     = std::array<char, 4 * 32>();
-			reinterpret_cast<std::int32_t&>(spec_data[0 * 32]) = histogram_slots;
-			reinterpret_cast<std::int32_t&>(spec_data[1 * 32]) = workgroup_size;
-			reinterpret_cast<float&>(spec_data[2 * 32])        = std::log(histogram_min);
-			reinterpret_cast<float&>(spec_data[3 * 32])        = std::log(histogram_max);
+			        std::array<vk::SpecializationMapEntry, 4>{vk::SpecializationMapEntry{0, 0 * 4, 4},
+			                                                  vk::SpecializationMapEntry{1, 1 * 4, 4},
+			                                                  vk::SpecializationMapEntry{2, 2 * 4, 4},
+			                                                  vk::SpecializationMapEntry{3, 3 * 4, 4}};
+			auto spec_data                                    = std::array<char, 4 * 4>();
+			reinterpret_cast<std::int32_t&>(spec_data[0 * 4]) = histogram_slots;
+			reinterpret_cast<std::int32_t&>(spec_data[1 * 4]) = workgroup_size;
+			reinterpret_cast<float&>(spec_data[2 * 4])        = std::log(histogram_min);
+			reinterpret_cast<float&>(spec_data[3 * 4])        = std::log(histogram_max);
 
 			auto spec_info = vk::SpecializationInfo{gsl::narrow<std::uint32_t>(spec_entries.size()),
 			                                        spec_entries.data(),
@@ -110,11 +110,10 @@ namespace mirrage::renderer {
 			auto stage = vk::PipelineShaderStageCreateInfo{
 			        {}, vk::ShaderStageFlagBits::eCompute, **module, "main", &spec_info};
 
+			auto info = vk::ComputePipelineCreateInfo{{}, stage, layout};
+
 			auto pipeline =
-			        device.vk_device()
-			                ->createComputePipelineUnique(device.pipeline_cache(),
-			                                              vk::ComputePipelineCreateInfo{{}, stage, layout})
-			                .value;
+			        device.vk_device()->createComputePipelineUnique(device.pipeline_cache(), info).value;
 			return pipeline;
 		}
 

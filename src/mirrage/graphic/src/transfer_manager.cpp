@@ -335,12 +335,15 @@ namespace mirrage::graphic {
 			        0,
 			        VK_WHOLE_SIZE};
 			// dstStageMask should be 0 (based on the spec) but validation layer complains
-			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
-			                               vk::PipelineStageFlagBits::eAllCommands,
-			                               vk::DependencyFlags{},
-			                               {},
-			                               {buffer_barrier},
-			                               {});
+			command_buffer.pipelineBarrier(
+			        vk::PipelineStageFlagBits::eTransfer,
+			        vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eFragmentShader
+			                | vk::PipelineStageFlagBits::eVertexShader
+			                | vk::PipelineStageFlagBits::eVertexInput | vk::PipelineStageFlagBits::eTransfer,
+			        vk::DependencyFlags{},
+			        {},
+			        {buffer_barrier},
+			        {});
 
 			_device.destroy_after_frame(std::move(t.src));
 
@@ -356,12 +359,15 @@ namespace mirrage::graphic {
 			        0,
 			        VK_WHOLE_SIZE};
 			// srcStageMask should be 0 (based on the spec) but validation layer complains
-			main_queue_commands.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
-			                                    vk::PipelineStageFlagBits::eAllCommands,
-			                                    vk::DependencyFlags{},
-			                                    {},
-			                                    {aq_buffer_barrier},
-			                                    {});
+			main_queue_commands.pipelineBarrier(
+			        vk::PipelineStageFlagBits::eTransfer,
+			        vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eFragmentShader
+			                | vk::PipelineStageFlagBits::eVertexShader
+			                | vk::PipelineStageFlagBits::eVertexInput | vk::PipelineStageFlagBits::eTransfer,
+			        vk::DependencyFlags{},
+			        {},
+			        {aq_buffer_barrier},
+			        {});
 		}
 		_buffer_transfers.clear();
 
@@ -385,8 +391,10 @@ namespace mirrage::graphic {
 			                               t.owner,
 			                               t.dst,
 			                               subresource};
-			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
-			                               vk::PipelineStageFlagBits::eAllCommands,
+			command_buffer.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+			                               vk::PipelineStageFlagBits::eTransfer
+			                                       | vk::PipelineStageFlagBits::eFragmentShader
+			                                       | vk::PipelineStageFlagBits::eComputeShader,
 			                               vk::DependencyFlags{},
 			                               {},
 			                               {},
@@ -398,25 +406,11 @@ namespace mirrage::graphic {
 			// executed in graphics queue
 			{
 				// queue family aquire operation
-				auto subresource = vk::ImageSubresourceRange{vk::ImageAspectFlagBits::eColor,
-				                                             0,
-				                                             gsl::narrow<std::uint32_t>(t.mip_count_actual),
-				                                             0,
-				                                             gsl::narrow<std::uint32_t>(t.dimensions.layers)};
-
-				auto barrier = vk::ImageMemoryBarrier{vk::AccessFlagBits::eTransferWrite,
-				                                      vk::AccessFlagBits::eTransferRead
-				                                              | vk::AccessFlagBits::eShaderRead
-				                                              | vk::AccessFlagBits::eTransferWrite,
-				                                      vk::ImageLayout::eTransferDstOptimal,
-				                                      vk::ImageLayout::eTransferDstOptimal,
-				                                      _queue_family,
-				                                      t.owner,
-				                                      t.dst,
-				                                      subresource};
 				// srcStageMask should be 0 (based on the spec) but validation layer complains
-				main_queue_commands.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
-				                                    vk::PipelineStageFlagBits::eAllCommands,
+				main_queue_commands.pipelineBarrier(vk::PipelineStageFlagBits::eTransfer,
+				                                    vk::PipelineStageFlagBits::eTransfer
+				                                            | vk::PipelineStageFlagBits::eFragmentShader
+				                                            | vk::PipelineStageFlagBits::eComputeShader,
 				                                    vk::DependencyFlags{},
 				                                    {},
 				                                    {},

@@ -120,6 +120,51 @@ namespace mirrage::graphic {
 					return vk::AccessFlags{};
 			}
 		}
+		auto get_stage(vk::ImageLayout layout, bool src) -> vk::PipelineStageFlags
+		{
+			switch(layout) {
+				case vk::ImageLayout::eUndefined:
+					return src ? vk::PipelineStageFlagBits::eTopOfPipe
+					           : vk::PipelineStageFlagBits::eBottomOfPipe;
+
+				case vk::ImageLayout::ePreinitialized:
+					return vk::PipelineStageFlagBits::eHost | vk::PipelineStageFlagBits::eTransfer;
+
+				case vk::ImageLayout::eColorAttachmentOptimal:
+					return vk::PipelineStageFlagBits::eColorAttachmentOutput;
+
+				case vk::ImageLayout::eDepthReadOnlyStencilAttachmentOptimalKHR:
+				case vk::ImageLayout::eDepthAttachmentStencilReadOnlyOptimalKHR:
+				case vk::ImageLayout::eDepthStencilReadOnlyOptimal:
+					return vk::PipelineStageFlagBits::eEarlyFragmentTests
+					       | vk::PipelineStageFlagBits::eLateFragmentTests
+					       | vk::PipelineStageFlagBits::eFragmentShader;
+
+				case vk::ImageLayout::eDepthStencilAttachmentOptimal:
+					return vk::PipelineStageFlagBits::eEarlyFragmentTests
+					       | vk::PipelineStageFlagBits::eLateFragmentTests
+					       | vk::PipelineStageFlagBits::eFragmentShader;
+
+				case vk::ImageLayout::eTransferSrcOptimal: return vk::PipelineStageFlagBits::eTransfer;
+
+				case vk::ImageLayout::eTransferDstOptimal: return vk::PipelineStageFlagBits::eTransfer;
+
+				case vk::ImageLayout::eShaderReadOnlyOptimal:
+					return vk::PipelineStageFlagBits::eFragmentShader
+					       | vk::PipelineStageFlagBits::eVertexShader
+					       | vk::PipelineStageFlagBits::eComputeShader;
+
+				case vk::ImageLayout::eSharedPresentKHR:
+				case vk::ImageLayout::ePresentSrcKHR:
+					return vk::PipelineStageFlagBits::eColorAttachmentOutput
+					       | vk::PipelineStageFlagBits::eTransfer;
+
+				default:
+					LOG(plog::warning) << "Unexcepted layout " << static_cast<int>(layout);
+					return src ? vk::PipelineStageFlagBits::eTopOfPipe
+					           : vk::PipelineStageFlagBits::eBottomOfPipe;
+			}
+		}
 	} // namespace
 
 	void image_layout_transition(vk::CommandBuffer    cb,
@@ -145,8 +190,8 @@ namespace mirrage::graphic {
 		                                      VK_QUEUE_FAMILY_IGNORED,
 		                                      image,
 		                                      subresource};
-		cb.pipelineBarrier(vk::PipelineStageFlagBits::eAllCommands,
-		                   vk::PipelineStageFlagBits::eAllCommands,
+		cb.pipelineBarrier(get_stage(src_layout, true),
+		                   get_stage(dst_layout, false),
 		                   vk::DependencyFlags{},
 		                   {},
 		                   {},

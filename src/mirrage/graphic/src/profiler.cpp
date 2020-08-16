@@ -106,7 +106,7 @@ namespace mirrage::graphic {
 		cb.resetQueryPool(*_query_pools.head().pool, 0, _query_ids);
 		std::fill(_query_used.begin(), _query_used.end(), false);
 
-		cb.writeTimestamp(vk::PipelineStageFlagBits::eAllCommands,
+		cb.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe,
 		                  *_query_pools.head().pool,
 		                  _last_results.query_id_begin());
 
@@ -122,7 +122,7 @@ namespace mirrage::graphic {
 			auto& cb = _current_command_buffer.get_or_throw(
 			        "No active command buffer! Has Profiler::start been called?");
 
-			cb.writeTimestamp(vk::PipelineStageFlagBits::eAllCommands,
+			cb.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe,
 			                  *_query_pools.head().pool,
 			                  _last_results.query_id_end());
 
@@ -208,7 +208,7 @@ namespace mirrage::graphic {
 		auto& cb = _current_command_buffer.get_or_throw(
 		        "No active command buffer! Has Profiler::start been called?");
 
-		cb.writeTimestamp(vk::PipelineStageFlagBits::eAllCommands,
+		cb.writeTimestamp(vk::PipelineStageFlagBits::eBottomOfPipe,
 		                  *_query_pools.head().pool,
 		                  _current_stack.back()->query_id_end());
 

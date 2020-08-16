@@ -87,8 +87,6 @@ namespace mirrage::renderer {
 			auto load_texture(const asset::AID&) -> std::shared_ptr<void>;
 		};
 
-		vk::UniqueSampler                 _sampler;
-		vk::UniqueDescriptorSetLayout     _descriptor_set_layout;
 		std::shared_ptr<Texture_cache>    _texture_cache;
 		std::vector<graphic::Framebuffer> _framebuffers;
 		graphic::Render_pass              _render_pass;

@@ -177,9 +177,10 @@ namespace mirrage::renderer {
 
 		render_pass.set_stage("light_dir"_strid);
 
-		render_pass.bind_descriptor_set(0, frame.global_uniform_set);
-		render_pass.bind_descriptor_sets(1, {_input_attachment_descriptor_set.get_ptr(), 1});
-		render_pass.bind_descriptor_set(2, *_gbuffer.shadowmaps);
+		const auto descriptors = std::array<const vk::DescriptorSet, 3>{
+		        frame.global_uniform_set, *_input_attachment_descriptor_set, *_gbuffer.shadowmaps};
+
+		render_pass.bind_descriptor_sets(0, descriptors);
 
 		// directional light
 		for(auto& light : _directional_lights) {

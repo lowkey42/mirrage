@@ -669,7 +669,7 @@ namespace mirrage::renderer {
 		if(transfer_semaphore.is_some()) {
 			wait_count++;
 			wait_semaphores[1] = transfer_semaphore.get_or_throw();
-			wait_stages[1]     = vk::PipelineStageFlagBits::eAllCommands;
+			wait_stages[1]     = vk::PipelineStageFlagBits::eBottomOfPipe;
 			_queued_commands.insert(_queued_commands.begin(), transfer_barriers);
 		}
 

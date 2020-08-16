@@ -133,6 +133,16 @@ namespace mirrage::audio {
 
 namespace mirrage::asset {
 
+	/// Wrapper that also holds onto the original audio file
+	/// Required because WavStream only accepts a non-owning pointer
+	class OwningWavStream : public SoLoud::WavStream {
+	  public:
+		OwningWavStream(istream&& in) : _file(std::move(in)) { loadFile(&_file); }
+
+	  private:
+		mirrage::audio::Audio_file _file;
+	};
+
 	auto Loader<mirrage::audio::Sample>::load(istream in) -> mirrage::audio::Sample
 	{
 		switch(in.aid().type()) {
@@ -142,12 +152,7 @@ namespace mirrage::asset {
 				s->loadFile(&file);
 				return s;
 			}
-			case "wav_stream"_strid: {
-				auto s    = std::make_unique<SoLoud::WavStream>();
-				auto file = std::make_unique<mirrage::audio::Audio_file>(std::move(in));
-				s->loadFile(file.release());
-				return s;
-			}
+			case "wav_stream"_strid: return std::make_unique<OwningWavStream>(std::move(in));
 
 			default: MIRRAGE_FAIL("Unsupported AID-type for audio sample: " << in.aid().str());
 		}

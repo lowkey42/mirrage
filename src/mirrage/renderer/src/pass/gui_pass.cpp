@@ -27,6 +27,7 @@ namespace mirrage::renderer {
 			auto pipeline                    = graphic::Pipeline_description{};
 			pipeline.input_assembly.topology = vk::PrimitiveTopology::eTriangleList;
 
+			pipeline.add_descriptor_set_layout(renderer.global_uniforms_layout());
 			pipeline.add_descriptor_set_layout(desc_set_layout);
 
 			pipeline.add_push_constant("camera"_strid, sizeof(glm::mat4), vk::ShaderStageFlagBits::eVertex);
@@ -76,16 +77,10 @@ namespace mirrage::renderer {
 
 	Gui_pass::Gui_pass(Deferred_renderer& drenderer, Engine&, std::shared_ptr<void> last_state)
 	  : Render_pass(drenderer)
-	  , _sampler(drenderer.device().create_sampler(1,
-	                                               vk::SamplerAddressMode::eClampToEdge,
-	                                               vk::BorderColor::eIntOpaqueBlack,
-	                                               vk::Filter::eLinear,
-	                                               vk::SamplerMipmapMode::eNearest))
-	  , _descriptor_set_layout(create_descriptor_set_layout(drenderer.device(), *_sampler))
 	  , _texture_cache(last_state ? std::static_pointer_cast<Texture_cache>(last_state)
 	                              : std::make_unique<Texture_cache>(drenderer))
-	  , _render_pass(build_render_pass(drenderer, *_descriptor_set_layout, _framebuffers))
-	  , _descriptor_set(drenderer.create_descriptor_set(*_descriptor_set_layout, 1))
+	  , _render_pass(build_render_pass(drenderer, *_texture_cache->_descriptor_set_layout, _framebuffers))
+	  , _descriptor_set(drenderer.create_descriptor_set(*_texture_cache->_descriptor_set_layout, 1))
 	  , _mesh_buffer(drenderer.device(),
 	                 max_render_buffer_size,
 	                 vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eVertexBuffer)
@@ -308,7 +303,7 @@ namespace mirrage::renderer {
 			if(descset.is_nothing())
 				return;
 
-			_render_pass.bind_descriptor_sets(0, {descset.get_or_throw().get_ptr(), 1});
+			_render_pass.bind_descriptor_set(1, *descset.get_or_throw());
 			_bound_texture_handle = int_tex_handle;
 		}
 

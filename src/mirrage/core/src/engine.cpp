@@ -161,8 +161,7 @@ namespace mirrage {
 	Engine::~Engine() noexcept
 	{
 		_screens.clear();
-
-		assets().shrink_to_fit();
+		assets().clear();
 	}
 
 	namespace {

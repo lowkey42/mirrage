@@ -19,6 +19,7 @@ namespace mirrage::renderer {
 		using Factory = Particle_pass_factory;
 
 		Particle_pass(Deferred_renderer&, ecs::Entity_manager&);
+		~Particle_pass();
 
 		void handle_obj(Frame_data&,
 		                Culling_mask,

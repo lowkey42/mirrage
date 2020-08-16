@@ -108,6 +108,11 @@ namespace mirrage::asset {
 			  : Loader<T>(std::forward<Args>(args)...), _manager(manager)
 			{
 			}
+			~Asset_container()
+			{
+				auto lock = std::scoped_lock{_container_mutex};
+				_assets.clear();
+			}
 
 			using Loader<T>::load;
 			using Loader<T>::save;
@@ -147,6 +152,7 @@ namespace mirrage::asset {
 
 		void reload();
 		void shrink_to_fit() noexcept;
+		void clear();
 
 
 		template <typename T>
