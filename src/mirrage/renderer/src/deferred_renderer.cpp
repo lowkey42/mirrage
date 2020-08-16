@@ -4,6 +4,7 @@
 
 #include <mirrage/asset/embedded_asset.hpp>
 #include <mirrage/renderer/model_comp.hpp>
+#include <mirrage/renderer/picking.hpp>
 
 #include <mirrage/ecs/components/transform_comp.hpp>
 #include <mirrage/ecs/ecs.hpp>
@@ -110,6 +111,7 @@ namespace mirrage::renderer {
 	                      }))
 	  , _router(_router_factory(_passes))
 	  , _cameras(ecs.is_some() ? util::justPtr(&ecs.get_or_throw().list<Camera_comp>()) : util::nothing)
+	  , _picking(std::make_unique<Picking>(ecs, _active_camera))
 	{
 		if(ecs.is_some()) {
 			ecs.get_or_throw().register_component_type<Material_property_comp>();
@@ -219,7 +221,9 @@ namespace mirrage::renderer {
 			}
 		}
 
-		if(active_camera().is_nothing())
+		_calc_active_camera();
+
+		if(_active_camera.is_nothing())
 			return;
 
 		_secondary_command_buffer_pool.pre_frame();
@@ -238,7 +242,7 @@ namespace mirrage::renderer {
 		_frame_data.main_command_buffer = main_command_buffer;
 		_frame_data.global_uniform_set  = *_global_uniform_descriptor_set;
 		_frame_data.swapchain_image     = _factory->_aquire_next_image();
-		_frame_data.camera              = &active_camera().get_or_throw();
+		_frame_data.camera              = &_active_camera.get_or_throw();
 
 		// draw
 		_router->pre_draw(_frame_data);
@@ -246,9 +250,6 @@ namespace mirrage::renderer {
 		_router->post_draw(_frame_data);
 
 		_frame_data.debug_geometry_queue.clear();
-
-		// reset cached camera state
-		_active_camera = util::nothing;
 	}
 
 	void Deferred_renderer::shrink_to_fit()
@@ -277,11 +278,8 @@ namespace mirrage::renderer {
 		_global_uniform_buffer.update_obj(cb, _global_uniforms);
 	}
 
-	auto Deferred_renderer::active_camera() noexcept -> util::maybe<Camera_state&>
+	void Deferred_renderer::_calc_active_camera() noexcept
 	{
-		if(_active_camera.is_some())
-			return _active_camera.get_or_throw();
-
 		if(_cameras.is_some()) {
 			auto max_prio = std::numeric_limits<float>::lowest();
 			auto active   = static_cast<Camera_comp*>(nullptr);
@@ -305,16 +303,10 @@ namespace mirrage::renderer {
 					if(p)
 						p->process_camera(_active_camera.get_or_throw());
 				}
-
-				return util::justPtr(&_active_camera.get_or_throw());
-			} else {
-				_active_camera = util::nothing;
-				return util::maybe<Camera_state&>();
 			}
 
 		} else {
 			_active_camera.emplace(_factory->_window.viewport());
-			return util::justPtr(&_active_camera.get_or_throw());
 		}
 	}
 

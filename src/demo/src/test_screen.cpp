@@ -27,6 +27,8 @@
 #include <sstream>
 
 
+#include <mirrage/renderer/picking.hpp>
+
 namespace mirrage {
 	using namespace ecs::components;
 	using namespace util::unit_literals;
@@ -118,12 +120,11 @@ namespace mirrage {
 					}
 					break;
 
-				case "create"_strid: {
-					auto& cam = _camera.get<Transform_comp>().get_or_throw();
-					_meta_system.entities()
-					        .entity_builder("cube")
-					        .position(cam.position + cam.direction())
-					        .create();
+				case "edit_select"_strid: {
+					// TODO: move to editor
+					auto picked = _meta_system.renderer().picking().pick_closest<>(
+					        _engine.input().last_pointer_screen_position(), 0);
+					LOG(plog::info) << picked.is_some();
 					break;
 				}
 

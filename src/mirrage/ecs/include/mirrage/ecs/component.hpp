@@ -190,7 +190,7 @@ namespace mirrage::ecs {
 	  public:
 		using component_base_t = Tag_component;
 
-		TagType value;
+		TagType value = {};
 
 		friend void load_component(ecs::Deserializer& state, Tag_component& self)
 		{

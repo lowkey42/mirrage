@@ -46,8 +46,8 @@
             },
 
             "mouse_buttons": {
-                {"button":1, "clicks":0}: {"type":"continuous", "action":"capture_ptr"},
-                {"button":3, "clicks":0}: {"type":"once", "action":"create"}
+                {"button":3, "clicks":0}: {"type":"continuous", "action":"capture_ptr"},
+                {"button":1, "clicks":0}: {"type":"once", "action":"edit_select"}
             },
             "mouse_movement": {"type": "range", "action": "mouse_look"}
         }

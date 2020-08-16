@@ -31,6 +31,7 @@ namespace mirrage::renderer {
 
 	class Deferred_renderer_factory;
 	class Deferred_renderer;
+	class Picking;
 
 
 	struct Renderer_settings {
@@ -297,7 +298,7 @@ namespace mirrage::renderer {
 			_secondary_command_buffer_pool.execute_group(group, dst_buffer);
 		}
 
-		auto active_camera() noexcept -> util::maybe<Camera_state&>;
+		auto active_camera() const noexcept { return _active_camera; }
 
 		auto settings() const -> auto& { return _factory->settings(); }
 		void save_settings() { _factory->save_settings(); }
@@ -323,6 +324,8 @@ namespace mirrage::renderer {
 
 		auto profiler() const noexcept -> auto& { return _profiler; }
 		auto profiler() noexcept -> auto& { return _profiler; }
+
+		auto picking() const noexcept -> auto& { return *_picking; }
 
 	  private:
 		friend class Deferred_renderer_factory;
@@ -360,7 +363,10 @@ namespace mirrage::renderer {
 		util::maybe<Camera_state>       _active_camera;
 		Frame_data                      _frame_data;
 
+		std::unique_ptr<Picking> _picking;
+
 		void _write_global_uniform_descriptor_set();
 		void _update_global_uniforms(vk::CommandBuffer, const Camera_state& camera);
+		void _calc_active_camera() noexcept;
 	};
 } // namespace mirrage::renderer
